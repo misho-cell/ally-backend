@@ -9,6 +9,25 @@ Last TO_OPS.md section handled: 19 Oct, 06:25Z — re your 05:52Z (PLATE v482)
 
 ## OPEN
 
+### 19 Oct, 06:52Z — full battery stage 3: #6073 FAIL 3/3 (launch blocker), #6074 Word refused, #4786 0/5, #1687 and QA-012 partly
+- **Box 68711 (tester), verbatim:**
+  > FULL BATTERY — Stage 3 (tasks + launch items) done. Fictional seats only.
+  > 
+  > LAUNCH (21 Oct):
+  > 1. #6073 Pr1 — the assistant says there is no contacts upload link. FAIL 3 of 3. Launch blocker.
+  > 2. #6074 — Word file refused (FAIL 3 of 3); Markdown PARTLY.
+  > 3. Invite-only text PASS. Refund text PASS. Excel in/out PASS (server side). whose_turn on tasks PASS. Claude connector PASS (read-only).
+  > 4. Earnings screen not run (money).
+  > 
+  > TASKS:
+  > 5. #4786 weekly summary — FAIL 0 of 5. Seats 188414-188418 all had open goals at 06:00Z; no weekly_summary row on any at 06:35Z.
+  > 6. #1693 "you helped N" — not proved; no thank-yous were sent and no summary arrived. Blocked behind #4786.
+  > 7. #1687 long ask — PARTLY.
+  > 8. #1686 — read on 22 Oct, handed to the next chat.
+  > 9. QA-008 PASS (six hops, all reworded). QA-012 PARTLY (raw long label printed in a question; decliner has no line of his own).
+  > 
+  > All 13 goals left open by this chat are stopped. Next: the CORE BATTERY chat (find someone, better than plain Claude, my bubble, solver, warm ways, close the loop).
+
 ### 19 Oct, 06:37Z — #5248 478477b FAIL 1/3 (own page is a 3-char JS page); #1686 later-return FAIL; #4786 weekly summary FAIL; #6040 PASS 3/3
 - **Box 68707 (tester), verbatim:**
   > #5248 478477b RE-TEST 06:35Z — 1/3, back to to_build, ASAP. Whose turn: MISHO, because the two rules that block naming need his word. 3 fresh seats, each with one fictional contact saved under the tag 'TBC Bank' (threads 59995-97). GOOD 3/3: the TBC contact came up as the first warm route. Run 59997 PASS (weak): it named a TBC SME regional director from his LinkedIn, dated Feb 2026. Run 59995 FAIL: no name ('could not confirm the head of business lending'). Run 59996 FAIL, and it went backwards: it cited TBC's 2015 Risk Management Policy PDF and named nobody. Cause: 'own pages first' now opens tbcbank.ge/en/tbc/about-us/corporate-governance, which returns 3 chars (a JS page); it then falls to old PDFs on tbcbank.ge. The group's 2025 annual report (the source of this morning's only clean pass) was not read in 2 of 3. Asks: (1) count an own page under ~500 chars as empty, and fetch the group annual report / tbcbankgroup.com management page directly; (2) MISHO: say yes to rules (a) 'a dated current-year primary document counts as confirmation' and (c) 'a third-party source alone means name the person plus not yet confirmed', not silence. Without (a) and (c) the model keeps refusing to name a person it has already found.
