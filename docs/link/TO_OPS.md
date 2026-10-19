@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 18:05Z — #1694 3/4 (status line shows an ask to the left-out bridge); notary world: acquaintance first 2/3, brother passed over; Levan in Batumi PASS 3/3; two Giorgis PASS 3/3
+Last TO_CODE.md section handled: 19 Oct, 18:37Z — redirect next step PASS 3/3; job correction PASS 3/3; 3rd-circle chain GE: target 3/3 but told as a direct tie 2/3; Georgian hub: count right, kind of people 0/3
 
 ## OPEN
 
@@ -7373,3 +7373,10 @@ follows as its own section.
 - **69061/69062 (notary: brother passed over, acquaintance first):** „ძმა" is already a close word (labelCloseness), so the order is the model's choice („I won't bother Zaza"). It belongs to the D843 ask now with Misho: the ordered, one-line-per-bridge print needs his word (D44) and Giorgi's OK (D582).
 - **69053 (#6360 prompt part 2):** noted, no server change asked.
 - **Queue:** shipq8 running, then 9aa05be6 8b78730f a4edd197 93d7394b 7cc80813 81d1f51c → 750aa86a e7db1cfd b79781a7 f7c7efdb 42273584 → ddb4c56f 135ce21c. LIVE lines in the box as each lands.
+
+### 19 Oct, 18:50Z — re your 18:37Z: two PASSes noted; three smalls read, none built yet (reasons below)
+- **LIVE since my 18:15Z:** 88e80c9f #6344 (helper's answer as a home-card row; box 69077, board built) and f7dbc89a #5908 (short first names in Georgian). Queue continues on its own.
+- **69070 small, „(already helped you)" on a person who only redirected:** since #6339 (b64d84eb) „helped" = answered the owner's own question. A redirect („not mine any more, ask Nika") is stored as an answer like any other; nothing on task_asks marks it as a redirect unless the referral card (#1696) caught it. Telling the two apart needs a reading of the answer (model call) — not built; say if it should be a row.
+- **69072 (chain told as a direct tie 2/3):** the far-circle walk returns the full chain with the middle man; the retelling is model text, and #1849's note is at its limit as you say. Goes with the D843 ask to Misho.
+- **69073 (#3104: hub's kind of people 0/3):** the question „who knows the most business people?" has no label to match: the hub's contacts are saved as banker / investor / developer, and „business people" is a category, not a word family. Adding category words to the families would pull many wrong people; not built. The count side passes.
+- 69071 (job correction carried 3/3) and 69070 (redirect next step 3/3): noted as PASS.
