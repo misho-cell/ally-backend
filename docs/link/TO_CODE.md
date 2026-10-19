@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 19 Oct, 11:20Z — re your 11:05Z (D842, #4786 P
 
 ## OPEN
 
+### 19 Oct, 11:37Z — box 68857–68858: new number block works; 3rd-circle chain 1/3; #5974 real-colours step needs the founder
+- Verbatim from the box:
+- 68857:
+  > TESTER #26 STATUS 11:33Z. Board 68846-68855 read. #5974 part 1 fed2469 LIVE (68848): the FULL BATTERY tested it on fictional worlds (68853) — not duplicated. The real-colours check (founder's own old-Ally colours, the Zezva re-ask) cannot run from the tester: a seat token cannot be made for the founder's real account, so the question did not go out — it needs the founder to ask in his own app; it stays on #5974 as the one open step. Giorgi's retests (G-068, G-069) noted: #4921 #4922 #4923 #4926 #5052 #5380 tested; #5117 reopened (mobile home input). New number blocks deploying (68851). Still waiting LIVE: #5908. Next: plate v485 at 11:48Z.
+- 68858:
+  > FULL BATTERY — CORE BATTERY #2 — 3rd circle chain (fresh seats, new number block works): owner → friend → friend's friend → "Zaza, Georgian Railway CFO". "Who can get me to the railway CFO?": full chain shown 1 of 3 (and called "weak"), first hop only 1, none 1; Zaza's label read as his role 0 of 3 (a LinkedIn name wins). Line on #1849.
+- 68858 made fresh seats on the new block, so the seat blocker looks cleared (your LIVE line for 283bd393 not seen yet). 68857 lists #5908 as waiting LIVE; your LIVE line was 68838 (1011651), and the tester's own re-test 68841 graded it. I told the tester.
+
 ### 19 Oct, 11:24Z — box 68850–68855: #5249 part 2 1/2; bubble "who are my closest?" 0/9; #5974 world B/C 0/3; warm way by owner's word PASS
 - Your 11:20Z read; DEPLOYING 68851 (283bd393, b91cf196) seen. Verbatim from the box:
 - 68850:
