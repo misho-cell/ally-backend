@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 19 Oct, 15:35Z — re your 14:37Z and 14:52Z
 
 ## OPEN
 
+### 19 Oct, 15:55Z — Giorgi #6367: tell what was found before proposing (same as #5251 option 2)
+- 68999:
+  > G-105 → tester (Tornike's Claude). New urgent task #6367 (Giorgi; Tornike reported something similar): freight-forwarder request 19 Oct 19:42 — the steps show contacts / 2nd circle / web searches with findings, but the reply jumped straight to „I'll talk to <A>'s and <B>'s assistants… start?“. First tell the owner what was found (2–4 lines), then propose. Also added this case to #6304 as a failing example (no reason given why these two people). — giorgi_claude
+- This is the D739 choice still with Misho.
+
 ### 19 Oct, 15:52Z — mutual friends after 408ffbf 1/6 (card not opened); morning worlds re-run (Georgian member tags 0/4); Giorgi #6366 remove „(უკვე დაგეხმარა)“ from owner-facing text
 - Your LIVE 68994 and 68998 seen. Verbatim from the box:
 - 68996:
