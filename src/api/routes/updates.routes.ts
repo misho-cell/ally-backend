@@ -16,6 +16,7 @@ import {
   peekDueUpdates,
   pastWeeklySummaries,
   latestUpdates,
+  LATEST_UPDATES_LIMIT,
   LatestUpdate,
   UpdateCounts,
   snoozeUpdate,
@@ -36,6 +37,13 @@ import {
   storyLine,
 } from '../../services/updateCard';
 import { userLanguage } from '../../services/threads.service';
+import {
+  ANSWER_KIND,
+  answerLine,
+  answerRef,
+  latestAnswers,
+  type LatestAnswer,
+} from '../../services/latestAnswers.service';
 import {
   countFollowedUpdates,
   listFollowedUpdates,
@@ -225,12 +233,16 @@ async function latestRows(
   userId: string,
   chosen: RunLanguage | null,
 ): Promise<readonly LatestRowView[]> {
-  const [rows, language] = await Promise.all([
+  const [rows, answers, language] = await Promise.all([
     latestUpdates(userId),
+    latestAnswers(userId, LATEST_UPDATES_LIMIT),
     chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
   ]);
-  const titles = await goalTitlesFor(rows.map((u) => u.task_id));
-  return rows.map((u: LatestUpdate) => {
+  const titles = await goalTitlesFor([
+    ...rows.map((u) => u.task_id),
+    ...answers.map((a) => a.task_id),
+  ]);
+  const updateRows = rows.map((u: LatestUpdate) => {
     const heading = cardHeading(
       u.kind,
       normalisedPayload(u.kind, u.payload),
@@ -249,6 +261,34 @@ async function latestRows(
       released_at: new Date(u.released_at).toISOString(),
     };
   });
+  return newestFirst([...updateRows, ...answers.map((a) => answerRow(a, titles, language))]);
+}
+
+/** #6344: an answer to the owner's question, as a home card row. */
+function answerRow(
+  answer: LatestAnswer,
+  titles: ReadonlyMap<number, string>,
+  language: RunLanguage,
+): LatestRowView {
+  const detail = answerLine(answer, language);
+  const title = titles.get(answer.task_id) ?? answer.case_title?.trim() ?? '';
+  return {
+    update_ref: answerRef(answer.ask_id),
+    kind: ANSWER_KIND,
+    task_id: answer.task_id,
+    thread_id: answer.thread_id,
+    case_title: answer.case_title?.trim() || null,
+    title,
+    detail,
+    line: storyLine({ title, detail }),
+    released_at: new Date(answer.answered_at).toISOString(),
+  };
+}
+
+function newestFirst(rows: readonly LatestRowView[]): readonly LatestRowView[] {
+  return [...rows]
+    .sort((a, b) => b.released_at.localeCompare(a.released_at))
+    .slice(0, LATEST_UPDATES_LIMIT);
 }
 
 /**
