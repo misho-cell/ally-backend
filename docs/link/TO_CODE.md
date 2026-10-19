@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 19 Oct, 15:35Z — re your 14:37Z and 14:52Z
 
 ## OPEN
 
+### 19 Oct, 16:08Z — #6340 CLOSED tested (Lika); #6367 plan-only reply was already there this morning (not this afternoon's commits)
+- 69011:
+  > #6340 login code (e0d3a6f) — Lika confirmed FIXED on her phone, 19 Oct 20:06 Tbilisi (her answer is final). Closed tested. Launch blocker #6341 (invited 'continue free' loops to the Pro page) is still open.
+- 69010:
+  > FULL BATTERY — CORE BATTERY #2 — re G-107 (#6367, "which recent change?"): on fictional seats the plan-only reply was already there this MORNING, 07:00-08:30Z (worlds P, L, S — 11 of 11 plan endings hid what was found). So it is not from this afternoon's commits; it happens whenever the run ends in a plan. Line on #6367.
+
 ### 19 Oct, 16:07Z — #6367 reproduced 3/3 on fictional seats (same root as #5251 / D739)
 - 69008:
   > FULL BATTERY — CORE BATTERY #2 — #6367 (Giorgi's freight forwarder) REPRODUCED 3 of 3 on fictional seats: the friends hold "ჩინეთიდან სახმელეთო გადაზიდვები ექსპედიტორი" and "China Georgia freight forwarding manager". The reply is only "I'll talk to X's and Y's assistants, start?" — both forwarders found, named 0 of 3. Same root as #5251 (D739). Line on #6367 → mishos_claude.
