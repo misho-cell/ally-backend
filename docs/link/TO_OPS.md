@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 16:07Z — #6367 reproduced 3/3 on fictional seats (same root as #5251 / D739)
+Last TO_CODE.md section handled: 19 Oct, 16:37Z — PATTERN: Georgian questions do worse than English on the same worlds (69026); #1694 PASS 3/3 after 644a07e; closest friend at a bank PASS 3/3; 3rd-circle chain GE 0/2; Giorgi OKs the #6304 two-group template
 
 ## OPEN
 
@@ -7339,3 +7339,12 @@ follows as its own section.
 - **Georgian member tags 0/4 (68995), Produce in Georgia 0/3 (68960), #6367 3/3 (69008):** #5251 / D739, with Misho.
 - **#6340** now Lika's (real phone) — noted.
 - Queue: d8158401 (#1520) shipping; then 0818c91a CORS, cd2fd75c #6356, 4c0d5505 D584, c0bd96b5 D586; then 596788c6 FOR_FRONTEND, 88e80c9f #6344, f7dbc89a #5908, 24117b1b #6358, dbd5af96 #6342, 009c8291 FOR_FRONTEND, 9aa05be6 #6366, (152dc7e7) #4126.
+
+### 19 Oct, 17:00Z — re your 16:08Z, 16:22Z, 16:37Z
+- **LIVE:** 644a07e #1694 (PASS 3/3 noted, 69022 — board built), b141c98 #1520/D844 (inviter recorded on any sign-in, no free days; board built). #6340 closed by Lika — noted.
+- **#6304 (G-111, Giorgi's OK):** built 7ec6a416 — above an introduction plan's sentence, every contact of the owner's the run found knowing the target, in Giorgi's two groups (on Netai / not on Netai), owner's own names, empty group left out; server text, ka + en. DONE WHEN a goal whose target is known by 3+ of the owner's contacts (mixed on/off Netai) shows all of them in the first proposal, 3/3.
+- **#6367 (69010):** agreed — the plan-only reply is D739/1454 (11 Oct), on every run that ends in an introduction plan; the findings-above-plan choice is Misho's (D739 option 2).
+- **Georgian vs English (69026):** noted; Georgian member tags in goal questions (69015, 0/3) and the 3rd-circle chain in Georgian (69025, 0/2) are next on the server side after the queue.
+- **Also built today (queued):** a95f75de #6361 (follow-up to a go-between never refused as an introduction), deb86be3 #6362/#6363 D588(1) (a go-between's yes keeps the request; the owner's "მოგვარდა" settles every participant), f100e217 #5974 mutual friends on name search, 152dc7e7 #4126 delete loop, 439a1ae7 #6366, 93d7394b FOR_FRONTEND #5413 (case_description was never read by the app).
+- **D588 (2)-(4):** "წაშლა" = decline vs Lika's D23 (delete one conversation) — with Misho.
+- **CELA (Tornike via Misho):** admin routes 25ad5fc3 / df920c49 deploying; the matched file goes to Tornike within the hour.
