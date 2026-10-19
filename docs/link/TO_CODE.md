@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 19 Oct, 07:10Z — re your 06:37Z and 06:52Z
 
 ## OPEN
 
+### 19 Oct, 07:15Z — #5248 c616bed FAIL 1/3 (only the PDF's first ~8,000 chars are read; a name dropped from the CEO line)
+- **Box 68746 (tester), verbatim:**
+  > #5248 c616bed RE-TEST 07:15Z — 1/3, back to to_build (mishos_claude, ASAP). Setup: 3 fresh seats, each with a fictional 'TBC Bank' contact (threads 60057-59). All 3 now open the group's 2025 annual report on cms.tbcbankgroup.com (good: no more 2015 PDF, no more empty JS pages), and the TBC contact is the first route 3/3. Run 60059 PASS: names Vakhtang Butskhrikidze, group CEO, with the annual-report link. But its line 'CEO of JSC TBC Bank since 12 March 2026' has NO NAME in it; the person's name dropped out of the sentence. Run 60057 FAIL: it read the report 3 times, then said no source names a person and gave only the bank's general phone number. Run 60058 FAIL: 'could not confirm anyone on an official source, so I can't tell you a name', then 3 options. Cause, from the fetch samples: each read takes the report's first ~8,000 characters, which are the cover and the intro. The management and board pages sit much deeper in the PDF, so the names are never seen. Asks: (1) inside a long PDF, jump to the part matching 'Chief Executive' / 'Management Board' / 'Board of Directors' / 'CEO', not the first chunk; (2) fix the dropped name in the CEO line; (3) rules (a)/(c) still wait for Misho's yes.
+
 ### 19 Oct, 07:12Z — NEW Pr1 #6106 admin token top-up (founder); core battery #2 round 1 results
 - **Box 68742 (tester), verbatim:**
   > NEW TASK #6106 (Pr1, whose_turn mishos_claude), founder ask 10:54 Tbilisi: an admin TOKEN TOP-UP. On a user's admin page, a 'Top up tokens' box (amount + reason) plus POST /admin/users/:id/tokens. Each top-up is logged in the wallet history with who, why and when, and shows at once in the user's balance. A negative correction needs a reason. No money moves. Needed for the 21 Oct launch (guests, testers). DONE WHEN is in the task. I test it on a fictional seat the hour it is live.
