@@ -31,32 +31,39 @@ export enum OwnerTieReason {
  * #5479: why this bridge comes first, after the name. A reach note says
  * something the owner must know before approving, so it wins over a tie.
  */
-export const TIE_NOTE: Readonly<Record<RunLanguage, Record<OwnerTieReason, string>>> = {
+export const TIE_NOTE: Readonly<Record<RunLanguage, Partial<Record<OwnerTieReason, string>>>> = {
   ka: {
     [OwnerTieReason.SaidClose]: '(შენი ახლო ადამიანი)',
     [OwnerTieReason.Family]: '(შენი ოჯახის წევრი)',
     [OwnerTieReason.Close]: '(შენი ახლო ადამიანი)',
-    [OwnerTieReason.DealtWith]: '(უკვე დაგეხმარა)',
   },
   en: {
     [OwnerTieReason.SaidClose]: '(someone close to you)',
     [OwnerTieReason.Family]: '(your family)',
     [OwnerTieReason.Close]: '(someone close to you)',
-    [OwnerTieReason.DealtWith]: '(has helped you before)',
   },
   ru: {
     [OwnerTieReason.SaidClose]: '(близкий тебе человек)',
     [OwnerTieReason.Family]: '(твоя семья)',
     [OwnerTieReason.Close]: '(близкий тебе человек)',
-    [OwnerTieReason.DealtWith]: '(уже помогал тебе)',
   },
   es: {
     [OwnerTieReason.SaidClose]: '(alguien cercano a ti)',
     [OwnerTieReason.Family]: '(tu familia)',
     [OwnerTieReason.Close]: '(alguien cercano a ti)',
-    [OwnerTieReason.DealtWith]: '(ya te ayudó antes)',
   },
 };
+
+/**
+ * #6366 (Giorgi, G-104, 19 Oct): „(უკვე დაგეხმარა)" is never said to the owner
+ * — not in a plan, not by the model. The record that somebody helped before
+ * stays inside: it still orders the go-betweens, and is never shown as a reason.
+ */
+export function tieToShow(reason: OwnerTieReason | null | undefined): OwnerTieReason | null {
+  return reason === undefined || reason === null || reason === OwnerTieReason.DealtWith
+    ? null
+    : reason;
+}
 
 /** #1849: the ties that make a link warm — the owner said so, family, or a close relationship. */
 const WARM_REASONS: ReadonlySet<string> = new Set([

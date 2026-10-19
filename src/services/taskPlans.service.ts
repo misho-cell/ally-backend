@@ -1113,7 +1113,7 @@ const withNote = (name: string, note: string): string => (note === '' ? name : `
 function personNote(person: PlanPerson, language: RunLanguage): string {
   if (person.reach !== undefined && person.reach !== 'ok')
     return REACH_NOTE[language][person.reach];
-  return person.tie === undefined ? '' : TIE_NOTE[language][person.tie];
+  return person.tie === undefined ? '' : (TIE_NOTE[language][person.tie] ?? '');
 }
 
 interface PlanSentenceWords {

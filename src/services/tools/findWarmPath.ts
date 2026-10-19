@@ -4,7 +4,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone, phoneDigits } from '../phone';
-import { OwnerTie, OwnerTieReason, ownerTiesTo } from '../ownerTies';
+import { OwnerTie, OwnerTieReason, ownerTiesTo, tieToShow } from '../ownerTies';
 import { labelsAlongChain } from '../chainLabels';
 import { memberMiddles } from '../memberPaths.service';
 import {
@@ -437,7 +437,7 @@ export async function findWarmPath(
     candidates.map((bridges) => bridges[0]).filter((p): p is string => p !== undefined),
   ).catch(() => new Map<string, OwnerTie>());
   const withTie = (bridge: WarmPathBridge, index: number): WarmPathBridge => {
-    const reason = index === 0 ? ties.get(phoneDigits(bridge.phone))?.reason : null;
+    const reason = index === 0 ? tieToShow(ties.get(phoneDigits(bridge.phone))?.reason) : null;
     return reason ? { ...bridge, owner_tie: reason } : bridge;
   };
   const reached: WarmPath[] = candidates

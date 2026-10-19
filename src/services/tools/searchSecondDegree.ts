@@ -8,7 +8,7 @@ import { buildMeaningWordGroups, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
-import { OwnerTie, ownerTiesTo, UNKNOWN_TIE } from '../ownerTies';
+import { OwnerTie, ownerTiesTo, tieToShow, UNKNOWN_TIE } from '../ownerTies';
 import {
   byLinkWeight,
   colourWhy,
@@ -1615,7 +1615,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
             ? bridges.map((bridge) => bridge.name).filter((name): name is string => name !== null)
             : (row.via_names ?? []),
         via_contacts: bridges.map((bridge) => {
-          const tie = viaTies.get(phoneDigits(bridge.phone))?.reason;
+          const tie = tieToShow(viaTies.get(phoneDigits(bridge.phone))?.reason);
           const link = viaLinks.get(linkKey(bridge.phone, row.phone));
           const why = link === undefined ? null : colourWhy(link, bridge.name);
           return {
