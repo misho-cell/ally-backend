@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 13:37Z — Giorgi's new tasks for you: #6304 (all mutual contacts in two groups), #6338 (OTP limit 5→10/hour); Spanish know-the-person PASS 2/2
+Last TO_CODE.md section handled: 19 Oct, 14:22Z — LAUNCH BLOCKERS #6340 and #6341; Giorgi URGENT #6339
 
 ## OPEN
 
@@ -7311,3 +7311,12 @@ follows as its own section.
 - **#6337 (OTP page shows the number):** frontend.
 - Queue: d2dfb1f6 (now), 039e1263, 16145621, 0b50c334, ffab8683; then 3191d1eb, bb4a7bfc, 7053780f, c46af966, 9231751d, b52538b1, 693ec3f2, 7664f245.
 
+### 19 Oct, 14:58Z — re your 13:52Z, 14:06Z, 14:22Z (#6340 cause + fix LIVE, #6339 three causes, #6341, D844, D845, #1694)
+- **#6340 LAUNCH BLOCKER, cause (box 68959):** one phone got two code requests 1.2 s apart (double tap or the connector form sent twice) at 13:50Z and on 18 Oct 20:24Z; the second request deleted the first code, the verify failed ("wrong or expired"; Twilio fallback 404). Not an outage. **LIVE e0d3a6f (e5b70677):** a request within 30 s of a code already sent sends nothing; that code stays valid. DONE WHEN a double tap on "send code" (app and connector sign-in) gives ONE WhatsApp message and that code signs in, 3/3. #6338 (10 codes/hour, d62acf9d) is shipping now.
+- **#6341 (box 68962):** the server grants the 20 days at sign-up only when the invitation code reaches /register (switch ON; account 187254 got them). Accounts 186192 and 187314 (16–17 Oct) signed up with NO code, no inviter, no free days; there is no server route behind "continue free". Need: which account is Lika's invitee (id, not number), and the frontend's check that the link's code reaches POST /auth/register on every path. Granting free days later at a login with a code = billing write → asked Misho.
+- **#6339 (box 68970), fix b64d84eb built + verified, ships first in the next batch:** (a) "(უკვე დაგეხმარა)" was the server's tie note — Giorgi had answered three of Lika's questions, warmth is written on both sides; now only when the person answered the OWNER's question / took the owner's introduction. (b) "ლიკა ოსეფაშვილსაც კითხე" did not match the Latin-saved "Lika Osepashvili" → ask wall refused 5× while the plan wall said "his words are the permission"; now matched by sound with case endings. (c) the 60-minute update drew "გავაგრძელო?" under a waiting plan card (an earlier plan was approved, so the old guard let it through); none now while any proposal waits. DONE WHEN as in 68970.
+- **D844 #1520:** no manual credit. Path fix 8774c4b2 (queued): an invitation on any sign-in records the inviter of an account that has none and never paid; no free days.
+- **D845:** Spanish dismissed — b52538b1 (#6272) taken OUT of the queue, will not ship.
+- **#1694 3/4 (68935):** root cause — B's terms (sesk, loan, credit) share no word with the searches "ბანკი"/"კრედიტი", so search returned him and the model offered him as a choice before any goal existed (the stored plan itself held only A). Fix d4bcbeb6 (queued): each run withholds whoever closed a subject the OWNER's own line names, from every search result (found person, go-between, further out). DONE WHEN 4/4 B is never named — not in choices, plan or after — and no "did not go through with B" line.
+- **Deploy note:** bad2d9f (ffab8683) Railway build FAILED with no log (local build + suite green); it went live inside e0d3a6f.
+- Queue: d62acf9d (#6338, now), 2d098c1d, f12746c2, c43a46e1, cba7ea37; then 17b85d4a (#6339), 3979439c (#4126 research), 143b0443 (#1694), a4ba92f0 (FOR_FRONTEND G-074), d8158401 (#1520/D844).
