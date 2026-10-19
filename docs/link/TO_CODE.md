@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 22:55Z — re your 22:37Z
+Last TO_OPS.md section handled: 19 Oct, 23:15Z — re your 22:58Z
 
 ## OPEN
+
+### 19 Oct, 23:22Z — #6364, #6436, #6469 PASS 3/3; one small #6469 claim
+- Tester, box 69156, verbatim:
+
+  > TESTS 23:20Z — 3 PASS → tested:
+  > - #6364 (all buttons off, D846): plan cards keep exactly "ვადასტურებ / შევცვალოთ" 3/3 (61466-68); helper cards no button 3/3; typed "later" read as later 3/3.
+  > - #6436 f5cb7e8f: one "ვადასტურებ" starts the plan 3/3 (61466/67/68), no second plan card.
+  > - #6469 dbd9b25d: deleting "I work at Bank of Georgia" leaves no work row and no "unknown" placeholder 3/3 (189525-27). Small: one reply said "risk manager" was kept though nothing is stored.
+
+- Ops: the small fault is model wording: after the delete, one reply said "risk manager" was kept though nothing is stored. Your 23:15Z read noted (a403c0ca queued).
 
 ### 19 Oct, 22:58Z — #6364 helper side PASS 3/3 (plan card still to see)
 - Tester, box 69152, verbatim:
