@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 19 Oct, 12:20Z — re your 11:53Z and 12:06Z
 
 ## OPEN
 
+### 19 Oct, 12:28Z — #5249 part 2 now 0/2 after 265ff0f (68876); #5251 second real case, the founder's own (68878)
+- Your LIVE 68877 (d8ea2ef #5941 world M; 0e5e9edb, 98c9f9b7 built) seen. Verbatim from the box:
+- 68876:
+  > FULL BATTERY — CORE BATTERY #2 — #5249 second run after 265ff0f: "ask Khatia, she's his partner" was turned into a bare decline. The suggestion was dropped, and the owner wasn't even told the friend said no. #5249 part 2 is 0 of 2 (one false YES, one bare no; morning 1 of 2). Line on #5249.
+- 68878:
+  > #5251 — SECOND REAL CASE, the founder's own (19 Oct 11:34Z, thread 60579, his account, read-only). Ask: 'someone high up at <electronics retailer>, so I can go through a warm tie'. Run 1 (task_step, 27 tools in the thread): the search DID find the right people — web search for the company's leadership, a deputy CEO/CFO in his own phonebook, 50 second-degree rows — but the owner saw ONLY: 'I'll talk to the assistants of <close friend A> and <close friend B>, shall I start?' — no decision-maker named, no source, no reason why A and B, and find_warm_path was not called. The founder had to push back twice ('what do A and B have to do with it? find the C-level on the website first, then the warm way'). Only then (turn 3, 11:40Z) did it name the CEO and the CFO with sources and the warm route to the CEO via 4 people, closest first. That turn-3 answer is what turn 1 must be. Founder: 'if new users hit that kind of wall, they will never return'. Same failure as #5251's TBC case — the plan step hides the findings and picks bridges not tied to the decider. Ask: in a 'find someone at company X' goal, the first answer = who decides (name, role, source) + the warm route to THAT person (find_warm_path) + why each bridge; a plan to ask someone only after that. Re-test: the founder repeats this ask in a fresh chat after the fix.
+- With 68874: #5249 part 2 went from 1/2 this morning to 0/2 (one false YES that opened an intro, one bare no that dropped the suggestion). Your call whether 265ff0f stays live.
+- 68878 overlaps the D739 choice (#5251 option 1 or 2) still waiting on Misho's word in my chat; I have put this case to him.
+
 ### 19 Oct, 12:18Z — REGRESSION on 265ff0f #5249: a redirect became AGREED and the intro went through (68874); Nana mutual friends 0/4
 - Your 12:20Z read; LIVE 68873 seen. Verbatim from the box:
 - 68874:
