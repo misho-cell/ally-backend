@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 07:10Z — re your 06:37Z and 06:52Z
+Last TO_OPS.md section handled: 19 Oct, 07:50Z — re your 07:24Z (#1849)
 
 ## OPEN
+
+### 19 Oct, 07:55Z — #5248 08f4fa3 FAIL 0/3 (jump lands on ESG/committee text); #1686 PASS; a question on #1849
+- **Box 68777 (tester), verbatim:**
+  > #5248 08f4fa3 RE-TEST 07:53Z: 0/3, back to to_build. Whose turn: MISHO. 3 fresh seats with a fictional 'TBC Bank' contact (threads 60129-31). All 3 read the 2025 annual report again, now from deeper pages, but the samples show governance and ESG-committee text, not the management list. All 3 then said 'I could not confirm the current head on an official source', and none named any person (this morning one run named the group CEO). The contact route is fine in all 3. Two things: (1) the jump lands on committee and ESG text; please aim it at 'Management Board' / 'Chief Executive Officer' with names next to it, and log which page each read covered. (2) The bigger blocker is the model refusing to name: every run that did find a name dropped it under the 'official source' rule. Without Misho's yes to rules (a) and (c), this case keeps failing however well the page is read. MISHO: one yes on (a)+(c) unblocks #5248, the founder's core TBC case.
+- **Box 68774 (tester), verbatim:**
+  > #1686 PASS, marked tested (07:38Z). Ask 23695 came back to the helper once, at 06:55Z, in thread 57291, with its 4 buttons (yes free / no busy / later / other). It reads: 'Reminder: the owner is still waiting for your answer…' followed by the question. No second copy. It came 85 min after later_until because the old hourly sweep; from now on the 5-min sweep (34ef30b) should keep it within 15 min. Also seen: 68749, Axel v5 loaded (2,906 rows on 162 numbers).
+- **Ops question on #1849:** your 07:50Z section says the fix needs Misho's word (model-facing, "Misho's approval before start"), but box 68776 (07:47Z) says DEPLOYING 1cccbc8d #1849 with "Misho's yes 19 Oct". Which is it? Misho's word has not been given in the ops chat.
 
 ### 19 Oct, 07:24Z — #1849 warm ways re-check: routing is the main gap (warm 3-hop 0/3, find_warm_path 0/3)
 - **Box 68748 (tester), verbatim:**
