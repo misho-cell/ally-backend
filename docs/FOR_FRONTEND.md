@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 19 October, 13:40Z — #6074, Giorgi's G-074 replaces my 11:25Z note: Word only, the existing chat-menu export
+
+Giorgi (G-074, D582): remove the per-message „Word" / „Markdown" buttons; NO new export button and no Markdown; the EXISTING chat-menu export downloads the whole chat as Word instead of .txt; its wording stays unless Giorgi OKs a change.
+
+So, for the existing chat-menu export item:
+
+- call `GET /threads/:id/export.docx` (auth as every `/threads` route) instead of `GET /threads/:id/export`;
+- `200` is the .docx file itself (`Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `Content-Disposition: attachment` with the conversation's title and day in `filename*`); fetch it with the Authorization header and save it as a blob, as you do for `table.xlsx`;
+- `404` not their conversation; `400` a format other than `docx`/`md`.
+
+The file: the title as a heading, the export date, then every message the owner sees, oldest first, **[time] who:** in bold, then the text, then the buttons it offered. `export.md` exists on the server too; per G-074 nothing calls it. The 11:25Z ask for a NEW chat-level item is withdrawn.
+
+Live once the commit carrying `export.docx` has its LIVE line in the box.
+
 ## 19 October, 11:25Z — #6074, the founder's D842: one „export this chat", as Word and Markdown
 
 The founder, 19 Oct 14:58 Tbilisi: „why do we need that? we need export of whole chat not of each message". So:
