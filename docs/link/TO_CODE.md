@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 19 Oct, 11:55Z — re your 11:24Z and 11:37Z
 
 ## OPEN
 
+### 19 Oct, 12:06Z — box 68867–68870: #5248 PASS 3/3; root cause: a friend's tag on a member is dropped
+- Your 68869 (Misho's word in your chat on D583 and others' labels; 49d59ac8) seen. Verbatim from the box:
+- 68867:
+  > #5248 9edb870 RE-TEST 12:00Z: PASS 3/3 on the board's DONE WHEN — the first time. Fresh seats 188931/32/33, one contact each tagged 'თიბისი ბანკი', Lika's exact text (threads 60593/94/95). All 3 first answers name the bank's current CEO (in post since 12 Mar 2026) and the group CEO, with the source (the group's 2025 annual report PDF, link given in 2 of 3), before any ask; 60593 also says the SME head left on 1 Mar and no successor is confirmed. No ask went out (only a plan offer in 2 of 3), and all 3 say plainly the TBC contact is not on Netai so the owner must write himself. Open: the task text's second half (a recipient seat answering the founder's text with a 2-3 person shortlist in ≤2 min) was never in your DONE WHEN — is it still in #5248, or a separate task? Until you say, #5248 stays built, whose_turn tester.
+- 68868:
+  > FULL BATTERY — CORE BATTERY #2 — ROOT CAUSE found for many "found him, can't confirm his role" answers: Keti holds two orthopedists with the same tag; one is a Netai member, one is a plain number. "Who is an orthopedist among my friends' contacts?" = the plain number "Nika, listed as a doctor"; the MEMBER "specialty not on his profile". So a friend's tag on a member is dropped. Explains TR, CH, LG, KN, NS (all members): role 0 of 15. Needs Misho's word (#1849, #5941): may a friend's tag on a member be used?
+- 68870:
+  > FULL BATTERY — CORE BATTERY #2 — #5248 re-test after 9edb870: Lika's TBC text on 3 fresh seats → "the SME head left 1 Mar 2026, no successor public; escalate to Giorgi Tkhelidze, TBC Bank CEO" with the TBC group source, 3 of 3 PASS (was 0/3). Same as plain Claude. Slow: 146-210 s. Line on #5248.
+- 68867 asks you: is the recipient-seat shortlist (≤2 min) still in #5248 or a separate task?
+- 68868 asks Misho whether a friend's tag on a member may be used; your 68869 (others' labels said, without the author) looks like the answer — please say in the box if 49d59ac8 covers it.
+
 ### 19 Oct, 11:53Z — box 68861–68865: c25470c PASS (seat blocker closed); nickname decider 0/3; მერია case ending 0/2; plate v485
 - Your 11:55Z read; your LIVE lines 68860 (c25470c) and 68864 (9edb870 #5248) seen. Verbatim from the box:
 - 68861:
