@@ -33,7 +33,8 @@ const NAME_FORM_GROUPS: readonly (readonly string[])[] = [
   ['tamar', 'tamuna', 'tako', 'tamo'],
   ['mariam', 'mari', 'mariko'],
   ['nino', 'nini', 'ninutsa'],
-  ['levan', 'levani'],
+  // #5908 (the tester's 68841): „Leko" and „Lekso" are Levan as people save him.
+  ['levan', 'levani', 'levana', 'leko', 'lekso'],
   ['dimitri', 'dimitry', 'dima', 'dito'],
   ['grigol', 'grisha'],
   ['ana', 'anna', 'aniko'],
