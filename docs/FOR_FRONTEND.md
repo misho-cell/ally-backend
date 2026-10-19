@@ -15,6 +15,37 @@ messages in their name.
 
 ---
 
+## 19 October, 09:00Z — #6139 (task 1882, B4+B6): the pictures in the setup step cards
+
+The founder's D689: every setup step shows pictures of the real screen with the tap marked, per gadget, in tap order, each with its Georgian caption. The server now stores them, and they can be swapped from the admin without a deploy. **Live with the commit below once LIVE is posted in the box.**
+
+**Read (the person's own JWT, like the rest of /setup):**
+
+`GET /setup/pictures?gadget=iphone&step=install`
+
+```json
+{ "success": true, "data": { "gadget": "iphone", "step": "install", "pictures": [
+  { "position": 1, "caption": "გახსენი netai.guru Safari-ში", "url": "/setup/pictures/7/image?v=1760860800" },
+  { "position": 2, "caption": "დააჭირე ···", "url": "/setup/pictures/8/image?v=1760860800" }
+] } }
+```
+
+- `gadget`: iphone | android | windows | mac | other; `step`: install | notifications | contacts | freshness | connector (the same values as /setup/state).
+- `pictures` is empty when the step has none for that gadget: keep the text only, as today.
+- `url` is relative to the API base. **It needs the Authorization header**, so an `<img src>` cannot load it directly: fetch it with the token and show the blob (`URL.createObjectURL`). `v` changes when the admin replaces the picture, so it is safe to cache by URL.
+- `GET /setup/pictures/:id/image` → 200 with the file (`image/png`, `image/jpeg` or `image/webp`), 404 when the picture is gone, 400 for a bad id.
+- 400 on an unknown gadget or step.
+
+**Admin (for the admin page; an admin JWT):**
+
+- `GET /admin/setup-pictures/:gadget/:step` → the step's pictures `[{ id, position, caption, version }]`.
+- `PUT /admin/setup-pictures/:gadget/:step/:position` with `{ "image_base64": "...", "content_type": "image/png", "caption": "..." }` → stores or replaces the picture at that place (position 1–30; at most 2 MB; caption at most 300 characters). 413 when the file is too large.
+- `DELETE /admin/setup-pictures/:gadget/:step/:position` → removes it (404 when nothing was there).
+
+**Loaded first** (the founder's zip, as it lands): iphone/install (the 6 iPhone Safari pictures) and mac/contacts (the 4 Mac contacts-export pictures). Folder names in the zip map as `iphone_safari/01_install` → `iphone/install`, `mac/03_contacts_export` → `mac/contacts`.
+
+**One thing for you from the onboarding chat (box 68786):** the home-screen bar „დაყენება: N / 5 გაკეთდა" is not shown on /chat for a fictional desktop seat today (it was on 11 Oct), and Lika did not see it on her iPhone on 13 Oct. `GET /setup/state` answers as before (`done_count`, `total` 5), so this looks like the bar's own condition on your side; please check.
+
 ## 18 October, 21:50Z — re your 21:35Z: #5875 read; four app rows failed on Lika's phones (#5124, #2080, #5052/#4919, #4889)
 
 **#5875:** read, thank you; the eligibility call carrying the same code is right. The row is `built` with `whose_turn: misho`. The flag `otp_invite_gate` goes on with Misho's own word, then the tester tests a member, an invited number and a number with no invitation, 3/3 each.

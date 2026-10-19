@@ -352,6 +352,15 @@ import {
 } from '../../services/adminEveningCard.service';
 import { BACKFILL_MAX_BATCH, backfillShortTitles } from '../../services/shortTitleBackfill.service';
 import { queueRegistrationResearch } from '../../services/registrationResearch/registrationResearch.service';
+import {
+  isPictureType,
+  MAX_PICTURE_POSITION,
+  PictureTooLargeError,
+  picturesFor,
+  putPicture,
+  removePicture,
+} from '../../services/setupPictures.service';
+import { Gadget, isGadget, isSetupStep, SetupStep } from '../../services/setupState.service';
 
 /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
 const MAX_SEAT_USER_ID = 2_147_483_647;
@@ -7677,6 +7686,112 @@ adminRouter.post(
       // eslint-disable-next-line no-console
       console.error('[POST /admin/short-titles/backfill]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Could not fill the short titles' });
+    }
+  },
+);
+
+/**
+ * #6139 (task 1882, B4+B6): the setup pictures, edited without a deploy.
+ *   GET    /admin/setup-pictures/:gadget/:step              the step's pictures
+ *   PUT    /admin/setup-pictures/:gadget/:step/:position    { image_base64, content_type, caption }
+ *   DELETE /admin/setup-pictures/:gadget/:step/:position
+ * Screens of the app, names blurred: nothing about a person is stored here.
+ */
+const MAX_CAPTION_CHARS = 300;
+
+interface PicturePlace {
+  readonly gadget: Gadget;
+  readonly step: SetupStep;
+  readonly position: number;
+}
+
+function picturePlace(req: Request): PicturePlace | null {
+  const { gadget, step } = req.params;
+  const position = Number(req.params.position ?? 1);
+  if (!isGadget(gadget) || !isSetupStep(step)) return null;
+  if (!Number.isInteger(position) || position < 1 || position > MAX_PICTURE_POSITION) return null;
+  return { gadget, step, position };
+}
+
+adminRouter.get('/setup-pictures/:gadget/:step', async (req: Request, res: Response) => {
+  const place = picturePlace(req);
+  if (place === null) {
+    res.status(400).json({ success: false, error: 'A known gadget and step are required' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await picturesFor(place.gadget, place.step) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /admin/setup-pictures]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the pictures' });
+  }
+});
+
+adminRouter.put('/setup-pictures/:gadget/:step/:position', async (req: Request, res: Response) => {
+  const place = picturePlace(req);
+  const {
+    image_base64: image,
+    content_type: type,
+    caption,
+  } = (req.body ?? {}) as Record<string, unknown>;
+  if (
+    place === null ||
+    typeof image !== 'string' ||
+    image === '' ||
+    !isPictureType(type) ||
+    (caption !== undefined && (typeof caption !== 'string' || caption.length > MAX_CAPTION_CHARS))
+  ) {
+    res.status(400).json({
+      success: false,
+      error:
+        `gadget, step, position 1-${MAX_PICTURE_POSITION}, image_base64, content_type ` +
+        `(image/png, image/jpeg or image/webp) and an optional caption of at most ` +
+        `${MAX_CAPTION_CHARS} characters are required`,
+    });
+    return;
+  }
+  try {
+    const id = await putPicture(
+      place.gadget,
+      place.step,
+      place.position,
+      { contentType: type, bytes: Buffer.from(image, 'base64') },
+      typeof caption === 'string' ? caption.trim() : '',
+    );
+    res.status(200).json({ success: true, data: { id, ...place } });
+  } catch (error) {
+    if (error instanceof PictureTooLargeError) {
+      res.status(413).json({ success: false, error: error.message });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.error('[PUT /admin/setup-pictures]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not store the picture' });
+  }
+});
+
+adminRouter.delete(
+  '/setup-pictures/:gadget/:step/:position',
+  async (req: Request, res: Response) => {
+    const place = picturePlace(req);
+    if (place === null) {
+      res
+        .status(400)
+        .json({ success: false, error: 'A known gadget, step and position are required' });
+      return;
+    }
+    try {
+      const removed = await removePicture(place.gadget, place.step, place.position);
+      if (!removed) {
+        res.status(404).json({ success: false, error: 'No picture at that place' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { removed: true, ...place } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /admin/setup-pictures]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not remove the picture' });
     }
   },
 );
