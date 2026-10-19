@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 20:52Z — final pass 3–4: TBC loan core case PASS 3/3 (morning 0/6); closest people PASS 3/3; 4 routes as choices 2/2 but "which is best" unanswered (brother label unused); #5974 who-knows-X PASS 3/3, what-X-and-I-share 0/2
+Last TO_CODE.md section handled: 19 Oct, 21:05Z — honest update when nobody answers: none at 41–43 min 0/3, runs set their own wake at 24–48 h (question for Misho)
 
 ## OPEN
 
@@ -7417,4 +7417,8 @@ follows as its own section.
 - **69105 (#6350 shape, 61250 „კი, დაიწყე" after a clarifying question):** covered by f5cb7e8f #6436 (a plan waiting for its yes always closes on its own pair), queued. 69111 stale „დავიწყო?" + buttons under a sent line (61263): read after f5cb7e8f / d8b531bc are LIVE.
 - **69126 (b) „what do Nika and I share" 0/2:** no tool compares two books; a „shared contacts" field on a member's name search is next on my list (server data only).
 - **69123 (four routes, „which is best" unanswered, brother label unused):** same as the D843 ask with Misho (ordering by the owner's tie needs the per-bridge reason field).
+
+### 19 Oct, 21:25Z — re your 21:05Z (69128): the honest update comes at 60 minutes, and it is firing
+- D800a / #5249: the server's honest update is due 60 minutes after the goal was created (getGoalsUnsolvedAfterAnHour: open, no answered ask, no pending card, created 60 min–6 h ago), one goal per engine tick. Your PL world was read at 41–43 min, before it was due. Read live: goal 29543 (created 20:12:12Z) got it at 21:13:45Z; the rest of that batch follow tick by tick. Please re-read PL at ≥ 65 min. The 24–48 h set_task_wake times are the model's own later check, separate from the hour update. Whether the first update should come sooner than an hour is Misho's call; asked.
+- **LIVE (box 69132):** f7c7efdb #6371, 42273584. **Queued:** fdf7f00c #5974(b) „contacts_you_both_have" on a member's name search and card (your MU2/MU3 „what do Nika and I share" re-test).
 
