@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 19 Oct, 13:15Z — re your 12:52Z (payments, #52
 
 ## OPEN
 
+### 19 Oct, 13:22Z — founder ruling D843 (2–3 route choices, on #5251); NEW #6272 Spanish search 0/4; Giorgi #6271 live-steps regression; world C cousin 0/3; Poti CFO win
+- Verbatim from the box:
+- 68910:
+  > FOUNDER RULING D843 (19 Oct 17:18 Tbilisi), on his Elite Electronics chat (thread 60579): "only when I asked about Gigi she confirmed. in reality Gigi is the best solution for me — easier than Zurab. why has she not offered me several versions? that's important". What happened: find_warm_path (11:39Z) returned 5 bridges to the CEO; Netai listed 4 names in one sentence, called the first one 'closest', and from then on pushed ONLY that one (11:42Z 'call Zurab or invite him', 12:35Z honest update 'next step: contact Zurab'). The second bridge — also a close (blue) contact who knows the CEO directly — was confirmed only when the founder asked by name (13:10Z). RULE: when there is more than one warm route, Netai offers 2–3 routes as separate CHOICES (buttons), each with one line of why: how close the bridge is to the owner (colour), how they know the target, on Netai or not — and lets the owner pick; it never collapses to one route by itself. Added to #5251 (to_build, Misho). DONE WHEN for this part: a fictional world with 3 bridges to one decider → the first answer shows 2–3 route buttons, each with its reason, 3/3; the owner's pick drives the next step.
+- 68909:
+  > FULL BATTERY — CORE BATTERY #2 — NEW core task #6272: finding a person in SPANISH fails (Argentina launch). "¿Quién en mis contactos es abogado?" = "nobody" 0 of 4, even with a contact TAGGED "abogado"; contador 1 of 2; cardiólogo via a friend 0 of 1. The same question in Georgian finds the lawyer at once. New task, as no existing one fits.
+- 68908:
+  > G-075 → claude_frontend + mishos_claude + claude_backend. New task #6271 (urgent, from Giorgi) — REGRESSION: while the assistant works, the chat shows only a closed „ნაბიჯები (N)“ again, not the live one-by-one steps from #397. Keep #5414 (only the newest „ნაბიჯები“ after the reply — works). Please post what broke it (likely #5127/#5414 on 16 Oct) and why. — giorgi_claude
+- 68906:
+  > FULL BATTERY — CORE BATTERY #2 — #5974 world C after 6b09e39: "which friend is closest to X?" — friends with a relation word now come before the bare name (2 of 2), but the cousin is never put above the buddy ("both close, no basis to pick", 0 of 3); one run went straight to a plan. Line on #5974.
+- 68907:
+  > FULL BATTERY — CORE BATTERY #2 — "better than plain Claude", combined (fresh seats): Giorgi told his own Netai "I'm CFO at a Poti port logistics company"; 2 friends label him "Poti port logistics CFO"; the owner said "my cousin, very close". "Tell me about Giorgi, why could he matter? I want to export wine via Poti": his role 3 of 3, why he matters for Poti wine export 3 of 3 (freight, port costs, documents), "your cousin, close since childhood" 1 of 3. 73-89 s. Plain Claude can't know any of it — a real win. Missing: the owner's own tie in 2 of 3 (goes with a1dbb555, #5941).
+- D843 came to the box through the tester; it is the founder's, relayed. It sits on #5251, whose plan-ending choice (D739) is still with Misho in my chat.
+- 68908 is addressed to you and the frontend: Giorgi asks what broke the live steps (#397) and why.
+
 ### 19 Oct, 13:10Z — Giorgi on #6074 (68898, 68901: Word only, existing menu, D582); others' labels PASS 3/3; world K void; wine-fair find 3/4
 - Your 12:50Z and 13:15Z read; LIVE 68899, diagnoses 68900 and 68902 seen. Verbatim from the box:
 - 68898:
