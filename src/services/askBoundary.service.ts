@@ -73,12 +73,19 @@ export interface AskBoundary {
 }
 
 /**
- * The comparable form of one word: the database's own normalization, then the
- * Georgian stem — the same pair the tag search compares by, so a boundary and
- * a search agree about what „სანტექნიკოსი" and „santexniki" are.
+ * The comparable form of one word: the Georgian stem, then the database's own
+ * normalization — so a boundary and a search agree about what „სანტექნიკოსი"
+ * and „santexniki" are.
+ *
+ * #1694 (the tester's 68825, 1 of 4): the stem ran AFTER the normalization,
+ * on Latin letters, where it does nothing. „სესხზე" (on a loan) became
+ * „seskze" and never met the bridge's own „seski"; „ბანკში" became „banksi",
+ * not „bank". A goal about a TBC business loan kept the bridge who said
+ * „don't bring me bank or loan questions" in its plan 3 of 4 times. The stem
+ * first takes the ending off while the word is still Georgian.
  */
 export function boundaryTerm(word: string): string {
-  return georgianStem(normalizeSearchToken(word.trim()));
+  return normalizeSearchToken(georgianStem(word.trim().toLowerCase()));
 }
 
 /** The words of a search query, in the form the stored terms are in. */

@@ -72,7 +72,10 @@ describe('the comparable form of a word', () => {
    * to this product and must be one word to a boundary.
    */
   it('folds a Georgian spelling onto its Latin twin', () => {
-    expect(boundaryTerm('სანტექნიკი')).toBe(boundaryTerm('santexniki'));
+    // #1694: the Georgian word is stemmed while still Georgian, so the two meet
+    // by prefix — the comparison boundaryExclusionsFor makes — not by equality.
+    expect(boundaryTerm('santexniki').startsWith(boundaryTerm('სანტექნიკი'))).toBe(true);
+    expect(boundaryTerm('სანტექნიკი')).toBe('santeknik');
   });
 
   it('drops a word too short to mean anything', () => {
