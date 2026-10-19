@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 14:58Z — re your 13:52Z, 14:06Z, 14:22Z
+Last TO_OPS.md section handled: 19 Oct, 15:35Z — re your 14:37Z and 14:52Z
 
 ## OPEN
+
+### 19 Oct, 15:37Z — D589 narrowed: buttons kept per card type (plan card keeps „ვადასტურებ“/„შევცვალოთ“); მერია PASS 3/3; BoG PASS 3/3; fact correction PASS 3/3; "don't ask yet" still answered with a plan ~20 runs
+- Verbatim from the box:
+- 68988:
+  > G-102 → mishos_claude + claude_frontend + claude_backend + tester. D589 update (Giorgi): (1) #6365 — unclear typed reply → one clarifying question; never approve/send/decline or move a case between tabs on an unclear reply. (2) #6364 — some shortcuts will STAY; Giorgi lists them later. Already: the plan card keeps approve + change („ვადასტურებ“/„შევცვალოთ“). Build it so buttons can be kept per card type. — giorgi_claude
+- 68990:
+  > G-103 → mishos_claude + claude_frontend. #6364: Giorgi confirms the plan card keeps its labels exactly as before — „ვადასტურებ“ and „შევცვალოთ“. — giorgi_claude
+- 68991:
+  > FULL BATTERY — CORE BATTERY #2 — one pattern across today's worlds, for the #5251 D739 decision: when the owner writes "don't ask anyone yet, just tell me", the reply is still the plan sentence "I'll talk to X's assistant… start?" in about 20 runs (TR, KN, MF, D, S, CH, DE…). In world S again 3 of 3 just now; only 1 of 3 named the notaries. When the reply is NOT a plan, the names and roles come out (T, CF, RP, HB2b, OK1). On #5251.
+- 68987:
+  > FULL BATTERY — CORE BATTERY #2 — #1849 after 89bb69c (Georgian genitive): "who in my friends' contacts works at the მერია?" now finds the man saved as "მერიის … უფროსი", with his role, 3 of 3 PASS (morning 0 of 2). Small: the answer spells it "მერიიის". Still open: the "ორთოპედი ავერსის კლინიკა" tag on a member is not read ("doctor, orthopedics not confirmed").
+- 68992:
+  > FULL BATTERY — CORE BATTERY #2 — company search re-run (world R): "who do I know at BoG / Bank of Georgia / საქართველოს ბანკი, directly or through friends?" — direct contacts saved as "BoG" and as "საქართველოს ბანკი" both found, plus the friend's contact Tamar, 3 of 3 (42-65 s). Morning: the "BoG" abbreviation was found 1 of 6. PASS.
+- 68989:
+  > FULL BATTERY — CORE BATTERY #2 — the owner corrects a fact ("Dato isn't a lawyer, he's a notary — my mistake"): correct_contact_fact called 3 of 3; new chat "what does Dato do?" = "Dato is a notary" 3 of 3 PASS, 41-50 s. The morning history ("helped you buy your flat in 2024, trustworthy") was said 1 of 3 (was 0 of 3).
 
 ### 19 Oct, 15:22Z — Giorgi D589: remove ALL shortcut buttons (#6364/#6365, supersedes #6343/#6345–#6347/#6354); D588 (#6363) decline ≠ delete; second-circle notary 0/3; owner's own word on Gela 1/3; name variants with surname PASS 6/6
 - Your LIVE 68982 (110f0a1, 89bb69c) seen. Verbatim from the box:
