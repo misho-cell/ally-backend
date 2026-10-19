@@ -677,10 +677,35 @@ export function latinStem(word: string): string {
  */
 const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
   ['advokat', 'iurist', 'iuridiul', 'lawyer', 'attorney'],
+  // The tester's 69015 / 69025 / 69026 (19 Oct): a Georgian question found nobody
+  // saved in English — „Ministry of Economy deputy minister" for „ეკონომიკის
+  // სამინისტრო", „Georgian Railway CFO" for „რკინიგზის ფინანსური დირექტორი" —
+  // while the same question in English found them. The words of an office, each
+  // with its English, one word apiece, as the lawyers are.
+  ['rkinigz', 'railway'],
+  ['saministro', 'ministry'],
+  ['ministr', 'minister'],
+  ['moadgile', 'deputy'],
+  ['ekonomik', 'economy', 'economic'],
+  ['direktor', 'director'],
+  ['finansur', 'financial', 'finance', 'cfo'],
 ];
 
 /** English members are searched as written: their „Georgian readings" (ლაწიერ) are noise. */
-const ENGLISH_FAMILY_WORDS: ReadonlySet<string> = new Set(['lawyer', 'attorney']);
+const ENGLISH_FAMILY_WORDS: ReadonlySet<string> = new Set([
+  'lawyer',
+  'attorney',
+  'railway',
+  'ministry',
+  'minister',
+  'deputy',
+  'economy',
+  'economic',
+  'director',
+  'financial',
+  'finance',
+  'cfo',
+]);
 
 /** The other members of a word's profession family, as search terms. */
 function professionFamilyTerms(group: ReadonlySet<string>): string[] {
