@@ -966,6 +966,19 @@ export async function completeLogin(
         'so no inviter can have been recorded on this path (row 229)',
     );
   }
+  if (!account.belongs_to_netai) {
+    /**
+     * #4126 (the tester's 68886; Misho's yes, 19 Oct): an old Ally account that
+     * comes into Netai by signing in — not by registering — was never
+     * researched, so „what do you know about me" had nothing about their work
+     * or city. Its first Netai sign-in is its registration: the same one run,
+     * queued once per account (the queue holds a user only once).
+     */
+    void queueRegistrationResearch(Number(userId)).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[registration-research] user ${userId} not queued:`, (err as Error).message),
+    );
+  }
   const token = jwt.sign({ userId: String(userId), role: 'user' }, jwtSecret, { expiresIn: '30d' });
   return { token, isNewUser: false };
 }

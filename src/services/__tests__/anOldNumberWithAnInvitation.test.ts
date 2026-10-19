@@ -146,3 +146,23 @@ describe('an old Ally number arriving with an invitation', () => {
     );
   });
 });
+
+/** #4126 (68886; Misho's yes, 19 Oct): an old account's first Netai sign-in is its registration. */
+describe('an old Ally account opening Netai for the first time', () => {
+  const queued = (): unknown[][] =>
+    dbQuery.mock.calls.filter(([sql]) => String(sql).includes('INSERT INTO registration_research'));
+
+  it('is queued for the sign-up research once it gets in', async () => {
+    eligibility.mockResolvedValue({ eligible: true, mode: 'referral', inviterUserId: INVITER });
+    await completeLogin('+995555000001', { referralCode: 'TORNIKE20' });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(queued()).toHaveLength(1);
+    expect(queued()[0][1]).toEqual([OLD_ACCOUNT]);
+  });
+
+  it('is not queued when it is refused', async () => {
+    await expect(completeLogin('+995555000001')).rejects.toBeInstanceOf(InvitationRequiredError);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(queued()).toHaveLength(0);
+  });
+});
