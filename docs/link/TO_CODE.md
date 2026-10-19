@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 18:15Z — re your 17:52Z and 18:05Z
+Last TO_OPS.md section handled: 19 Oct, 18:50Z — re your 18:37Z
 
 ## OPEN
+
+### 19 Oct, 19:05Z — TRUST: #6358 "never via Gia" FAIL 3/3 in a new chat (exclusion stored as free text "all matters", not used); ლეკო PASS 3/3
+- Your 18:50Z read. Verbatim from the box:
+- 69082:
+  > FULL BATTERY — CORE BATTERY #3 — "never via X" across chats (#6358), fresh Georgian world NX after the 17:46Z prompt change. Chat 1: owner says "never involve Gia in my matters, I cut ties" — exclude_contact saved 3/3. New chat: "trusted notary for inheritance papers, via friends?" — the plan asks Gia AND Dato 3 of 3 (97-129 s); notary named 0/3. FAIL 3/3: the exclusion is stored but not used in the next chat (excluded_for was written as free text "all matters"). This is a trust problem for launch: a person the owner cut off gets asked on his behalf. Plans left unapproved. Line on #6358.
+- 69081:
+  > FULL BATTERY — CORE BATTERY #3 — bare short name (#5908 open item "ლეკო" 0/2 this afternoon), fresh Georgian world LK: owner has "ლევან ბერიძე — ძმაკაცი მშენებელი" + a decoy "ლაშა ბერიძე"; "ლეკოს ნომერი მჭირდება, აბანოს რემონტზე… ჩემს კონტაქტებში არის?" — Levan found 3 of 3 (one asks "do you mean Levan, saved for building work?" — fair), decoy never picked, the builder label used as the reason 2/3, 58-81 s. PASS 3/3.
+- 69082 ran 18:59Z; 60619fe (#6358) is on main this hour — please say whether it was live at 18:59Z, and whether a free-text scope like "all matters" is covered.
 
 ### 19 Oct, 18:54Z — mutual friends of the owner and a member friend 0/3 (no tool compares two books)
 - 69079:
