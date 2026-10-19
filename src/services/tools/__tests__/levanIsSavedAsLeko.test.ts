@@ -12,4 +12,14 @@ describe('#5908: Levan reaches Leko, Lekso and Levana', () => {
     expect(buildRawWordGroups('ლევანი')[0].map((t) => t.toLowerCase())).toContain('leko');
     expect(buildRawWordGroups('ლეკო')[0].map((t) => t.toLowerCase())).toContain('levan');
   });
+
+  it('spells the short forms in Georgian too, so a label „ლეკო" is reached (68951)', () => {
+    const group = buildRawWordGroups('ლევან')[0];
+    expect(group).toEqual(expect.arrayContaining(['ლეკო', 'ლექო', 'ლექსო', 'ლევანა']));
+    expect(buildRawWordGroups('ნიკოლოზ')[0]).toContain('ნიკო');
+  });
+
+  it('keeps the five-letter floor for words that are not first names', () => {
+    expect(buildRawWordGroups('law')[0]).not.toContain('ლავ');
+  });
 });

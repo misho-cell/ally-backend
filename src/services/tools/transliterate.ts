@@ -226,6 +226,8 @@ const GEORGIAN_AMBIGUITIES_USED = 2;
 /** Below this a Georgian term is an exact token (see EXACT_TOKEN_MAX_CHARS) and
  *  a guessed spelling that short is noise rather than reach. */
 const MIN_GEORGIAN_TERM_CHARS = 5;
+/** #5908: a first-name form from the curated list is spelled in Georgian from three letters. */
+const NAME_FORM_MIN_GEORGIAN_CHARS = 3;
 /**
  * 3598: a NAME that short is not noise. „Nana", „Keti", „Gia" typed in Latin
  * letters never reached „ნანა საცდელაძე" — the floor above dropped the only
@@ -743,8 +745,8 @@ function wordVariantGroup(word: string): string[] {
   for (const term of buildSearchTerms(word)) {
     if (!supersededBy(term, stemTerms)) group.add(term);
   }
-  for (const form of nameFormVariants(latin)) {
-    if (form === latin) continue;
+  const otherForms = nameFormVariants(latin).filter((form) => form !== latin);
+  for (const form of otherForms) {
     for (const term of buildSearchTerms(form)) group.add(term);
   }
   // Only where the stemmer left the word whole: a stem it cut already reaches every case.
@@ -753,6 +755,12 @@ function wordVariantGroup(word: string): string[] {
   // #1849 world Q: „თიბისი" also searches „TBC" — a company's other spellings.
   for (const spelling of otherBrandSpellings(word)) {
     for (const term of buildSearchTerms(spelling)) group.add(term);
+  }
+  // #5908 (68951, ლეკო 0 of 2): a short form's Georgian spelling fell under the
+  // five-letter floor. A form from the name list is not a guess, and a term this
+  // short only ever matches a whole word. Last, so it never takes another's place.
+  for (const form of otherForms) {
+    for (const term of georgianVariants(form, NAME_FORM_MIN_GEORGIAN_CHARS)) group.add(term);
   }
   // Row 321: the word's own spellings first, then its profession family,
   // each family member kept whole so none is cut by the cap.
