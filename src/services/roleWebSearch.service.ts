@@ -386,16 +386,50 @@ function yearOf(page: PageCandidate): number | null {
 export function currentPagesFirst(
   pages: readonly PageCandidate[],
   now: Date = new Date(),
+  leadershipFirst = false,
 ): PageCandidate[] {
   const oldest = now.getUTCFullYear() - MAX_REPORT_AGE_YEARS;
   const rank = (page: PageCandidate): number =>
     (LEADERSHIP_PAGE_RE.test(`${page.url} ${page.title}`) ? 0 : 2) +
     (PDF_RE.test(page.url) ? 1 : 0);
+  const byYear = (a: RankedPage, b: RankedPage): number => (b.year ?? 0) - (a.year ?? 0);
+  const byRank = (a: RankedPage, b: RankedPage): number => a.rank - b.rank;
+  const [first, second] = leadershipFirst ? [byRank, byYear] : [byYear, byRank];
   return pages
     .map((page, at) => ({ page, at, year: yearOf(page), rank: rank(page) }))
     .filter((entry) => entry.year === null || entry.year >= oldest)
-    .sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.rank - b.rank || a.at - b.at)
+    .sort((a, b) => first(a, b) || second(a, b) || a.at - b.at)
     .map((entry) => entry.page);
+}
+
+/** A candidate with what orders it. */
+interface RankedPage {
+  readonly page: PageCandidate;
+  readonly at: number;
+  readonly year: number | null;
+  readonly rank: number;
+}
+
+/**
+ * The tester's 05:12Z retest (1/3): two runs read a stock site dated 2026
+ * ahead of the group's own 2025 annual report, then would not name anybody
+ * the bank's own pages had not shown. The bank's own current pages are read
+ * first, its leadership pages and reports ahead of a results deck; another
+ * site's only after them, newest first.
+ */
+export function ownSitesFirst(
+  own: readonly PageCandidate[],
+  others: readonly PageCandidate[],
+  now: Date = new Date(),
+): PageCandidate[] {
+  const ownUrls = new Set(own.map((page) => page.url));
+  const unique = (pages: readonly PageCandidate[]): PageCandidate[] => [
+    ...new Map(pages.map((page) => [page.url, page])).values(),
+  ];
+  return [
+    ...currentPagesFirst(unique(own), now, true),
+    ...currentPagesFirst(unique(others.filter((page) => !ownUrls.has(page.url))), now),
+  ];
 }
 
 /** Search the bank's own sites for its management page, then read pages until one has text. */
@@ -410,12 +444,11 @@ async function findAndReadManagementPage(
   // The tester's 23:51Z retest: the newer sources (a results deck, a news
   // article on TBC strengthening its management team) were found by the
   // searches but never read, because only the bank's own sites were read.
-  const candidates = [
+  const own = [
     ...ownSites.flatMap((result) => candidatesFrom(result, queries.institution.sites)),
-    ...candidatesFrom(news, null),
+    ...candidatesFrom(news, queries.institution.sites),
   ];
-  const unique = [...new Map(candidates.map((page) => [page.url, page])).values()];
-  const urls = currentPagesFirst(unique)
+  const urls = ownSitesFirst(own, candidatesFrom(news, null))
     .slice(0, MAX_PAGES_READ)
     .map((page) => page.url);
   for (const url of urls) {

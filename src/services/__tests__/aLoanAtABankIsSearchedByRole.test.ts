@@ -12,6 +12,7 @@ import {
   runRoleSearch,
   urlsOnSites,
   currentPagesFirst,
+  ownSitesFirst,
   stretchAboutLendingPeople,
   pageText,
   MIN_PAGE_CHARS,
@@ -220,6 +221,34 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
       'https://www.tbcbankgroup.com/reports/annual-report-2025.pdf',
       'https://www.tbcbankgroup.com/about-us/management-board',
       'https://www.tbcbankgroup.com/news/rates',
+    ]);
+  });
+
+  it('reads the bank’s own current report before a stock site dated later (tester 05:12Z)', () => {
+    const now = new Date('2026-10-19T00:00:00Z');
+    const page = (url: string, title = '') => ({ url, title });
+    const own = [
+      page('https://www.tbcbank.ge/web/documents/pillar3.pdf', 'Pillar 3 Annual Report 2019'),
+      page(
+        'https://cms.tbcbankgroup.com/media/a/tbc-group-plc-annual-report-2025.pdf',
+        'Deepening our Footprint, Reinforcing our Leadership',
+      ),
+      page(
+        'https://cms.tbcbankgroup.com/media/b/2q-and-1h-2026-results-report.pdf',
+        '2Q and 1H 202 6',
+      ),
+    ];
+    const news = [
+      page(
+        'https://koalagains.com/stocks/LSE/TBCG/management-team',
+        'TBC Bank Group PLC (TBCG) Management Team (2026)',
+      ),
+      own[1],
+    ];
+    expect(ownSitesFirst(own, news, now).map((p) => p.url)).toEqual([
+      'https://cms.tbcbankgroup.com/media/a/tbc-group-plc-annual-report-2025.pdf',
+      'https://cms.tbcbankgroup.com/media/b/2q-and-1h-2026-results-report.pdf',
+      'https://koalagains.com/stocks/LSE/TBCG/management-team',
     ]);
   });
 });
