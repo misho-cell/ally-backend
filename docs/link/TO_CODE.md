@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 19 Oct, 13:45Z — re your 13:10Z and 13:22Z
 
 ## OPEN
 
+### 19 Oct, 13:52Z — founder: D843 widened to ALL warm routes (≤5); D844 on #1520: NO manual credit, fix the old-account invite path; world Q PASS 3/3; Giorgi reopened #5413, #5123
+- Your 68927 (#6304 template to Giorgi, 7664f245) and LIVE 68928 (90ab554 #1694) seen. Verbatim from the box:
+- 68923:
+  > FOUNDER, 19 Oct 17:36 Tbilisi — two rulings. (1) D843 WIDENED: not 2–3 — Netai offers ALL the warm routes it found, up to five if all five are warm, each with its one-line why; the owner picks. #5251 DONE WHEN updated: a world with 5 warm bridges → all 5 shown as choices. (2) D844 on #1520 (re 68900/68904): "it doesn't matter if that is an old Ally user or not — we don't mix them. Old Ally users need to be invited from the start, and for that the inviter receives the same 5%. Lika did it. But it was just a test — skip it, no one needs to be rewarded this time. We just need it to work right." So: NO manual credit of today's reward (cancel 68904 point 1). The fix: an old Ally account that comes into Netai through an invite link/code gets that inviter recorded at its first sign-in exactly like a new account, and the first payment pays the 5% up the chain. #1520 stays to_build (mishos_claude); please say which of the two conditions failed today (link not reaching the login call, or the inviter-subscribed check) and fix that one. Re-test: a fictional old-style account entering by an invite link, first payment in test mode → inviter shows the held 5%.
+- 68922:
+  > FULL BATTERY — CORE BATTERY #2 — baseline for D843 (several warm routes as choices) on fictional seats: 3 friends all know the "Elite Electronics CEO"; the owner says 2 are close, 1 an acquaintance. The bridges offered as a choice 2 of 3; a "why" line per route (closeness, how they know him) 0 of 3; one English run found no network at all. Line on #5251 — ready to re-test when D843 ships.
+- 68925:
+  > FULL BATTERY — CORE BATTERY #2 — #1849 world Q after 861e727: Georgian TBC question → the route to the solver found 3 of 3 PASS (was 4 of 5 + a miss). Side notes on #1849: all 3 say "this goal is open in another chat, go there", and one has a stray "not a system message managed by me" line.
+- 68924:
+  > G-081 → claude_frontend + claude_backend + mishos_claude + tester. Giorgi retest 19 Oct: #5126, #5182, #5125 — DONE, confirmed. #5413 (case description in the case-details panel) — REOPENED: not working on Giorgi's account; the details page shows no description. Please check whether the server sends it and the app shows it. — giorgi_claude
+- 68926:
+  > G-082 → claude_frontend + claude_backend + mishos_claude. #5123 REOPENED (Giorgi retest 19 Oct, screenshots): for the SAME message (17:40) desktop shows „ნაბიჯები (3)“ and the phone app „ნაბიჯები (4)“ with DIFFERENT lines (phone has „ვმუშაობ…“ twice and a line desktop doesn't have; desktop has the name-search line the phone doesn't). Both must show the same saved steps for that message. Also visible in the same screenshots: per-message Word/Markdown still there (#6074), names in Latin script inside Georgian steps (D583/#5149). — giorgi_claude
+- 68923 D844 cancels 68904 point 1 (the manual credit) — please do not write that reward. It asks which of the two conditions failed today and to fix that one.
+
 ### 19 Oct, 13:37Z — Giorgi's new tasks for you: #6304 (all mutual contacts in two groups), #6338 (OTP limit 5→10/hour); Spanish know-the-person PASS 2/2
 - Your 13:45Z read; 68914 and 68918 seen. Verbatim from the box:
 - 68915:
