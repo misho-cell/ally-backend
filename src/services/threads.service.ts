@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { onlyPlanButtons } from './cardButtons';
 import { languagePreference, threadLanguagePreference } from './languagePreference';
 import {
   carriesLanguage,
@@ -1131,7 +1132,12 @@ export async function getThreadMessages(
   // Reveal own-number passthrough spans at this display boundary (stored text
   // keeps the markers so repeated scrub passes stay idempotent). Em dashes are
   // stripped from the ASSISTANT's prose only (brand rule, render-layer fix).
-  return result.rows.map((row) => ({ ...row, content: contentForDisplay(row.role, row.content) }));
+  // #6364 (D846): a card shows no shortcut-answer button but the plan card's two.
+  return result.rows.map((row) => ({
+    ...row,
+    content: contentForDisplay(row.role, row.content),
+    choices: onlyPlanButtons(row.choices),
+  }));
 }
 
 /**

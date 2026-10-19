@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { onlyPlanButtons } from '../../services/cardButtons';
 import { randomUUID } from 'crypto';
 import { body, param, validationResult } from 'express-validator';
 import {
@@ -129,11 +130,13 @@ chatRouter.post(
         timeout,
       ]);
 
+      // #6364 (D846): no shortcut-answer button but the plan card's two.
+      const choices = onlyPlanButtons(result.choices);
       res.status(200).json({
         success: true,
         reply: result.reply,
         ...(result.options && { options: result.options }),
-        ...(result.choices && { choices: result.choices }),
+        ...(choices && { choices }),
         ...otherChoiceField(result.choices),
       });
     } catch (error) {

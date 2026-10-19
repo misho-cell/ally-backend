@@ -1,3 +1,4 @@
+import { onlyPlanButtons } from './cardButtons';
 import { choiceNotesFor } from './choiceNotes';
 import { EventEmitter } from 'events';
 import { Response } from 'express';
@@ -538,13 +539,15 @@ export function emitRunComplete(
   runId: string,
   payload: RunCompletePayload,
 ): void {
+  // #6364 (D846): no shortcut-answer button but the plan card's two.
+  const choices = onlyPlanButtons(payload.choices);
   const safe: RunCompletePayload = {
     reply: displayText(payload.reply),
     options: scrubDeep(payload.options),
-    choices: scrubDeep(payload.choices),
+    choices: scrubDeep(choices),
     // Row 306: present only when a button does more than its label says.
-    ...(choiceNotesFor(payload.choices) !== undefined && {
-      choice_notes: choiceNotesFor(payload.choices),
+    ...(choiceNotesFor(choices) !== undefined && {
+      choice_notes: choiceNotesFor(choices),
     }),
     result: scrubDeep(payload.result),
     // The share text carries the user's OWN invite link and no third party's
@@ -598,7 +601,8 @@ export function emitMessageAppended(
     role: 'assistant',
     kind: payload.kind,
     content: displayText(payload.content),
-    choices: scrubDeep(payload.choices),
+    // #6364 (D846): no shortcut-answer button but the plan card's two.
+    choices: scrubDeep(onlyPlanButtons(payload.choices) ?? []),
     ref: scrubDeep(payload.ref),
     ...(payload.createdAt !== undefined && { createdAt: payload.createdAt }),
   });
