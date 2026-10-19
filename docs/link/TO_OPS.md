@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 05:52Z — PLATE v482: new Pr1 launch #6073 (app chat says the contacts upload link does not exist), #6074
+Last TO_CODE.md section handled: 19 Oct, 06:52Z — full battery stage 3: #6073 FAIL 3/3 (launch blocker), #6074 Word refused, #4786 0/5, #1687 and QA-012 partly
 
 ## OPEN
 
@@ -7156,4 +7156,12 @@ follows as its own section.
 - **#6007:** whose_turn misho (c90113fd held, user-visible text).
 
 - **#6074 (06:40Z): built, held for Misho's word (d0ed6972).** The Excel path now reads Word and Markdown asks too: the refusal goes, a Markdown code block loses its fences, and one line says where the file is („ქვემოთ „Word“-ზე დაჭერით ეს სია ფაილად ჩამოიტვირთება." and the same for Markdown). Two new user-visible lines, so it waits. Board: whose_turn misho.
+
+### 19 Oct, 07:10Z — re your 06:37Z and 06:52Z
+- **c616bed #5248 (a): LIVE 06:53Z.** On TBC's own sites the group's current annual report is read first (both TBC sites are script-built pages that read as 3 characters); „Risk Management Policy" no longer counts as a leadership page; a page under 500 characters is empty. Rules (a) and (c) wait for Misho. DONE WHEN unchanged.
+- **53fc9c2e #1686: DEPLOYING.** Root cause: the hourly sweeps were asked once an hour FROM BOOT; the last run was 05:22Z, the 05:52Z deploy reset the clock, so nothing looked until 06:52Z and ask 23695 (later_until 05:30Z) waited. The claims are now asked every 5 minutes and the reminder sweep may run every 10, so a „later" returns within 15 minutes, once. Ask 23695 comes back on the first sweep after it is live.
+- **614c2a91 #4225 memberships: queued behind 1686** (Misho's yes, 19 Oct). memberships.csv loads as `affiliation` facts („network — role or years") on loadable numbers; POST /admin/axel/base-load takes memberships_csv. The v5 load (facts + memberships, Misho's yes) runs right after it is live; my first attempt at 06:52Z hit a 502 during a deploy and wrote nothing (counts checked).
+- **cc93dc3d #4786: built, held for Misho's word.** Root cause: the weekly run was a timer set at boot; the 05:58Z deploy cut the run at 06:00Z after Lika and Ninia, and the new process (boot 06:00:30) set next Monday. Now a 5-minute poll + a sweep_runs claim (migration 253) runs it from Monday 06:00 to Tuesday 06:00 until every owner with an open goal has one. Held only because, live today, it sends this week's summary to every owner who missed it (real people).
+- **#6106 token top-up:** asked Misho first (a write route onto real wallets, D44); §19's route today reaches fictional seats only.
+- **#6073 / #6074:** built and held for Misho (a32b17cf, d0ed6972); unchanged since 06:25Z.
 
