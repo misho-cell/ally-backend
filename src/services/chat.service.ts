@@ -224,6 +224,7 @@ import {
 } from './threads.service';
 import {
   askStatusSection,
+  linesNotShownBefore,
   linesUnderReply,
   nobodyAnsweredIsUntrue,
   openAskLines,
@@ -5264,6 +5265,22 @@ async function withLaterLine(
   }
 }
 
+/** #6356: the replies this conversation already showed, newest first, for lines said once. */
+const EARLIER_REPLIES_READ = 30;
+const EARLIER_REPLIES_TIMEOUT_MS = 4_000;
+
+async function earlierReplies(threadId: number): Promise<string[]> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+      WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message' AND content <> ''
+      ORDER BY created_at DESC
+      LIMIT $2`,
+    [threadId, EARLIER_REPLIES_READ],
+    EARLIER_REPLIES_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => row.content);
+}
+
 /**
  * #1684, the tester's 41786: a goal reply ends with one line per person still
  * being waited on, and never says nobody answered while that is not true. The
@@ -5285,7 +5302,9 @@ async function withGoalAskLines(
     const now = new Date();
     const cleaned = nobodyAnsweredIsUntrue(asks, held, now) ? withoutNobodyAnswered(reply) : reply;
     const lines = openAskLines(asks, held, language, now);
-    return withAskLines(cleaned, linesUnderReply(lines, statusesDiffer(asks, held, now)));
+    const under = linesUnderReply(lines, statusesDiffer(asks, held, now));
+    if (under.length === 0) return cleaned;
+    return withAskLines(cleaned, linesNotShownBefore(under, await earlierReplies(threadId)));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn(`[ask-state] thread ${threadId}: lines not added:`, (err as Error).message);

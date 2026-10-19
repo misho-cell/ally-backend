@@ -156,3 +156,17 @@ export function statusesDiffer(
 export function linesUnderReply(lines: readonly string[], differ: boolean): readonly string[] {
   return differ ? lines : [];
 }
+
+/**
+ * #6356 (Giorgi, G-095, goal 29308): „<X>: კითხვა მიუვიდა, პასუხს ველოდები"
+ * stood under every reply, unchanged. A line is said when it is new: once when
+ * the question goes, again only when that person's status moves. A status only
+ * moves forward, so a line whose very text this conversation already showed
+ * has not changed since.
+ */
+export function linesNotShownBefore(
+  lines: readonly string[],
+  earlierReplies: readonly string[],
+): string[] {
+  return lines.filter((line) => !earlierReplies.some((reply) => reply.includes(line)));
+}
