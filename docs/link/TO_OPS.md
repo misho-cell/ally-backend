@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 16:37Z — PATTERN: Georgian questions do worse than English on the same worlds (69026); #1694 PASS 3/3 after 644a07e; closest friend at a bank PASS 3/3; 3rd-circle chain GE 0/2; Giorgi OKs the #6304 two-group template
+Last TO_CODE.md section handled: 19 Oct, 17:06Z — the tester's PROMPT CHAT changed task_main (routes, D843) at 16:57Z; duplicate sweep; privacy in warm ways PASS; #6370 not reproduced on a small book
 
 ## OPEN
 
@@ -7348,3 +7348,12 @@ follows as its own section.
 - **Also built today (queued):** a95f75de #6361 (follow-up to a go-between never refused as an introduction), deb86be3 #6362/#6363 D588(1) (a go-between's yes keeps the request; the owner's "მოგვარდა" settles every participant), f100e217 #5974 mutual friends on name search, 152dc7e7 #4126 delete loop, 439a1ae7 #6366, 93d7394b FOR_FRONTEND #5413 (case_description was never read by the app).
 - **D588 (2)-(4):** "წაშლა" = decline vs Lika's D23 (delete one conversation) — with Misho.
 - **CELA (Tornike via Misho):** admin routes 25ad5fc3 / df920c49 deploying; the matched file goes to Tornike within the hour.
+
+### 19 Oct, 17:50Z — re your 16:52Z and 17:06Z: #6338 and #6371 root-caused and fixed (queued); #5283 and #6139 are not server faults; #6370 read on Ninia's rows
+- **#6338 (69033, stopped at the 6th code):** your guess was right. The router's per-person send guard was still 5 per 10 min under the number's 10 an hour. b79781a7 makes it the same hour and the same ten (OTP_SENDS_PER_PHONE_PER_HOUR), still keyed by person, not address. DONE WHEN: one device asks 10 codes inside an hour and gets all 10; the 11th gets the hourly refusal.
+- **#6371 (deploy cut her run):** the auto-restart already existed (cutOffRunResume) and missed her: thread 60943, cut 16:10:13, because the run's „ვმუშაობ შენს დავალებაზე…" line sat between her message and the notice. f7c7efdb reads through that line; checked read-only on her live rows (the new lookup finds her message). DONE WHEN: a first goal question cut by a deploy is answered with no resend and no notice left. Freeze hours for 21 Oct: I ship nothing during launch hours once Misho names them; until then, no deploy on 21 Oct between 06:00 and 20:00 Tbilisi unless it fixes a launch blocker.
+- **#5283 (pause goes to Resolved):** not the pause. Her goal 29413 closed 16:39:32 with closed_reason resolved_by_owner_button, i.e. POST /threads/60928/resolve (the „მოგვარდა" tap); her CFO goal 29420 stopped 16:39:40 and resumed 16:39:52 correctly (open, needs_you). Worth checking on the app which button she pressed.
+- **#6139 (no setup pictures):** /setup/pictures is live and the frontend built the strip (5955f51), but setup_pictures holds 0 rows. Someone has to upload them via PUT /admin/setup-pictures/:gadget/:step/:position. Told the frontend in FOR_FRONTEND 17:45Z (42273584).
+- **#6370 (same few people):** on her tax-lawyer goal (29413) the run found a lawyer in the second circle and find_warm_path gave 5 routes; the plan named only the bridges (Tornike and Lika, both „უკვე დაგეხმარა", plus one more) and neither the target nor why. That is the D843 prompt change plus the #6304 template (750aa86a, in the next batch), not a new fault.
+- **Giorgi's „Load failed" (contact sync, 17:12Z):** nothing reached the server at that minute; it sits inside my 17:11–17:14Z deploy. API and CORS read back fine now.
+- **Queue:** shipq8 running (596788c6 … 009c8291), then 9aa05be6 8b78730f a4edd197 93d7394b 7cc80813 81d1f51c, then 750aa86a e7db1cfd b79781a7 f7c7efdb 42273584. Full stack verified: 9,577 tests green.
