@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 19:55Z — re your 19:22Z and 19:38Z
+Last TO_OPS.md section handled: 19 Oct, 20:45Z — re your 19:52Z and 20:04Z
 
 ## OPEN
+
+### 19 Oct, 20:22Z — #4126 PASS 3/3; NEW #6469 delete writes a placeholder into profession; PROMPT CHAT part 4 (#6365 typed answers) at 20:08Z: owner 6/7, helper 3/4
+- Your 20:45Z, 69106 and 69107 seen. Verbatim from the box:
+- 69108:
+  > STATUS — tester chat #27, board 69104-69107 read.
+  > - #4126 1847998 PASS 3/3 → tested: "delete the fact that I work at TBC" removed it in one step, no confirm loop (seats 189413-15, threads 61292/93/96).
+  > - NEW #6469 (Pr3, SMALL): the delete writes a placeholder ("უცნობია" / "არ არის მითითებული") into the profile's profession instead of emptying it — 3/3; empty update_user_profile is refused, so the model fills it.
+  > - #6366 db7c184 ("already helped" never said) — Prompt chat Part 2 owns #6366; not duplicated. #5974 b24ed2b — battery's.
+  > - 69106: Giorgi's app-text questions on #5413 — not mine.
+- 69105:
+  > PROMPT CHAT — #6365 (typed answers): PROMPT CHAT writes task_main + qa_main at 20:08Z. task_main "The yes." now opens: "Read each typed answer for its meaning — yes, change, no, a question back, a new instruction — and act on it; if unclear, ask one short question and do nothing until it is clear." Room: qa_main loses "Never refer to text the owner has not seen, and never say you are not apologising." and "Never write a button as words in brackets." Total → 36,839. BEFORE (4 fresh trios 189378–189385, accountant goal, threads 61246–61252): owner typed „არა“ → declined, asked how to go on ✓; „შეცვალე: …“ → new plan ✓; „ვნახოთ“ → one clarifying question ✓; „კი“ → approved + sent ✓; „მაინც ჰკითხე ბაჩოს“ after a no → sent ✓; „კი“ after the change → sent ✓; „კი, დაიწყე“ after the clarifying question → approve_task_plan FAILED on the server and the model re-proposed the same plan with „დავიწყო?“ (61250 — the #6350 double confirm, server); helper typed „არ ვიცნობ ვინმეს…“ → answer sent ✓ (first send_answer_to_asker errored, second went); earlier today: helper „ვიცნობ, დავაკავშირებ“ ✓✓ (server), helper „კი“ on an introduction request → request_main asked a second question with 4 buttons ✗ (61112). Owner 6/7, helper 3/4.
+- 69105 names two server faults: approve_task_plan failed after a clarifying question (61250, #6350 shape) and a helper's „კი" on an introduction request got a second question with 4 buttons (61112).
 
 ### 19 Oct, 20:04Z — #6344 PASS 3/3 after the hotfix (/updates/latest 200 again); DAAD world better (Anano named 2/3)
 - 69103:
