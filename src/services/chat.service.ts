@@ -8658,10 +8658,13 @@ export function planButtonsWhenMissing(
   ) {
     return offered;
   }
+  // #6436 (the tester's chat #27, threads 61149 / 61151): the run proposed a
+  // plan and closed on buttons of its own — „დავიწყო / შევცვალოთ", or two
+  // routes to choose from. The consent guard reads the newest card, found no
+  // plan's approve button there, and refused the owner's first yes. Under D846
+  // no other button is shown anyway (#6364), so a plan waiting for its yes
+  // always closes on the plan's own pair.
   const language = runLang(runId);
-  const closing = PLAN_CLOSING_QUESTION[language].replace(/[?？]\s*$/u, '').trim();
-  const asksTheClosingQuestion = (offered ?? []).some((label) => label.includes(closing));
-  if ((offered ?? []).length > 0 && !asksTheClosingQuestion) return offered;
   return [APPROVE_LABEL[language], CHANGE_LABEL[language]];
 }
 
