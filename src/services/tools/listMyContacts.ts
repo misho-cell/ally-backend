@@ -1,5 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { accountStateFor, AccountState, fetchAccountStates, isMemberPhone } from './membership';
+import { isWarmTie, OwnerTie, OwnerTieReason, ownerTiesTo } from '../ownerTies';
+import { phoneDigits } from '../phone';
 
 /**
  * The seat's 864, item 7: „ask all six of my contacts at once" — and Netai
@@ -35,6 +37,8 @@ export interface MyContact {
    * list read only the saved name. The tag is what the owner knows them by.
    */
   readonly your_tags?: readonly string[];
+  /** #5974 (68852): the owner's own closeness to them — said close, family, or close. */
+  readonly your_tie?: OwnerTieReason;
 }
 
 export interface MyContactsList {
@@ -78,6 +82,53 @@ function withOwnTags(contact: MyContact, tags: ReadonlyMap<string, readonly stri
   return own.length === 0 ? contact : { ...contact, your_tags: own };
 }
 
+/**
+ * #5974 (the tester's 68852/68855, 0 of 9): three owners told Netai „X, Y and
+ * Z are my closest friends" — saved, and the route to a target picked them
+ * 3 of 3 — yet „who are my closest people?" listed every contact by name and
+ * asked „who would you put first?". This list never read the owner's ties.
+ * The people the owner is closest to now come first, closest first, each
+ * marked with why; everyone else keeps the order they had.
+ */
+const TIE_RANK: Readonly<Partial<Record<OwnerTieReason, number>>> = {
+  [OwnerTieReason.SaidClose]: 3,
+  [OwnerTieReason.Family]: 2,
+  [OwnerTieReason.Close]: 1,
+};
+
+export function warmTieOf(tie: OwnerTie | undefined): OwnerTieReason | null {
+  return tie !== undefined && tie.reason !== null && isWarmTie(tie.reason) ? tie.reason : null;
+}
+
+/** The warmly tied first, closest first; the rest in the order given. */
+export function closestFirst(
+  contacts: readonly MyContact[],
+  ties: ReadonlyMap<string, OwnerTie>,
+): MyContact[] {
+  const marked = contacts.map((contact, index) => {
+    const tie = warmTieOf(ties.get(phoneDigits(contact.phone)));
+    return { contact: tie === null ? contact : { ...contact, your_tie: tie }, tie, index };
+  });
+  const rank = (tie: OwnerTieReason | null): number => (tie === null ? 0 : (TIE_RANK[tie] ?? 0));
+  return marked
+    .sort((a, b) => rank(b.tie) - rank(a.tie) || a.index - b.index)
+    .map(({ contact }) => contact);
+}
+
+/** The owner's ties to these numbers; none when they cannot be read. */
+async function tiesOrNone(
+  userId: string,
+  phones: readonly string[],
+): Promise<ReadonlyMap<string, OwnerTie>> {
+  try {
+    return await ownerTiesTo(userId, phones);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[list-my-contacts] ties not read:', (err as Error).message);
+    return new Map();
+  }
+}
+
 export async function listMyContacts(
   userId: string,
   options: { readonly limit?: unknown; readonly membersOnly?: boolean } = {},
@@ -109,9 +160,16 @@ export async function listMyContacts(
   const members = all.filter((c) => c.is_member);
   const byName = (a: MyContact, b: MyContact): number =>
     (a.name ?? a.saved_as ?? '').localeCompare(b.name ?? b.saved_as ?? '');
-  const ordered = options.membersOnly
-    ? [...members].sort(byName)
-    : [...members.sort(byName), ...all.filter((c) => !c.is_member).sort(byName)];
+  const ties = await tiesOrNone(
+    userId,
+    all.map((c) => c.phone),
+  );
+  const ordered = closestFirst(
+    options.membersOnly
+      ? [...members].sort(byName)
+      : [...members.sort(byName), ...all.filter((c) => !c.is_member).sort(byName)],
+    ties,
+  );
   const page = ordered.slice(0, clampLimit(options.limit));
   const tags = await ownTagsFor(
     userId,
