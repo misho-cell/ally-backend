@@ -7,6 +7,14 @@ import { normalizePhone, phoneDigits } from '../phone';
 import { OwnerTie, OwnerTieReason, ownerTiesTo } from '../ownerTies';
 import { labelsAlongChain } from '../chainLabels';
 import { memberMiddles } from '../memberPaths.service';
+import {
+  colourWhy,
+  LinkColours,
+  linkColours,
+  linkKey,
+  LinkPair,
+  NO_LINK_COLOURS,
+} from '../colourLinks';
 import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from './membership';
 
 /**
@@ -64,6 +72,8 @@ export interface WarmPathBridge {
   account_state: AccountState;
   /** #5479: the owner's own tie to their first bridge, when there is one to say. */
   owner_tie?: OwnerTieReason;
+  /** #5974: why the first bridge comes first, from the old-Ally colours along the link. */
+  colour_why?: string;
 }
 
 export interface WarmPath {
@@ -276,6 +286,70 @@ async function namedAlongTheChain(ownerId: number, paths: WarmPath[]): Promise<W
   }
 }
 
+/** #5974: the path's first link — the owner's first bridge and whoever that bridge reaches next. */
+export function firstLink(path: WarmPath, targetPhone: string): LinkPair | null {
+  const first = path.bridges[0];
+  if (first === undefined) return null;
+  return { bridge: first.phone, next: path.bridges[1]?.phone ?? targetPhone };
+}
+
+function firstLinkColours(
+  path: WarmPath,
+  targetPhone: string,
+  links: ReadonlyMap<string, LinkColours>,
+): LinkColours | undefined {
+  const link = firstLink(path, targetPhone);
+  return link === null ? undefined : links.get(linkKey(link.bridge, link.next));
+}
+
+/** Every path's first link coloured, in one read; fails towards no colours. */
+async function coloursOfFirstLinks(
+  userId: string,
+  paths: readonly WarmPath[],
+  targetPhone: string,
+): Promise<Map<string, LinkColours>> {
+  try {
+    return await linkColours(
+      userId,
+      paths.map((path) => firstLink(path, targetPhone)).filter((l): l is LinkPair => l !== null),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('findWarmPath link colours:', (err as Error).message);
+    return new Map();
+  }
+}
+
+/**
+ * #5974 (3): fewest hops still first; then the heaviest old-Ally link at the
+ * first step (green > blue > yellow > red, both sides); the order already made
+ * (closeness, fit for the goal, reach) breaks every tie.
+ */
+export function inColourOrder(
+  paths: readonly WarmPath[],
+  targetPhone: string,
+  links: ReadonlyMap<string, LinkColours>,
+): WarmPath[] {
+  const weight = (path: WarmPath): number =>
+    (firstLinkColours(path, targetPhone, links) ?? NO_LINK_COLOURS).weight;
+  return paths
+    .map((path, index) => ({ path, index, w: weight(path) }))
+    .sort((a, b) => a.path.hops - b.path.hops || b.w - a.w || a.index - b.index)
+    .map(({ path }) => path);
+}
+
+/** The first bridge carries the reason it comes first, named as the owner saved them. */
+export function withColourWhy(
+  path: WarmPath,
+  targetPhone: string,
+  links: ReadonlyMap<string, LinkColours>,
+): WarmPath {
+  const [first, ...rest] = path.bridges;
+  const link = firstLinkColours(path, targetPhone, links);
+  const why = first === undefined || link === undefined ? null : colourWhy(link, first.name);
+  return why === null ? path : { ...path, bridges: [{ ...first, colour_why: why }, ...rest] };
+}
+
 export async function findWarmPath(
   userId: string,
   targetPhoneRaw: string,
@@ -377,11 +451,16 @@ export async function findWarmPath(
     // stay ahead of relayable on purpose: a one-hop bridge who is not on Netai
     // is still the user's own contact, whom they can simply write to.
     .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable));
+  const [bridgeOrdered, links] = await Promise.all([
+    inBridgeOrder(reached, goalText, userId),
+    coloursOfFirstLinks(userId, reached, targetPhone),
+  ]);
   // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
-  const paths = await namedAlongTheChain(
+  const named = await namedAlongTheChain(
     Number(userId),
-    (await inBridgeOrder(reached, goalText, userId)).slice(0, MAX_PATHS),
+    inColourOrder(bridgeOrdered, targetPhone, links).slice(0, MAX_PATHS),
   );
+  const paths = named.map((path) => withColourWhy(path, targetPhone, links));
 
   return {
     found: true,

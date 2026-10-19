@@ -9,6 +9,14 @@ import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { OwnerTie, ownerTiesTo, UNKNOWN_TIE } from '../ownerTies';
+import {
+  byLinkWeight,
+  colourWhy,
+  LinkColours,
+  linkColours,
+  linkKey,
+  NO_LINK_COLOURS,
+} from '../colourLinks';
 import { normalizePhone } from '../phone';
 import { collapseMergedPhones } from './mergedIdentities';
 import { rolesFromLabels } from './labelEmployer';
@@ -559,6 +567,44 @@ export function warmestFirst<T extends { readonly phone: string }>(
     .map((bridge, index) => ({ bridge, index }))
     .sort((a, b) => closeness(b.bridge) - closeness(a.bridge) || a.index - b.index)
     .map(({ bridge }) => bridge);
+}
+
+/**
+ * #5974 (3): the heaviest old-Ally link to this person first — the owner's
+ * colour for the bridge plus the bridge's for the target — over whatever order
+ * the bridges already came in, which stays the tie-break.
+ */
+export function heaviestLinkFirst<T extends { readonly phone: string }>(
+  bridges: readonly T[],
+  targetPhone: string,
+  links: ReadonlyMap<string, LinkColours>,
+): T[] {
+  return byLinkWeight(
+    bridges,
+    (bridge) => (links.get(linkKey(bridge.phone, targetPhone)) ?? NO_LINK_COLOURS).weight,
+  );
+}
+
+/** #5974: the colours along every bridge→target link on the page; a failed read colours nothing. */
+async function pageLinkColours(
+  userId: string,
+  rows: ReadonlyArray<{
+    readonly phone: string;
+    readonly via_contacts: { phone: string }[] | null;
+  }>,
+): Promise<Map<string, LinkColours>> {
+  try {
+    return await linkColours(
+      userId,
+      rows.flatMap((r) =>
+        (r.via_contacts ?? []).map((bridge) => ({ bridge: bridge.phone, next: r.phone })),
+      ),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[second-degree] link colours not read:', (err as Error).message);
+    return new Map();
+  }
 }
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
@@ -1414,6 +1460,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         sideMarks.push([name, Date.now() - from]);
       }
     };
+    // #5974: runs beside the five below, read once they are in.
+    const viaLinksRead = timed('colours', pageLinkColours(userId, rows));
     const [exclusions, signalStrength, relationshipTouched, accountStates, labelRoles, viaTies] =
       await Promise.all([
         timed(
@@ -1473,6 +1521,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           ).catch(() => new Map<string, OwnerTie>()),
         ),
       ]);
+    const viaLinks = await viaLinksRead;
     mark('decorate');
     console.log(
       `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
@@ -1491,6 +1540,12 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       // make the pair something to say carefully. Counts arrive as strings
       // from pg's bigint mapping.
       const sources = fewestSources(row.jobPositionSources, row.employer_sources);
+      // #5974: heaviest colour link first; #5479's warmest-first is the tie-break.
+      const bridges = heaviestLinkFirst(
+        warmestFirst(row.via_contacts ?? [], viaTies),
+        row.phone,
+        viaLinks,
+      );
       return {
         phone: row.phone,
         // Row 296: a member's own name as they gave it; for anybody else only
@@ -1543,20 +1598,21 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         is_member: isMemberPhone(accountStates, row.phone),
         account_state: accountStateFor(accountStates, row.phone),
         netai_subscriber: isSubscriberPhone(accountStates, row.phone),
-        // #5479: the names in the same warmest-first order as via_contacts.
+        // #5479: the names in the same order as via_contacts.
         via:
-          (row.via_contacts ?? []).length > 0
-            ? warmestFirst(row.via_contacts ?? [], viaTies)
-                .map((bridge) => bridge.name)
-                .filter((name): name is string => name !== null)
+          bridges.length > 0
+            ? bridges.map((bridge) => bridge.name).filter((name): name is string => name !== null)
             : (row.via_names ?? []),
-        via_contacts: warmestFirst(row.via_contacts ?? [], viaTies).map((bridge) => {
+        via_contacts: bridges.map((bridge) => {
           const tie = viaTies.get(phoneDigits(bridge.phone))?.reason;
+          const link = viaLinks.get(linkKey(bridge.phone, row.phone));
+          const why = link === undefined ? null : colourWhy(link, bridge.name);
           return {
             name: bridge.name,
             phone: bridge.phone,
             is_member: isMemberPhone(accountStates, bridge.phone),
             ...(tie ? { owner_tie: tie } : {}),
+            ...(why !== null ? { colour_why: why } : {}),
           };
         }),
         // Strongest bridge→target relationship score (enrichment-computed,

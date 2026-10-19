@@ -308,6 +308,7 @@ import {
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath } from './tools/findWarmPath';
+import { withOldAllyColours } from './tools/withOldAllyColours';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
 import { retractOwnFacts, hardDeleteOwnFact } from './contactFacts.service';
@@ -12031,7 +12032,12 @@ async function runOneToolBlock(
   if (!ownerAbsent && WORKING_LINE_TOOLS.has(block.name)) {
     await postWorkingLineOnce(userId, threadId, runId, runLang(runId));
   }
-  const rawResult = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
+  // #5974: the owner's old-Ally colours and each person's bubble, one batch per call.
+  const rawResult = await withOldAllyColours(
+    userId,
+    block.name,
+    await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent),
+  );
   // See runEmptySearches. An empty search result is handed back the list of
   // what this run has already asked for and not found, because without it each
   // attempt arrives with no memory of the last one.
@@ -15699,12 +15705,12 @@ export function appToolsForConnector(userId: string): Promise<AnthropicTool[]> {
 }
 
 /** #5677: one app tool run for the connector — no conversation, no run, the owner present. */
-export function runAppToolForConnector(
+export async function runAppToolForConnector(
   userId: string,
   name: string,
   input: Record<string, unknown>,
 ): Promise<unknown> {
-  return executeToolCall(userId, name, input);
+  return withOldAllyColours(userId, name, await executeToolCall(userId, name, input));
 }
 
 async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<AnthropicTool[]> {
