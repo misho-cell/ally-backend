@@ -98,6 +98,7 @@ import {
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { askBoundaryBlocks } from './askBoundary.service';
+import { withAskerAsTheOneInNeed } from './askerInNeed';
 import { isPhoneOptedOut } from './privacyRights.service';
 import {
   checkAskBudget,
@@ -1749,7 +1750,16 @@ async function createAskNow(
       ? draftAsk
       : editorsDraft;
   // 3567: the need goes out, never somebody's condition — in the message and in its title.
-  const edited = { ...editorsAsk, question: questionWithoutCondition(editorsAsk.question) };
+  // #5249 (68882): never the reader as the one in need — „ზურაბს სჭირდება…" sent to Zurab.
+  const edited = {
+    ...editorsAsk,
+    question: withAskerAsTheOneInNeed(
+      questionWithoutCondition(editorsAsk.question),
+      toName,
+      senderName,
+      language,
+    ),
+  };
   // A follow-up lands in the conversation it belongs to; only a first ask
   // opens a thread. Two threads for one exchange would put the answer and the
   // question that followed it in different rooms (ticket 9 task 12).

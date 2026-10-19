@@ -101,6 +101,6 @@ describe('the editor’s rewrite keeps to the person’s own part (58029)', () =
     );
     const guard = ASKS.indexOf('questionCarriesAnotherPart(ownerWords, toName');
     expect(ASKS.slice(guard, guard + 200)).toContain('? draftAsk');
-    expect(ASKS.indexOf('const edited = { ...editorsAsk')).toBeGreaterThan(guard);
+    expect(ASKS.indexOf('const edited = {\n    ...editorsAsk,')).toBeGreaterThan(guard);
   });
 });
