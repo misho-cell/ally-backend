@@ -277,6 +277,8 @@ import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
 import { contactsReminderSection } from './contactsReminderSection';
+import { createUploadLink } from './contactUploadLinks.service';
+import { CONTACTS_UPLOAD_LINK_DESCRIPTION } from './contactsUploadLinkText';
 import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
 import { namesakesIn } from './namesakeButtons';
 import {
@@ -2513,6 +2515,19 @@ const GET_MY_TOKEN_BALANCE_TOOL: AnthropicTool = {
     'call this and say the numbers exactly. It is the same balance the app screen shows.',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
+
+// #6073 (launch): the owner asks for the contacts upload link in the app.
+const GET_CONTACTS_UPLOAD_LINK_TOOL: AnthropicTool = {
+  name: 'get_contacts_upload_link',
+  description: CONTACTS_UPLOAD_LINK_DESCRIPTION,
+  input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+/** #6073: a one-time upload link for the owner's own contacts. */
+async function contactsUploadLink(userId: string): Promise<Record<string, unknown>> {
+  const link = await createUploadLink(userId);
+  return { url: link.url, expires_at: link.expiresAt, uses: 1 };
+}
 
 // Ticket 5 PART G1: product self-knowledge — content DB-owned by the prompt team.
 const GET_NETAI_INFO_TOOL: AnthropicTool = {
@@ -10582,6 +10597,8 @@ async function executeToolCall(
       return { resumed: true };
     case 'get_netai_info':
       return getNetaiInfo(String(input['topic'] ?? ''), userId);
+    case 'get_contacts_upload_link':
+      return contactsUploadLink(userId);
     case 'get_what_netai_knows_about_me': {
       // #1354 (tester 41422): a bare number was scrubbed to „შენი ნომერია:" and
       // nothing. The owner's own number travels like get_own_contact_number's.
@@ -15626,6 +15643,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_COUNTRY_CHANNELS_TOOL,
   GET_NETAI_INFO_TOOL,
   GET_MY_TOKEN_BALANCE_TOOL,
+  GET_CONTACTS_UPLOAD_LINK_TOOL,
 ];
 
 /**

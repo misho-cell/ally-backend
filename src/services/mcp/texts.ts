@@ -16,6 +16,7 @@
 // backend migration (not done); flagged to the prompt team.
 
 import { APPROVE_PLAN_DESCRIPTION, toolDescription } from '../chat.service';
+import { CONTACTS_UPLOAD_LINK_DESCRIPTION } from '../contactsUploadLinkText';
 
 /**
  * #5677 (the founder's D818 / D819, 18 Oct): the connector carries the
@@ -65,12 +66,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   },
   get_contacts_upload_link: {
     title: 'Contacts upload link',
-    description:
-      'Gives the member a one-time link to put their phone contacts into Netai: they open it on ' +
-      'the phone, pick the contacts file (.vcf) and tap Upload. The file goes straight to Netai, so ' +
-      'no number passes through this chat. Use when they want to add or refresh their contacts ' +
-      'here. Give them the link and say it works once, for 30 minutes; when they are back, ' +
-      'get_network_stats shows the new total.',
+    description: CONTACTS_UPLOAD_LINK_DESCRIPTION,
   },
   search_contacts: {
     title: 'Search contacts',
