@@ -329,6 +329,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
+import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
 import { cancelOneAsk } from '../../services/taskAsks.service';
 import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
 import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
@@ -7260,6 +7261,41 @@ adminRouter.post(
       // eslint-disable-next-line no-console
       console.error('[POST /admin/exports/phone-hashes]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Could not hash the numbers' });
+    }
+  },
+);
+
+/**
+ * The same list matched against the base the way the export reads it: per
+ * number its hash, account state, how many phonebooks hold it, the Axel
+ * members (by roster key) who saved it and their labels, Tornike's own label
+ * and tier, and the members for whom it is warm. No number in the answer.
+ *
+ *   POST /admin/exports/phone-matches { entries: [{ ref, phone }] (1..200) }
+ *   200 { success: true, data: { rows: OutsideMatch[] } }
+ *   400 bad body · 401 / 403 not an admin · 500 could not read
+ */
+adminRouter.post(
+  '/exports/phone-matches',
+  rateLimit({ windowMs: 60_000, max: AXEL_EXPORTS_PER_MINUTE }),
+  body('entries').isArray({ min: 1, max: PHONE_HASHES_MAX }),
+  body('entries.*.ref').isString(),
+  body('entries.*.phone').isString(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `Pass entries: 1 to ${PHONE_HASHES_MAX} of { ref, phone }.`,
+      });
+      return;
+    }
+    try {
+      const entries = (req.body as { entries: OutsideNumber[] }).entries;
+      res.status(200).json({ success: true, data: { rows: await matchOutsideNumbers(entries) } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /admin/exports/phone-matches]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not match the numbers' });
     }
   },
 );
