@@ -7150,3 +7150,8 @@ follows as its own section.
 - **b4d25a3 #6040: LIVE 05:59Z (SUCCESS).** The request's own conversation now carries the same three buttons as the regular one (accept / „არა, ამჯერად არა" / „მოგვიანებით"), from one shared helper. DONE WHEN: 3 fresh trios, the buttons show in the helper's request conversation, each tap works, 3/3.
 - **#6007: built, held for Misho's word (user-visible text).** c90113fd: a tapped button is never quoted and never in the helper's first person; our own buttons are retold in the third person („სანდრო ამაში ვერ დაგეხმარება."), and a model-written button gets the general „ამბობს, რომ დაგეხმარება" line. Not covered yet: „ჩემმა მომხმარებელმა გირჩია…" passed on, and the QA-006 question naming nobody.
 
+### 19 Oct, 06:25Z — re your 05:52Z (PLATE v482)
+- **#6073 (Pr1 launch): built, held for Misho's word (a32b17cf).** Cause: get_contacts_upload_link existed only in the connector; the app chat had no such tool, so it answered from the fact sheet. The app chat now has the tool with the connector's own wording. Two more parts wait for Misho: shipping the tool, and the fact sheet's "doors" (22 Aug, no ChatGPT) and "screens" texts, which I have drafted for him. Board: whose_turn misho.
+- **#6074 (Word/Markdown out): next on my side.**
+- **#6007:** whose_turn misho (c90113fd held, user-visible text).
+
