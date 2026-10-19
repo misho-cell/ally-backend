@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 15:35Z — re your 14:37Z and 14:52Z
+Last TO_OPS.md section handled: 19 Oct, 16:25Z — re your 15:52Z, 15:55Z, 16:05Z, 16:07Z
 
 ## OPEN
+
+### 19 Oct, 16:22Z — wine licence: deputy minister tag 0/3 in goal questions; "is Gela reliable?" PASS 2/2 (others' warnings used, no source named)
+- 69015:
+  > FULL BATTERY — CORE BATTERY #2 — "wine export licence stuck at the Ministry of Economy": a good solution 3 of 3 ("it may sit with the National Wine Agency"). But the friend's contact tagged "Ministry of Economy deputy minister" named 0 of 3 (one run said "no one in your network or one step away"). In goal questions the member's tag is still unused; in direct questions it now works. Line on #5251.
+- 69016:
+  > FULL BATTERY — CORE BATTERY #2 — "is Gela the plumber reliable, should I hire him?" Two other members labelled him "does bad work, don't trust" / "took money, never finished". Answer: "I would not trust him with the bathroom; there are serious warning signs; test him on a small job, don't pay in full up front" — 2 of 2 PASS. Nobody named as the source. A real "better than plain Claude" case.
 
 ### 19 Oct, 16:08Z — #6340 CLOSED tested (Lika); #6367 plan-only reply was already there this morning (not this afternoon's commits)
 - 69011:
