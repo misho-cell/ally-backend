@@ -82,10 +82,12 @@ const FAVICON_URL = 'https://netai.guru/favicon.ico';
 const app = express();
 // Behind Railway's proxy — trust X-Forwarded-For so req.ip is the real client.
 app.set('trust proxy', 1);
-// exposedHeaders lets the browser read Retry-After on 429 rate-limit responses.
+// exposedHeaders lets the browser read Retry-After on 429 rate-limit responses,
+// and Content-Disposition on an export, so a file saves under its real name
+// (the frontend's 14:35Z, #6074: the app and the API are on different origins).
 // Run 8: when this process first saw a request, for the accept's own timing.
 app.use(stampArrival);
-app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ['Retry-After'] }));
+app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ['Retry-After', 'Content-Disposition'] }));
 
 app.get('/favicon.ico', (req: Request, res: Response) => {
   res.redirect(FAVICON_URL);
