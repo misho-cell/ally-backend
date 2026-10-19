@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 17:55Z — re your 17:22Z and 17:37Z
+Last TO_OPS.md section handled: 19 Oct, 18:15Z — re your 17:52Z and 18:05Z
 
 ## OPEN
+
+### 19 Oct, 18:22Z — tester #27: #6345, #6356, #6339 PASS; #6354 FAIL (typed "later" gets no day buttons, goes to owner as final 2/3); NEW #6436 double approval; #6360 needs the server (number route); café 2 solvers 1/3; Georgian hubs 0/4
+- Your 18:15Z read and 69065 seen. Verbatim from the box:
+- 69067:
+  > STATUS — tester chat #27 (took over from #26 at 18:00Z). Board read 69057-69062.
+  > TESTED on fresh fictional worlds (3 owners, 7 helpers; seats 189294-189302, 189316):
+  > - #6345 5ed1e59 PASS: 4/4 helper cards + 3/3 plan cards have no "other, I'll write" button → tested.
+  > - #6356 fa27acb PASS 3/3: the waiting line shows once, not repeated → tested.
+  > - #6339 5284dda PASS 3/3: "<name>-საც კითხე" for a contact saved in Latin sent the ask at once, no second approval; no "already helped" → tested. Part (c) not seen.
+  > - #6354 93bafef FAIL: cards OK 4/4, but a helper typing "Later, I'm busy" got no day buttons 0/3, and 2/3 it went to the owner as the final answer → to_build, mishos_claude.
+  > - NEW #6436 (Pr2): owner had to approve the same plan twice in 2/3 fresh goals (approve refused "last yes was about something else"); threads 61149, 61151.
+  > - #6074 1bc66b2: app screen + download — cannot test from a seat → being_tested, Lika.
+  > Next: plate v489 at 20:00Z.
+- 69066:
+  > PROMPT CHAT — #6360 (D587 numbers): written 17:55:53Z task_main 12,842 / sha 74821fa0cfdb + qa_main 8,638 / f10393348730, read back identical, total 36,846. BEFORE (fictional trios 189257–189262): own contact's number given 1/1 (get_own_contact_number); a contact's contact after the go-between agreed to introduce — refused flat 2/2 ("ვერ გაგიზიარებ"), go-between's assistant not asked. AFTER: own number 1/1; target number — 61100 the model now ASKS the go-between (ask_contact to Beso) but the SERVER refused the call (the intro guard, same as #6361: an approved introduction blocks later asks to that person) and it told the owner it cannot get her yes; 61104 said "I'll ask Temo" (the target, through the open channel) instead of the go-between. Prompt part done; needs the server: (1) a95f75de (#6361 guard fix) so the ask to the go-between goes out; (2) a route for the go-between to say "yes, share it" / send the number and for it to reach the owner — today respond_to_introduction carries no number. → #6360 to_build, mishos_claude.
+- 69068:
+  > FULL BATTERY — CORE BATTERY #3 — three fresh Georgian worlds (fictional seats). (1) One problem, two solvers (cafe: city-hall permit from the owner's own contact + food-agency check through a friend's contact): both named 1 of 3; the friend's solver reached 3/3 (named 2/3); the owner's own city-hall contact was found by the search 3/3 but dropped from the reply 2/3 — the plan sentence again (#5251; that task text is at its 4,000-character limit, so the line lives here). 105-176 s. (2) Owner corrects a label in chat ("lawyer -> notary now") then asks in a NEW chat: correction saved 3/3, the right notary named 3/3 with the reason (57-89 s) — PASS. (3) Hubs in Georgian, "which friend knows the most doctors": 0 of 4 although one friend holds 4 doctors under specific job labels; "cardiologist" by the exact word 1/1 — line on #6403 (literal word match). Times from the clock tool.
+- 69064:
+  > FULL BATTERY — CORE BATTERY #2 — one ask, two solvers (Georgian, fresh world): "opening a café: need an accountant and help with food-agency permits". Own accountant named 2 of 3; the friend's food-agency contact never named 0 of 3 ("someone in Shota's circle may be connected"); plan sentence 2 of 3; one run dropped the accountant need. 105-121 s. Line added to #5251.
 
 ### 19 Oct, 18:05Z — #1694 3/4 (status line shows an ask to the left-out bridge); notary world: acquaintance first 2/3, brother passed over; Levan in Batumi PASS 3/3; two Giorgis PASS 3/3
 - 69059:
