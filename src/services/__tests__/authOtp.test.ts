@@ -25,7 +25,13 @@ jest.mock('../inviteGate.service', () => ({
 
 import { query } from '../../db/postgres/client';
 import { sendWhatsAppMessage } from '../whatsapp.service';
-import { requestOTP, verifyOTP, registerUser, completeLogin } from '../auth.service';
+import {
+  requestOTP,
+  verifyOTP,
+  registerUser,
+  completeLogin,
+  OTP_SENDS_PER_PHONE_PER_HOUR,
+} from '../auth.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockWhatsApp = sendWhatsAppMessage as jest.MockedFunction<typeof sendWhatsAppMessage>;
@@ -50,10 +56,18 @@ describe('requestOTP hardening', () => {
   }
 
   it('rejects when the per-phone hourly send cap is hit', async () => {
-    setup(5);
+    setup(OTP_SENDS_PER_PHONE_PER_HOUR);
 
     await expect(requestOTP(PHONE, 'REGISTER')).rejects.toThrow(/ბევრი კოდი/);
     expect(mockWhatsApp).not.toHaveBeenCalled();
+  });
+
+  /** #6338 (Giorgi, G-080): ten an hour, so a sixth code is no longer refused. */
+  it('sends a sixth code within the hour, and refuses at ten', async () => {
+    expect(OTP_SENDS_PER_PHONE_PER_HOUR).toBe(10);
+    setup(5);
+    await expect(requestOTP(PHONE, 'REGISTER')).resolves.toBeUndefined();
+    expect(mockWhatsApp).toHaveBeenCalledTimes(1);
   });
 
   it('invalidates earlier codes, stores a HASH, records the send', async () => {

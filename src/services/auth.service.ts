@@ -34,8 +34,10 @@ const SALT_ROUNDS = 12;
 // How long a completed OTP verification stays valid for register/complete-login.
 const VERIFICATION_TTL_MINUTES = 10;
 // Per-PHONE send ceiling (per-IP and per-device limits live in the router; this
-// closes the "many senders, one victim phone" hole).
-const OTP_SENDS_PER_PHONE_PER_HOUR = 5;
+// closes the "many senders, one victim phone" hole). #6338 (Giorgi, G-080,
+// 19 Oct): 5 an hour locked out a person who mistyped or waited for a slow
+// WhatsApp twice; 10. The router's 5 per 10 minutes per person still holds.
+export const OTP_SENDS_PER_PHONE_PER_HOUR = 10;
 // Names WHOSE number and WHAT to do: the old wording ("ნომერი
 // დაუდასტურებელია") sat on a screen with TWO numbers — the registrant's and
 // the inviter's — and named neither, on a step with no visible code field

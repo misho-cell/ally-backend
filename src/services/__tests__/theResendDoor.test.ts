@@ -147,7 +147,8 @@ describe('resendOTP holds its own copies of the cooldown and the cap', () => {
   it('refuses when the hourly per-phone send cap is already spent', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM otp_sends'))
-        return Promise.resolve({ rows: [{ count: '5' }] } as never);
+        // #6338: the cap is ten an hour.
+        return Promise.resolve({ rows: [{ count: '10' }] } as never);
       if (sql.includes('FROM "Otp"'))
         return Promise.resolve({
           rows: [{ createdAt: new Date(Date.now() - 60_000) }],
