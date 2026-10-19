@@ -18,7 +18,7 @@ describe('every tool leaves a step', () => {
   it('the caption falls back to it after the tool’s own', () => {
     const at = chat.indexOf('const progressMsg =');
     expect(chat.slice(at, at + 500)).toContain('TOOL_PROGRESS_MESSAGES[block.name] ??');
-    expect(chat.slice(at, at + 500)).toContain('genericStepCaption(runLang(runId));');
+    expect(chat.slice(at, at + 500)).toContain('genericStepCaption(runLang(runId)));');
   });
 
   it('the inbox and the goal list have their own Georgian step', () => {

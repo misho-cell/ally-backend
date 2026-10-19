@@ -383,6 +383,27 @@ export async function askBoundaryBlocks(phone: string, subject: string): Promise
   return questionUnderBoundary(subject, boundaries);
 }
 
+/**
+ * #1694 (the tester's 69059, thread 61131): whether this person closed any
+ * subject at all. One cheap read, no model: it is asked before a step line
+ * names them, where the full check (askBoundaryBlocks) would hold every
+ * caption of the turn back by a model call.
+ */
+export async function hasAnyAskBoundary(phone: string): Promise<boolean> {
+  const digits = phoneDigits(phone);
+  if (digits === '') return false;
+  const result = await query<{ closed: boolean }>(
+    `SELECT EXISTS (
+          SELECT 1 FROM ask_boundaries ab
+            JOIN "UserPhone" up ON up."userId" = ab.user_id
+           WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1
+        ) AS closed`,
+    [digits],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.closed === true;
+}
+
 /** The recipient's boundaries, found by their number. */
 async function boundariesOfPhone(digits: string): Promise<AskBoundary[]> {
   const result = await query<{ topic: string; term: string }>(

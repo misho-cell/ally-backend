@@ -301,6 +301,7 @@ import { withoutWithheldPeople } from './withoutWithheldPeople';
 import { keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
 import { mutualGroupsFor } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine } from './askBoundary.service';
+import { askStepsToKeepUnnamed } from './askCaptions';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
 import { answersTheRequestOnly } from './requestReferral';
@@ -12409,16 +12410,19 @@ async function processToolBlocks(
   // collapses N sequential round-trips into one. (Cross-turn dependencies are
   // unaffected: a tool that needs a prior result is only ever emitted in a later
   // turn, after that result is in context.) Promise.all preserves result order.
+  // #1694: an ask to a person with a boundary is never announced by name.
+  const unnamed = shown ? await askStepsToKeepUnnamed(toolBlocks) : new Set<string>();
   for (const block of toolBlocks) {
     // Step captions follow the conversation's language (task 22 g/h) — the
     // Georgian map is the base, toolStepCaption overrides for en/ru/es.
     // Row 304: a call that carries a name or a query says it.
-    const progressMsg =
-      namedStepCaption(block.name, block.input as Record<string, unknown>, runLang(runId)) ??
-      toolStepCaption(block.name, runLang(runId)) ??
-      TOOL_PROGRESS_MESSAGES[block.name] ??
-      // 3368: every tool leaves a step, so every run that used one has steps.
-      genericStepCaption(runLang(runId));
+    const progressMsg = unnamed.has(block.id)
+      ? genericStepCaption(runLang(runId))
+      : (namedStepCaption(block.name, block.input as Record<string, unknown>, runLang(runId)) ??
+        toolStepCaption(block.name, runLang(runId)) ??
+        TOOL_PROGRESS_MESSAGES[block.name] ??
+        // 3368: every tool leaves a step, so every run that used one has steps.
+        genericStepCaption(runLang(runId)));
     if (progressMsg && shown) {
       emitToolProgress(userId, threadId, runId, progressMsg);
       runLastCaption.set(runId, progressMsg);
