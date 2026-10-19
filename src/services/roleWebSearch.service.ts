@@ -397,10 +397,27 @@ const YEAR_IN_URL_RE = /(?<!\d)(20\d{2})(?!\d)/gu;
 const MAX_REPORT_AGE_YEARS = 1;
 const PDF_RE = /\.pdf(?:$|[?#])/iu;
 
-/** The newest year the address or the title names, or null when they name none. */
-function yearOf(page: PageCandidate): number | null {
-  const years = [...`${page.url} ${page.title}`.matchAll(YEAR_IN_URL_RE)].map((m) => Number(m[1]));
+/**
+ * The newest year a text names, or null when it names none. A number past
+ * next year is not a year: „/media/2072/" in TBC's address read as 2072 and
+ * made its 2019 report the newest page (the tester's 09:35Z).
+ */
+function newestYearIn(text: string, latest: number): number | null {
+  const years = [...text.matchAll(YEAR_IN_URL_RE)]
+    .map((m) => Number(m[1]))
+    .filter((year) => year <= latest);
   return years.length === 0 ? null : Math.max(...years);
+}
+
+/**
+ * The page's year: the one in its own address when there is one, else the
+ * title's. The tester's 09:35Z: „…annual-report-2019.pdf" came back from a
+ * search with a later year in its title, the newest year won, and the 2019
+ * report was read as current in 2 of 3 runs.
+ */
+function yearOf(page: PageCandidate, now: Date): number | null {
+  const latest = now.getUTCFullYear() + 1;
+  return newestYearIn(page.url, latest) ?? newestYearIn(page.title, latest);
 }
 
 /**
@@ -418,14 +435,14 @@ export function currentPagesFirst(
   const oldest = now.getUTCFullYear() - MAX_REPORT_AGE_YEARS;
   const rank = (page: PageCandidate): number => {
     const words = `${page.url} ${page.title}`;
-    if (leadershipFirst && ANNUAL_REPORT_RE.test(words) && yearOf(page) !== null) return -1;
+    if (leadershipFirst && ANNUAL_REPORT_RE.test(words) && yearOf(page, now) !== null) return -1;
     return (LEADERSHIP_PAGE_RE.test(words) ? 0 : 2) + (PDF_RE.test(page.url) ? 1 : 0);
   };
   const byYear = (a: RankedPage, b: RankedPage): number => (b.year ?? 0) - (a.year ?? 0);
   const byRank = (a: RankedPage, b: RankedPage): number => a.rank - b.rank;
   const [first, second] = leadershipFirst ? [byRank, byYear] : [byYear, byRank];
   return pages
-    .map((page, at) => ({ page, at, year: yearOf(page), rank: rank(page) }))
+    .map((page, at) => ({ page, at, year: yearOf(page, now), rank: rank(page) }))
     .filter((entry) => entry.year === null || entry.year >= oldest)
     .sort((a, b) => first(a, b) || second(a, b) || a.at - b.at)
     .map((entry) => entry.page);

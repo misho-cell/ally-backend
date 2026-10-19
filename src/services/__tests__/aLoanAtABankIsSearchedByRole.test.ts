@@ -274,4 +274,21 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
       'https://www.tbcbank.ge/web/documents/risk.pdf',
     ]);
   });
+
+  it('takes a report’s year from its own address, not a later year in its title (tester 09:35Z)', () => {
+    const now = new Date('2026-10-19T00:00:00Z');
+    const pages = [
+      {
+        url: 'https://tbcbankgroup.com/media/2072/tbc-bank-group-plc-annual-report-2019.pdf',
+        title: '[PDF] TBC Bank 2026',
+      },
+      {
+        url: 'https://cms.tbcbankgroup.com/media/a/tbc-group-plc-annual-report-2025.pdf',
+        title: 'Deepening our Footprint',
+      },
+    ];
+    expect(ownSitesFirst(pages, [], now).map((p) => p.url)).toEqual([
+      'https://cms.tbcbankgroup.com/media/a/tbc-group-plc-annual-report-2025.pdf',
+    ]);
+  });
 });
