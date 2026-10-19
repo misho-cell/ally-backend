@@ -9,7 +9,7 @@ jest.mock('../tools/membership', () => ({
 
 import { query } from '../../db/postgres/client';
 import { fetchAccountStates } from '../tools/membership';
-import { mutualGroupsFor, mutualGroupsText } from '../mutualGroups';
+import { mutualGroupsFor, mutualGroupsText, namesTheTarget } from '../mutualGroups';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -59,8 +59,50 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     );
   });
 
+  it('finds the target under the other spelling the search found him by (69134)', async () => {
+    expect(namesTheTarget('Zura Kvaratskhelia', 'ზურაბ კვარაცხელია')).toBe(true);
+    expect(namesTheTarget('ზურაბ კვარაცხელია Kartuli Logistics', 'ზურაბ კვარაცხელია')).toBe(true);
+    expect(namesTheTarget('ნიკა ბერიძე', 'ზურაბ კვარაცხელია')).toBe(false);
+
+    mockQuery.mockResolvedValue({
+      rows: [
+        { digits: '995500000001', alias: 'ლიკა' },
+        { digits: '995500000002', alias: 'ბესო' },
+        { digits: '995500000003', alias: 'ლადო' },
+      ],
+    } as never);
+    (fetchAccountStates as jest.Mock).mockResolvedValue(
+      new Map([
+        ['995500000001', 'netai_user'],
+        ['995500000002', 'netai_user'],
+      ]),
+    );
+    const plan = {
+      routes: [
+        { introduction: { via_phone: '+995500000001', to_name: 'ზურაბ კვარაცხელია' } },
+        { introduction: { via_phone: '+995500000002', to_name: 'ზურაბ კვარაცხელია' } },
+      ],
+    };
+    const found = [{ name: 'Zura Kvaratskhelia', viaPhones: ['+995500000003'] }];
+    const text = await mutualGroupsFor('171', plan, found, 'ka', true);
+    expect(text).toContain('ვკითხავ: ლიკა, ბესო');
+    expect(text).toContain('მოიწვევ: ლადო');
+    // Giorgi's template: one reason sentence, for the first bridge.
+    expect(text).toContain('ლიკა ზურაბ კვარაცხელიას იცნობს.');
+  });
+
+  it('keeps the plan’s own go-betweens even when the search found nobody', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ digits: '995500000001', alias: 'ლიკა' }] } as never);
+    (fetchAccountStates as jest.Mock).mockResolvedValue(new Map([['995500000001', 'netai_user']]));
+    const plan = { routes: [{ introduction: { via_phone: '+995500000001', to_name: 'თემური' } }] };
+    const text = await mutualGroupsFor('171', plan, [], 'ka');
+    expect(text).toContain('ვკითხავ: ლიკა');
+    expect(text).not.toContain('იცნობს.');
+  });
+
   it('is put above the introduction plan’s sentence', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('`${plan.mutualGroups}\\n\\n${sentence}`');
+    expect(chat).toContain('introSentence === null,');
   });
 });

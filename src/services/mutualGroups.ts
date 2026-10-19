@@ -1,6 +1,8 @@
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
-import { FoundThroughBridge } from './introTargetSentence';
+import { FoundThroughBridge, knowsLine } from './introTargetSentence';
+import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
+import { nameKey } from './tools/transliterate';
 import { phoneDigits } from './phone';
 import { routeIntroductions } from './planClosedRoute';
 import type { RunLanguage } from './runLanguage';
@@ -87,21 +89,80 @@ async function ownersNames(
   return new Map(result.rows.map((r) => [r.digits, r.alias]));
 }
 
-/** Every contact of the owner's this run found knowing the plan's one target, grouped. */
+/**
+ * The tester's 69134 (#6304, 0 of 3): the plan named „ზურაბ კვარაცხელია" and the
+ * search had found him as „Zura Kvaratskhelia" (the friends' label), so the exact
+ * comparison matched nobody and no group was drawn. One person under two
+ * spellings is still one person.
+ */
+const FIRST_NAME_PREFIX = 3;
+
+/** Same surname and the same start of the first name, read by sound in either script („Zura" / „ზურაბ"). */
+function sameNameBySound(a: string, b: string): boolean {
+  const [aFirst, ...aRest] = nameKey(a)
+    .split(' ')
+    .filter((w) => w !== '');
+  const [bFirst, ...bRest] = nameKey(b)
+    .split(' ')
+    .filter((w) => w !== '');
+  if (aFirst === undefined || bFirst === undefined || aRest.length === 0 || bRest.length === 0) {
+    return false;
+  }
+  const surname = (words: string[]): string => words[words.length - 1];
+  return (
+    surname(aRest) === surname(bRest) &&
+    aFirst.slice(0, FIRST_NAME_PREFIX) === bFirst.slice(0, FIRST_NAME_PREFIX)
+  );
+}
+
+export function namesTheTarget(foundName: string, target: string): boolean {
+  const a = foundName.trim();
+  const b = target.trim();
+  return (
+    a === b ||
+    sameNameBySound(a, b) ||
+    labelNamedIn(b, a) ||
+    labelNamedIn(a, b) ||
+    latinLabelNamedInGeorgian(b, a) ||
+    latinLabelNamedInGeorgian(a, b)
+  );
+}
+
+/** The found people one step away who are the plan's target; the only one found, when none matches by name. */
+function foundTarget(
+  found: readonly FoundThroughBridge[],
+  target: string,
+): readonly FoundThroughBridge[] {
+  const near = found.filter((person) => person.far !== true);
+  const named = near.filter((person) => namesTheTarget(person.name, target));
+  if (named.length > 0) return named;
+  const distinct = new Set(near.map((person) => person.name.trim()));
+  return distinct.size === 1 ? near : [];
+}
+
+/**
+ * Every contact of the owner's this run found knowing the plan's one target,
+ * grouped — the plan's own go-betweens always among them. With `withReason`
+ * (the plan sentence carries no „who knows whom" line, as when two
+ * go-betweens are planned), the first one's „<X> <Y>-ს იცნობს." follows the
+ * groups: Giorgi's template, one reason sentence for the first bridge.
+ */
 export async function mutualGroupsFor(
   userId: string,
   planInput: unknown,
   found: readonly FoundThroughBridge[],
   language: RunLanguage,
+  withReason = false,
 ): Promise<string | null> {
   const target = planTarget(planInput);
   if (target === null || WORDS[language] === undefined) return null;
+  const planned = routeIntroductions(planInput).map((intro) => phoneDigits(intro.viaPhone));
   const digits = [
     ...new Set(
-      found
-        .filter((person) => person.name.trim() === target && person.far !== true)
-        .flatMap((person) => person.viaPhones.map(phoneDigits))
-        .filter((d) => d !== ''),
+      [
+        ...planned,
+        ...foundTarget(found, target).flatMap((person) => person.viaPhones.map(phoneDigits)),
+      ].filter((d) => d !== ''),
     ),
   ].slice(0, MAX_NAMES);
   if (digits.length === 0) return null;
@@ -114,7 +175,13 @@ export async function mutualGroupsFor(
       const name = names.get(d);
       return name === undefined ? [] : [{ name, onNetai: isMemberPhone(states, d) }];
     });
-    return mutualGroupsText(target, contacts, language);
+    const groups = mutualGroupsText(target, contacts, language);
+    const first = names.get(planned.find((d) => names.has(d)) ?? '');
+    const reason =
+      withReason && language === 'ka' && first !== undefined
+        ? knowsLine({ via: first, to: target, knowsThem: true })
+        : null;
+    return groups === null || reason === null ? groups : `${groups}\n${reason}`;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[mutual-groups] not read:', (err as Error).message);

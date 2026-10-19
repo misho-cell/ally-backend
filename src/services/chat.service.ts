@@ -11412,6 +11412,8 @@ async function executeToolCall(
               input['plan'],
               (runId && runFoundThroughBridges.get(runId)) || [],
               runLang(runId),
+              // #6304 (69134): the reason line rides the groups when the plan sentence has none.
+              introSentence === null,
             );
             notePlanForReply(runId, {
               text: plainPlan,
