@@ -116,6 +116,8 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     const section = buildRoleSearchSection(finds);
     expect(section).toContain(`ბანკის მენეჯმენტზე წაკითხული გვერდი: ${page}`);
     expect(section).toContain('Head of SME Banking');
+    // The tester's 08:58Z (run 60273): only the former SME head was named.
+    expect(section).toContain('შემდეგი ამჟამინდელი ადამიანი ზემოთ');
   });
 
   it('reads the next page when the bank’s own page comes back empty (tester 19:10Z)', async () => {
