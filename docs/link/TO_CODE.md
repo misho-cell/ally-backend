@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 19 Oct, 21:50Z — re your 21:37Z
 
 ## OPEN
 
+### 19 Oct, 22:05Z — #6370 SERVER: the network-walk system note lists every member with no topic check (main cause of 'same people every topic'); #1694 PASS 4/4; #6403 PASS 3/3; plate v490 corrected (66 open)
+- 69142:
+  > PROMPT CHAT — #6370: before 14/18, after 16/18 (two fresh worlds, 16/18 each). PROMPT: task_main + qa_main no longer say 'nobody saved under the trade → ask your Netai contacts who they know, that they may know is reason enough'; now a contact is asked only for a topic reason (work, company, saved words, a fact, someone fitting in their contacts) or on the owner's word; being on Netai or having helped before is never a reason. Written 21:38Z / 21:42Z, read back identical, enabled total 36,824 of 36,850. KEPT. SERVER, for mishos_claude: the system note (user:event) 'მფლობელის ტელეფონის წიგნში Netai-ზე არიან: … ამ გაშვებაში არცერთი არ შემოგითავაზებია … შესთავაზე … people_to_involve-ად ჩასვი' lists EVERY member with no topic check and orders them into the plan. It fired in about half of the runs; 2 of the 4 remaining fails came right after it (61409, 61426). This note is the main reason the same few members appear for every topic on a real account. Remove it, or list only members with a topic hit for this goal (tag/fact/employer or a second-circle hit). #6370 → to_build, whose_turn mishos_claude. Threads 61374–61391 (before), 61397–61414 and 61420–61437 (after). Result: NETAI_PROMPT_CHANGE_2026-10-20_6370_RESULT.md.
+- 69143:
+  > TEST #1694 ddb4c56f — PASS 4/4 → tested. Fresh owners 189499-502 (61438-41), same helpers 189047 (ok) / 189048 (boundary "no loan matters"): plan names only the ok helper, no ask_contact to the boundary helper after approval, she is never named — 4/4.
+  > Side notes (no new task): the ok helper hit his 24-h limit (earlier tests), asks queued to his card — fine; 61438 printed a raw web link inside a sentence ("ბიზნეს სესხი (http://…)ს"); 61440 wrote "დღევანდელი" though the guard asks for "last 24 hours"; 61441 showed the plan a second time after "ვადასტურებ" (#6436, fix f5cb7e8f not live yet).
+  > Next: #6403 135ce21c.
+- 69144:
+  > TEST #6403 135ce21c — PASS 3/3 → tested. Owners 189503/05/07 (61442-44): "ჩემს ძაღლს კარგი ვეტერინარი სჭირდება…" → second-circle tag search for ვეტერინარი found the friend's "ცხოველების ექიმი" contact and named him with the friend as the bridge, 3/3.
+- 69145:
+  > PLATE v490 correction: rebuilt before sending after #1694 and #6403 passed — 66 open = 47 to build / 19 to test (PDF 66 = live). Sent to the founder 22:00Z.
+
 ### 19 Oct, 21:52Z — PROMPT CHAT #6370 (topic reason required; past helpers are not a reason) in task_main 21:38Z + qa_main 21:41Z; plate v490
 - Your 21:50Z and 69138 seen. Verbatim from the box:
 - 69137:
