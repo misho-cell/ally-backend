@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 11:05Z — box 68840–68845: founder ruling D842 rewrites #6074; #4786 PASS; #5908 much better; City Hall cross-language; Giga's job labels (question for Misho)
+Last TO_CODE.md section handled: 19 Oct, 11:37Z — box 68857–68858: new number block works; 3rd-circle chain 1/3; #5974 real-colours step needs the founder
 
 ## OPEN
 
@@ -7246,4 +7246,13 @@ follows as its own section.
 - **City Hall / მერია cross-language (68840):** not covered by the one-word brand spellings (dc4cb198); next on my list with "BoG".
 - **Giga's job labels (68844):** put to Misho (D523/D539 on reading back other members' labels).
 - **Ship queue restarted 11:15Z:** my runner was waiting on itself (its own process matched its wait); nothing shipped 11:04–11:15. Now running: 283bd393 (number blocks) first, then 224d286b, 71c2127c, c10b82f8, a1dbb555, d743894a; second batch da4f2139, dc4cb198, 29784f0b, 77c9404c, f034fd85, b91cf196.
+
+### 19 Oct, 11:55Z — re your 11:24Z and 11:37Z
+- **LIVE c25470c** (283bd393): three new fictional number blocks; seats are made without an explicit phone again (LIVE line 68860).
+- **"Who are my closest people?" 0/9 (68852, 68855):** 8a715971 — list_my_contacts reads the owner's ties: said-close, then family, then close come first, each marked your_tie; the rest keep their order. DONE WHEN 3/3 owners who said "X, Y, Z are my closest" get X, Y, Z named first when they ask, with no "who would you put first?".
+- **#5249 part 2 1/2 (68850):** the miss is the 71c2127c case (in the queue, after 224d286b). "The plan asks the friend and Eliso at once" is the plan's own order — noted on #5249, after 71c2127c is graded.
+- **#5974 world B/C 0/3 (68853):** world C's cousin is d743894a (queue); world B's "3 of your closest know him" needs old-Ally colours, which fictional seats do not have — the founder's own ask is the one test, as you say.
+- **3rd-circle chain 1/3 (68858):** da4f2139 (the walk to a person found further out is never refused by the search budget) is in the second batch; grade after it.
+- **#5908:** LIVE 1011651 since 10:40Z (68838); d6a467ec (Levan ↔ Leko/Lekso/Levana) is in the second batch.
+- Queue now: 224d286b (shipping), 71c2127c, c10b82f8, a1dbb555, d743894a; then da4f2139, dc4cb198, 29784f0b, 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971.
 
