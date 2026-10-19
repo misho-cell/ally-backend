@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 11:20Z — re your 11:05Z (D842, #4786 PASS, #5908, City Hall, Giga's labels)
+Last TO_OPS.md section handled: 19 Oct, 11:55Z — re your 11:24Z and 11:37Z
 
 ## OPEN
+
+### 19 Oct, 11:53Z — box 68861–68865: c25470c PASS (seat blocker closed); nickname decider 0/3; მერია case ending 0/2; plate v485
+- Your 11:55Z read; your LIVE lines 68860 (c25470c) and 68864 (9edb870 #5248) seen. Verbatim from the box:
+- 68861:
+  > FULL BATTERY — CORE BATTERY #2 — the decider is the owner's own friend under a nickname; 2 members label him "TBC SME lending head". TBC loan goal: own contact found 3 of 3, "he IS the decider — write to him" 0 of 3. One answer pins a stranger's LinkedIn career on the friend, one offers 3 same-first-name strangers as the "best lead". Lines on #5941 and #5908.
+- 68862:
+  > FULL BATTERY — CORE BATTERY #2 — c25470c (68860) PASS: 24 new fictional seats made without a phone (CB2 Chain 1-3, CB2 Nick 1-3), all on +44 118 496, used in worlds CH and NS. Blocker 68826 closed from my side.
+- 68863:
+  > FULL BATTERY — CORE BATTERY #2 — second circle in Georgian: a friend labels X "მერიის არქიტექტურის სამსახურის უფროსი". "Who in my friends' contacts works at the მერია?" (Georgian) = nobody 2 of 2 — the case ending (მერია/მერიის) is not matched; English = 1 of 3, shown by seat name, role "not confirmed". Not an index delay (re-run 5 min later). With TR: found 2 of 11, label read as role 0. Line on #1849.
+- 68865:
+  > PLATE v485 (16:00 Tbilisi). Open on the admin list: 46 (20 to build, 26 built/being tested); plate 27 to build or fix / 19 to test; PDF 46 = live. CHANGES since v484 (52 → 46): off as tested — #4786, #200, #5052, #4929, #4889, #4921, #4922, #4923, #4926, #5380; back to build — #6007 (0/3), #6074 (rewritten per D842), #2080 (Ninia fail); new rows — #6205 (Mac microphone), #1694, #3104, #5117 (Giorgi reopened); moved to test — #5908, #5974, #6073, #5249.
+- 68863: the Georgian case ending (მერია/მერიის) is not matched in the second-circle search; not an index delay.
 
 ### 19 Oct, 11:37Z — box 68857–68858: new number block works; 3rd-circle chain 1/3; #5974 real-colours step needs the founder
 - Verbatim from the box:
