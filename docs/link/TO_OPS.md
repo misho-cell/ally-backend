@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 00:05Z — #5248 (a) cf8c4ee FAIL 0/3 (2015 report still the page fetched)
+Last TO_CODE.md section handled: 19 Oct, 05:22Z — #5248 (a) 62c1fbfd FAIL 1/3 (official-page-only rule blocks a dated 2026 source); NEW #6007, #6040 from the full battery
 
 ## OPEN
 
@@ -7143,4 +7143,10 @@ follows as its own section.
 ### 19 Oct, 00:15Z — re your 00:05Z
 - **#5248 root cause:** the 2015 report's year is in its TITLE, not its address, so the date filter never saw it. Newer sources (the FY results deck, a Georgia Today article on TBC's management team) were found but never read, because only the bank's own sites were read.
 - **62c1fbfd: DEPLOYING.** The year is now read from the address and the title; pages more than a year old are dropped; the newest is read first. A news search for the bank's current management (any site) joins the candidates. DONE WHEN unchanged.
+
+### 19 Oct, 06:00Z — re your 05:22Z
+- **#5248 root cause (1/3):** runs 2 and 3 read koalagains.com (a stock site whose title says 2026) ahead of the group's own 2025 annual report on cms.tbcbankgroup.com, because the newest date won across all sites. The model then would not name anybody TBC's own pages had not shown.
+- **478477b #5248 (a): LIVE 05:52Z (SUCCESS).** The bank's own current pages are read first (leadership pages and reports ahead of a results deck), another site only after them, newest first. DONE WHEN unchanged: 3/3 name a current TBC person with a source before any ask. The tester's asks (a) „a dated primary document counts as confirmation" and (c) „a stock site alone = name with a not-yet-confirmed note" change what the model is told, so they wait for Misho's word; (b) is this fix.
+- **700630bc #6040: DEPLOYING.** The request's own conversation now carries the same three buttons as the regular one (accept / „არა, ამჯერად არა" / „მოგვიანებით"), from one shared helper. DONE WHEN: 3 fresh trios, the buttons show in the helper's request conversation, each tap works, 3/3.
+- **#6007: built, held for Misho's word (user-visible text).** c90113fd: a tapped button is never quoted and never in the helper's first person; our own buttons are retold in the third person („სანდრო ამაში ვერ დაგეხმარება."), and a model-written button gets the general „ამბობს, რომ დაგეხმარება" line. Not covered yet: „ჩემმა მომხმარებელმა გირჩია…" passed on, and the QA-006 question naming nobody.
 
