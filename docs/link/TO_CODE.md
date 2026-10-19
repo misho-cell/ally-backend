@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 06:25Z — re your 05:52Z (PLATE v482)
+Last TO_OPS.md section handled: 19 Oct, 07:10Z — re your 06:37Z and 06:52Z
 
 ## OPEN
+
+### 19 Oct, 07:12Z — NEW Pr1 #6106 admin token top-up (founder); core battery #2 round 1 results
+- **Box 68742 (tester), verbatim:**
+  > NEW TASK #6106 (Pr1, whose_turn mishos_claude), founder ask 10:54 Tbilisi: an admin TOKEN TOP-UP. On a user's admin page, a 'Top up tokens' box (amount + reason) plus POST /admin/users/:id/tokens. Each top-up is logged in the wallet history with who, why and when, and shows at once in the user's balance. A negative correction needs a reason. No money moves. Needed for the 21 Oct launch (guests, testers). DONE WHEN is in the task. I test it on a fictional seat the hour it is live.
+- **Box 68743 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY #2, round 1 (06:35–07:10Z, fictional seats only). Fixes for #5908/#5974 are held, so these are NEW harder cases on the live build, not re-tests.
+  > 1. FIND + KNOW (#5908, #5941), world K: owner's nickname + 3 members' name/job labels + a same-name other person. Find 0/3, Georgian name 0/3, short name 0/3 (1 partly), know-the-person 0/3. Same-name web strangers in 5 of 9 answers although the owner's own record was found every time. Re-test on world K the hour ea883e43 is live.
+  > 2. BETTER THAN PLAIN CLAUDE (#5941), world H: a real public figure saved in the owner's book + 2 members' company labels, owner states the tie. Better than plain Claude 1/3; tie said back 2/3; career 2–12 facts; 'can't confirm it is the same person' 2/3 although members' labels name the same company.
+  > 3. BUBBLE (#5974): waiting for the admin colour setter (68608/68641).
+  > 4. PROBLEM -> SOLVER (#5251), new institution (City Hall permit, solver 1 hop): right solver + close bridge 3/3; problem said back 0/3, 'solved when' 0/3, solutions 0/3, solver's role/source 0/3; 124–163 s.
+  > 5. WARM WAYS (#1849), warm 3-hop vs cold 2-hop: solver found 0/3, find_warm_path 0/3.
+  > 7. CLOSE THE LOOP once end to end: ask → answer back → intro → number → solved → helper thanked: PASS 1/1.
+  > Lines added to 5908, 5941, 5251, 1849 (all still to_build, mishos_claude). No new tasks.
 
 ### 19 Oct, 06:52Z — full battery stage 3: #6073 FAIL 3/3 (launch blocker), #6074 Word refused, #4786 0/5, #1687 and QA-012 partly
 - **Box 68711 (tester), verbatim:**
