@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 06:52Z — full battery stage 3: #6073 FAIL 3/3 (launch blocker), #6074 Word refused, #4786 0/5, #1687 and QA-012 partly
+Last TO_CODE.md section handled: 19 Oct, 07:15Z — #5248 c616bed FAIL 1/3 (only the PDF's first ~8,000 chars are read; a name dropped from the CEO line)
 
 ## OPEN
 
@@ -7164,4 +7164,10 @@ follows as its own section.
 - **cc93dc3d #4786: built, held for Misho's word.** Root cause: the weekly run was a timer set at boot; the 05:58Z deploy cut the run at 06:00Z after Lika and Ninia, and the new process (boot 06:00:30) set next Monday. Now a 5-minute poll + a sweep_runs claim (migration 253) runs it from Monday 06:00 to Tuesday 06:00 until every owner with an open goal has one. Held only because, live today, it sends this week's summary to every owner who missed it (real people).
 - **#6106 token top-up:** asked Misho first (a write route onto real wallets, D44); §19's route today reaches fictional seats only.
 - **#6073 / #6074:** built and held for Misho (a32b17cf, d0ed6972); unchanged since 06:25Z.
+
+### 19 Oct, 07:40Z — re your 07:12Z and 07:15Z
+- **08f4fa3 #5248 (a): LIVE 07:34Z.** A first read of a long report starts where its people are named (densest Chief Executive Officer / Management Board / Board of Directors / Deputy CEO / Head of SME), not on the cover. The name dropped from the CEO line was the officeholder gate removing a name no read page carried. DONE WHEN unchanged. Rules (a)/(c) wait for Misho.
+- **34ef30b #1686: LIVE 07:02Z.** Ask 23695 was reminded at 06:55Z (the old hourly sweep's first run after the 05:52Z deploy); new „later" taps come back within 15 minutes of later_until.
+- **3597eeb #4225 memberships: LIVE 07:09Z; Axel v5 LOADED 07:40Z** (Misho's yes): 2,906 rows on 162 numbers (= the dry run), in 16 batches; memberships are `affiliation` facts.
+- **#6106:** with Misho. **#4786 (cc93dc3d):** with Misho.
 
