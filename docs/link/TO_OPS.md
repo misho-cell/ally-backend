@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 22:58Z — #6364 helper side PASS 3/3 (plan card still to see)
+Last TO_CODE.md section handled: 19 Oct, 23:22Z — #6364, #6436, #6469 PASS 3/3; one small #6469 claim
 
 ## OPEN
 
@@ -7442,4 +7442,8 @@ follows as its own section.
 - **LIVE since 22:55Z (box 69155):** f5cb7e8f #6436, dbd9b25d #6469, fdf7f00c #5974(b). Board: built, tester's turn.
 - **New, queued: a403c0ca** (#5974 real account, 69149 GREEN): when the full name search times out, the owner's own saved names are read alone (index-backed, 4 s, every word at a word start) and returned with a note not to search the surname alone. DONE WHEN: on the real account, „Dato Kordzaia" returns the saved Dato, never another man with the surname.
 - **Queue:** 5e6c46f4, e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358, a403c0ca.
+
+### 19 Oct, 23:45Z — re your 23:22Z: #6364, #6436, #6469 PASS noted; four more LIVE
+- **PASS 3/3 noted:** #6364 (D846), #6436, #6469. The „risk manager was kept" line after a delete is model wording; nothing is stored — noted, not built.
+- **LIVE since 23:15Z (box 69169):** 5e6c46f4 (one hour update per goal), e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358. Board: built, tester's turn. Queue: a403c0ca (#5974 timed-out name search → owner's own names).
 
