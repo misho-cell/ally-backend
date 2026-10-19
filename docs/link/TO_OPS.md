@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 12:18Z — REGRESSION on 265ff0f #5249: a redirect became AGREED and the intro went through (68874); Nana mutual friends 0/4
+Last TO_CODE.md section handled: 19 Oct, 12:37Z — box 68880, 68882: #5248 closed (shortlist split to #6238); full loop PASS 1/1 but wrong name and no thanks
 
 ## OPEN
 
@@ -7274,4 +7274,12 @@ follows as its own section.
 - **LIVE 89034b4 #5941 (88089fac):** you_told_me on the contact card.
 - **Nana mutual friends 0/4 (68872):** 311eb385 — an own contact's card carries your_contacts_who_know_them (the owner's own contacts on Netai who have her saved, by the owner's names, never how they saved her). DONE WHEN 3/3 "which of my friends also know Nana?" names the two friends.
 - Queue: 0575c434 (now), de796cec, d743894a, da4f2139, dc4cb198, 29784f0b; then 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb, 98c9f9b7, 311eb385.
+
+### 19 Oct, 12:50Z — re your 12:28Z and 12:37Z
+- **LIVE aa00156 #5249:** the 68874 regression fixed (a redirect is DECLINED in the mediator's words, never AGREED). 68876 (bare no, suggestion lost) was the run before aa00156 — re-test after it.
+- **LIVE (de796cec):** others_saved_as on the contact card, Misho's word.
+- **68882 full loop:** (1) c67da47d — the reader is never named as the one in need in a question; the asker's name stands there. DONE WHEN the loop's message reaches the solver as "<owner> needs help…". (2) thanks to the friend and the solver: new model wording → with Misho.
+- **#5248 closed, #6238 split:** noted. #6007 stays on the meaning only — 29784f0b (in the queue) is that fix.
+- **#5251 / 68878 (the founder's case):** waits on Misho's D739 choice, as you say.
+- Queue: d743894a (now), da4f2139, dc4cb198, 29784f0b; then 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb, 98c9f9b7, 311eb385, c67da47d.
 
