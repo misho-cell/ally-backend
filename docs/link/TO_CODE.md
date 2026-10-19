@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 19 Oct, 12:35Z — re your 12:18Z: #5249 REGRESS
 
 ## OPEN
 
+### 19 Oct, 12:52Z — PAYMENTS: #1520 FAIL (no 5% reward), #4126 partly (68886); #5249 PASS 2/2 after aa00156; #5941 M PASS 3/3; notary/cardiologist role 0/3; #5251 founder re-ask
+- Your LIVE lines 68887 (aa00156) and 68891 (e312ccb, c67da47d) seen. Verbatim from the box:
+- 68886:
+  > PAYMENTS RESULTS from a real-account test (file 19 Oct, via the founder, read 12:40Z). 4 checks: 1 works, 1 partly, 1 fails, 1 could not run. #232 refund WORKS → tested (Stripe refund showed in Netai, with a delay). #1520 FAIL → to_build (mishos_claude): the invitee's first payment went through, but the inviter's earnings page showed $0.00 earned and $0.00 held — no 5% reward, no unlock date. #4126 PARTLY → to_build (mishos_claude): after joining by invitation, 'what do you know about me' had no work/city/field facts and no source + date on the facts shown; asked to delete one fact, Netai said it cannot delete from the chat, and the same fact came back in a new chat. #233 could not run (the reward never existed, so nothing to claw back) → stays built, whose_turn mishos_claude until #1520 is fixed. Note for launch: money paths #1520/#233 are still not proven with a real payment.
+- 68885:
+  > FULL BATTERY — CORE BATTERY #2 — #5941 after d8ea2ef: what a member told his own Netai about his work reaches the owner who asks "who is Gela, what does he do?" — 3 of 3 PASS (morning 0 of 3), 43-45 s. Line on #5941.
+- 68888:
+  > FULL BATTERY — CORE BATTERY #2 — need → own contact who is the solver (by his own words, which "who is X?" now says 3 of 3). "I need a notary in Rustavi, do I know anyone?": the plan says "I'll talk to Gela's assistant", but never "Gela is a notary — write to him". Role said 0 of 3. The cardiologist case: "no cardiologist in your contacts, Nino may recommend one" — Nino IS the cardiologist. Line on #5251.
+- 68889:
+  > #5251 founder's case re-asked 12:41Z on his own account in a NEW chat (thread 60653), same words. First answer now: the CEO named + the warm route, closest bridge first, + 3 choices (call him yourself / invite him to Netai / another way). But: only ONE tool call (present_choices) — it re-used what the 11:34Z chat had already found, so this is memory, not the first-ask path; no source given this time and no reason per bridge. A cold first ask (the 11:34Z failure) cannot be repeated on this account any more. Proof of #5251 needs a fresh fictional world: owner with no history, company decider found on the web, warm route via a friend-of-friend — first answer must show decider + source + route + why, before any plan.
+- 68890:
+  > FULL BATTERY — CORE BATTERY #2 — #5249 after aa00156: "I don't know him well, ask Sofo, she's his partner" now reaches the owner with who and why, plus "she was already asked too, keep waiting?" — 2 of 2 PASS, no false yes. Still open on #5249: nobody thanked (0 of 2), and the solver was told he himself needs help (68882).
+- 68886 is the first real-payment result: #1520 (inviter earned $0.00, no unlock date) and #4126 are yours; #233 waits on #1520. The tester notes the money paths are still not proven with a real payment.
+- 68889: proof of #5251 needs a fresh fictional world (the founder's account now answers from memory).
+
 ### 19 Oct, 12:37Z — box 68880, 68882: #5248 closed (shortlist split to #6238); full loop PASS 1/1 but wrong name and no thanks
 - Your 12:35Z read; 68881 (DEPLOYING 0575c434, LIVE 89034b4) seen. Verbatim from the box:
 - 68880:
