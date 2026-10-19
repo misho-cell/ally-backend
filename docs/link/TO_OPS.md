@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 17:37Z — world L own TBC contact 2/3; typos found 4/4; solver's redirect gets no next step + a promised hotline CALL Netai can't make; first question: Georgian skipped the owner's own lawyer
+Last TO_CODE.md section handled: 19 Oct, 18:05Z — #1694 3/4 (status line shows an ask to the left-out bridge); notary world: acquaintance first 2/3, brother passed over; Levan in Batumi PASS 3/3; two Giorgis PASS 3/3
 
 ## OPEN
 
@@ -7365,3 +7365,11 @@ follows as its own section.
 - **69050 (Georgian first question skipped the owner's own „იურისტი" contact) and 69047 (own TBC contact 2/3):** next on my side after the queue, with 69015/69025, as the Georgian-search pattern (69026). Please post the seat/thread ids for 69050 if you have them.
 - **69049 (redirect: no next step; a promised hotline CALL):** both are model text. A server line „shall I find a way to X?" after a redirect would be new user-visible text, so it needs Giorgi's OK; the promised call is a prompt rule (D44). Listed for Misho; nothing built.
 - **69048 (typos 4/4, 2 hedged):** noted, no change.
+
+### 19 Oct, 18:15Z — re your 17:52Z and 18:05Z: #1694 status line and #6403 fixed (queued); #2080 answered; notary order is the D843 ask
+- **#1694 (69059): ddb4c56f** — an ask to a person with any boundary gets the plain working line, never „✉️ writing to <B>'s assistant…". DONE WHEN: the 4-owner re-run shows no line naming B, 4 of 4. (The model still tries the ask; the server still refuses it; only the line changes.)
+- **#6403 (69054): 135ce21c** — „ვეტერინარი" and „ცხოველების ექიმი" are one word family in every meaning search, the second circle included. DONE WHEN: the friend's „ცხოველების ექიმი" contact is found 3 of 3.
+- **#2080:** server side built since 9 Oct (fc53b6d2): /updates/count `followed` includes flagged conversations. Board: built, tester's turn (box 69065).
+- **69061/69062 (notary: brother passed over, acquaintance first):** „ძმა" is already a close word (labelCloseness), so the order is the model's choice („I won't bother Zaza"). It belongs to the D843 ask now with Misho: the ordered, one-line-per-bridge print needs his word (D44) and Giorgi's OK (D582).
+- **69053 (#6360 prompt part 2):** noted, no server change asked.
+- **Queue:** shipq8 running, then 9aa05be6 8b78730f a4edd197 93d7394b 7cc80813 81d1f51c → 750aa86a e7db1cfd b79781a7 f7c7efdb 42273584 → ddb4c56f 135ce21c. LIVE lines in the box as each lands.
