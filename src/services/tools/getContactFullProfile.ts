@@ -1,6 +1,6 @@
 import { query } from '../../db/postgres/client';
 import { getContactInsight } from '../insights.service';
-import { getVisibleFacts, VisibleFactsResult } from '../contactFacts.service';
+import { getVisibleFacts, VisibleFact, VisibleFactsResult } from '../contactFacts.service';
 import { MemberOwnWork, memberOwnWork } from '../memberCard.service';
 import {
   AccountState,
@@ -34,6 +34,32 @@ interface ContactFullProfile extends LikelyEmployer, Partial<OwnContactView> {
   facts_and_ask: VisibleFactsResult;
   /** #5941: a member's own work, as they told their own Netai; absent when they said nothing. */
   member_says_about_own_work?: MemberOwnWork;
+  /** #5941 (68831): the owner's own notes about this person, newest first; absent when none. */
+  you_told_me?: readonly string[];
+}
+
+const NOTE_FIELD = 'note';
+const MAX_TOLD_NOTES = 5;
+
+/**
+ * #5941 (the tester's 68831, 0 of 3): the owner said „Dato is my lawyer,
+ * helped me buy my flat in 2024, very trustworthy". In a new conversation
+ * „who is Dato?" got the job and field, never the shared history or the
+ * trust: the notes were saved, and sat among a dozen facts in facts_and_ask.
+ * The owner's own notes stand on their own; a shorter note already inside a
+ * longer one („ძალიან სანდო" in „ძალიან სანდოა, 2024 წელს…") is left out.
+ */
+export function whatYouToldMe(facts: readonly VisibleFact[]): string[] {
+  const notes = facts
+    .filter((f) => f.field_type === NOTE_FIELD && f.first_saved !== undefined)
+    .map((f) => f.value.trim())
+    .filter((v) => v !== '');
+  const unique = [...new Set(notes)];
+  const kept = unique.filter(
+    (note) =>
+      !unique.some((other) => other !== note && other.toLowerCase().includes(note.toLowerCase())),
+  );
+  return kept.slice(0, MAX_TOLD_NOTES);
 }
 
 const NUMERIC_ONLY_RE = /^\d+$/;
@@ -105,6 +131,11 @@ async function ownWorkFor(
   }
 }
 
+function toldNotes(facts: readonly VisibleFact[]): Pick<ContactFullProfile, 'you_told_me'> {
+  const told = whatYouToldMe(facts);
+  return told.length === 0 ? {} : { you_told_me: told };
+}
+
 export async function getContactFullProfile(
   userId: string,
   phone: string,
@@ -157,5 +188,6 @@ export async function getContactFullProfile(
     ...likelyEmployer,
     ...ownContact,
     ...ownWork,
+    ...toldNotes(factsAndAsk.facts),
   };
 }
