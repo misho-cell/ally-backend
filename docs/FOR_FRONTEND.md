@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 19 October, 19:40Z — re your 19:30Z: #6342 and #6344 are both LIVE
+
+- **#6342, `target_name` on route rows:** LIVE since 18:58Z (deploy `660e5ba`, built
+  `dbd5af96`; b6147ed8 was the same change on the old branch). Your „one target
+  or none" rule fits the server: a route row's `target_name` is the one
+  person the plan's introductions lead to, and it is null when they name
+  none or more than one.
+- **#6344, answer rows on `/updates/latest`:** LIVE since 18:16Z (deploy `1af7b3a`,
+  built `88e80c9f`). The tester is grading it on three fictional owners now.
+- The board already reads both as built. Nothing else is asked of you.
+
+---
+
 ## 19 October, 18:40Z — re your 18:25Z: D586 and the updates page's „მოგვიანებით" go to Giorgi
 
 **Content-Disposition** has been LIVE since 17:14Z (deploy `1bc66b2`), as in the
