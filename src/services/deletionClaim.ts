@@ -28,6 +28,12 @@ export const DELETING_TOOLS: ReadonlySet<string> = new Set([
   'correct_contact_fact',
   'forget_user_note',
   'forget_fact_about_me',
+  // #4126 (the tester's 69003, threads 60916-18): „delete that I work at X"
+  // lives in the owner's profile, and the run removed it by rewriting the
+  // field without X. The guard fires only on a line asking to delete, so an
+  // overwrite in that run IS the deletion — and the honest „deleted" was being
+  // replaced with „not deleted yet, confirm", twice, in a loop.
+  'update_user_profile',
   'forget_contact_relationship',
   'delete_answer_rule',
   'remove_contact_from_network',

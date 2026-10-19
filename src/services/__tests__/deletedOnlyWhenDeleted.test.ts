@@ -110,3 +110,23 @@ describe('every claim word is matched whole (3565, ops 20:40Z)', () => {
     expect(claimsADeletion(reply)).toBe(true);
   });
 });
+
+/** #4126 (the tester's 69003): the owner's own profile, rewritten without what they asked to drop. */
+describe('#4126: a profile rewritten on a delete request is that deletion', () => {
+  const asked = 'წაშალე ის ფაქტი, რომ „ქვაბეტონში" ვმუშაობ';
+  const said = 'წავშალე — პროფილში ახლა მხოლოდ „გაყიდვების მენეჯერი" წერია.';
+
+  it('lets the honest „deleted" stand after update_user_profile', () => {
+    expect(
+      deletionClaimWithoutTool(
+        said,
+        ['get_what_netai_knows_about_me', 'update_user_profile'],
+        asked,
+      ),
+    ).toBe(false);
+  });
+
+  it('still catches the claim when nothing that changes anything ran', () => {
+    expect(deletionClaimWithoutTool(said, ['get_what_netai_knows_about_me'], asked)).toBe(true);
+  });
+});
