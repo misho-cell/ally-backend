@@ -328,6 +328,7 @@ import { confirmedWarmTieSql } from '../../services/chorusCap';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { cancelOneAsk } from '../../services/taskAsks.service';
 import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
 import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
@@ -7226,6 +7227,42 @@ adminRouter.post('/identity/unmerge', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+/**
+ * The CELA list (Tornike, 19 Oct; Misho's word in the code session's chat): 52
+ * numbers from outside the base, to be joined to the Axel export without the
+ * numbers ever leaving in the clear. The export's own hash for each, in the
+ * order given, and nothing else — no lookup, no write. Admin login only.
+ *
+ *   POST /admin/exports/phone-hashes { phones: string[] (1..200) }
+ *   200 { success: true, data: { hashes: string[] } }   '' where a number has no digits
+ *   400 bad body · 401 / 403 not an admin
+ */
+const PHONE_HASHES_MAX = 200;
+const PHONE_HASH_REQUESTS_PER_MINUTE = 10;
+
+adminRouter.post(
+  '/exports/phone-hashes',
+  rateLimit({ windowMs: 60_000, max: PHONE_HASH_REQUESTS_PER_MINUTE }),
+  body('phones').isArray({ min: 1, max: PHONE_HASHES_MAX }),
+  body('phones.*').isString(),
+  (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res
+        .status(400)
+        .json({ success: false, error: `Pass phones: 1 to ${PHONE_HASHES_MAX} strings.` });
+      return;
+    }
+    try {
+      const phones = (req.body as { phones: string[] }).phones;
+      res.status(200).json({ success: true, data: { hashes: phones.map(exportPhoneHash) } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /admin/exports/phone-hashes]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not hash the numbers' });
+    }
+  },
+);
 
 /**
  * The Axel members export (Misho's direct word, 6 Oct 2026; the founder's
