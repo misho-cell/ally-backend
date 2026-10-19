@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 14:22Z — LAUNCH BLOCKERS #6340 and #6341; Giorgi URGENT #6339
+Last TO_CODE.md section handled: 19 Oct, 14:52Z — closest people PASS 3/3; NEW #6358; Beka twice PASS; Produce in Georgia 0/3; Giorgi D586 (#6354), #6356
 
 ## OPEN
 
@@ -7320,3 +7320,12 @@ follows as its own section.
 - **#1694 3/4 (68935):** root cause — B's terms (sesk, loan, credit) share no word with the searches "ბანკი"/"კრედიტი", so search returned him and the model offered him as a choice before any goal existed (the stored plan itself held only A). Fix d4bcbeb6 (queued): each run withholds whoever closed a subject the OWNER's own line names, from every search result (found person, go-between, further out). DONE WHEN 4/4 B is never named — not in choices, plan or after — and no "did not go through with B" line.
 - **Deploy note:** bad2d9f (ffab8683) Railway build FAILED with no log (local build + suite green); it went live inside e0d3a6f.
 - Queue: d62acf9d (#6338, now), 2d098c1d, f12746c2, c43a46e1, cba7ea37; then 17b85d4a (#6339), 3979439c (#4126 research), 143b0443 (#1694), a4ba92f0 (FOR_FRONTEND G-074), d8158401 (#1520/D844).
+
+### 19 Oct, 15:35Z — re your 14:37Z and 14:52Z
+- **LIVE:** 110f0a1 #6338 (ten codes/hour; DONE WHEN 6th–10th sent, 11th refused); 89bb69c #1849 მერია→მერიის (DONE WHEN "მერია" finds "მერიის ..." 2/2). Box 68982.
+- **Built, verified, queued (batch after next):** 4b8cc326 frontend 14:35Z — Content-Disposition exposed (exports save under their real name); 28dd150d **#6356** — a waiting line is said once, again only when that person's status changes (DONE WHEN goal 29308-shaped thread: no repeated "<X>: კითხვა მიუვიდა…" under later replies, 3/3); fc31c68f **#6345 D584** — no „სხვა, მე დავწერ" on any card, owner or helper (DONE WHEN 5 fresh cards of each kind carry none); 38d33806 **#6354 D586** — no „მოგვიანებით …" on any card (helper question, owner buttons, server cards; typed "later" still offers days) (DONE WHEN as D584); 596788c6 FOR_FRONTEND 15:30Z.
+- **#6339 split (G-092):** b64d84eb covers #6339 (false "already helped"), #6348 (add a person to an approved plan) and #6350 (double approval); #6349 (honest "cannot send") follows from #6348 — no refusal left to explain in that thread shape. Ships next batch (17b85d4a).
+- **#6346 / #6347 labels:** wait for Giorgi's OK on „ახლა არა" / „კი, სთხოვე გაცნობა" — note D586 already removes the „later" one wherever it is a later.
+- **#5149 G/H/I, #6351–#6353 wording:** Giorgi's OK is in (D582); the helper-side line and the answer line are what the model is told to write → Misho's D44 yes needed; asking him.
+- **Next I take, in order:** #6344 (helper answer missing from /updates/latest), #5908 ლეკო 0/2, #6358 (a bridge the owner ruled out is saved and kept out in a new chat), #6342 (target at the end of each path), "solved" lost (#5249 68947).
+- **PASS noted:** #5974 closest people 3/3 (68967), Beka twice 3/3 (68964), same-name Ninos 3/3 (68949).
