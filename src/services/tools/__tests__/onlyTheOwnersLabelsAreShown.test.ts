@@ -15,11 +15,23 @@ describe('the contact card', () => {
     { tag: 'x@y.ge', contributor_count: 1, total_weight: 1, own: false },
   ];
 
-  it('shows the owner’s labels and only a count of everyone else’s', () => {
+  it('shows the owner’s labels as theirs, and everyone else’s apart, by count', () => {
     const card = ownLabelsOnly(rows);
     expect(card.tags).toEqual([{ tag: 'ვეტერინარი', contributor_count: 3, total_weight: 5 }]);
     expect(card.others_labels_count).toBe(2);
-    expect(JSON.stringify(card)).not.toContain('deda nino');
+    // Misho, 19 Oct: other members' labels are said, without who saved them.
+    expect(card.others_saved_as).toEqual([
+      { label: 'deda nino', saved_by: 1 },
+      { label: 'gizhi levani', saved_by: 1 },
+    ]);
+    expect(JSON.stringify(card)).not.toContain('x@y.ge');
+  });
+
+  it('never says who saved another member’s label', () => {
+    const card = ownLabelsOnly(rows);
+    for (const label of card.others_saved_as) {
+      expect(Object.keys(label).sort()).toEqual(['label', 'saved_by']);
+    }
   });
 
   it('reads whose each label is by the owner’s id', () => {

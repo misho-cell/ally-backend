@@ -20,6 +20,14 @@ interface TagSummary {
   total_weight: number;
 }
 
+export interface OthersLabel {
+  readonly label: string;
+  readonly saved_by: number;
+}
+
+/** Enough to read where somebody works now; a long tail of nicknames adds nothing. */
+const MAX_OTHERS_LABELS = 10;
+
 interface ContactFullProfile extends LikelyEmployer, Partial<OwnContactView> {
   phone: string;
   // Whether this contact is a registered Ally member — steers intro vs. invite.
@@ -28,8 +36,14 @@ interface ContactFullProfile extends LikelyEmployer, Partial<OwnContactView> {
   /** Pays for Netai today (Ticket 10 Task 9). */
   netai_subscriber: boolean;
   tags: TagSummary[];
-  /** Row 289: how many labels OTHER people saved — never their words. */
+  /** Row 289: how many labels OTHER people saved. */
   others_labels_count: number;
+  /**
+   * Misho, 19 Oct (the tester's 68844): what other members saved this person
+   * as, said WITHOUT who saved it — each label with how many saved it. Lifts
+   * row 289's „never their words" (D523/D539) for the words; never the author.
+   */
+  others_saved_as: OthersLabel[];
   insights: Record<string, unknown> | null;
   facts_and_ask: VisibleFactsResult;
   /** #5941: a member's own work, as they told their own Netai; absent when they said nothing. */
@@ -93,12 +107,21 @@ export function isDisplayableTag(tag: string): boolean {
  * ROW 289 — D539 („only my own labels") and D523 (never show how another
  * person saved a contact), the tester's 941: the contact card shows the labels
  * the owner saved, and of everyone else's only how many there are.
+ *
+ * Misho, 19 Oct: other members' labels ARE said, without the author. Three
+ * friends had saved Giga as „TBC credit risk", „Bank of Georgia since 2025"
+ * and „left TBC now at BoG"; „where does Giga work now?" got „nothing on his
+ * record" 0 of 4. Each label goes with how many saved it, never with who.
  */
 export function ownLabelsOnly(
   rows: ReadonlyArray<TagSummary & { own: boolean }>,
-): Pick<ContactFullProfile, 'tags' | 'others_labels_count'> {
+): Pick<ContactFullProfile, 'tags' | 'others_labels_count' | 'others_saved_as'> {
   const shown = rows.filter((r) => isDisplayableTag(r.tag));
   return {
+    others_saved_as: shown
+      .filter((r) => r.own !== true)
+      .slice(0, MAX_OTHERS_LABELS)
+      .map((r) => ({ label: r.tag, saved_by: r.contributor_count })),
     tags: shown
       .filter((r) => r.own === true)
       .map(({ tag, contributor_count, total_weight }) => ({
