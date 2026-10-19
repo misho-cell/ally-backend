@@ -1054,6 +1054,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       target_user_id: number | null;
       name: string | null;
       own_name: string | null;
+      saved_label: string | null;
       via_names: string[] | null;
       via_contacts: { name: string | null; phone: string }[] | null;
       employer: string | null;
@@ -1280,6 +1281,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               COALESCE(MAX(u_t.name), MAX(ua_t.alias))                        AS name,
               -- Row 296: the member's OWN name, told apart from a bridge's label.
               MAX(u_t.name)                                                    AS own_name,
+              -- Misho, 19 Oct (68868): the bridge's label, apart from a member's own name.
+              MAX(ua_t.alias)                                                  AS saved_label,
               array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
                 FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL) AS via_names,
               -- Ticket 14 [30]: the bridge as an askable person, not just a name.
@@ -1504,7 +1507,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           'labels',
           rolesFromLabels(
             rows.map((r) => ({
-              label: r.name,
+              label: r.saved_label ?? r.name,
               hasEmployer: r.employer !== null,
               hasTitle: r.jobPosition !== null,
             })),
@@ -1531,7 +1534,15 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     );
 
     const shaped = rows.map((row) => {
-      const fromLabel = (row.name !== null ? labelRoles.get(row.name) : undefined) ?? {};
+      /**
+       * The tester's 68868 (TR, CH, LG, KN, NS — members, role 0 of 15): a
+       * friend's label on a MEMBER was never read, because a member's row
+       * carries the member's own name and the roles were read from that. The
+       * label the bridge saved is read for everyone (Misho, 19 Oct: others'
+       * labels are said, without the author); role_source says it is a label.
+       */
+      const labelled = row.saved_label ?? row.name;
+      const fromLabel = (labelled !== null ? labelRoles.get(labelled) : undefined) ?? {};
       // 5446 (D792): found only by a goal they helped solve — offered, never described.
       const caseOnly = row.case_only === true;
       const employer = caseOnly ? null : (row.employer ?? fromLabel.employer ?? null);
