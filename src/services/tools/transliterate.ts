@@ -711,6 +711,23 @@ function shortNameReadings(word: string): string[] {
   return georgianVariants(lower, MIN_GEORGIAN_NAME_CHARS).filter((reading) => hasGeorgian(reading));
 }
 
+/** A word's letters shorter than this keep their ending: „და" is not a stem. */
+const MIN_A_FINAL_LETTERS = 4;
+
+/**
+ * #1849 (the tester's 68863, 0 of 2): a friend saved X as „მერიის არქიტექტურის
+ * სამსახურის უფროსი"; „who works at the მერია?" found nobody. A Georgian noun
+ * ending in „ა" drops it before the genitive and instrumental („მერია" →
+ * „მერიის", „მერიით"), so the word itself is no prefix of either and the
+ * stemmer leaves it whole. Its „ი" form („მერიი") reaches both; null when the
+ * word is not a Georgian one ending in „ა".
+ */
+export function aFinalCaseStem(word: string): string | null {
+  if (!hasGeorgian(word) || !word.endsWith('ა')) return null;
+  if ([...word].length < MIN_A_FINAL_LETTERS) return null;
+  return `${word.slice(0, -1)}ი`;
+}
+
 function wordVariantGroup(word: string): string[] {
   const lower = word.toLowerCase();
   const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
@@ -730,6 +747,9 @@ function wordVariantGroup(word: string): string[] {
     if (form === latin) continue;
     for (const term of buildSearchTerms(form)) group.add(term);
   }
+  // Only where the stemmer left the word whole: a stem it cut already reaches every case.
+  const caseStem = stem === lower ? aFinalCaseStem(lower) : null;
+  if (caseStem !== null) for (const term of buildSearchTerms(caseStem)) group.add(term);
   // #1849 world Q: „თიბისი" also searches „TBC" — a company's other spellings.
   for (const spelling of otherBrandSpellings(word)) {
     for (const term of buildSearchTerms(spelling)) group.add(term);
