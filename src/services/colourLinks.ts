@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
+import { labelTie, LabelTie } from './labelCloseness';
 import { AllyColour, CLOSE_COLOURS, MAX_PHONES_PER_CALL, toColour } from './oldAllyColours.service';
 
 /**
@@ -12,6 +13,11 @@ import { AllyColour, CLOSE_COLOURS, MAX_PHONES_PER_CALL, toColour } from './oldA
  * bridge's side orders the list and is said, at most, as "holds them close"
  * (green or blue) — the same fact a bubble already states — never as a colour
  * (D680: no member's private judgment about a named person, not even as a reason).
+ *
+ * World C (the tester's 68815): where the bridge has no colour for the next
+ * person, the bridge's own label of them stands in — kin weighs as green, a
+ * friend word as blue (labelCloseness.ts) — and is said the same way, as
+ * "holds them close", never as the word they saved.
  */
 const LINK_QUERY_TIMEOUT_MS = 3_000;
 
@@ -22,6 +28,14 @@ export const COLOUR_WEIGHT: Readonly<Record<AllyColour, number>> = {
   [AllyColour.Red]: 1,
 };
 const UNCOLOURED_WEIGHT = 0;
+/** The colour a bridge's own label stands in for, when the bridge gave no colour. */
+const LABEL_TIE_COLOUR: Readonly<Record<LabelTie, AllyColour | null>> = {
+  [LabelTie.Kin]: AllyColour.Green,
+  [LabelTie.Friend]: AllyColour.Blue,
+  [LabelTie.None]: null,
+};
+/** A member's labels of one person: their saved name and their tags. */
+const MAX_LABELS_PER_LINK = 20;
 /** Said in place of a bridge with no name to say. */
 const UNNAMED_BRIDGE = 'this contact';
 
@@ -59,11 +73,13 @@ interface LinkRow {
   readonly next_phone: string;
   readonly owner_tier: string | null;
   readonly bridge_tier: string | null;
+  readonly bridge_labels: string[] | null;
 }
 
 /** Both sides of each link in one statement: two primary-key probes per pair. */
 const LINK_SQL = `
-  SELECT p.bridge_phone, p.next_phone, own.tier AS owner_tier, theirs.tier AS bridge_tier
+  SELECT p.bridge_phone, p.next_phone, own.tier AS owner_tier, theirs.tier AS bridge_tier,
+         said.labels AS bridge_labels
     FROM unnest($2::text[], $3::text[]) AS p(bridge_phone, next_phone)
     LEFT JOIN human_relationship_tiers own
            ON own.user_id = $1::int AND own.contact_phone = p.bridge_phone
@@ -75,6 +91,21 @@ const LINK_SQL = `
        WHERE up.phone = p.bridge_phone
        LIMIT 1
     ) theirs ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT array_agg(l.label) AS labels
+        FROM (
+          SELECT ua.alias AS label
+            FROM "UserPhone" up
+            JOIN "UserAlias" ua ON ua."contactId" = up."userId" AND ua.phone = p.next_phone
+           WHERE up.phone = p.bridge_phone
+          UNION ALL
+          SELECT ut.tag
+            FROM "UserPhone" up
+            JOIN "UserTags" ut ON ut."contactId" = up."userId" AND ut.phone = p.next_phone
+           WHERE up.phone = p.bridge_phone
+          LIMIT $5
+        ) l
+    ) said ON TRUE
    LIMIT $4`;
 
 function uniquePairs(pairs: readonly LinkPair[]): LinkPair[] {
@@ -87,9 +118,17 @@ function uniquePairs(pairs: readonly LinkPair[]): LinkPair[] {
   return [...seen.values()].slice(0, MAX_PHONES_PER_CALL);
 }
 
+/** The bridge's colour for the next person, or the one their own label stands in for. */
+export function bridgeSide(
+  tier: string | null,
+  labels: readonly string[] | null,
+): AllyColour | null {
+  return toColour(tier) ?? LABEL_TIE_COLOUR[labelTie(labels ?? [])];
+}
+
 function fromRow(row: LinkRow): LinkColours {
   const ownerColour = toColour(row.owner_tier);
-  const bridgeColour = toColour(row.bridge_tier);
+  const bridgeColour = bridgeSide(row.bridge_tier, row.bridge_labels);
   return {
     ownerColour,
     bridgeHoldsClose: bridgeColour !== null && CLOSE_COLOURS.includes(bridgeColour),
@@ -107,7 +146,13 @@ export async function linkColours(
   if (unique.length === 0) return out;
   const result = await query<LinkRow>(
     LINK_SQL,
-    [ownerId, unique.map((p) => p.bridge), unique.map((p) => p.next), unique.length],
+    [
+      ownerId,
+      unique.map((p) => p.bridge),
+      unique.map((p) => p.next),
+      unique.length,
+      MAX_LABELS_PER_LINK,
+    ],
     LINK_QUERY_TIMEOUT_MS,
   );
   for (const row of result.rows) {
