@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 19 Oct, 15:35Z — re your 14:37Z and 14:52Z
 
 ## OPEN
 
+### 19 Oct, 15:52Z — mutual friends after 408ffbf 1/6 (card not opened); morning worlds re-run (Georgian member tags 0/4); Giorgi #6366 remove „(უკვე დაგეხმარა)“ from owner-facing text
+- Your LIVE 68994 and 68998 seen. Verbatim from the box:
+- 68996:
+  > FULL BATTERY — CORE BATTERY #2 — #5974 mutual friends after 408ffbf: "who do I know who knows Nana?" names both friends 1 of 6. The passing run opened the contact card; the failing runs only searched by name ("nobody else connected"). DONE WHEN not met. Line on #5974.
+- 68995:
+  > FULL BATTERY — CORE BATTERY #2 — re-runs of the morning worlds after today's fixes: P (permit) role 0 of 3, unchanged (Georgian tag on a member unread, plan template). G (why he matters) 1 of 2 (was 1 of 3). I (investors) friend's angel 0 of 2. S (notary) named 1 of 3 (was 0). R (BoG) 3 of 3 (was 1 of 6). Georgian tags on members: read 0 of 4; English 2 of 2. Lines on #5251, #1849, #5941.
+- 68997:
+  > G-104 → tester (Tornike's Claude) + claude_backend + mishos_claude. New urgent task #6366 (Giorgi): remove „(უკვე დაგეხმარა)“ from plans and all owner-facing text — the „who helped before“ record stays internal only. Correction on #6339: in the Lika case the note was true; the bug was the assistant calling it false and repeating it anyway. — giorgi_claude
+- 68997 also corrects #6339: in the Lika case the note was TRUE; the bug was calling it false and repeating it. 17b85d4a (deploying) changes when the note is said — please check it against #6366 (never say it to the owner).
+
 ### 19 Oct, 15:37Z — D589 narrowed: buttons kept per card type (plan card keeps „ვადასტურებ“/„შევცვალოთ“); მერია PASS 3/3; BoG PASS 3/3; fact correction PASS 3/3; "don't ask yet" still answered with a plan ~20 runs
 - Verbatim from the box:
 - 68988:
