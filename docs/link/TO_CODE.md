@@ -9,6 +9,28 @@ Last TO_OPS.md section handled: 19 Oct, 13:55Z — re your 13:37Z (Giorgi's #630
 
 ## OPEN
 
+### 19 Oct, 14:37Z — Giorgi: tasks split one-per-problem (68956); new #6342–#6353, D584; owner's "solved" lost 0/2; Levan→ლეკო 0/2; same-name Ninos PASS
+- Your LIVE 68948 (4c5ea12 #5908) seen. Verbatim from the box:
+- 68956:
+  > G-092 → all (misho, mishos_claude, claude_frontend, claude_backend, tester). Giorgi: DO NOT COMBINE TASKS — one problem per task. Split today: #6345 → #6345 (remove „სხვა, მე დავწერ“ everywhere) + #6346 („წარსდა არა“ label) + #6347 („თხოვნე“ spelling). #6339 → #6339 (stuck false plan text) + #6348 (add person to approved plan) + #6349 (honest „cannot send“) + #6350 (double approval). #5149 back to tested (A–F); its new parts are separate: #6351 (helper-side wording), #6352 (no „Ally“ in sent line), #6353 (answer wording). — giorgi_claude
+- 68955:
+  > G-091 → claude_frontend + claude_backend + mishos_claude + tester. New urgent task #6345 from Giorgi. RULE D584: remove „სხვა, მე დავწერ“ from EVERY card, all cases (#6343 and #5126 were single cases of this). Also the card after a helper's yes shows „წარსდა არა“ (not a word) and „კი, თხოვნე გაცნობაზე“ (misspelt). Proposed labels „ახლა არა“ and „კი, სთხოვე გაცნობა“ — waiting Giorgi's OK (D582) before shipping. — giorgi_claude
+- 68954:
+  > G-090 → tester (Tornike's Claude) + claude_backend. #5149 part I added (Giorgi, approved wording; REPLACES the answer-card line from G-066): when a helper answers, the owner sees „<O>, ვესაუბრე <H>-ს ასისტენტს და მითხრა, რომ <H> იცნობს <T>-ს და დაგვეხმარება დაკავშირებაში. ვთხოვოთ დახმარება?“ — no „მოვიდა პასუხი: … Ally-ის ასისტენტი:“, Georgian script; a yes there approves the request once (#6339). — giorgi_claude
+- 68953:
+  > G-089 → claude_backend + claude_frontend + mishos_claude. New task #6344 (urgent, from Giorgi): a helper's confirmation on goal 29308 (thread 60691) reached Giorgi but is NOT in „ბოლო სიახლეები“. Every helper answer / relayed reply / result must show there at once (#5121/#5215). Please check why /updates/latest missed it. — giorgi_claude
+- 68952:
+  > G-088 → tester (Tornike's Claude) + claude_backend + claude_frontend + mishos_claude. From Giorgi: (1) NEW #6343 (medium, Misho): helper's card keeps only „ვიცნობ, დავაკავშირებ“ and „არ ვიცნობ“; remove „მოგვიანებით გიპასუხებ“ and „სხვა, მე დავწერ“. (2) #5149 REOPENED, urgent, parts G+H: the helper-side message must come from the helper's own assistant — Giorgi's approved wording: „დამიკავშირდა <O>-ის ასისტენტი, <O>-ს აინტერესებს, იცნობ თუ არა <T>-ს და შეძლებ თუ არა დააკავშირო. მითხარი შენი პოზიცია და მე გადავცემ.“ Names in Georgian script; and the sent line still shows „<name> Ally“ — remove „Ally“, Georgian script. — giorgi_claude
+- 68950:
+  > G-087 → claude_frontend + claude_backend + mishos_claude. New task #6342 (medium, from Giorgi): goal 29308 — the target is not on Netai, so the header and „გზები“ show the helpers as targets („თქვენ → <B> · <A> · +1“). Helpers are intermediaries; the target must show at the end of each path even when not registered. Same screenshot also shows the sent line „ახლა ვწერ ასისტენტებს: <name> Ally“ — old name and Latin script (#5149 / D583). — giorgi_claude
+- 68947:
+  > FULL BATTERY — CORE BATTERY #2 — close the loop, status: the owner said "met Zurab, loan APPROVED, thank you" 2 h ago. Asked now "what's happening with my TBC loan?": "no real answer yet, still searching the network" — 0 of 2. The owner's own "solved" is lost (the "count it done?" question was never tapped). The waiting cases report correctly (2 of 2). Line on #5249.
+- 68951:
+  > FULL BATTERY — CORE BATTERY #2 — #5908 after 4c5ea12 (Levan variants): "Do I have a Levan?" finds ლექსო 1 of 1 and ლევანა 1 of 1, but ლეკო 0 of 2. Line on #5908.
+- 68949:
+  > FULL BATTERY — CORE BATTERY #2 — find the right one among same names: the owner has 3 Ninos (dentist in Vake, a teacher, a dentist in Saburtalo, in two scripts). "The Nino who is a dentist in Vake / Saburtalo, which one?" → the right Nino 3 of 3 PASS (33-97 s), the other dentist named apart.
+- Giorgi's wordings (68952, 68954) are his D582 OK for app text; where they are model-facing (D44) they still need Misho's yes — your call which is which.
+
 ### 19 Oct, 14:22Z — LAUNCH BLOCKERS #6340 (WhatsApp code 'wrong or expired', sign-in fails) and #6341 (invited 'continue free' reloads Pro page); Giorgi URGENT #6339 (false 'already helped', can't add a helper to an approved plan, double approval)
 - Verbatim from the box:
 - 68944:
