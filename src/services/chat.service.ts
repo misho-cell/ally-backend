@@ -1,4 +1,10 @@
-import { askedFileFormat, withEarlierListForAFile, withFileLine } from './excelLine';
+import {
+  askedFileFormat,
+  contactsAsList,
+  listedNames,
+  withEarlierListForAFile,
+  withFileLine,
+} from './excelLine';
 import { tableFromMessage } from './messageTable';
 import {
   buttonLanguageRefusal,
@@ -5902,6 +5908,8 @@ const runFoundFurtherOut = new Map<string, string[]>();
  * whatever the model passed — and part 2 tells the owner who was suggested.
  */
 const runRedirectAnswers = new Map<string, string>();
+/** #6074: the names this run's list_my_contacts returned, for a file the owner asked for. */
+const runListedContacts = new Map<string, string[]>();
 
 /** 5347 (63867): people found further out, for the plan sentence — see foundThroughFirstLinks. */
 function noteFoundFurtherOut(runId: string, further: readonly FarHit[]): void {
@@ -9588,6 +9596,7 @@ function clearRunState(runId: string): void {
   runFoundThroughBridges.delete(runId);
   runFoundFurtherOut.delete(runId);
   runRedirectAnswers.delete(runId);
+  runListedContacts.delete(runId);
   runServerSentLines.delete(runId);
   forgetNamesAsked(runId);
 }
@@ -10780,11 +10789,14 @@ async function executeToolCall(
             share_note: invite.kind === 'wake' ? WAKE_SHARE_NOTE : INVITE_SHARE_NOTE,
           };
     }
-    case 'list_my_contacts':
-      return listMyContacts(userId, {
+    case 'list_my_contacts': {
+      const listed = await listMyContacts(userId, {
         limit: input['limit'],
         membersOnly: input['members_only'] === true,
       });
+      if (runId !== undefined) runListedContacts.set(runId, listedNames(listed));
+      return listed;
+    }
     case 'get_invite_link': {
       const invite = await getInviteLink(userId);
       // Ticket 17 Task 39: the sendable text rides the run to run_complete, so
@@ -17433,6 +17445,12 @@ export async function processChat(
       return null;
     });
     effectiveFinal = withEarlierListForAFile(effectiveFinal, earlier, userMessage);
+    // #6074 retest (60506): no list here or before — the names this run's own list returned.
+    effectiveFinal = withEarlierListForAFile(
+      effectiveFinal,
+      contactsAsList(runListedContacts.get(runId) ?? []),
+      userMessage,
+    );
   }
   effectiveFinal = withFileLine(effectiveFinal, userMessage, language);
   effectiveFinal = await withWhyInOneSentence(effectiveFinal, userMessage, threadId, choices);

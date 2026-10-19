@@ -48,7 +48,7 @@ const ASKS_FOR_MARKDOWN_RE = /markdown|მარკდაუნ|\.md\b/iu;
 const SPEAKS_OF_A_FILE_RE =
   /excel|ექსელ|xlsx|spreadsheet|ცხრილ|ფაილ|file|sheet|word|ვორდ|docx|document|დოკუმენტ|markdown|მარკდაუნ/iu;
 const CANNOT_OR_PASTE_RE =
-  /ვერ\s|არ\s+შემიძლია|არ\s+შეიძლება|შეუძლებელ|ჩასვი|ჩასვამ|ჩააკოპირე|დააკოპირე|გადაიტანე|cannot|can['’]t|can\s+not|unable|not\s+able|paste|copy\s+(?:it|this|the)/iu;
+  /ვერ\s|არ\s+შემიძლია|არ\s+შეიძლება|შეუძლებელ|ჩასვ|ჩააკოპირე|დააკოპირე|გადაიტანე|cannot|can['’]t|can\s+not|unable|not\s+able|paste|copy\s+(?:it|this|the)/iu;
 const SENTENCE_RE = /[^.!?…]+[.!?…]*\s*/gu;
 
 /** Did the owner ask for the result as an Excel file? */
@@ -163,4 +163,22 @@ export function withFileLine(given: string, ownerLine: string, language: RunLang
     .replace(/\n{3,}/gu, '\n\n')
     .trimEnd();
   return `${kept}\n\n${line}`;
+}
+
+/**
+ * #6074 retest (the tester's 68835, 60506): „my contacts as a Word file" in a new
+ * conversation — the run called list_my_contacts, then wrote „I can't make a
+ * downloadable Word file, I can lay it out as text" and no list. Nothing in the
+ * reply, and no reply before it, to draw the file from. The names that run's own
+ * list returned are that list: the owner's own saved names, never a number.
+ */
+export function listedNames(listed: {
+  readonly contacts: ReadonlyArray<{ readonly name: string | null }>;
+}): string[] {
+  return listed.contacts.map((contact) => contact.name?.trim() ?? '').filter((name) => name !== '');
+}
+
+/** The names as a reply that lists them; null when there are none. */
+export function contactsAsList(names: readonly string[]): string | null {
+  return names.length === 0 ? null : names.map((name) => `- ${name}`).join('\n');
 }
