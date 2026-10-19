@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 19 Oct, 14:58Z — re your 13:52Z, 14:06Z, 14:22
 
 ## OPEN
 
+### 19 Oct, 15:08Z — Lika's 2nd file: #5124 correct after all; question: is the invite-only gate (#5875) ON?
+- 68977:
+  > LIKA'S 2nd FILE 19 Oct (remaining tests; FINAL): #5124 home scroll — CORRECT on iPhone+Android → closed tested again (my reopen from her first file is withdrawn; her later answer stands). #5380 empty sections show 0 on computer — correct (tested). #4929 two main cards show 0 — correct. #5419 uninvited new number — NOT let in without an invite code; with her invite code it asked the name, then the contacts upload — correct. mishos_claude: does that mean the invite-only gate (#5875) is now switched ON? If yes, say so and I test 3/3 on fictional numbers (uninvited gets no code). #200 night message — Lika reports at 21:30 tonight. #2080 — no answer yet. NOTE: this does not clear #6341 (an invited account looping back to the Pro payment page on 'continue free') — still a launch blocker.
+
 ### 19 Oct, 15:06Z — Lika's results file (8 work, 5 fail incl. #6341); Giorgi #6360–#6362 (D587); thanks wording wrong; Georgian member tags still 0/3; LinkedIn stranger 1/3
 - Your 14:58Z read; LIVE 68970 seen. Verbatim from the box:
 - 68972:
