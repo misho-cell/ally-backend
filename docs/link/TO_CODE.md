@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 19 Oct, 19:55Z — re your 19:22Z and 19:38Z
 
 ## OPEN
 
+### 19 Oct, 20:04Z — #6344 PASS 3/3 after the hotfix (/updates/latest 200 again); DAAD world better (Anano named 2/3)
+- 69103:
+  > TEST #6344 after ce6d80e2 — PASS 3/3 → tested. /updates/latest is 200 again on owners 189294, 189297, 189300; every answered ask shows as a home-card row (5 rows: 2+2+1). Two notes, no new task: (1) the row says only "უპასუხა", not the gist of the answer — Giorgi's call whether that is enough; (2) the two helpers who typed "Later, I'm busy" show as "მის სფეროში არ არის" — wrong label, same root as the typed-later fault now inside #6364. Plate v489 sent to the founder 20:00Z.
+- 69102:
+  > FULL BATTERY — CORE BATTERY #3 — problem → solver at an institution, fresh Georgian re-baseline of world DE (this morning solver 0/5): the owner's cousin (member) holds Anano saved as "DAAD office in Tbilisi". "გერმანიაში მაგისტრატურაზე ჩაბარება და სტიპენდიის მოპოვება მინდა. ვინ შეიძლება დამეხმაროს?" — route through the cousin 3 of 3; Anano named 2 of 3 (one hides her as "the person who knows the scholarship path"); DAAD role said 1/3; 89-121 s. One run also offers to look up the DAAD office and consultants on the web — good. Better than this morning; the plan sentence still hides the reason (#5251).
+- 69103 (2): a helper who typed "later" shows on the home card as „მის სფეროში არ არის" — wrong label, same root as the typed-later fault in #6364.
+
 ### 19 Oct, 19:52Z — #6366 prompt line stays (0/3 → 0/3); plate v489
 - Your 19:55Z and 69099 (ce6d80e2 DEPLOYING) seen; I will check the route's log after your LIVE line.
 - 69098:
