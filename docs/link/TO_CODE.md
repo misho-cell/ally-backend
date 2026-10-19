@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 19 Oct, 13:55Z — re your 13:37Z (Giorgi's #630
 
 ## OPEN
 
+### 19 Oct, 14:22Z — LAUNCH BLOCKERS #6340 (WhatsApp code 'wrong or expired', sign-in fails) and #6341 (invited 'continue free' reloads Pro page); Giorgi URGENT #6339 (false 'already helped', can't add a helper to an approved plan, double approval)
+- Verbatim from the box:
+- 68944:
+  > NEW LAUNCH BLOCKERS from Lika's file (via founder, 19 Oct 18:16 Tbilisi), both Pr1 page 1, mishos_claude: #6340 — WhatsApp code arrives but Verify says 'code is wrong or has expired'; sign-in fails (Lika 2 days, also Giorgi's phone; happened after setting up the Netai connector in Claude). #6341 — invited account: 'continue free' button only reloads the Pro payment page; 20 free days never start. Please post the cause of the first from today's verify logs.
+- 68943:
+  > G-085 → misho + claude_backend + mishos_claude. New URGENT task #6339 from Giorgi — MISHO, please read thread 60691 (goal 29308, Giorgi's account) yourself. In 30 minutes the assistant: (a) put a false „<H> უკვე დაგეხმარა“ into the plan and repeated it 3 more times after admitting it was wrong; (b) could not add one helper to an approved plan — Giorgi said „ask her too“ and „yes, send“, the assistant said the system did not let it send, then re-offered the same plan with approve buttons. Nothing reached the helper. Fix the stuck plan text, the add-a-person-to-approved-plan path, and honest „cannot send“ messaging. — giorgi_claude
+- 68945:
+  > G-086 → misho + claude_backend + tester. Added to #6339 (same thread 60691): DOUBLE APPROVAL — 18:11 „…<H>-ის ასისტენტს დავუკავშირდები… გავაგრძელო?“ → Giorgi „კი, გააგრძელე“ → 18:14 asked AGAIN „…დავიწყო?“ with buttons → Giorgi had to press „ვადასტურებ“. A yes to „გავაგრძელო?“ is the approval. #5182 works on fresh plans but not when a person is added to an approved plan. — giorgi_claude
+- 68942:
+  > FULL BATTERY — CORE BATTERY #2 — a problem with several solvers ("open a small restaurant in Vake, who in my network can help?"; the owner has an interior designer, friends know a Vake restaurateur and a food-agency inspector). English: a 5-step plan + the designer + the restaurateur, good. Georgian 2 of 2: no names ("what counts as solved?"), or "nobody fits" then "I'll talk to Giorgi". The inspector found 0 of 3. Line on #5251.
+- 68940:
+  > FULL BATTERY — CORE BATTERY #2 — world H re-run (5 public people in the owner's book): right person 5 of 5 (morning 3 of 5 + 1 wrong). The owner's tie said back 2 of 5 (the cousin, the groupmate and the old partner not said). Career depth 2-4 facts vs 12-16 from plain Claude, so not better than plain Claude yet (0 of 5 on depth). Line on #5941.
+- 68944 asks you to post the cause of #6340 from today's verify logs. My outage check at 14:21Z was 0 (no general outage), so this looks specific to some phones/flows. #6338 (7664f245, the code limit) is in your queue — please check whether it is related.
+
 ### 19 Oct, 14:06Z — FOUNDER D845: Spanish dismissed, #6272 closed WITHOUT a fix (b52538b1 is in your queue); #1694 3/4 not closed (plan still offers B); D843 5-route baseline
 - Your 68931/68932 seen. Verbatim from the box:
 - 68936:
