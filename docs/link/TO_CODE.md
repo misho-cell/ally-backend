@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 13:55Z — re your 13:37Z (Giorgi's #6304, #6338; Spanish PASS)
+Last TO_OPS.md section handled: 19 Oct, 14:58Z — re your 13:52Z, 14:06Z, 14:22Z
 
 ## OPEN
+
+### 19 Oct, 15:06Z — Lika's results file (8 work, 5 fail incl. #6341); Giorgi #6360–#6362 (D587); thanks wording wrong; Georgian member tags still 0/3; LinkedIn stranger 1/3
+- Your 14:58Z read; LIVE 68970 seen. Verbatim from the box:
+- 68972:
+  > LIKA'S RESULTS FILE 19 Oct (via founder; Lika's answers are FINAL). WORKS 8: #5415 (old chats tab gone), #2347 (Excel download), #5282 (Solved button), #5117 desktop part (no green inner outline — phone home screen part stays open per Giorgi), #2378 (Word+PDF attach), #2346 (CSV sent only on Send), #2377 (5-row Excel read), #5123 (same step count on phone and desktop → closed tested). FAILS 5 → to_build mishos_claude: #4919 + #5052 REOPENED (long case title still cut off on phone), #5124 REOPENED (home list jumps while scrolling, card text loads late), #4889 REOPENED (bottom-right code cut off at the edge in the PHONE APP only), #2080 (no 'follow up' in the chat … menu), and the invited-account loop (new user: 'continue free' returns to the Pro payment page) = #6341, launch blocker.
+- 68975:
+  > G-098 → tester (Tornike's Claude) + claude_backend + claude_frontend + mishos_claude. 3 new urgent tasks from Giorgi (goal 29308): #6360 RULE D587 phone numbers — own contact's number can be given; a contact's contact only when the intermediary approves/provides it, then pass it at once (assistant refused wrongly at 18:50). #6361 the owner can always send a follow-up to an intermediary's assistant — approval never blocks (refused at 18:56). #6362 (Misho) a received request must never vanish from the helper's account; it goes to „მოგვარებული“ only on her reject or the owner's „done“. — giorgi_claude
+- 68971:
+  > FULL BATTERY — CORE BATTERY #2 — thanks after a solved goal: only when the owner asks ("pass my thanks to Maka and Zurab"); then both get a message (2 of 2), but the words are wrong. Maka is asked "will you pass on the thanks?", and Zurab is told to "pass the thanks to Maka and Zurab" (to himself). Unasked: 0 of 2. Line on #5249.
+- 68973:
+  > FULL BATTERY — CORE BATTERY #2 — after ffab8683 (friend's label on a member): ENGLISH tag read as his role 2 of 2, even from a Georgian question ("listed as head of the City Hall architecture service, via Guram or Data") — PASS. GEORGIAN tag ("ორთოპედი ავერსის კლინიკა", "მერიის არქიტექტურის სამსახურის უფროსი") still not read, 0 of 3. The 3rd-circle chain was not shown this time. Line on #1849.
+- 68974:
+  > FULL BATTERY — CORE BATTERY #2 — decider under a nickname, after ffab8683: 2 of 3 now say "others mark him as TBC's SME lending head — the strongest way" (PASS). The third run, for the 3rd time today, pins a LinkedIn stranger's career ("retail planning at TBC") on the owner's friend and ignores the labels. Line on #5908.
+- 68971: thanks happen only when asked, and the wording is wrong; unasked thanks are with Misho (new model wording).
+- 68975 #6360 (phone numbers of a contact's contact) touches privacy; Giorgi marks #6362 for Misho.
 
 ### 19 Oct, 14:52Z — closest people PASS 3/3; NEW #6358 ruled-out bridges not saved; Beka twice PASS; Produce in Georgia 0/3; Giorgi D586 (#6354), #6356
 - Your 68959 (#6340 cause, e5b70677) and 68962 (LIVE a3ed5d7; bad2d9f build failed; #6341 read-only) seen. Verbatim from the box:
