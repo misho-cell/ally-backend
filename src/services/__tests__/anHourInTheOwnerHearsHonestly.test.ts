@@ -30,12 +30,26 @@ describe('the one-hour honest update', () => {
     expect(query).toContain('t.pending_question IS NULL');
   });
 
-  it('stamps before it wakes, speaks Georgian only, and runs on every tick', () => {
+  it('claims before it wakes, speaks Georgian only, and runs on every tick', () => {
     const sweep = engine.slice(
       engine.indexOf('export async function sweepGoalsUnsolvedAfterAnHour('),
     );
-    expect(sweep.indexOf('markHourUpdateWoken(goal.id)')).toBeLessThan(sweep.indexOf('wakeTask('));
+    // #5249 (69136): two containers in a deploy — only the one that wins the claim wakes it.
+    expect(sweep).toContain('if (!(await claimHourUpdate(goal.id))) continue;');
+    expect(sweep.indexOf('claimHourUpdate(goal.id)')).toBeLessThan(sweep.indexOf('wakeTask('));
     expect(sweep).toContain("!== 'ka') continue;");
     expect(engine).toContain('await sweepGoalsUnsolvedAfterAnHour().catch(');
+  });
+});
+
+describe('#5249 (69136): the hour update is claimed once', () => {
+  const store = readFileSync(join(__dirname, '..', 'taskStore.service.ts'), 'utf8');
+
+  it('sets the stamp only from empty, and says whether it did', () => {
+    const fn = store.slice(store.indexOf('export async function claimHourUpdate('));
+    const body = fn.slice(0, fn.indexOf('\n}\n'));
+    expect(body).toContain('WHERE id = $1 AND hour_update_woken_at IS NULL');
+    expect(body).toContain('RETURNING id');
+    expect(body).toContain('return (result.rowCount ?? 0) > 0;');
   });
 });

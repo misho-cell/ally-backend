@@ -38,7 +38,7 @@ import {
   markQuestionDefaulted,
   getSilentGoals,
   getGoalsUnsolvedAfterAnHour,
-  markHourUpdateWoken,
+  claimHourUpdate,
   markSilentDayWoken,
   unmarkSilentDayWoken,
   getGoalsSilentForDays,
@@ -962,7 +962,7 @@ export async function sweepGoalsUnsolvedAfterAnHour(): Promise<number> {
   const goals = await getGoalsUnsolvedAfterAnHour(MAX_HOUR_UPDATES_PER_TICK);
   let woken = 0;
   for (const goal of goals) {
-    await markHourUpdateWoken(goal.id);
+    if (!(await claimHourUpdate(goal.id))) continue;
     if ((await userLanguage(goal.user_id).catch(() => 'ka')) !== 'ka') continue;
     if ((await wakeTask(goal.id, hourUpdateInstruction())) === 'woken') woken++;
   }

@@ -534,13 +534,23 @@ export async function getGoalsUnsolvedAfterAnHour(
   return result.rows;
 }
 
-/** The goal had its one-hour update; it never gets a second. */
-export async function markHourUpdateWoken(taskId: number): Promise<void> {
-  await query(
-    `UPDATE tasks SET hour_update_woken_at = NOW() WHERE id = $1`,
+/**
+ * The goal had its one-hour update; it never gets a second.
+ *
+ * #5249 (the tester's 69136): thread 61275 got the update twice, a minute
+ * apart. During a deploy two containers tick at once; both read the goal as
+ * due, and the stamp was written unconditionally, so both woke it. The stamp
+ * is now a claim: only the process that sets it from empty wakes the goal.
+ */
+export async function claimHourUpdate(taskId: number): Promise<boolean> {
+  const result = await query(
+    `UPDATE tasks SET hour_update_woken_at = NOW()
+      WHERE id = $1 AND hour_update_woken_at IS NULL
+      RETURNING id`,
     [taskId],
     QUERY_TIMEOUT_MS,
   );
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function markSilentDayWoken(taskId: number): Promise<void> {
