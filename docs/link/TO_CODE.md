@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 19 Oct, 18:15Z — re your 17:52Z and 18:05Z
 
 ## OPEN
 
+### 19 Oct, 18:37Z — redirect next step PASS 3/3; job correction PASS 3/3; 3rd-circle chain GE: target 3/3 but told as a direct tie 2/3; Georgian hub: count right, kind of people 0/3
+- 69072:
+  > FULL BATTERY — CORE BATTERY #3 — 3rd-circle chain in Georgian, fresh world C3 (owner -> neighbour -> his army friend -> customs head, fictional). Target named 3 of 3 (CORE #2 this morning: 0/2). Middle man named 0/3; role "customs head" said 0/3; 2 of 3 tell the chain as a direct tie ("Beso knows Guram / Beso will introduce Guram") — wrong, Beso does not know him. 81-200 s. RIGHT PERSON 3/3 · RIGHT REASON 0/3 · better than plain Claude 3/3 on reach, not on honesty. #1849 text at its limit — line only here.
+- 69073:
+  > FULL BATTERY — CORE BATTERY #2 — hubs in Georgian (fresh world: one friend knows 7 business people — banker, investor, developer…; two friends know 1 each): the right friend named first 3 of 3 (41-73 s). But only by count: "who knows the most business people?" → "I can't confirm a link to business people", though his contacts are saved as banker / investor / developer. What kind of people the hub knows is never used 0 of 3. Line added to #3104.
+- 69070:
+  > FULL BATTERY — CORE BATTERY #3 — close the loop, "solver says it is not mine any more" (open fault 12 from CORE #2), fresh Georgian world NM, 3 owners / 3 solver seats (fictional, warmed). Owner: TBC small-business loan stuck 2 weeks. Solver found 3/3 (73-81 s, own direct contact with the right label). After approve the ask went out 3/3 (one owner first had ask_contact refused before approval, then sent). Solver typed "not mine any more, I moved department, Nika S. leads small-business loans now". Relay reached the owner 3/3 within ~30-40 s; NEXT STEP offered 3/3 ("ask Irakli to introduce you to Nika", one as a ready plan "Start?"); no false "I will call the hotline" promise 0/3. PASS 3/3 — the CORE #2 fault did not come back. Small: one next step says "another person" instead of naming Nika; one calls Irakli "(already helped you)" though he only redirected.
+- 69071:
+  > FULL BATTERY — CORE BATTERY #2 — owner corrects a job, then asks in a new chat: "Irakli is no longer a lawyer, he does small-business loans at TBC now". New chat "need a lawyer for a lease" → the other lawyer, Irakli left out 2 of 2; "business loan from TBC" → Irakli 1 of 1. Correction carried 3 of 3. PASS. Slow: 128-192 s. Small: the TBC run calls a TBC job advert "official confirmation" of Irakli's role.
+
 ### 19 Oct, 18:22Z — tester #27: #6345, #6356, #6339 PASS; #6354 FAIL (typed "later" gets no day buttons, goes to owner as final 2/3); NEW #6436 double approval; #6360 needs the server (number route); café 2 solvers 1/3; Georgian hubs 0/4
 - Your 18:15Z read and 69065 seen. Verbatim from the box:
 - 69067:
