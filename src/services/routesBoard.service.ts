@@ -43,6 +43,13 @@ export interface RouteRow {
   readonly state: RouteState;
   readonly summary: string | null;
   readonly updated_at: string;
+  /**
+   * #6342 (Giorgi, G-087, goal 29308): the person this route leads to, at the
+   * end of its path — even when they are not on Netai. An introduction's own
+   * target; for a question, the goal's target when its plan names one. Null
+   * when nobody is known, or when the person on this route IS the one sought.
+   */
+  readonly target_name: string | null;
 }
 
 export interface AskRow {
@@ -113,6 +120,7 @@ export function askRoute(row: AskRow, now: Date): RouteRow {
     state: STATE_OF_ASK[askStateOf(row, now)],
     summary: summaryOf(row.answer),
     updated_at: row.updated_at,
+    target_name: null,
   };
 }
 
@@ -125,6 +133,7 @@ export function introRoute(row: IntroRow): RouteRow {
     state: STATE_OF_INTRO[row.status] ?? RouteState.Closed,
     summary: row.target_name,
     updated_at: row.updated_at,
+    target_name: row.target_name,
   };
 }
 
@@ -208,16 +217,53 @@ export async function routesForThread(userId: number, threadId: number): Promise
   return people.length >= MIN_ROUTES_FOR_A_BOARD ? people : [];
 }
 
+interface PlanRoutes {
+  readonly routes?: ReadonlyArray<{ readonly introduction?: { readonly to_name?: unknown } }>;
+}
+
+/** #6342: the one person a plan's routes lead to; null when it names none or several. */
+export function planTargetName(...plans: readonly unknown[]): string | null {
+  const names = new Set<string>();
+  for (const plan of plans) {
+    for (const route of (plan as PlanRoutes | null)?.routes ?? []) {
+      const name = route.introduction?.to_name;
+      if (typeof name === 'string' && name.trim() !== '') names.add(name.trim());
+    }
+  }
+  return names.size === 1 ? [...names][0] : null;
+}
+
+/** Best-effort: a path without its end is still a path, so a failed read draws none. */
+async function goalTarget(taskId: number): Promise<string | null> {
+  try {
+    const result = await query<{ plan: unknown; plan_proposed: unknown }>(
+      `SELECT plan, plan_proposed FROM tasks WHERE id = $1 LIMIT 1`,
+      [taskId],
+      QUERY_TIMEOUT_MS,
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : planTargetName(row.plan, row.plan_proposed);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[routes] goal ${taskId}: target not read:`, (err as Error).message);
+    return null;
+  }
+}
+
 /** Every person this conversation's goal (or its goal-less introductions) is talking to, once each. */
 export async function routesOfOwnGoal(userId: number, threadId: number): Promise<RouteRow[]> {
   const taskId = await goalOfOwnThread(userId, threadId);
-  const [asks, intros] = await Promise.all([
+  const [asks, intros, target] = await Promise.all([
     taskId === null ? Promise.resolve([]) : asksOf(userId, taskId),
     introsOf(userId, taskId, threadId),
+    taskId === null ? Promise.resolve(null) : goalTarget(taskId),
   ]);
   const now = new Date();
   return oncePerPerson([
-    ...asks.map((a) => ({ personId: a.person_id, route: askRoute(a, now) })),
+    ...asks.map((a) => ({
+      personId: a.person_id,
+      route: { ...askRoute(a, now), target_name: target },
+    })),
     ...intros.map((i) => ({ personId: i.person_id, route: introRoute(i) })),
   ]);
 }

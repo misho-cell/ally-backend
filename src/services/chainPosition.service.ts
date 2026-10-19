@@ -111,6 +111,7 @@ export async function chainPositionOf(userId: number, threadId: number): Promise
     person_name: intro.target_name,
     role: RouteRole.Addressee,
     summary: null,
+    target_name: null,
   };
   return {
     previous: { name: intro.requester_name, member_id: intro.requester_id },
