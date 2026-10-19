@@ -1,6 +1,7 @@
 import { georgianStem } from './georgianStem';
 import { normalizeSearchToken } from './normalizeSearchToken';
 import { nameFormVariants } from './nameForms';
+import { otherBrandSpellings } from '../brandAliases';
 
 const GEO_TO_LATIN: readonly [string, string][] = [
   ['ა', 'a'],
@@ -728,6 +729,10 @@ function wordVariantGroup(word: string): string[] {
   for (const form of nameFormVariants(latin)) {
     if (form === latin) continue;
     for (const term of buildSearchTerms(form)) group.add(term);
+  }
+  // #1849 world Q: „თიბისი" also searches „TBC" — a company's other spellings.
+  for (const spelling of otherBrandSpellings(word)) {
+    for (const term of buildSearchTerms(spelling)) group.add(term);
   }
   // Row 321: the word's own spellings first, then its profession family,
   // each family member kept whole so none is cut by the cap.

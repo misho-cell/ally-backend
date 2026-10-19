@@ -33,3 +33,36 @@ export function withBrandAliases(text: string): string {
   });
   return added.length === 0 ? text : `${text} ${added.join(' ')}`;
 }
+
+/** A Georgian case ending on a company's name („თიბისის", „თიბისიში"). */
+const MAX_ENDING_CHARS = 3;
+/** Shorter keys are matched whole, never as the start of a longer word. */
+const MIN_PREFIX_KEY_CHARS = 3;
+const SPACE_RE = /\s/u;
+
+function namesBrand(key: string, member: { readonly key: string }): boolean {
+  if (key === member.key) return true;
+  return (
+    member.key.length >= MIN_PREFIX_KEY_CHARS &&
+    key.startsWith(member.key) &&
+    key.length - member.key.length <= MAX_ENDING_CHARS
+  );
+}
+
+/**
+ * #1849 world Q (the tester's 68806, Q3 60334): three friends saved the TBC
+ * SME lending head as „TBC SME lending head"; the run searched „თიბისი ბანკი"
+ * and found nobody — a spelled-out acronym is not a transliteration. One word
+ * of a search that names a company gets that company's other one-word
+ * spellings beside it. Several-word names („Bank of Georgia") stay out: one
+ * word of them alone would match far too much.
+ */
+export function otherBrandSpellings(word: string): string[] {
+  const key = normalizeSearchToken(word.trim());
+  if (key === '') return [];
+  return NORMALIZED_GROUPS.flatMap((group) => {
+    const single = group.filter((member) => !SPACE_RE.test(member.name));
+    if (!single.some((member) => namesBrand(key, member))) return [];
+    return single.filter((member) => !namesBrand(key, member)).map((member) => member.name);
+  });
+}
