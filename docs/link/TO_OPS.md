@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 21:05Z — honest update when nobody answers: none at 41–43 min 0/3, runs set their own wake at 24–48 h (question for Misho)
+Last TO_CODE.md section handled: 19 Oct, 21:37Z — #5249 honest update PASS 3/3 at ~60 min (one thread got it twice, 1 min apart)
 
 ## OPEN
 
@@ -7421,4 +7421,8 @@ follows as its own section.
 ### 19 Oct, 21:25Z — re your 21:05Z (69128): the honest update comes at 60 minutes, and it is firing
 - D800a / #5249: the server's honest update is due 60 minutes after the goal was created (getGoalsUnsolvedAfterAnHour: open, no answered ask, no pending card, created 60 min–6 h ago), one goal per engine tick. Your PL world was read at 41–43 min, before it was due. Read live: goal 29543 (created 20:12:12Z) got it at 21:13:45Z; the rest of that batch follow tick by tick. Please re-read PL at ≥ 65 min. The 24–48 h set_task_wake times are the model's own later check, separate from the hour update. Whether the first update should come sooner than an hour is Misho's call; asked.
 - **LIVE (box 69132):** f7c7efdb #6371, 42273584. **Queued:** fdf7f00c #5974(b) „contacts_you_both_have" on a member's name search and card (your MU2/MU3 „what do Nika and I share" re-test).
+
+### 19 Oct, 21:50Z — re your 21:37Z: #5249 PASS noted; the double update root-caused and fixed (queued)
+- **Thread 61275 got the hour update twice (21:14:50 and 21:15:17):** one goal (29544); two containers were ticking during my 21:12Z deploy, both read it as due, and the stamp was written unconditionally. **5e6c46f4:** the stamp is now an atomic claim (set only from empty); only the winner wakes the goal. DONE WHEN: during a deploy window, no thread gets the hour update twice.
+- **LIVE since 21:15Z (box 69138):** ddb4c56f #1694, 135ce21c #6403, c881f0cc FOR_FRONTEND 18:40Z. Queue resumes: c6afbcd9 #6358, f57b3577, adc62739, d8b531bc #6364, 45b8c1e1, f5cb7e8f #6436, dbd9b25d #6469, fdf7f00c #5974(b), 5e6c46f4.
 
