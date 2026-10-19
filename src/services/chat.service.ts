@@ -5887,6 +5887,16 @@ function notePeopleFound(runId: string, result: unknown): void {
 
 /** 5347 (63930): who this run found past the second circle, by name. */
 const runFoundFurtherOut = new Map<string, string[]>();
+/**
+ * #5249 (the tester's 68874, REGRESSION on 265ff0f): the mediator wrote „I don't
+ * know Levan well, ask Lika, she's his partner"; the run, holding only
+ * respond_to_introduction, called it with accepted=true, the server marked the
+ * request AGREED and the owner read „Temo agreed, a direct channel is open". A
+ * line that tells the owner to ask somebody else is a no with a suggestion: in
+ * that run the request is answered as declined, in the mediator's own words,
+ * whatever the model passed — and part 2 tells the owner who was suggested.
+ */
+const runRedirectAnswers = new Map<string, string>();
 
 /** 5347 (63867): people found further out, for the plan sentence — see foundThroughFirstLinks. */
 function noteFoundFurtherOut(runId: string, further: readonly FarHit[]): void {
@@ -9572,6 +9582,7 @@ function clearRunState(runId: string): void {
   takeSavedFact(runId);
   runFoundThroughBridges.delete(runId);
   runFoundFurtherOut.delete(runId);
+  runRedirectAnswers.delete(runId);
   runServerSentLines.delete(runId);
   forgetNamesAsked(runId);
 }
@@ -10111,12 +10122,13 @@ async function executeToolCall(
       return introOutcome;
     }
     case 'respond_to_introduction': {
+      const redirect = runId === undefined ? undefined : runRedirectAnswers.get(runId);
       // D709: no channel from the model — the server picks how they are connected.
       const responded = await respondToIntroduction(
         userId,
         input['request_id'] as number,
-        input['accepted'] as boolean,
-        await mediatorsOwnWords(threadId, input['response']),
+        redirect === undefined ? (input['accepted'] as boolean) : false,
+        redirect ?? (await mediatorsOwnWords(threadId, input['response'])),
       );
       await noteMediatorCloseOnScreen(runId, threadId, input['request_id'], responded);
       return responded;
@@ -16929,6 +16941,8 @@ export async function processChat(
   const requestAnswerOnly =
     !ownerAbsent &&
     (await answersTheRequestOnly(thread.type, thread.introduction_request_id, userMessage));
+  // #5249 (68874): that answer is the mediator's no with a suggestion — never a yes.
+  if (requestAnswerOnly) runRedirectAnswers.set(runId, userMessage);
   const runTools =
     !ownerAbsent && isReminderRequestOnly(userMessage)
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)

@@ -70,4 +70,12 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
       '? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)',
     );
   });
+
+  it('answers it as a decline in the mediator’s own words, whatever the model passes (68874)', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('if (requestAnswerOnly) runRedirectAnswers.set(runId, userMessage);');
+    expect(chat).toContain("redirect === undefined ? (input['accepted'] as boolean) : false,");
+    expect(chat).toContain("redirect ?? (await mediatorsOwnWords(threadId, input['response'])),");
+    expect(chat).toContain('runRedirectAnswers.delete(runId);');
+  });
 });
