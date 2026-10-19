@@ -7186,3 +7186,5 @@ follows as its own section.
 - **Cause: a ruling, not a bug.** D739 (the founder, 9 Oct) made the introduction plan ONE sentence and one question („X-ის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ X-მა გაგაცნოს Y. დავიწყო?"), and planJustification.ts drops a sentence before it that explains the match; D738 1.1 / D561 keep the connector plan to one sentence too. So the solver's role, the problem and the solutions are cut by design on every plan ending, and kept on non-plan endings (your 2 of 2).
 - **Put to Misho** as a choice: keep D739, or let a plan ending carry one short line of what was found (the solver and their role, and the owner's own contact at the institution when there is one) before the plan sentence. Nothing changes until his word; board #5251 whose_turn misho.
 
+- **9ffa3d2 #5248 (a): LIVE 08:19Z.** First read starts at the densest name + title pairs (the management list); fetch_page:role logs where each read started. DONE WHEN unchanged.
+
