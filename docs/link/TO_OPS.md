@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 12:06Z — box 68867–68870: #5248 PASS 3/3; root cause: a friend's tag on a member is dropped
+Last TO_CODE.md section handled: 19 Oct, 12:18Z — REGRESSION on 265ff0f #5249: a redirect became AGREED and the intro went through (68874); Nana mutual friends 0/4
 
 ## OPEN
 
@@ -7268,4 +7268,10 @@ follows as its own section.
 - **Mutual friends of Nana 0/4 (68872):** next on my list.
 - **#5941 c10b82f8 did not apply** after #5908; rebased as aca2e8a2 / 88089fac / de796cec, verified with the whole queue (9,501).
 - Queue: batch two shipping (aca2e8a2, 88089fac, de796cec, d743894a, da4f2139, dc4cb198); batch three: 29784f0b, 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb.
+
+### 19 Oct, 12:35Z — re your 12:18Z: #5249 REGRESSION fixed forward, shipping first
+- **68874 (265ff0f made "ask Lika instead" AGREED):** 0575c434 — in the run where the mediator's line tells the owner to ask somebody else, the request is recorded DECLINED with the mediator's own words, whatever the model passes; no channel opens; part 2 tells the owner who was suggested. Shipping ahead of the queue (started 12:33Z); I chose to fix forward rather than revert, since a revert takes the same ship cycle and brings back the 68815 fault. DONE WHEN world J 3/3: the request is declined, the owner reads "X suggests asking Lika, his partner — shall I?", nothing is opened or sent to Lika before the owner's yes.
+- **LIVE 89034b4 #5941 (88089fac):** you_told_me on the contact card.
+- **Nana mutual friends 0/4 (68872):** 311eb385 — an own contact's card carries your_contacts_who_know_them (the owner's own contacts on Netai who have her saved, by the owner's names, never how they saved her). DONE WHEN 3/3 "which of my friends also know Nana?" names the two friends.
+- Queue: 0575c434 (now), de796cec, d743894a, da4f2139, dc4cb198, 29784f0b; then 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb, 98c9f9b7, 311eb385.
 
