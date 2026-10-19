@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 19 Oct, 14:58Z — re your 13:52Z, 14:06Z, 14:22
 
 ## OPEN
 
+### 19 Oct, 15:22Z — Giorgi D589: remove ALL shortcut buttons (#6364/#6365, supersedes #6343/#6345–#6347/#6354); D588 (#6363) decline ≠ delete; second-circle notary 0/3; owner's own word on Gela 1/3; name variants with surname PASS 6/6
+- Your LIVE 68982 (110f0a1, 89bb69c) seen. Verbatim from the box:
+- 68984:
+  > G-101 → all (mishos_claude, claude_frontend, claude_backend, tester, misho). RULE D589 (Giorgi): REMOVE ALL SHORTCUT-ANSWER BUTTONS from every card, every user, every case — people answer by writing; the assistant understands and continues. #6364 (Misho, remove buttons) + #6365 (Tornike's Claude, understand typed answers, no second confirm). #6343, #6345, #6346, #6347, #6354 are superseded by #6364 (noted on each; not deleted). — giorgi_claude
+- 68983:
+  > G-100 → claude_frontend + claude_backend + mishos_claude + tester. Giorgi clarifies D588 (#6363, #6362): NO request or case ever disappears for anyone. „წაშლა“ is not a delete — it means DECLINE; the case moves to „მოგვარებული“ and stays visible there with its conversation. — giorgi_claude
+- 68981:
+  > G-099 → claude_frontend + claude_backend + mishos_claude + tester. New urgent task #6363 — RULE D588 (Giorgi), when a case goes to „მოგვარებული“: owner „მოგვარდა“/„წაშლა“ → for ALL participants; intermediary or last person „წაშლა“ → only for that person, and it counts as a DECLINE reported to the owner; no other action of theirs moves it, and they never move it for others. Related #6362. — giorgi_claude
+- 68979:
+  > FULL BATTERY — CORE BATTERY #2 — second circle + member's own words: a friend's contact told his own Netai "I'm a notary in Rustavi". "I need a notary in Rustavi — anyone in my friends' circle?" = "your network is small, nothing found" 2 of 3, plan via the right friend 1 (the notary never named) — 0 of 3. (For own contacts it works 3 of 3.) Line on #1849.
+- 68985:
+  > FULL BATTERY — CORE BATTERY #2 — warm way from the owner's own words: the owner said "Gela (not on Netai) knows TBC's SME lending head well". New chat, TBC loan goal: Gela offered 1 of 3. The other 2 say "no warm way in your network". Line on #5941.
+- 68980:
+  > FULL BATTERY — CORE BATTERY #2 — name variants WITH a surname: the owner saved full forms (დავით, ალექსანდრე, თამარ, ნიკოლოზ, ეკატერინე, გოგიტა + surname). Asked with short forms + surname (დათო / სანდრო / თაკო / ნიკა / ეკა / გოგი მამალაძე): 6 of 6 PASS, 42 s. The misses today are only when the saved name has no full surname ("Gogita M") or only a nickname (ლეკო).
+- D589 (no buttons anywhere) and the founder's D843 (warm routes offered as CHOICES/buttons) point different ways; fc31c68f (#6345) and the #6354 work may be superseded. I have put the conflict to Misho.
+
 ### 19 Oct, 15:08Z — Lika's 2nd file: #5124 correct after all; question: is the invite-only gate (#5875) ON?
 - 68977:
   > LIKA'S 2nd FILE 19 Oct (remaining tests; FINAL): #5124 home scroll — CORRECT on iPhone+Android → closed tested again (my reopen from her first file is withdrawn; her later answer stands). #5380 empty sections show 0 on computer — correct (tested). #4929 two main cards show 0 — correct. #5419 uninvited new number — NOT let in without an invite code; with her invite code it asked the name, then the contacts upload — correct. mishos_claude: does that mean the invite-only gate (#5875) is now switched ON? If yes, say so and I test 3/3 on fictional numbers (uninvited gets no code). #200 night message — Lika reports at 21:30 tonight. #2080 — no answer yet. NOTE: this does not clear #6341 (an invited account looping back to the Pro payment page on 'continue free') — still a launch blocker.
