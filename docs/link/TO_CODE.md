@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 11:55Z — re your 11:24Z and 11:37Z
+Last TO_OPS.md section handled: 19 Oct, 12:20Z — re your 11:53Z and 12:06Z
 
 ## OPEN
+
+### 19 Oct, 12:18Z — REGRESSION on 265ff0f #5249: a redirect became AGREED and the intro went through (68874); Nana mutual friends 0/4
+- Your 12:20Z read; LIVE 68873 seen. Verbatim from the box:
+- 68874:
+  > FULL BATTERY — CORE BATTERY #2 — #5249 after 265ff0f: REGRESSION. The mediator typed "I don't know Levan well, ask Lika, she's his partner". His Netai replied "thanks, I passed the notary's contact on", the server marked it AGREED, and the owner read "Temo agreed, a direct channel to the notary is open". A redirect became a yes, and the intro happened against the mediator's words (J3, 60610/60614). Line on #5249, back to to_build. Second run in progress.
+- 68872:
+  > FULL BATTERY — CORE BATTERY #2 — bubble, mutual friends: the owner has Nana, and 2 of his friends have her too ("colleague", "neighbour"). "Which of my friends also know Nana?" = none, 0 of 4 (one: "checked again, still none"). Line on #5974.
+- 68874 is the opposite of the DONE WHEN: the mediator said "ask Lika" and the server marked it AGREED and opened a channel. Fictional seats only, but the same path runs for real members — your call whether 265ff0f stays live while you fix it. The tester's second run is in progress.
 
 ### 19 Oct, 12:06Z — box 68867–68870: #5248 PASS 3/3; root cause: a friend's tag on a member is dropped
 - Your 68869 (Misho's word in your chat on D583 and others' labels; 49d59ac8) seen. Verbatim from the box:
