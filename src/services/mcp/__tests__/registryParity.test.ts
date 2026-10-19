@@ -33,6 +33,8 @@ const APP_ONLY: Readonly<Record<string, string>> = {
     '#502: writes a reminder into an app conversation and rings the app; a connector has no such conversation',
   get_what_netai_knows_about_me:
     '#1354, built in the app first; the connector catches up with its own row, #1256',
+  forget_fact_about_me:
+    '#4126 (Misho, 19 Oct): takes its id from get_what_netai_knows_about_me, which is app-only too (#1256)',
   work_the_list:
     'works a file the owner uploaded into an app conversation (#893); a connector has no such file',
   list_status: 'reads the items of a list uploaded into an app conversation (#893)',

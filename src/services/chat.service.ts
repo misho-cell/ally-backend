@@ -281,6 +281,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+import { factsAboutMe, removeFactAboutMe, RemoveOutcome } from './factsAboutMe.service';
 import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
 import { contactsReminderSection } from './contactsReminderSection';
 import { createUploadLink } from './contactUploadLinks.service';
@@ -3707,6 +3708,30 @@ const FORGET_USER_NOTE_TOOL: AnthropicTool = {
   input_schema: {
     type: 'object',
     properties: { id: { type: 'number', description: 'The note id from get_user_notes' } },
+    required: ['id'],
+  },
+};
+
+/**
+ * #4126 (68886, Misho's yes 19 Oct): asked in the chat to delete a fact about
+ * themselves, Netai said it could not, and the same fact came back in a new
+ * chat — removal lived only on the privacy page. The same removal, from the
+ * chat, by the id get_what_netai_knows_about_me now lists in facts_about_me.
+ */
+const FORGET_FACT_ABOUT_ME_TOOL: AnthropicTool = {
+  name: 'forget_fact_about_me',
+  description:
+    'Delete ONE fact Netai holds about the USER THEMSELVES (their work, city, a researched fact), ' +
+    'by its id from facts_about_me in get_what_netai_knows_about_me — call that first. Use this, ' +
+    "never forget_contact_fact (a CONTACT's fact) or forget_user_note (a note they saved). " +
+    'If it returns deleted: false, the fact was NOT removed: say so plainly and never claim it ' +
+    'is gone. ' +
+    ' WHEN: they ask you to delete, forget or remove something Netai knows about them.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      id: { type: 'number', description: 'The fact id from facts_about_me' },
+    },
     required: ['id'],
   },
 };
@@ -10649,9 +10674,18 @@ async function executeToolCall(
     case 'get_what_netai_knows_about_me': {
       // #1354 (tester 41422): a bare number was scrubbed to „შენი ნომერია:" and
       // nothing. The owner's own number travels like get_own_contact_number's.
-      const aboutMe = await whatNetaiKnowsAboutMe(userId);
+      const [aboutMe, facts] = await Promise.all([
+        whatNetaiKnowsAboutMe(userId),
+        // #4126: each fact with its id, source and date — the id is what forget_fact_about_me takes.
+        factsAboutMe(Number(userId)).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.warn('[about-me] facts not read:', (err as Error).message);
+          return [];
+        }),
+      ]);
       return {
         ...aboutMe,
+        facts_about_me: facts,
         own_numbers: aboutMe.own_numbers.map((own) => `${ALLOW_OPEN}${own}${ALLOW_CLOSE}`),
         instruction: OWN_NUMBER_INSTRUCTION,
       };
@@ -11428,6 +11462,17 @@ async function executeToolCall(
             scope: BOUNDARY_SCOPE,
             reply_rule: BOUNDARY_REPLY_RULE,
           };
+    }
+    case 'forget_fact_about_me': {
+      const id = Number(input['id']);
+      if (!Number.isInteger(id) || id <= 0) {
+        return { deleted: false, error: 'Pass the fact id from facts_about_me.' };
+      }
+      // Scoped to the caller's own numbers: another person's fact is not found.
+      const outcome = await removeFactAboutMe(Number(userId), id);
+      return outcome === RemoveOutcome.Removed
+        ? { deleted: true }
+        : { deleted: false, error: 'No such fact about you — nothing was removed.' };
     }
     case 'forget_user_note': {
       const id = Number(input['id']);
@@ -15676,6 +15721,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_USER_NOTES_TOOL,
   ABOUT_ME_TOOL,
   FORGET_USER_NOTE_TOOL,
+  FORGET_FACT_ABOUT_ME_TOOL,
   LIST_ANSWER_RULES_TOOL,
   DELETE_ANSWER_RULE_TOOL,
   QUEUE_RESULT_TOOL,

@@ -27,6 +27,7 @@ export const DELETING_TOOLS: ReadonlySet<string> = new Set([
   'retract_contact_fact',
   'correct_contact_fact',
   'forget_user_note',
+  'forget_fact_about_me',
   'forget_contact_relationship',
   'delete_answer_rule',
   'remove_contact_from_network',
