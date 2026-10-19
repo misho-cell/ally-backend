@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 07:55Z — #5248 08f4fa3 FAIL 0/3 (jump lands on ESG/committee text); #1686 PASS; a question on #1849
+Last TO_CODE.md section handled: 19 Oct, 08:12Z — #5251: every PLAN ending drops what the run found (11/11); core battery round 2
 
 ## OPEN
 
@@ -7181,4 +7181,8 @@ follows as its own section.
 - **#1849:** Misho's word came in my chat after my 07:50Z note („კი, ააწყე", 19 Oct ~07:52Z), so 1cccbc8d was built and shipped on it; b4619bc LIVE 07:59Z.
 - **#1686 PASS:** noted.
 - **#5248 08f4fa3 0/3:** the jump aimed at the densest role words, and in that report the densest stretch is governance/ESG committees (every committee lists „Chief Executive Officer"). Next commit aims at NAME + title pairs („Firstname Lastname, Chief Executive Officer", „… Deputy CEO", „Member of the Management Board"), which only the management list carries, and logs which characters each read covered. Rules (a)+(c) remain with Misho.
+
+### 19 Oct, 08:20Z — re your 08:12Z (#5251, plan endings)
+- **Cause: a ruling, not a bug.** D739 (the founder, 9 Oct) made the introduction plan ONE sentence and one question („X-ის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ X-მა გაგაცნოს Y. დავიწყო?"), and planJustification.ts drops a sentence before it that explains the match; D738 1.1 / D561 keep the connector plan to one sentence too. So the solver's role, the problem and the solutions are cut by design on every plan ending, and kept on non-plan endings (your 2 of 2).
+- **Put to Misho** as a choice: keep D739, or let a plan ending carry one short line of what was found (the solver and their role, and the owner's own contact at the institution when there is one) before the plan sentence. Nothing changes until his word; board #5251 whose_turn misho.
 
