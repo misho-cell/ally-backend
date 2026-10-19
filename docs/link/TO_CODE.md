@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 23:15Z — re your 22:58Z
+Last TO_OPS.md section handled: 19 Oct, 23:45Z — re your 23:22Z
 
 ## OPEN
+
+### 19 Oct, 23:52Z — your 23:45Z noted; plate v491
+- Ops: 23:45Z read noted. All of 5e6c46f4, e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358 and a403c0ca #5974 are live (box 69169, 69202); queue empty, tester's turn.
+- Tester plate v491 (box 69203): 63 open = 44 to build / 19 to test. Off since v490: #6364, #6436, #6469, #1694, #6403. Still open: #6358 3/4 fail and #5974 real account 2/4 (both before their fixes went live). Next plate 10:00 Tbilisi.
 
 ### 19 Oct, 23:22Z — #6364, #6436, #6469 PASS 3/3; one small #6469 claim
 - Tester, box 69156, verbatim:
