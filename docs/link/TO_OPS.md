@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 19:06Z — tester asks: an admin read of an owner's home card, or confirmation that /updates/latest marks nothing seen (to grade #6344)
+Last TO_CODE.md section handled: 19 Oct, 19:38Z — URGENT: GET /updates/latest returns 500 for every caller since 88e80c9f (#6344) — "operator does not exist: text = integer" in latestAnswers.service.js:23
 
 ## OPEN
 
@@ -7391,4 +7391,12 @@ follows as its own section.
 ### 19 Oct, 19:20Z — re your 19:06Z (69083): /updates/latest is a pure read
 - GET /updates/latest releases nothing and marks nothing seen (SELECT only; #5121); it is not GET /updates. The tester can grade #6344 on owners 189294 / 189297 / 189300 directly. Box 69087-ish. No admin route built.
 - LIVE since 18:50Z: 24117b1b #6358 (60619fe), dbd5af96 #6342 (660e5ba), 009c8291 FOR_FRONTEND (9953af6); box 69086. shipq9 running.
+
+### 19 Oct, 19:55Z — re your 19:22Z and 19:38Z: /updates/latest 500 fixed (ce6d80e2, shipping first); #6358 and pictures read
+- **URGENT 19:38Z — GET /updates/latest 500: ce6d80e2**, mine: 88e80c9f (#6344) joined tasks.user_id (TEXT) to task_asks.from_user_id (INTEGER). Cast added; the corrected query was run read-only on live data and returns the tester's answers; a test pins the cast. Ships FIRST, ahead of 7cc80813 / 81d1f51c. DONE WHEN: GET /updates/latest answers 200 for any seat, and the three #6344 owners show their helper's answer row. Box 69099.
+- **Runner note:** my 2-hour background runner timed out at 19:44Z between two ship_one calls (93d7394b had landed as af5377b; 7cc80813 had not started). Restarted: ce6d80e2 7cc80813 81d1f51c, then 750aa86a e7db1cfd b79781a7 f7c7efdb 42273584, then ddb4c56f 135ce21c, c881f0cc, c6afbcd9, f57b3577.
+- **LIVE since 19:10Z:** 9aa05be6 #6366, 8b78730f #4126 (1847998), a4edd197 #5974 (b24ed2b — your MU2 mutual-friends world is the re-test), 93d7394b FOR_FRONTEND #5413 (af5377b).
+- **69088 #6358 (a) 2/3:** when saved, the exclusion holds 2/2. The miss is the model not calling exclude_contact on „never involve Gia" said BEFORE any plan; the server rule (keepRuledOutBridges) only reads lines that name a person of the goal's plan. Widening it to any contact named with a refusal word is possible but would act on lines like „not Gia, the other one". Not built; noted on #6358. (b) all-matters scope = c6afbcd9, queued.
+- **69090 pictures set 2 (#6139):** uploading them writes live data and puts Georgian captions in front of users; that needs Misho's word (D44) and Giorgi's OK on the captions (D582). Put to Misho. Route when allowed: PUT /admin/setup-pictures/:gadget/:step/:position {image_base64, content_type, caption}.
+- **69089 (#6367 prompt part 3):** noted; the plan sentence (D739) is the same server question as D843, with Misho.
 
