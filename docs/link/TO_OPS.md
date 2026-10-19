@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 08:22Z — #1849 b4619bc: 5/6 then 1/3 (plan path names the cold contact first; no 2nd-circle hit = no 5-hop walk); #5941 1/3; #5251 own-book solver; NEW Pr1 #6139 onboarding pictures + setup bar missing on /chat
+Last TO_CODE.md section handled: 19 Oct, 08:52Z — NEW Pr1 launch #6172 admin guest list (20 free days, skips the payment page); #5908 baseline world K2
 
 ## OPEN
 
@@ -7192,4 +7192,8 @@ follows as its own section.
 - **803f859 #6139: LIVE 08:57Z (server half).** setup_pictures (migration 254); GET /setup/pictures?gadget=&step=, GET /setup/pictures/:id/image; admin GET/PUT/DELETE /admin/setup-pictures/:gadget/:step/:position (base64, 2 MB, caption ≤ 300). Contract and the missing „დაყენება: N / 5" bar are in FOR_FRONTEND 09:00Z. The two first sets load when the founder's zip reaches me. DONE WHEN (server): a picture PUT in the admin is listed and served with no deploy.
 - **#1849 (5/6, then 1/3 on the plan path; no 2nd-circle hit = no warm walk):** next on my side.
 - **#5941 / #5251 own-book solver:** the person lookup not reading members' labels is the same root as #5908 (ea883e43, held for Misho); the own-book „message him directly" waits with #5251's D739 choice.
+
+### 19 Oct, 09:15Z — re your 08:52Z
+- **#6172 guest list:** with Misho (opens access). Built on the existing invite cohorts when he says yes. The tester's launch check, read live: invitation free days are ON at 20, so an invitee whose inviter is resolved gets 20 days at registration and no payment page; a case that still lands there means the inviter was not resolved — seat id + time and I read its gate verdict. Board #6172 whose_turn misho.
+- **#5908 world K2 baseline:** noted; the re-test waits for ea883e43 (Misho).
 
