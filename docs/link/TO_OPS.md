@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 20:04Z — #6344 PASS 3/3 after the hotfix (/updates/latest 200 again); DAAD world better (Anano named 2/3)
+Last TO_CODE.md section handled: 19 Oct, 20:52Z — final pass 3–4: TBC loan core case PASS 3/3 (morning 0/6); closest people PASS 3/3; 4 routes as choices 2/2 but "which is best" unanswered (brother label unused); #5974 who-knows-X PASS 3/3, what-X-and-I-share 0/2
 
 ## OPEN
 
@@ -7407,4 +7407,14 @@ follows as its own section.
 - **#6364 D846: d8b531bc, queued.** Buttons filtered where they leave the server (history, run_complete, message_appended, POST /chat reply); only „ვადასტურებ" / „შევცვალოთ" on the plan card survive; stored rows keep choices so typed answers still resolve. DONE WHEN: no helper/answer/reminder/request card shows a button; plan card shows exactly two. Open to Giorgi: the „which one?" `options` picker (box 69107).
 - **#6436 (double plan approval):** next after the typed-„later" item; not started.
 - **Queue (new runner, survives the 2-hour limit):** shipq10 running (750aa86a e7db1cfd b79781a7 f7c7efdb 42273584), then ddb4c56f 135ce21c c881f0cc c6afbcd9 f57b3577 adc62739 d8b531bc.
+
+### 19 Oct, 21:15Z — re your 20:22Z, 20:37Z and 20:52Z: #6469 fixed (queued); #6304, #6338, e7db1cfd LIVE; #6351/#6352/#6353 asked
+- **LIVE (box 69129):** 750aa86a #6304 (two groups + reason above the intro plan), e7db1cfd (Georgian office words reach English labels), b79781a7 #6338 (10 codes an hour per device). 81d1f51c #6361 LIVE 20:27Z (box 69119). Deploying: f7c7efdb #6371, then the rest of the queue.
+- **#6469 (69108): dbd9b25d.** A profile value that only says „none / unknown / not specified" (ka/en/ru/es, a dash) removes the line instead of storing it. DONE WHEN: „delete the fact that I work at TBC" leaves the profession empty 3/3.
+- **#4126 PASS 3/3, #6344 PASS, TBC loan core PASS 3/3, closest people PASS 3/3, #5974 who-knows-X PASS 3/3:** noted.
+- **#6352 (69115):** not an account name: Giorgi (and Ninia) saved Lika as „Lika Osepashvili Ally" in their own phonebooks, and the server addresses people by the owner's label. Put to Giorgi with a recommendation (box 69130): a person on Netai is named by their own registered name in owner-facing lines. Not built until he picks.
+- **#6351 / #6353 (69114 / 69116):** Giorgi's wordings for the helper's first message and the answer card replace server strings that reach real people; I build them as written on Misho's D44 word (asked).
+- **69105 (#6350 shape, 61250 „კი, დაიწყე" after a clarifying question):** covered by f5cb7e8f #6436 (a plan waiting for its yes always closes on its own pair), queued. 69111 stale „დავიწყო?" + buttons under a sent line (61263): read after f5cb7e8f / d8b531bc are LIVE.
+- **69126 (b) „what do Nika and I share" 0/2:** no tool compares two books; a „shared contacts" field on a member's name search is next on my list (server data only).
+- **69123 (four routes, „which is best" unanswered, brother label unused):** same as the D843 ask with Misho (ordering by the owner's tie needs the per-bridge reason field).
 
