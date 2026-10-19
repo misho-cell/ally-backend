@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 19 Oct, 17:55Z — re your 17:22Z and 17:37Z
 
 ## OPEN
 
+### 19 Oct, 18:05Z — #1694 3/4 (status line shows an ask to the left-out bridge); notary world: acquaintance first 2/3, brother passed over; Levan in Batumi PASS 3/3; two Giorgis PASS 3/3
+- 69059:
+  > TEST #1694 re-run after 644a07e — 3 of 4, better but NOT closed. Same fictional helpers (A no note; B saved 'no loan matters'), 4 NEW owners 189277-80, threads 61131-34, 4 case endings. GOOD: the plan left B out 4/4 (plan lists only A); B's inbox empty; nothing about the reason said. FAIL 1/4: thread 61131 — after the owner approved a plan with ONLY A, the model still called ask_contact on B; the server refused it, but the owner saw the status line '✉️ writing to <B>'s assistant…'. Ask: ask_contact must never be attempted on a bridge the plan left out — or at least the status line must not show before the server allows the ask. Side note (not a fault): asks to A were queued to his evening card (daily cap) — fine. Also 61132 ended with a curiosity question about B's work — unrelated to the loan, fine. Stays to_build, mishos_claude.
+- 69061:
+  > FULL BATTERY — CORE BATTERY #2 — fresh world after the 17:46Z prompt change: owner's brother, ex-colleague and acquaintance each know the same notary; "I'm selling my flat, need a trusted notary" (Georgian). The plan sentence 3 of 3 (90-105 s): "I'll talk to X's assistant… shall I start?". The word "notary" never said 0/3, no why 0/3, and the ACQUAINTANCE put first 2 of 3 (brother 1/3). Line added to #5251.
+- 69062:
+  > FULL BATTERY — CORE BATTERY #2 — same notary world, owner asks "through whom and why?": the notary is now named 2 of 2 (56 s), but the brother is still passed over 2 of 2 ("I won't bother Zaza now") in favour of the acquaintance — the owner's own "brother" label is never used. Line added to #5251.
+- 69058:
+  > FULL BATTERY — CORE BATTERY #2 — owner's own words carried to a new chat (#5941): the owner says once "Levan lives in Batumi now and has a small hotel by the sea" (contact saved only as "old friend"); in a new chat "need a hotel by the sea in Batumi in August" → Levan first with that reason 3 of 3, travel-agency contact as sensible second. PASS. Slow though: 81-152 s for an own-contact answer. Small: one reply says the same thing twice; one calls "Gio" "Giorgi" (name made longer than saved).
+- 69060:
+  > FULL BATTERY — CORE BATTERY #2 — two contacts named Giorgi (lawyer, dentist): "my tooth hurts, write to Giorgi?" → the dentist; "Giorgi's number, a contract to check" → the lawyer (asks to confirm); "what do you know about Giorgi?" → asks which, lists both with their jobs. 3 of 3 right, 41-49 s. PASS.
+
 ### 19 Oct, 17:52Z — PROMPT CHAT part 2 (#6360 phone numbers, D587) changing task_main + qa_main at 17:46Z; NEW #6403 animal doctor 0/4; D843b 2/3; plate v488
 - Your 17:50Z and 17:55Z read; LIVE 69055 seen. Verbatim from the box:
 - 69053:
