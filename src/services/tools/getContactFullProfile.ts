@@ -171,7 +171,7 @@ const MAX_MUTUAL = 10;
  * else holds her. The owner's own contacts (members) who have her saved, by the
  * names the OWNER gave them; never how they saved her. A failed read adds nothing.
  */
-async function contactsWhoKnowThem(
+export async function contactsWhoKnowThem(
   userId: string,
   phone: string,
 ): Promise<Pick<ContactFullProfile, 'your_contacts_who_know_them'>> {
@@ -194,6 +194,36 @@ async function contactsWhoKnowThem(
     console.warn('[contact-profile] mutual contacts not read:', (err as Error).message);
     return {};
   }
+}
+
+/**
+ * #5974 (the tester's 68996, 1 of 6): „who do I know who knows Nana?" named both
+ * friends only in the one run that opened her card; the others searched by name
+ * and said nobody else was connected. A name search's first rows carry the
+ * owner's own contacts who also know them, so it no longer depends on the card.
+ */
+const MUTUAL_ROWS_READ = 3;
+
+export async function withContactsWhoKnowThem<T extends object>(
+  userId: string,
+  result: T,
+): Promise<T> {
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows) || rows.length === 0) return result;
+  const read = await Promise.all(
+    rows.slice(0, MUTUAL_ROWS_READ).map((row: unknown) => {
+      const phone = (row as { phone?: unknown } | null)?.phone;
+      return typeof phone === 'string' && phone !== ''
+        ? contactsWhoKnowThem(userId, phone)
+        : Promise.resolve({});
+    }),
+  );
+  return {
+    ...result,
+    results: rows.map((row: unknown, i: number) =>
+      i < read.length ? { ...(row as object), ...read[i] } : row,
+    ),
+  };
 }
 
 export async function getContactFullProfile(

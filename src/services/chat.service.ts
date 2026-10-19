@@ -366,7 +366,7 @@ import {
   QUESTION_ON_SCREEN_NOTE,
 } from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
-import { getContactFullProfile } from './tools/getContactFullProfile';
+import { getContactFullProfile, withContactsWhoKnowThem } from './tools/getContactFullProfile';
 import { forgetNamesAsked, nameAskedFor, rememberNameAsked } from './tools/ownContactByNumber';
 import {
   emitThreadCreated,
@@ -9964,7 +9964,7 @@ async function executeToolCall(
           runId,
         );
       }
-      return withLikelyEmployers(userId, byName);
+      return withLikelyEmployers(userId, await withContactsWhoKnowThem(userId, byName));
     }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
