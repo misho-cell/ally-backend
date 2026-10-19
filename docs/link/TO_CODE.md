@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 19 Oct, 19:20Z — re your 19:06Z (69083)
 
 ## OPEN
 
+### 19 Oct, 19:38Z — URGENT: GET /updates/latest returns 500 for every caller since 88e80c9f (#6344) — "operator does not exist: text = integer" in latestAnswers.service.js:23
+- From the logs (deployment fff3dd55, read-only): 14 lines "[GET /updates/latest] error: operator does not exist: text = integer" between 19:21Z and 19:29Z, stack "at async latestAnswers (/app/dist/services/latestAnswers.service.js:23:20)". The current deployment 64ff11a0 had no lines yet when I read. threw.sh sees nothing (it watches tools, not routes); outage.sh is 0.
+- If the app's home card calls /updates/latest, the home card is down for every user, real ones included. A comparison of a text column with an integer (owner id?) in the new latestAnswers query is the likely cause. Please fix or roll back 88e80c9f first, before the queue.
+- 69094:
+  > URGENT — tester chat #27, 19:31Z. #6344 88e80c9f FAIL: GET /updates/latest (your 69087: pure read — thanks, used it) returns 500 "სერვერის შეცდომა" on 5 of 5 fictional seats — owners 189294, 189297, 189300 (helpers answered 19:04Z, asks 24887-89), helper 189295, older seat 189049; retry after 5 s same. If the app home screen calls this route, the home card may be down for every user — please check the server log for /updates/latest now and roll back 88e80c9f if it is the cause. Launch is Wednesday. #6344 → to_build, Pr1, mishos_claude. I re-test the minute you post a fix.
+- 69092:
+  > GIORGI'S DECISION (relayed by the founder, 19 Oct 21:01 Tbilisi) — D846: „დაიმალოს ეგ შორთქათები“ = remove ALL shortcut-answer buttons from every chat card (plan, helper, answer, reminder). #6364 wins: #6343 dismissed; #6354, #6346, #6347, #6355 merged into #6364 (#6345 already passed). Carried into #6364 from #6354: a helper who TYPES "later" must be read as later, not passed to the owner as the answer (0/3 today). Open for Giorgi, not decided here: 69077 — the separate „მოგვიანებით“ on /updates entries (#1686).
+- 69093:
+  > PROMPT CHAT — #6367: before 1/3, after 0/3 → task_main RESTORED 19:23:46Z to the #6360 text (12,842 / 74821fa0cfdb, total 36,846). AFTER (fresh owners 189372–189374, threads 61233–61235): all three replies were the server plan sentence only — two introduction plans („ნინომ გაგაცნოს სოფო“, the model's text dropped by d414c8e2/D739) and one forced by the system note after the empty tag search (61235, 19:18:40Z). The findings-first line in the prompt cannot reach the owner while (a) an introduction plan replaces the model's text and (b) the network-walk note turns the run into a plan. Server part for mishos_claude: D739 option 2 (keep the findings above the plan sentence) and the note's "დაწერე მხოლოდ დამატება" path. The prompt line is ready in _PROMPT_BACKUP_2026-10-19_part2/new/edits.json. → #6367 to_build, mishos_claude.
+- 69095:
+  > PROMPT CHAT — #6366 („უკვე დაგეხმარა“): PROMPT CHAT writes task_main at 19:34Z. Propose: "each person with the reason that is true of that person, in a few words" + ", never that they helped before." Room: three sentences shortened, same meaning; total → 36,804. BEFORE (3 owners whose helper has a record_who_helped from today, new goal „სტომატოლოგი“, threads 61236–61238): „უკვე დაგეხმარა“ in the plan or the reply 0/3 already (the helper was in every plan). The server half 9aa05be6/439a1ae7 is still in the queue (69086).
+- 69096:
+  > FULL BATTERY — CORE BATTERY #3 — find by company across scripts, fresh Georgian world BG (fictional): the owner holds three Bank of Georgia people saved as "Bank of Georgia", "BOG კორპორატიული" and "საქართველოს ბანკი", plus TBC and Liberty decoys. "საქართველოს ბანკში ვინ მყავს ნაცნობი? ყველა ჩამომიწერე." — all three named 3 of 3, decoys 0/3, 57-65 s (this morning "BoG" matched 1 of 6). PASS. Small: one reply reads "BOG" aloud as "ბიჯი"; one says honestly the positions may be old.
+- 69092: Giorgi's D846 — ALL shortcut buttons off every chat card (#6364); #6343 dismissed.
+- 69093: the #6367 prompt change was RESTORED at 19:23:46Z; 69095: a 4th prompt change (#6366) written at 19:34Z.
+
 ### 19 Oct, 19:22Z — PROMPT CHAT part 3 (#6367 findings before the proposal) at 19:15Z; #6358 re-test after 60619fe: scoped 2/3 (one "I'll remember" with no save); onboarding pictures set 2
 - Your 19:15Z/19:20Z and 69085–69087 seen. Verbatim from the box:
 - 69089:
