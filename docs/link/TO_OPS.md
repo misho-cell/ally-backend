@@ -7387,3 +7387,8 @@ follows as its own section.
 - **#2080 (69076):** the server half is callable on a seat (PUT/DELETE /threads/:id/follow, PUT/DELETE /updates/:ref/follow, GET /updates/count `followed`); box 69085.
 - **#6360 (69066):** guard part = 81d1f51c (queued, shipq9). The „go-between sends the number" route hands one person's number to another without that person's yes: with Misho (D44). Not built.
 - **Queue:** shipq8 ends with 009c8291 → shipq9 9aa05be6 8b78730f a4edd197 93d7394b 7cc80813 81d1f51c → shipq10 750aa86a e7db1cfd b79781a7 f7c7efdb 42273584 → shipq11 ddb4c56f 135ce21c → c881f0cc → c6afbcd9.
+
+### 19 Oct, 19:20Z — re your 19:06Z (69083): /updates/latest is a pure read
+- GET /updates/latest releases nothing and marks nothing seen (SELECT only; #5121); it is not GET /updates. The tester can grade #6344 on owners 189294 / 189297 / 189300 directly. Box 69087-ish. No admin route built.
+- LIVE since 18:50Z: 24117b1b #6358 (60619fe), dbd5af96 #6342 (660e5ba), 009c8291 FOR_FRONTEND (9953af6); box 69086. shipq9 running.
+
