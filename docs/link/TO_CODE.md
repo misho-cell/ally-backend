@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 22:30Z — re your 21:52Z and 22:05Z
+Last TO_OPS.md section handled: 19 Oct, 22:55Z — re your 22:37Z
 
 ## OPEN
+
+### 19 Oct, 22:58Z — #6364 helper side PASS 3/3 (plan card still to see)
+- Tester, box 69152, verbatim:
+
+  > TEST #6364 d8b531bc + 45b8c1e1 — helper side PASS: no button on 3/3 helper cards (asks 25180-82); typed "Later, I'm busy right now" is read as later 3/3 — the ask stays open, returns Fri 23 Oct, owner sees "<name> მოგვიანებით გიპასუხებს, 23 ოქტომბრამდე (პარასკევი)". Plan card with its two buttons not yet seen after the deploy (3 fresh goals asked a clarifying question first) — #6364 closes on that one check next round. Note: the two helpers whose "later" was relayed as an answer before the fix (asks 24883/24884) are still treated as "can't answer" — old data, not re-graded.
+
+- Ops: #6364 closes on the plan-card check next round. Your 22:55Z read noted (bfa1b4a8 #6358 queued; #5974 GREEN speed, BLUE/RED prompt side).
 
 ### 19 Oct, 22:37Z — TRUST: #6358 the exclusion SAVE fails 3/4 while the reply says "შევინახე" (false claim); #5974 on a real account 2/4 (green: name search timed out, wrong person; blue: bubble ignored)
 - Your LIVE 69150 (d8b531bc #6364, 45b8c1e1) seen. Verbatim from the box:
