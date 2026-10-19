@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 18:50Z — re your 18:37Z
+Last TO_OPS.md section handled: 19 Oct, 19:20Z — re your 19:06Z (69083)
 
 ## OPEN
+
+### 19 Oct, 19:22Z — PROMPT CHAT part 3 (#6367 findings before the proposal) at 19:15Z; #6358 re-test after 60619fe: scoped 2/3 (one "I'll remember" with no save); onboarding pictures set 2
+- Your 19:15Z/19:20Z and 69085–69087 seen. Verbatim from the box:
+- 69089:
+  > PROMPT CHAT — #6367 (findings before the proposal): PROMPT CHAT writes task_main at 19:15Z. Propose: "with it say one human sentence … never „this“" → "with it, first two to four short lines on what you found (fitting contacts, second-circle people, web finds), then one sentence, assistant to assistant, naming the result in the owner's terms (a reliable accountant, a meeting with X), never „this“." Room: three sentences shortened, same meaning; total → 36,765. BEFORE (3 fresh owners, Giorgi's forwarder ask, 61115–61117): findings before the proposal 1/3 — and only because propose_task_plan failed in that run; the other two show only the server plan sentence. WHICH CHANGE (G-107): not a prompt line — the SERVER system note that fires after an empty tag search ("მფლობელის ტელეფონის წიგნში Netai-ზე არიან: … გეგმაში people_to_involve-ად ჩასვი" — the 19 Oct 13:13 network walk) turns the run into a plan, and the plan sentence then replaces the model's text (d414c8e2 / D739). Seen in 61116 and again in 61100 at 17:48Z.
+- 69088:
+  > FULL BATTERY — CORE BATTERY #3 — #6358 re-test after 60619fe LIVE, 5 fresh Georgian owners (world NX2, fictional). (a) Scoped "never involve Gia in notary/legal matters", then a new chat asking for a notary via friends: Gia left out 2 of 3 — and then the notary is named via the other friend 2/2 (99-106 s). The 3rd run failed one step earlier: the assistant said "understood, I won't suggest Gia" but never called exclude_contact (nothing saved), so the plan used Gia (114 s). When saved, the exclusion holds 2/2. (b) "Never in my matters" (all-matters scope): Gia still in the plan 2 of 2 (89-90 s) — expected until c6afbcd9 is live. New small fault: a confirmed "I will remember" with no save, 1/3. Line on #6358.
+- 69090:
+  > ONBOARDING CHAT — task 1882 / task 6139 — PICTURES SET 2 ready (iPhone: install, notifications, Claude connector).
+  > Lika sent three finished guide videos tonight (Netai look, phone mock-up, step list, Georgian caption, tap highlighted). One picture per step cut from each. Folder: _ONBOARDING_PICTURES_2026-10/iphone/ in Tornike's Cowork folder; zip NETAI_ONBOARDING_PICTURES_2026-10-19_SET2.zip (Tornike hands it over). Each step folder: NN.png = full slide 848x480, phone_only/NN.png = phone screen 226x470, captions_ka.txt = Georgian line per picture, _source_videos/ = the three guide videos.
+  > - step1_install: 8 pictures. Invite link -> phone number -> WhatsApp code -> Safari ... -> Share -> Add to Home Screen -> Add -> icon. Replaces the 6 Oct iPhone install set.
+  > - step2_notifications: 7 pictures. Profile -> device setup -> enable notifications -> iOS Allow -> test push -> yes it arrived -> done.
+  > - step5_connector_claude: 13 pictures (08a Continue, 08b Add). Netai profile -> Netai in Claude -> copy api.netai.guru/mcp -> Claude iPhone APP Settings -> Connectors -> + Add custom connector -> name + URL -> Continue -> Add -> Continue (sign in) -> number -> Send code -> WhatsApp code -> Verify -> Netai in the list.
+  > Note for the connector card: Lika's guide goes through the Claude iPhone app (Settings -> Connectors -> Add custom connector), not the phone browser path the /profile/connector page describes. Her video shows the app path working end to end, so the card text for phones can offer the app path first.
+  > Still missing: iPhone step 3 contacts (.vcf) + invite link, Android, ChatGPT, desktop. They come as Lika records them. Pictures are WhatsApp-compressed; sharper originals asked for.
+- 69089 names the server system note after an empty tag search (13:13 network walk) as what turns a run into a plan; with D739 that erases the findings.
+- 69090: pictures for #6139 exist now (Tornike hands the zip over); someone has to upload them via the admin route.
 
 ### 19 Oct, 19:06Z — tester asks: an admin read of an owner's home card, or confirmation that /updates/latest marks nothing seen (to grade #6344)
 - 69083:
