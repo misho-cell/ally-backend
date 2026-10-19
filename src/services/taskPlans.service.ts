@@ -9,6 +9,7 @@ import { Task } from './taskStore.service';
 import { canBeAsked, AskReach } from './taskAsks.service';
 import { RunLanguage } from './runLanguage';
 import { withoutAskBoundaries } from './askBoundary.service';
+import { ruledOutOnSubject } from './ruledOutBridges';
 import { fetchFactsForPhones, nameAsSpelled } from './tools/factEnrichment';
 
 /**
@@ -433,11 +434,12 @@ export async function proposeTaskPlan(
    * knows she will not answer."
    */
   const boundarySubject = await goalSubject(taskId);
-  const allowed = await withoutAskBoundaries(
+  const withinBoundaries = await withoutAskBoundaries(
     parsed.value.people_to_involve,
     boundarySubject,
     taskId,
   );
+  const allowed = await withoutRuledOut(userId, withinBoundaries, boundarySubject);
   const spelled = language === 'ka' ? await withSavedSpelling(userId, allowed) : allowed;
   const withReach = await withOwnerTies(userId, await withReachability(userId, spelled));
   const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
@@ -476,6 +478,26 @@ export async function proposeTaskPlan(
  * unreadable goal leaves the subject empty, which matches no boundary at all,
  * which is the behaviour of the day before this existed.
  */
+/**
+ * #6358: a person the owner ruled out for this subject is not in the plan,
+ * whichever tool named them. Fails open, like the boundary filter beside it:
+ * the owner sees one name they already refused and can say so again.
+ */
+async function withoutRuledOut<T extends { readonly phone: string }>(
+  userId: string,
+  people: readonly T[],
+  subject: string,
+): Promise<T[]> {
+  try {
+    const out = new Set(await ruledOutOnSubject(userId, subject));
+    return people.filter((p) => !out.has(p.phone.replace(/\D/g, '')));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[ruled-out] plan not filtered:', (err as Error).message);
+    return [...people];
+  }
+}
+
 async function goalSubject(taskId: number): Promise<string> {
   try {
     const result = await query<{ title: string | null; brief: string | null }>(

@@ -298,6 +298,7 @@ import {
   WARM_PATH_TOOL,
 } from './warmPathAfterSearch';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
+import { keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
 import { boundaryExclusionsForOwnerLine } from './askBoundary.service';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
@@ -1198,7 +1199,7 @@ export async function withFurtherOut<T extends object>(
   try {
     const further = withoutWithheldPeople(
       { further_out: await farMembersHolding(Number(userId), words) },
-      await withheldForRun(runId),
+      await withheldForRun(runId, userId),
     ).further_out;
     if (runId !== undefined) {
       noteFoundFurtherOut(runId, further);
@@ -5926,13 +5927,22 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
 /** #1694: whoever closed a subject the owner's own line names, read once per run. */
 const runWithheldByOwnerLine = new Map<string, Promise<ReadonlySet<string>>>();
 
-function withheldForRun(runId: string | undefined): Promise<ReadonlySet<string>> {
+function withheldForRun(runId: string | undefined, userId: string): Promise<ReadonlySet<string>> {
   const line = runId === undefined ? '' : (runOwnerLine.get(runId) ?? '');
   if (runId === undefined || line.trim() === '') return Promise.resolve(new Set<string>());
   const known = runWithheldByOwnerLine.get(runId);
   if (known !== undefined) return known;
-  const read = boundaryExclusionsForOwnerLine(line).then(
-    (phones) => new Set(phones.map((phone) => phone.replace(/\D/g, ''))),
+  // #6358: and whoever the owner ruled out for this subject.
+  const read = Promise.all([
+    boundaryExclusionsForOwnerLine(line),
+    ruledOutOnSubject(userId, line).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[ruled-out] exclusions not read:', (err as Error).message);
+      return [] as string[];
+    }),
+  ]).then(
+    ([closed, ruledOut]) =>
+      new Set([...closed, ...ruledOut].map((phone) => phone.replace(/\D/g, ''))),
   );
   runWithheldByOwnerLine.set(runId, read);
   return read;
@@ -6003,7 +6013,7 @@ async function runLoggedSearch(
 ): Promise<object> {
   const [found, withheld] = await Promise.all([
     searchWithRetry(() => run(userId, searchQuery)),
-    withheldForRun(runId),
+    withheldForRun(runId, userId),
   ]);
   const result = withoutWithheldPeople(found, withheld);
   const rawCount = (result as { count?: unknown }).count;
@@ -9971,7 +9981,7 @@ async function executeToolCall(
                 )),
                 also_searched_note: ALSO_SEARCHED_NOTE,
               },
-              await withheldForRun(runId),
+              await withheldForRun(runId, userId),
             );
       return notInThePhonebook(searched)
         ? withFurtherOut(
@@ -16935,6 +16945,13 @@ export async function processChat(
   let language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
   if (!ownerAbsent) runOwnerLine.set(runId, userMessage);
+  // #6358: a person the owner rules out is kept out before this run searches.
+  if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
+    await keepRuledOutBridges(userId, threadId, userMessage).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.warn(`[ruled-out] run ${runId}: not kept:`, (err as Error).message),
+    );
+  }
   // D756: „<helper>-ის პასუხი დამეხმარა" thanks that helper at once — no card, no question.
   if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
     void thankHelperNamedIn(userId, userMessage).catch((err: unknown) =>
