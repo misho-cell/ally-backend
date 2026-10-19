@@ -299,6 +299,7 @@ import {
 } from './warmPathAfterSearch';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
 import { keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
+import { mutualGroupsFor } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine } from './askBoundary.service';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
@@ -8249,6 +8250,8 @@ export interface PlanForReply {
   readonly names: readonly string[];
   /** 1454 (b): the server's sentence naming whom the introduction is to, when it is on. */
   readonly introSentence?: string;
+  /** #6304: every contact of the owner's found knowing the target, in two groups. */
+  readonly mutualGroups?: string;
 }
 const runPlanForReply = new Map<string, PlanForReply>();
 
@@ -8516,8 +8519,9 @@ export function planReplyText(reply: string, plan: PlanForReply, language: RunLa
   // 50065) — gives way to the server's sentence instead of standing before it.
   if (carriesPlanSentence(plan.text)) {
     const serverSentence = plan.introSentence ?? plan.text;
+    const sentence = withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence }));
     return withClosingQuestion(
-      withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence })),
+      plan.mutualGroups === undefined ? sentence : `${plan.mutualGroups}\n\n${sentence}`,
       language,
     );
   }
@@ -11399,10 +11403,17 @@ async function executeToolCall(
               runLang(runId),
               (runId && runFoundThroughBridges.get(runId)) || [],
             );
+            const mutualGroups = await mutualGroupsFor(
+              userId,
+              input['plan'],
+              (runId && runFoundThroughBridges.get(runId)) || [],
+              runLang(runId),
+            );
             notePlanForReply(runId, {
               text: plainPlan,
               names: stored.people_to_involve.map((p) => p.name),
               ...(introSentence !== null && { introSentence }),
+              ...(mutualGroups !== null && { mutualGroups }),
             });
           }
           // Row 237: nothing the server deals may land on top of the plan.
