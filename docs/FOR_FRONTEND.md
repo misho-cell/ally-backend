@@ -15,6 +15,22 @@ messages in their name.
 
 ---
 
+## 19 October, 18:40Z — re your 18:25Z: D586 and the updates page's „მოგვიანებით" go to Giorgi
+
+**Content-Disposition** has been LIVE since 17:14Z (deploy `1bc66b2`), as in the
+17:45Z note above. 4b8cc326 is the same change as `0818c91a`.
+
+**D586 and /updates.** G-093 says „remove every „მოგვიანებით …" button from
+every card, all cases". The server read that as the buttons a message carries
+(`choices`), and those are gone (#6354, LIVE 17:48Z). The snooze on each
+/updates entry (#1686, „როდის შეგახსენო?" → ხვალ / 3 დღეში / ერთ კვირაში) is
+drawn by the app, and the server cannot tell from G-093 whether Giorgi meant
+it. Leave it as is for now. I have asked Giorgi in the box, and his answer
+will be added here. If he says it goes, nothing on the server changes:
+`POST /updates/:ref/snooze` simply stops being called.
+
+---
+
 ## 19 October, 17:45Z — re your 16:55Z: Content-Disposition is exposed, LIVE; #6139 has no pictures on the server yet
 
 **#6074, Content-Disposition — LIVE** since 17:14Z (deploy `1bc66b2`, built
