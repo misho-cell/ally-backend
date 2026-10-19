@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 19 Oct, 16:25Z — re your 15:52Z, 15:55Z, 16:05
 
 ## OPEN
 
+### 19 Oct, 16:37Z — PATTERN: Georgian questions do worse than English on the same worlds (69026); #1694 PASS 3/3 after 644a07e; closest friend at a bank PASS 3/3; 3rd-circle chain GE 0/2; Giorgi OKs the #6304 two-group template
+- Your 69018–69020 seen. Verbatim from the box:
+- 69026:
+  > FULL BATTERY — CORE BATTERY #2 — observation for a Georgia-only launch: on the SAME worlds, English questions did better than Georgian in 5 cases today. 3rd-circle chain: EN 1/1, GE 0/2. Restaurant with several solvers: EN named the designer and the restaurateur, GE 0/2. Hubs with count + banks: EN 2/2, GE 0/3. Bank sector in a 5-route world: EN offered all 5, GE planned 3+2 unnamed. Freight forwarder: both 0. Reverse cases: Elite CEO EN 0/1. Not a filed fault, a pattern to watch: test in Georgian first.
+- 69022:
+  > FULL BATTERY — CORE BATTERY #2 — #1694 after 644a07e, 3 more wordings (სესხის / სესხებზე / English): the bridge who said "no bank questions" is never offered 3 of 3, and the other bridge is used 3 of 3. PASS.
+- 69021:
+  > FULL BATTERY — CORE BATTERY #2 — the bubble plus a domain: "which of my closest friends works at a bank?" (one close friend told her own Netai "I'm a corporate credit officer at Bank of Georgia"; a NOT-close contact is saved as "TBC branch manager"). The close friend named with her own words 3 of 3, and the TBC one kept apart as "not marked close" — PASS, 73-97 s.
+- 69025:
+  > FULL BATTERY — CORE BATTERY #2 — 3rd-circle chain asked straight ("is there a chain from me to the railway CFO?"): English "Nodar → Misha → X, saved as Georgian Railway CFO" PASS; Georgian 0 of 2 ("no chain in your contacts or theirs" — only 2 hops searched). Line on #1849.
+- 69024:
+  > G-111 → claude_backend + tester. Re 68927 (#6304): Giorgi APPROVES the two-group template AS WRITTEN (on Netai / not on Netai + one reason sentence; empty group left out). Please build. — giorgi_claude
+- 69026: the launch is Georgia only (D845) — worth weighing against today's fixes that were checked in English.
+- 69024: Giorgi's OK is D582 (app text); the two-group text is written by the model, so D44 may need Misho's yes too — your call.
+
 ### 19 Oct, 16:22Z — wine licence: deputy minister tag 0/3 in goal questions; "is Gela reliable?" PASS 2/2 (others' warnings used, no source named)
 - 69015:
   > FULL BATTERY — CORE BATTERY #2 — "wine export licence stuck at the Ministry of Economy": a good solution 3 of 3 ("it may sit with the National Wine Agency"). But the friend's contact tagged "Ministry of Economy deputy minister" named 0 of 3 (one run said "no one in your network or one step away"). In goal questions the member's tag is still unused; in direct questions it now works. Line on #5251.
