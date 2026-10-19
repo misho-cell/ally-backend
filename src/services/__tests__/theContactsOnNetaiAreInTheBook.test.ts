@@ -45,6 +45,50 @@ describe('the owner’s contacts on Netai, from his phonebook', () => {
   });
 });
 
+describe('#6370 (69142): only the members on the subject are named', () => {
+  it('keeps a member whose saved words touch the subject, and drops the rest', async () => {
+    mockQuery.mockClear();
+    (getExcludedPhoneSet as jest.Mock).mockResolvedValueOnce(new Set());
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          { phone: '995500000001', name: 'ნინო' },
+          { phone: '995500000002', name: 'გიორგი' },
+        ],
+        rowCount: 2,
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ phone: '995500000001' }], rowCount: 1 } as never);
+
+    await expect(ownersContactsOnNetai('501', 5, ['ბუღალტერ', 'ფირმ'])).resolves.toEqual(['ნინო']);
+
+    const [poolSql, poolParams] = mockQuery.mock.calls[0];
+    expect(String(poolSql)).toContain('LIMIT $3::int');
+    expect(poolParams?.[2]).toBe(200);
+    const [topicSql, topicParams] = mockQuery.mock.calls[1];
+    expect(String(topicSql)).toContain('a.alias ILIKE ANY($2::text[])');
+    expect(String(topicSql)).toContain('t.tag ILIKE ANY($2::text[])');
+    expect(topicParams).toEqual([
+      ['995500000001', '995500000002'],
+      ['%ბუღალტერ%', '%ფირმ%'],
+    ]);
+  });
+
+  it('names nobody when the subject has no term to look for', async () => {
+    (getExcludedPhoneSet as jest.Mock).mockResolvedValueOnce(new Set());
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ phone: '995500000001', name: 'ნინო' }],
+      rowCount: 1,
+    } as never);
+    await expect(ownersContactsOnNetai('501', 5, ['კი'])).resolves.toEqual([]);
+  });
+
+  it('is asked with the run’s own subject', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('queryTerms(subject),');
+    expect(chat).toContain("runOwnerLine.get(runId) ?? '',\n        )");
+  });
+});
+
 describe('the note that names them', () => {
   it('names them, says the people route comes before the web and an invitation', () => {
     const note = membersInTheBookNudge(['ნინო ექიმი', 'გია']);
@@ -118,7 +162,7 @@ describe('a promise and skipped members in one reply', () => {
 
   it('reads the phonebook even when the reply also promised', () => {
     expect(chat).toContain(
-      '!answeredWithoutSearching &&\n    (await membersNoteFits())\n      ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)',
+      '!answeredWithoutSearching &&\n    (await membersNoteFits())\n      ? await membersInTheBookSkipped(\n',
     );
   });
 

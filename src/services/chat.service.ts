@@ -300,7 +300,7 @@ import {
 import { withoutWithheldPeople } from './withoutWithheldPeople';
 import { keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
 import { mutualGroupsFor } from './mutualGroups';
-import { boundaryExclusionsForOwnerLine } from './askBoundary.service';
+import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.service';
 import { askStepsToKeepUnnamed } from './askCaptions';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
@@ -6290,9 +6290,15 @@ async function membersInTheBookSkipped(
   userId: string,
   finalText: string,
   toolNamesUsed: readonly string[],
+  subject: string,
 ): Promise<string[]> {
   try {
-    const names = await ownersContactsOnNetai(userId, MEMBERS_IN_THE_BOOK_NAMED);
+    // #6370: only members whose saved words touch this subject, never the whole book.
+    const names = await ownersContactsOnNetai(
+      userId,
+      MEMBERS_IN_THE_BOOK_NAMED,
+      queryTerms(subject),
+    );
     return skippedThese(names, finalText, toolNamesUsed) ? names : [];
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -15017,7 +15023,12 @@ async function runToolLoop(
     !helperQuestionUnsent &&
     !answeredWithoutSearching &&
     (await membersNoteFits())
-      ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)
+      ? await membersInTheBookSkipped(
+          userId,
+          finalText,
+          toolNamesUsed,
+          runOwnerLine.get(runId) ?? '',
+        )
       : [];
   const foundFurtherOut = [...new Set(runFoundFurtherOut.get(runId) ?? [])];
   const farFindGoal =
