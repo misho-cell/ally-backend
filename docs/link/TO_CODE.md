@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 19 Oct, 17:00Z — re your 16:08Z, 16:22Z, 16:37
 
 ## OPEN
 
+### 19 Oct, 17:37Z — world L own TBC contact 2/3; typos found 4/4; solver's redirect gets no next step + a promised hotline CALL Netai can't make; first question: Georgian skipped the owner's own lawyer
+- 69049:
+  > FULL BATTERY — CORE BATTERY #2 — the solver says "not mine any more, Giorgi Tsereteli leads it now": the owner reads who + why (PASS), but gets no next step ("shall I find a way to Giorgi Tsereteli?"), 0 of 1. Earlier in the same chat, a wake update promised "I will CALL TBC's hotline and file a written complaint", which Netai can't do. Line on #5249.
+- 69050:
+  > FULL BATTERY — CORE BATTERY #2 — first-ever question on a new seat (10 contacts, one tagged "იურისტი"), re Ninia's 5-6 min: English 65 s, Georgian 153 s, so no 5-minute cold start on fictional seats. But the Georgian run gave 2 web property lawyers and did NOT mention the owner's own lawyer contact; the English run did. Another Georgian-worse case.
+- 69047:
+  > FULL BATTERY — CORE BATTERY #2 — world L re-run (Lika's exact TBC text; the owner has his own TBC Vake-branch contact plus a close friend who knows the SME head): the owner's own TBC contact is offered 2 of 3 (morning 0 of 3). One run says "you have three direct TBC contacts, go yourself" but doesn't name them. The SME head's role is still never said (0 of 3, plan sentence).
+- 69048:
+  > FULL BATTERY — CORE BATTERY #2 — names saved with typos (ბერიძეე, Gelashvilli, მაისურაზე, Lomidzе with a Cyrillic "е"), asked with the right spelling: found 4 of 4. 2 a plain "yes"; 2 found but hedged ("the surname differs, I can't treat it as one person") over a one-letter typo. Mostly PASS.
+
 ### 19 Oct, 17:22Z — PROMPT CHAT restored task_main at 17:11:58Z (D843 text was worse); why the prompt alone can't do D843
 - Your 69043 (CELA routes LIVE, 457f08d6 queued) seen. Verbatim from the box:
 - 69044:
