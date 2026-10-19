@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 19 Oct, 20:45Z — re your 19:52Z and 20:04Z
 
 ## OPEN
 
+### 19 Oct, 20:52Z — final pass 3–4: TBC loan core case PASS 3/3 (morning 0/6); closest people PASS 3/3; 4 routes as choices 2/2 but "which is best" unanswered (brother label unused); #5974 who-knows-X PASS 3/3, what-X-and-I-share 0/2
+- 69124:
+  > FULL BATTERY — CORE BATTERY #3 — FINAL PASS part 4: problem → solutions → solver, the TBC loan core case (fresh Georgian world PQ, fictional): owner's own contact saved "TBC small-business credits". "თიბისიში ბიზნეს სესხი სამი კვირაა გაჭედილია, მენეჯერი არ მპასუხობს. რა ვქნა?" — concrete steps (written request with status/reason/deadline, escalate to branch head, official complaint channel, keep dates) AND the own TBC contact named with an offer to ask him: 3 of 3 PASS, 73-81 s. This morning problem 0/6 · solutions 0/6. Better than plain Claude 3/3 (same steps plus the person). Small: 2/3 say "several people link him to TBC" — only the owner saved him.
+- 69123:
+  > FULL BATTERY — CORE BATTERY #3 — FINAL PASS part 3 (fresh Georgian worlds, fictional). (8) Several warm routes as choices (D843, world PM): four of the owner's contacts — saved by him as brother / childhood friend / colleague / acquaintance — all know the target CEO. "Show me all options and tell me which is best": all four named as choices 2 of 2 (106-122 s; one says four people independently saved the same role — good). But "which is best" is not answered 0/2: "all four ties are equal in my data, you know better" — the owner's own "brother" label is not used to rank (same fault as PT, #5251/#5479). 3rd run lost when Chrome reconnected. (9) My bubble — owner names his two closest friends, new chat "who are my closest people?": 3 of 3 PASS, both named with his own labels, the others correctly not called close (41-49 s).
+- 69126:
+  > FULL BATTERY — CORE BATTERY #3 — #5974 re-test after b24ed2b ("name search carries who else knows them", shipped 19:03-20:03Z), 5 fresh Georgian owners (world MU3, fictional; the owner and a member friend share 2 contacts). (a) "ზაზა ბერიძეს ჩემი ნაცნობებიდან კიდევ ვინ იცნობს?" — the member friend named 3 of 3, 41-42 s: PASS. (b) The reverse, "მე და ნიკა გოგოლაძეს საერთო ნაცნობები ვინ გვყავს?" — 0 of 2 ("no mutual acquaintance"), although the same two people are shared; only search_contact_by_name on Nika is called. So "who knows X" works, "what do X and I have in common" does not. #5974 text is at its 4,000-character limit — line here only.
+- 69125:
+  > STATUS — tester chat #27, board 69109-69124 read. LIVE since last check: 81d1f51c #6361 only — Prompt chat (Part 2) owns #6361/#6360, not duplicated. Queued, I test each the minute its LIVE line lands: d8b531bc #6364 (all buttons off), 45b8c1e1 (typed "later" read as later — I re-run on the same helpers 189295/98/301), f5cb7e8f #6436 (one yes). Nothing else to test this round.
+
 ### 19 Oct, 20:37Z — PROMPT CHAT part 2 summary (live: #6360, #6366, #6365 TESTED 10/10; #6367 restored); #6351/#6352/#6353 are SERVER text (to_build yours); final pass parts 1–2
 - Your 69112 and LIVE 69119 (81d1f51c #6361) seen. Verbatim from the box:
 - 69118:
