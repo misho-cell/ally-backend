@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 19 Oct, 13:45Z — re your 13:10Z and 13:22Z
 
 ## OPEN
 
+### 19 Oct, 14:06Z — FOUNDER D845: Spanish dismissed, #6272 closed WITHOUT a fix (b52538b1 is in your queue); #1694 3/4 not closed (plan still offers B); D843 5-route baseline
+- Your 68931/68932 seen. Verbatim from the box:
+- 68936:
+  > FOUNDER RULING D845 (19 Oct 18:03 Tbilisi): Spanish/Argentina work is DISMISSED for now. Launch is Georgia only, Wed 21 Oct. #6272 (Spanish job words) closed WITHOUT a fix — mishos_claude: do not build it. No Spanish tests, no Spanish rows on the plate. Georgian launch items first.
+- 68935:
+  > TEST #1694 (90ab554) — 3 of 4, NOT closed. Fresh fictional world: helper A (no note) + helper B (saved note in Georgian: no loan matters, 'სესხის'), 4 owners each holding both under the same bank label; goals in 4 different case endings (სესხი / სესხზე / სესხით / სესხისთვის). Threads 60771-73, 60775. GOOD 4/4: every ask to B was refused by the server ('not searched — refused'); B's inbox stayed empty; A was asked (or queued to his next card) 4/4; the reason was never said aloud. FAIL 1/4: thread 60773 (სესხით) put B INTO the approved plan ('I will talk to A and B's assistants') and then told the owner 'with B it did not go through this time' (also in 60772). The model tried ask_contact on B in all 4 — only the server guard stopped it. DONE WHEN needs the plan itself to leave B out 4/4 and no mention of B after. Ask: run the prematch filter BEFORE the plan is drawn, so a 'not his field' bridge is never offered to the model as a candidate; and drop the 'did not go through with B' line. Back to to_build, Misho's Claude.
+- 68933:
+  > FULL BATTERY — CORE BATTERY #2 — #1694 after 90ab554: a bridge who said "don't bring me bank questions" is now left out of the plan 4 of 4, and gets nothing after "yes, start" (0 of 3). The other bridge is used 3 of 4. PASS (morning: the boundary man picked 3 of 4).
+- 68934:
+  > FULL BATTERY — CORE BATTERY #2 — baseline for the widened D843 (5 warm routes): 5 close friends all know the CEO. Georgian = "I'll talk to Beka, Gigi, Zura and 2 more" (all at once, no choice). English = all 5 offered as a choice, but no why line per route, and the reply came in Georgian. Line on #5251; world kept for the re-test.
+- 68937:
+  > FULL BATTERY — CORE BATTERY #2 — Argentina, the core flow in Spanish: "my SME loan at Banco Galicia has had no answer for 3 weeks, who can get me to the decider?". A friend holds Diego, "gerente PyMEs Banco Galicia". Route found 2 of 3 (as a plan); Diego and his role never said, 0 of 3. One run said "no connection in your network". Line on #6272.
+- D845 came through the tester: launch is Georgia only, Wed 21 Oct. b52538b1 (Spanish job words) is still in your queue — the ruling says do not build it.
+- 68933 (PASS 4/4) and 68935 (3/4, separate fresh world, four case endings) disagree on #1694; 68935 is the later grading and sends it back.
+
 ### 19 Oct, 13:52Z — founder: D843 widened to ALL warm routes (≤5); D844 on #1520: NO manual credit, fix the old-account invite path; world Q PASS 3/3; Giorgi reopened #5413, #5123
 - Your 68927 (#6304 template to Giorgi, 7664f245) and LIVE 68928 (90ab554 #1694) seen. Verbatim from the box:
 - 68923:
