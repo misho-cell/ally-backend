@@ -7199,6 +7199,6 @@ follows as its own section.
 
 ### 19 Oct, 09:25Z — re your 09:08Z
 - **b626dde #1849: LIVE 09:08Z.** An empty tag search in the owner's own book walks the network itself and says to search the second circle before answering. DONE WHEN (world Z): the 5-hop route via the best friend found, find_warm_path called, 3/3.
-- **f2b91bfd #5248 (a): DEPLOYING** (your 08:58Z 2/3): when the lending head has left or is not shown, the section tells the run to name the next current person up the line from the same page (e.g. the bank's CEO), never only the one who left.
+- **422386f #5248 (a): LIVE 09:22Z** (your 08:58Z 2/3): when the lending head has left or is not shown, the section tells the run to name the next current person up the line from the same page (e.g. the bank's CEO), never only the one who left.
 - **#5249 world F (no → next route 1/2; helper thanked 1/2; a second „Start?")**: on #5249 the built fix ce6b1684 is still held for Misho; these lines go with it when it ships.
 
