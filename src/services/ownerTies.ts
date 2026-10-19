@@ -99,11 +99,41 @@ async function storedTies(userId: string, forms: readonly string[]): Promise<Sto
   return result.rows;
 }
 
-function reasonOf(stored: StoredTie | undefined, kinds: readonly string[]): OwnerTieReason | null {
+/**
+ * #6339 (Giorgi, G-085, thread 60691): the plan said „Lika (has helped you
+ * before)" four times and Lika never had — Giorgi had answered three of HER
+ * questions. A reply is warmth for the pair, so it is written on both sides;
+ * whether it was help is not. It was help to the owner only when the person
+ * answered the owner's own question, or accepted the owner's own introduction.
+ */
+async function helpedTheOwner(userId: string, forms: readonly string[]): Promise<Set<string>> {
+  const result = await query<{ phone: string }>(
+    `SELECT DISTINCT w.contact_phone AS phone
+       FROM warmth_events w
+      WHERE w.user_id = $1::int
+        AND w.contact_phone = ANY($2::text[])
+        AND (EXISTS (SELECT 1 FROM task_asks a
+                      WHERE w.kind = 'ask_answered' AND w.ref = 'ask_' || a.id
+                        AND a.from_user_id = $1::int AND a.declined_at IS NULL)
+          OR EXISTS (SELECT 1 FROM introduction_requests ir
+                      WHERE w.kind = 'intro_accepted' AND w.ref = 'intro_' || ir.id
+                        AND ir.requester_user_id = $1::int))
+      LIMIT $3`,
+    [userId, forms, forms.length],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((row) => phoneDigits(row.phone)));
+}
+
+function reasonOf(
+  stored: StoredTie | undefined,
+  kinds: readonly string[],
+  helpedOwner: boolean,
+): OwnerTieReason | null {
   if (kinds.includes(STATED_CLOSE_KIND)) return OwnerTieReason.SaidClose;
   if (stored?.kind === FAMILY_TYPE) return OwnerTieReason.Family;
   if (Number(stored?.strength ?? 0) >= CLOSE_STRENGTH) return OwnerTieReason.Close;
-  if (kinds.some((k) => DEALT_WITH_KINDS.includes(k))) return OwnerTieReason.DealtWith;
+  if (helpedOwner) return OwnerTieReason.DealtWith;
   return null;
 }
 
@@ -121,12 +151,17 @@ export async function ownerTiesTo(
   ]);
   const storedBy = new Map(stored.map((s) => [phoneDigits(s.phone), s]));
   const warmthBy = new Map([...warmth].map(([phone, w]) => [phoneDigits(phone), w]));
+  const dealtWith = [...warmth]
+    .filter(([, w]) => w.kinds.some((k) => DEALT_WITH_KINDS.includes(k)))
+    .map(([phone]) => phone);
+  const helped =
+    dealtWith.length === 0 ? new Set<string>() : await helpedTheOwner(userId, dealtWith);
   for (const d of new Set([...storedBy.keys(), ...warmthBy.keys()])) {
     const s = storedBy.get(d);
     const w = warmthBy.get(d);
     out.set(d, {
       closeness: Number(s?.strength ?? UNKNOWN_TIE) + (w?.score ?? 0),
-      reason: reasonOf(s, w?.kinds ?? []),
+      reason: reasonOf(s, w?.kinds ?? [], helped.has(d)),
     });
   }
   return out;

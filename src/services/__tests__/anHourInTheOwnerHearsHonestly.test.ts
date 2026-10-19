@@ -24,7 +24,9 @@ describe('the one-hour honest update', () => {
   });
 
   it('leaves a goal whose plan or question waits on the owner', () => {
-    expect(query).toContain('NOT (t.plan_proposed IS NOT NULL AND t.plan IS NULL)');
+    // #6339: a new proposal waiting under an approved plan waits on the owner too.
+    expect(query).toContain('AND t.plan_proposed IS NULL');
+    expect(query).not.toContain('t.plan IS NULL');
     expect(query).toContain('t.pending_question IS NULL');
   });
 

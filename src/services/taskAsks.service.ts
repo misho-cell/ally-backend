@@ -13,7 +13,7 @@ import {
   endorsementAddedRefusal,
 } from './helpersVoice';
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
-import { labelNamedIn } from './namedLabel';
+import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
 import { firstNamesInBothScripts } from './firstNameNamed';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { AskKind, askKindOf } from './askKind';
@@ -780,6 +780,20 @@ async function onlyContactByFirstName(line: string, person: NamedContact): Promi
   return distinct.size === 1 && distinct.has(phoneDigits(person.contactPhone));
 }
 
+/** #6339: this contact's own Latin label, named by a Georgian line (see namedLabel.ts). */
+async function latinLabelOfThisContactNamed(line: string, person: NamedContact): Promise<boolean> {
+  const labels = await query<{ alias: string }>(
+    `SELECT ua.alias
+       FROM "UserAlias" ua
+      WHERE ua."contactId" = $1::int
+        AND regexp_replace(ua.phone, '\\D', '', 'g') = $2
+      LIMIT $3`,
+    [person.fromUserId, phoneDigits(person.contactPhone), MAX_NAMED_LABEL_CANDIDATES],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return labels.rows.some((row) => latinLabelNamedInGeorgian(line, row.alias));
+}
+
 /** Is this line an instruction that names exactly this person, by the owner's own label? */
 async function lineNamesThisPerson(line: string, person: NamedContact): Promise<boolean> {
   if (!looksLikeContactInstruction(line)) return false;
@@ -803,7 +817,11 @@ async function lineNamesThisPerson(line: string, person: NamedContact): Promise<
   );
   const labels = candidates.rows.filter((row) => labelNamedIn(line, row.alias));
   const best = labels[0];
-  if (best === undefined) return onlyContactByFirstName(line, person);
+  if (best === undefined) {
+    return (
+      (await latinLabelOfThisContactNamed(line, person)) || onlyContactByFirstName(line, person)
+    );
+  }
   const runnerUp = labels[1];
   // Two labels of the same length both inside the sentence name nobody.
   if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {

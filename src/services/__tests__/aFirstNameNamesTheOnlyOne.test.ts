@@ -26,7 +26,7 @@ describe('the owner-named gate', () => {
 
   it('falls back to the first name only when no whole label is in the line', () => {
     expect(service).toContain(
-      'if (best === undefined) return onlyContactByFirstName(line, person);',
+      '(await latinLabelOfThisContactNamed(line, person)) || onlyContactByFirstName(line, person)',
     );
   });
 

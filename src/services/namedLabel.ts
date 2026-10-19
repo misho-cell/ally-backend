@@ -1,3 +1,5 @@
+import { nameKey } from './tools/transliterate';
+
 /**
  * Does a typed sentence name this phonebook label? Used to decide which ONE
  * person an owner's instruction („ask X …") is about, so a wrong yes is a
@@ -50,4 +52,45 @@ export function labelNamedIn(sentence: string, label: string): boolean {
   if (text.includes(name)) return true;
   if (!name.endsWith(DROPPED_FINAL)) return false;
   return declinedFormIn(text, name.slice(0, -DROPPED_FINAL.length));
+}
+
+/**
+ * #6339 (Giorgi, G-085, thread 60691): „ლიკა ოსეფაშვილსაც კითხე" did not name
+ * his contact saved as „Lika Osepashvili" — the label is in Latin letters and
+ * the sentence in Georgian, so the ask to her was refused five times as
+ * „outside the plan" while the plan wall told the model the owner's own words
+ * were the permission. A label of two or more words written in Latin letters
+ * is named by a Georgian sentence that holds every one of its words, read by
+ * sound, each whole or with a case ending (and „-ც" / „-აც") after it.
+ */
+const LATIN_LETTER_RE = /[a-z]/i;
+const LATIN_DROPPED_FINAL = 'i';
+const LATIN_CASE_ENDINGS: readonly string[] = ['', 's', 'ma', 'm', 'is', 'it', 'ad'];
+const LATIN_ALSO_PARTICLES: readonly string[] = ['', 'ac', 'c'];
+const MIN_LABEL_WORDS_ACROSS_SCRIPTS = 2;
+
+function soundKey(text: string): string {
+  return nameKey(text).replace(/f/g, 'p');
+}
+
+function wordNamedBy(sentenceWord: string, labelWord: string): boolean {
+  const stems = labelWord.endsWith(LATIN_DROPPED_FINAL)
+    ? [labelWord, labelWord.slice(0, -LATIN_DROPPED_FINAL.length)]
+    : [labelWord];
+  return stems.some((stem) =>
+    LATIN_CASE_ENDINGS.some((ending) =>
+      LATIN_ALSO_PARTICLES.some((particle) => sentenceWord === `${stem}${ending}${particle}`),
+    ),
+  );
+}
+
+export function latinLabelNamedInGeorgian(sentence: string, label: string): boolean {
+  if (!GEORGIAN_LETTER_RE.test(sentence) || GEORGIAN_LETTER_RE.test(label)) return false;
+  if (!LATIN_LETTER_RE.test(label)) return false;
+  const labelWords = soundKey(label)
+    .split(' ')
+    .filter((w) => w !== '');
+  if (labelWords.length < MIN_LABEL_WORDS_ACROSS_SCRIPTS) return false;
+  const sentenceWords = soundKey(sentence).split(' ');
+  return labelWords.every((lw) => sentenceWords.some((sw) => wordNamedBy(sw, lw)));
 }

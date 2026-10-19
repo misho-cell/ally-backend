@@ -506,6 +506,13 @@ export async function ensureNextWake(taskId: number, hours: number): Promise<boo
  * waiting on the owner. The six-hour edge keeps the first sweep from reaching
  * every old goal at once.
  */
+/**
+ * #6339 (Giorgi, G-086, thread 60691): a plan proposal waits on the owner's
+ * answer whether or not an earlier plan was approved. The update's own
+ * „გავაგრძელო?" card was drawn under the waiting plan, his „კი, გააგრძელე"
+ * answered the update instead, and the plan had to be asked again. A goal
+ * with any proposal waiting gets no update: the plan card is the question.
+ */
 export async function getGoalsUnsolvedAfterAnHour(
   limit: number,
 ): Promise<(Task & { readonly user_id: string })[]> {
@@ -515,7 +522,7 @@ export async function getGoalsUnsolvedAfterAnHour(
        AND t.thread_id IS NOT NULL
        AND t.created_at < NOW() - INTERVAL '60 minutes'
        AND t.created_at > NOW() - INTERVAL '6 hours'
-       AND NOT (t.plan_proposed IS NOT NULL AND t.plan IS NULL)
+       AND t.plan_proposed IS NULL
        AND t.pending_question IS NULL
        AND NOT EXISTS (SELECT 1 FROM task_asks a
                         WHERE a.task_id = t.id AND a.status = 'answered')

@@ -32,7 +32,8 @@ describe('the owner’s tie to a go-between', () => {
           { contact_phone: '+995500000001', total: '0.5', events: '1', kinds: ['stated_close'] },
           { contact_phone: '+995500000004', total: '0.2', events: '1', kinds: ['ask_answered'] },
         ]),
-      );
+      )
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000004' }] });
     const ties = await ownerTiesTo('501', [
       '+995500000001',
       '+995500000002',
