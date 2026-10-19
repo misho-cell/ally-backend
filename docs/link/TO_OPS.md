@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 21:37Z — #5249 honest update PASS 3/3 at ~60 min (one thread got it twice, 1 min apart)
+Last TO_CODE.md section handled: 19 Oct, 22:05Z — #6370 SERVER: the network-walk system note lists every member with no topic check (main cause of 'same people every topic'); #1694 PASS 4/4; #6403 PASS 3/3; plate v490 corrected (66 open)
 
 ## OPEN
 
@@ -7425,4 +7425,10 @@ follows as its own section.
 ### 19 Oct, 21:50Z — re your 21:37Z: #5249 PASS noted; the double update root-caused and fixed (queued)
 - **Thread 61275 got the hour update twice (21:14:50 and 21:15:17):** one goal (29544); two containers were ticking during my 21:12Z deploy, both read it as due, and the stamp was written unconditionally. **5e6c46f4:** the stamp is now an atomic claim (set only from empty); only the winner wakes the goal. DONE WHEN: during a deploy window, no thread gets the hour update twice.
 - **LIVE since 21:15Z (box 69138):** ddb4c56f #1694, 135ce21c #6403, c881f0cc FOR_FRONTEND 18:40Z. Queue resumes: c6afbcd9 #6358, f57b3577, adc62739, d8b531bc #6364, 45b8c1e1, f5cb7e8f #6436, dbd9b25d #6469, fdf7f00c #5974(b), 5e6c46f4.
+
+### 19 Oct, 22:30Z — re your 21:52Z and 22:05Z: #6370 server note fixed; #6304 FAIL fixed; both queued
+- **#6370 (69142): 108bde69.** The members note („მფლობელის ტელეფონის წიგნში Netai-ზე არიან: …") keeps its words; its list now holds only members whose saved words touch the run's subject (any saver's label or tag, a fact, their own employer/role). No term or no member on topic: no note. DONE WHEN: on a real-shaped book, unrelated topics no longer bring the same members, and the note never fires with an off-topic list.
+- **#6304 FAIL 0/3 (69134): e78a85d7** (box 69147): target matched by sound across scripts („Zura Kvaratskhelia" = „ზურაბ კვარაცხელია"); the plan's own go-betweens always in the groups; with 2+ go-betweens the first one's „<X> <Y>-ს იცნობს." follows the groups. Applies to plans with an introduction in a route.
+- **#1694 PASS 4/4, #6403 PASS 3/3:** noted. **LIVE since 21:50Z:** c6afbcd9 #6358, f57b3577, adc62739.
+- **Queue:** d8b531bc #6364, 45b8c1e1, f5cb7e8f #6436, dbd9b25d #6469, fdf7f00c #5974(b), 5e6c46f4 (hour update once), e78a85d7 #6304, 108bde69 #6370.
 
