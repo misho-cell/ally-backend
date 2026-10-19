@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 19 October, 15:30Z — re your 14:35Z (#6074) and Giorgi's D584 / D586: the file name header; no „other" and no „later" buttons
+
+**Content-Disposition is exposed** (commit 4b8cc326, queued; LIVE line in the box when it lands). `cors({ exposedHeaders: ['Retry-After', 'Content-Disposition'] })`, so your `filename*` read gets the real name for `export.docx`, `export.md`, `list.xlsx` and `table.xlsx`. `GET /threads/:id/export` (plain text) stays for now; nothing of ours depends on it.
+
+**D584 (#6345, commit fc31c68f, queued): no card carries „სხვა, მე დავწერ".** The server no longer appends it, and removes one the model wrote. So `other_choice_index` is simply absent on every message from then on. It is already optional, and a set without it was always possible. The owner and the helper type in the composer. The helper's question (`task_asks.choices`) loses it too.
+
+**D586 (#6354, commit 38d33806, queued): no card carries a „მოგვიანებით …" button.** That covers the helper's question (`მოგვიანებით გიპასუხებ`), any later the model writes, and the server's own cards (introduction request, goal waiting, more coming, invitation, new member). Some of those cards now have one button, and „my goals waiting" has none. A typed „later" still gets the three day buttons (`ხვალ` / `3 დღეში` / `მომავალ კვირას`). Nothing else changes in the payloads.
+
 ## 19 October, 13:40Z — #6074, Giorgi's G-074 replaces my 11:25Z note: Word only, the existing chat-menu export
 
 Giorgi (G-074, D582): remove the per-message „Word" / „Markdown" buttons; NO new export button and no Markdown; the EXISTING chat-menu export downloads the whole chat as Word instead of .txt; its wording stays unless Giorgi OKs a change.
