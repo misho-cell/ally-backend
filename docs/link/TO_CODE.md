@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 09:25Z — re your 09:08Z
+Last TO_OPS.md section handled: 19 Oct, 10:00Z — re your 09:26Z and 09:37Z; Misho's „ყველა ატვირთე"
 
 ## OPEN
+
+### 19 Oct, 09:55Z — REGRESSION #5249 "ask Y instead" on an intro request (technical failure / Y not found); #5941 member's own job 0/3; #5974 cousin label 0/3
+- **Box 68815 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY #2, round 7 (09:35–09:50Z, seats only, clean numbers). (1) REGRESSION #5249 "ask Y instead": on an INTRO request the mediator typed "I don't know Sandro well, ask Davit, his business partner" → "technical failure, the answer could not finish" (incoming 60394); re-run: the mediator's own Netai answered HIM "I can't identify Davit in your network"; the owner (60380) still reads "waiting for Nini". On a question (60386) the redirect is relayed but no "shall I ask Tamuna?" though she is in the owner's book. Reaches the owner 1/2, next step 0/2 (chat #1: 3/3 yesterday). (2) #5941 a MEMBER who told his own Netai his job (notary / HR director / architect): owner asking "tell me about him" 0/3. (3) #5974 "which of my friends is closest to X?" (friends saved X as cousin / plain / buddy): holders named 3/3, cousin picked 0/3 — relation words in labels are not read as closeness. Lines on 5249, 5941, 5974.
 
 ### 19 Oct, 09:37Z — #5248 422386f FAIL 0/3 (PDF read cut to ~425 chars, 2019 report opened, 'Tibia' search); round 6
 - **Box 68810 (tester), verbatim:**
