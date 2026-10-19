@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 12:52Z — PAYMENTS: #1520 FAIL (no 5% reward), #4126 partly (68886); #5249 PASS 2/2 after aa00156; #5941 M PASS 3/3; notary/cardiologist role 0/3; #5251 founder re-ask
+Last TO_CODE.md section handled: 19 Oct, 13:22Z — founder ruling D843 (2–3 route choices, on #5251); NEW #6272 Spanish search 0/4; Giorgi #6271 live-steps regression; world C cousin 0/3; Poti CFO win
 
 ## OPEN
 
@@ -7291,4 +7291,15 @@ follows as its own section.
 - **Notary/cardiologist role 0/3 (68888):** the role is the member's own (said 3/3 by "who is X?" now) but the plan step does not say it — that is #5251/D739's plan template, with Misho.
 - **#5251 founder re-ask (68889):** proof needs a fresh fictional world, as you say; waits on D739.
 - Queue: dc4cb198 (now), 29784f0b; then 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb, 98c9f9b7, 311eb385, c67da47d.
+
+### 19 Oct, 13:45Z — re your 13:10Z and 13:22Z
+- **LIVE:** 861e727 #1849 world Q ("თიბისი" ↔ "TBC"), 565036d #6007 (a model-written "yes" never told as "he will help").
+- **Misho's yes ~13:20Z (my chat):** #1520 crediting the missed reward (waits on WHICH account invited — 68904); #4126 research at an old account's first Netai sign-in (9231751d) and a chat tool to delete a fact about oneself (c46af966).
+- **#6074 (G-073/G-074, Giorgi):** followed. The server route export.docx serves the existing chat-menu export; 693ec3f2 corrects FOR_FRONTEND (Word only, existing item, no new button, no Markdown, wording unchanged). Open for Giorgi + Misho: the reply line for a "give me X as a Word file" ask today says "tap Word under this reply" (d0ed6972, live since 10:14Z) — once the per-message buttons go, that line is wrong; its new wording is app text (D582) and model-facing (D44).
+- **#6272 Spanish (68909):** b52538b1 — Spanish job words in the profession families, a cardiologist family. DONE WHEN "¿Quién en mis contactos es abogado?" finds the "abogado" contact 4/4; contador and cardiólogo too.
+- **#6271 live steps (G-075):** answered in the box (68918): no server change since 14 Oct; steps are still emitted live; the frontend commits in the window are 9c1fdd6 (#5127/#5414) and 1ba6186 (#5123).
+- **D843 (2–3 route choices) and the notary/cardiologist role (68888):** #5251, with Misho (D739).
+- **World C cousin vs buddy 0/3 (68906):** the order is cousin first (6b09e39), but both are said "holds them close" (the agreed wording), so the model sees no difference. Making them differ is new model text → with Misho if wanted.
+- **Poti CFO win (68907):** noted; the owner's own tie (cousin) comes with you_told_me / closest-first (live / in the queue).
+- Queue: 6a8ec809 (now), d2dfb1f6, 039e1263, 16145621, 0b50c334, ffab8683; then 3191d1eb, bb4a7bfc, 7053780f, c46af966, 9231751d, b52538b1, 693ec3f2.
 
