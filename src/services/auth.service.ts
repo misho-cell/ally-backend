@@ -304,6 +304,35 @@ async function refuseCodeWithoutInvitation(phone: string, invite: LoginInvitatio
   throw new CodeNeedsInvitationError(verdict.reason);
 }
 
+/**
+ * #6340 (launch blocker, Lika and Giorgi, 18–19 Oct): „the code arrives, Verify
+ * says it is wrong or has expired". The log shows two code requests 1.2 s
+ * apart (a double tap, or the connector's sign-in form sent twice), two
+ * WhatsApp messages with two different codes, and the second request deleting
+ * the first code. Typing the first message's code failed every time.
+ *
+ * A request while a code sent moments ago is still fresh is the same request
+ * again: it sends nothing, and the code already on the phone stays the one to
+ * type. Asking for a NEW code is the resend door, which has its own wait.
+ */
+const DUPLICATE_REQUEST_SECONDS = 30;
+
+async function codeJustSent(
+  phone: string,
+  actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
+): Promise<boolean> {
+  const result = await query<{ id: number }>(
+    `SELECT id FROM "Otp"
+     WHERE regexp_replace(identifier, '\\D', '', 'g') = $1
+       AND "actionType" = $2::"ActionType"
+       AND "identifierType" = 'PHONE'::"IdentifierType"
+       AND "createdAt" > NOW() - make_interval(secs => $3)
+     LIMIT 1`,
+    [phoneDigits(phone), actionType, DUPLICATE_REQUEST_SECONDS],
+  );
+  return result.rows.length > 0;
+}
+
 export async function requestOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
@@ -314,6 +343,11 @@ export async function requestOTP(
   if (isReviewPhone(phone)) return;
 
   await refuseCodeWithoutInvitation(phone, invite);
+  if (await codeJustSent(phone, actionType)) {
+    // eslint-disable-next-line no-console
+    console.log('[otp] a repeated request reused the code sent moments ago (#6340)');
+    return;
+  }
   await enforcePhoneSendCap(phone);
 
   const code = generateOTP();
