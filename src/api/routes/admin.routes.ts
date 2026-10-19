@@ -7256,7 +7256,8 @@ adminRouter.get(
 
 /**
  * 4225 — the Axel base load (§119). Body: the package's person_numbers.csv and
- * facts.csv as text, and dry_run. A dry run resolves and counts and writes
+ * facts.csv as text, memberships.csv as text (optional; Misho's yes, 19 Oct),
+ * and dry_run. A dry run resolves and counts and writes
  * nothing; run it first. Undo: §119.
  */
 const MAX_AXEL_CSV_CHARS = 4_000_000;
@@ -7265,21 +7266,29 @@ adminRouter.post('/axel/base-load', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const numbers = body.person_numbers_csv;
   const facts = body.facts_csv;
+  const memberships = body.memberships_csv ?? '';
   if (
     typeof numbers !== 'string' ||
     typeof facts !== 'string' ||
+    typeof memberships !== 'string' ||
     numbers.length > MAX_AXEL_CSV_CHARS ||
     facts.length > MAX_AXEL_CSV_CHARS ||
+    memberships.length > MAX_AXEL_CSV_CHARS ||
     typeof body.dry_run !== 'boolean'
   ) {
     res.status(400).json({
       success: false,
-      error: 'person_numbers_csv and facts_csv (text) and dry_run (true or false) are required',
+      error:
+        'person_numbers_csv and facts_csv (text) and dry_run (true or false) are required; ' +
+        'memberships_csv (text) is optional',
     });
     return;
   }
   try {
-    res.status(200).json({ success: true, data: await loadAxelBase(numbers, facts, body.dry_run) });
+    res.status(200).json({
+      success: true,
+      data: await loadAxelBase(numbers, facts, body.dry_run, memberships),
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/axel/base-load]', (error as Error).message);

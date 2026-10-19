@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { basePlan, csvRecords, ResearchStatus } from '../axelBasePlan';
+import { basePlan, csvRecords, membershipRows, ResearchStatus } from '../axelBasePlan';
 import { loadAxelBase, PUBLIC_RESEARCH, SYSTEM_SAVER_ID } from '../axelBaseLoad.service';
 import { readPhonebooks, readRoster } from '../../axelExport/axelData';
 import { withTransaction } from '../../../db/postgres/client';
@@ -142,5 +142,49 @@ describe('research is never the second saver', () => {
     expect(others.slice(0, 600)).toContain("source IS DISTINCT FROM 'public_research'");
     const republish = read('factRepublish.service.ts');
     expect(republish.match(/source IS DISTINCT FROM 'public_research'/gu)).toHaveLength(3);
+  });
+});
+
+/** 4225, Misho's yes of 19 Oct: the memberships are loaded as affiliation facts. */
+describe('the memberships', () => {
+  const MEMBERSHIPS = [
+    '\uFEFFperson_key,network_key,network_name,role_or_year,status,source,date',
+    'P-1,c02,Tbilisi State University (TSU),2010-2012,possible,https://x.example,2026-05-21 ; 2025-07-22',
+    'P-1,s01,DataMind,,confirmed,https://y.example,2026-06-05',
+    'P-2,s01,DataMind,Co-founder,confirmed,https://z.example,2026-06-05',
+  ].join('\n');
+
+  it('says the network, then the role or the years', () => {
+    expect(membershipRows(MEMBERSHIPS).map((r) => r.value)).toEqual([
+      'Tbilisi State University (TSU) — 2010-2012',
+      'DataMind',
+      'DataMind — Co-founder',
+    ]);
+  });
+
+  it('rides in the same plan as the facts, on loadable numbers only', () => {
+    const plan = basePlan(NUMBERS, FACTS, MEMBERSHIPS);
+    const facts = plan.byHash.get(HASH_A) ?? [];
+    expect(facts.filter((f) => f.key === 'affiliation')).toEqual([
+      {
+        key: 'affiliation',
+        value: 'Tbilisi State University (TSU) — 2010-2012',
+        status: ResearchStatus.Possible,
+        sourceUrl: 'https://x.example',
+        factDate: '2026-05-21',
+      },
+      {
+        key: 'affiliation',
+        value: 'DataMind',
+        status: ResearchStatus.Confirmed,
+        sourceUrl: 'https://y.example',
+        factDate: '2026-06-05',
+      },
+    ]);
+    expect(plan.byHash.has(HASH_B)).toBe(false);
+  });
+
+  it('changes nothing when no memberships are given', () => {
+    expect(basePlan(NUMBERS, FACTS).byHash.get(HASH_A)).toHaveLength(3);
   });
 });

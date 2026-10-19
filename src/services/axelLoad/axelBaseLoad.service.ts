@@ -114,8 +114,9 @@ export async function loadAxelBase(
   personNumbersCsv: string,
   factsCsv: string,
   dryRun: boolean,
+  membershipsCsv = '',
 ): Promise<BaseLoadReport> {
-  const plan = basePlan(personNumbersCsv, factsCsv);
+  const plan = basePlan(personNumbersCsv, factsCsv, membershipsCsv);
   const skipped: Record<string, number> = { ...plan.skipped };
   const numbers = await numbersByHash();
   const targets: { phone: string; facts: ResearchFact[] }[] = [];

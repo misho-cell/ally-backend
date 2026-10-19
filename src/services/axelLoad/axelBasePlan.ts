@@ -87,12 +87,45 @@ function hashesByPerson(
   return out;
 }
 
-/** The rows to write, grouped by number; everything left out is counted by reason. */
-export function basePlan(personNumbersCsv: string, factsCsv: string): BasePlan {
+/** A membership is said as the network, then the role or the years when the package has one. */
+export const MEMBERSHIP_KEY = 'affiliation';
+
+/**
+ * 4225, Misho's yes of 19 Oct: the package's memberships (a person in a
+ * community, school or portfolio startup) were never loaded, so nobody could
+ * be found by „studied at X" or „in network Y". Each becomes an `affiliation`
+ * fact on the person's numbers, with its own status, source and date, so the
+ * searches that already read facts find it with no new tool.
+ */
+export function membershipRows(membershipsCsv: string): Row[] {
+  return csvRecords(membershipsCsv).map((row) => {
+    const network = row.network_name ?? '';
+    const role = row.role_or_year ?? '';
+    return {
+      person_key: row.person_key ?? '',
+      key: MEMBERSHIP_KEY,
+      value: network === '' ? '' : role === '' ? network : `${network} — ${role}`,
+      status: row.status ?? '',
+      source: row.source ?? '',
+      date: row.date ?? '',
+    };
+  });
+}
+
+/**
+ * The rows to write, grouped by number; everything left out is counted by
+ * reason. The memberships ride in the same plan because a load replaces a
+ * number's research rows whole: loaded apart, each load would erase the other.
+ */
+export function basePlan(
+  personNumbersCsv: string,
+  factsCsv: string,
+  membershipsCsv = '',
+): BasePlan {
   const skipped: Record<string, number> = {};
   const hashes = hashesByPerson(csvRecords(personNumbersCsv), skipped);
   const byHash = new Map<string, ResearchFact[]>();
-  for (const row of csvRecords(factsCsv)) {
+  for (const row of [...csvRecords(factsCsv), ...membershipRows(membershipsCsv)]) {
     const targets = hashes.get(row.person_key ?? '');
     if (targets === undefined) {
       bump(skipped, 'fact_without_loadable_number');
