@@ -11,6 +11,7 @@ import {
   CodeNeedsInvitationError,
   LoginInvitation,
   eligibilityRefusalLine,
+  OTP_SENDS_PER_PHONE_PER_HOUR,
 } from '../../services/auth.service';
 import { checkRegistrationEligibility } from '../../services/inviteGate.service';
 import { recordLinkOpened, recordLinkShared } from '../../services/referralLink.service';
@@ -105,8 +106,11 @@ authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_PERSON, k
 // Tighter limit on the SMS-sending endpoints specifically, so one device —
 // or, from an app that sends no device id, one phone — can't burn the SMS
 // budget (F4). Keyed by the person, not the address, for the same room.
-const OTP_SEND_WINDOW_MS = 10 * 60_000;
-const OTP_SEND_MAX_PER_PERSON = 5;
+// #6338 (Ninia's FAIL, 19 Oct): it stood at five per ten minutes, under the
+// ten-an-hour of the number, so a real phone was stopped at its 6th code. It
+// now counts the same hour and the same ten as the number does.
+const OTP_SEND_WINDOW_MS = 60 * 60_000;
+const OTP_SEND_MAX_PER_PERSON = OTP_SENDS_PER_PHONE_PER_HOUR;
 const limitOtpSends = rateLimit({
   windowMs: OTP_SEND_WINDOW_MS,
   max: OTP_SEND_MAX_PER_PERSON,

@@ -17,9 +17,10 @@ describe('the sign-in limits', () => {
     expect(routes).not.toContain('authRouter.use(rateLimit({ windowMs: 5 * 60_000, max: 30 }));');
   });
 
-  it('keep the SMS sends at five per person, not per address', () => {
+  it('keep the SMS sends per person, not per address, at the hourly ten of the number (#6338)', () => {
     expect(routes).toContain('max: OTP_SEND_MAX_PER_PERSON,');
-    expect(routes).toContain('const OTP_SEND_MAX_PER_PERSON = 5;');
+    expect(routes).toContain('const OTP_SEND_MAX_PER_PERSON = OTP_SENDS_PER_PHONE_PER_HOUR;');
+    expect(routes).toContain('const OTP_SEND_WINDOW_MS = 60 * 60_000;');
     const sends = routes.slice(routes.indexOf('const limitOtpSends'));
     expect(sends.slice(0, sends.indexOf('});'))).toContain("keyBy: 'person'");
   });
