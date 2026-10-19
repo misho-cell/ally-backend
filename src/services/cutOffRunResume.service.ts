@@ -7,6 +7,7 @@ import { detectRunLanguage, RUN_STRINGS } from './runLanguage';
 import { enterThread } from './threadRunQueue';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread } from './threads.service';
+import { WORKING_LINE } from './workingLine.service';
 
 /**
  * Tester 1013, 2 October — Ninia's answer, cut off by my own deploy.
@@ -37,6 +38,13 @@ import { getThread } from './threads.service';
  *   nobody asked for), so there is nothing here to find.
  * - Carry `as_goal` or a reply-to id. Neither is stored with the message; the
  *   run reads the thread as it stands, which already holds any goal it made.
+ *
+ * #6371 (Ninia, 19 Oct, thread 60943): her first question of a goal was cut at
+ * 16:10:13 and never restarted. The run had already posted Giorgi's „I am
+ * working on your task" line (workingLine.service), so the row above the
+ * notice was that line, not her message, and the sweep passed her by. The
+ * server's own working line is read through, the way the owner reads it: it
+ * is not an answer.
  */
 
 /** Marks a run started here, so it is never started a second time. */
@@ -58,13 +66,21 @@ export interface CutOffMessage {
   readonly message: string;
 }
 
+function asStored(raw: readonly string[]): string[] {
+  return [...new Set([...raw, ...raw.map(scrubMechanicalForStorage)])];
+}
+
 /**
  * The notice in every language, as written and as storage scrubs it: the
  * scrub turns dashes into commas, and a wording change must not hide a row.
  */
 export function storedNoticeTexts(): string[] {
-  const raw = Object.values(RUN_STRINGS).map((s) => s.restartedMidRun);
-  return [...new Set([...raw, ...raw.map(scrubMechanicalForStorage)])];
+  return asStored(Object.values(RUN_STRINGS).map((s) => s.restartedMidRun));
+}
+
+/** The working line in every language, as written and as stored (#6371). */
+export function storedWorkingLines(): string[] {
+  return asStored(Object.values(WORKING_LINE));
 }
 
 /** Notices still standing as the last word, each with the owner message right above it. */
@@ -81,6 +97,7 @@ export async function findCutOffMessages(since: Date): Promise<CutOffMessage[]> 
          SELECT p.role, p.content, p.created_at FROM conversations p
           WHERE p.thread_id = n.thread_id AND p.created_at < n.created_at
             AND p.kind IN ('message', 'error')
+            AND NOT (p.role = 'assistant' AND p.content = ANY($6::text[]))
           ORDER BY p.created_at DESC LIMIT 1
        ) u ON TRUE
       WHERE n.role = 'assistant' AND n.kind = 'error'
@@ -100,6 +117,7 @@ export async function findCutOffMessages(since: Date): Promise<CutOffMessage[]> 
       `${RESUMED_RUN_PREFIX}%`,
       String(MESSAGE_BEFORE_NOTICE_SECONDS),
       MAX_RESUMES_PER_SWEEP,
+      storedWorkingLines(),
     ],
     RESUME_QUERY_TIMEOUT_MS,
   );

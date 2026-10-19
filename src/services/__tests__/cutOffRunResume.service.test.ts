@@ -27,7 +27,9 @@ import {
   resumeCutOffRuns,
   resumeOne,
   storedNoticeTexts,
+  storedWorkingLines,
 } from '../cutOffRunResume.service';
+import { WORKING_LINE } from '../workingLine.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockRun = runOwnerMessage as jest.MockedFunction<typeof runOwnerMessage>;
@@ -88,6 +90,20 @@ describe('finding a cut-off message', () => {
     // One retry, never a loop: a restarted run's own notice is left alone.
     expect(params?.[2]).toBe(`${RESUMED_RUN_PREFIX}%`);
     expect(typeof timeout).toBe('number');
+  });
+
+  it("reads through the server's own working line above the notice (#6371)", async () => {
+    mockQuery.mockResolvedValueOnce(rows([]));
+
+    await findCutOffMessages(SINCE);
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain("NOT (p.role = 'assistant' AND p.content = ANY($6::text[]))");
+    expect(params?.[5]).toEqual(storedWorkingLines());
+    for (const line of Object.values(WORKING_LINE)) {
+      expect(storedWorkingLines()).toContain(line);
+      expect(storedWorkingLines()).toContain(scrubMechanicalForStorage(line));
+    }
   });
 });
 
