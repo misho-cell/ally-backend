@@ -1,3 +1,4 @@
+import { query } from '../db/postgres/client';
 import { offerOpenAsksChoice } from './openAsksAfterSolved';
 import { emitChoicesCleared } from './sse.service';
 import { getGoalOnThread, updateTask } from './taskStore.service';
@@ -57,6 +58,40 @@ async function resolvePlainChat(userId: string, threadId: number): Promise<GoalR
 }
 
 /** The owner's „მოგვარდა" on the goal of their own thread. */
+/**
+ * #6363, RULE D588 (1) (Giorgi, 19 Oct): the owner's „მოგვარდა" moves the case
+ * to „მოგვარებული" for everybody in it — each helper's question and each
+ * go-between's introduction request — not only for the owner. Nothing is
+ * deleted or hidden; each conversation keeps all it holds. Best-effort: the
+ * owner's own case is resolved whatever happens here, and a miss is logged.
+ */
+const PARTICIPANT_THREADS_READ = 100;
+const PARTICIPANT_QUERY_TIMEOUT_MS = 5_000;
+
+async function settleParticipantThreads(goalId: number, ownerThreadId: number): Promise<void> {
+  try {
+    const result = await query<{ id: number; user_id: number }>(
+      `SELECT th.id, th.user_id FROM threads th
+        WHERE th.id <> $2
+          AND th.status <> 'done'
+          AND (th.id IN (SELECT ta.ask_thread_id FROM task_asks ta WHERE ta.task_id = $1)
+               OR th.id IN (SELECT ir.mediator_thread_id FROM introduction_requests ir
+                             WHERE ir.requester_task_id = $1)
+               OR th.introduction_request_id IN (SELECT ir.id FROM introduction_requests ir
+                                                  WHERE ir.requester_task_id = $1))
+        LIMIT $3`,
+      [goalId, ownerThreadId, PARTICIPANT_THREADS_READ],
+      PARTICIPANT_QUERY_TIMEOUT_MS,
+    );
+    for (const thread of result.rows) {
+      await setThreadStatus(String(thread.user_id), thread.id, 'done');
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[resolve] goal ${goalId}: participants not settled:`, (err as Error).message);
+  }
+}
+
 export async function resolveGoalOnThread(
   userId: string,
   threadId: number,
@@ -75,6 +110,7 @@ export async function resolveGoalOnThread(
   // After the buttons are cleared, so the keep-or-close card it may write stays.
   const openQuestions = await offerOpenAsksChoice(goal.id, threadId, Number(userId));
   await setThreadStatus(userId, threadId, 'done');
+  await settleParticipantThreads(goal.id, threadId);
   return {
     outcome: ResolveOutcome.Resolved,
     goal_id: goal.id,

@@ -967,6 +967,10 @@ async function mediatorThreadStatusAfter(
     return { status: await askThreadStatusAfterRequest(thread.id) };
   if (action === 'snooze')
     return { status: 'waiting', statusLine: introSnoozedLine(ownerLanguage) };
+  // #6362 (Giorgi): a go-between who agreed keeps the request in her list — it
+  // moves to „მოგვარებული" when she declines, or when the owner resolves the
+  // case (D588), never on her yes.
+  if (action === 'accept') return { status: 'working' };
   return { status: 'done' };
 }
 
