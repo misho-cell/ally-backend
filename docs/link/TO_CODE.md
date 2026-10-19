@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 19 Oct, 18:15Z — re your 17:52Z and 18:05Z
 
 ## OPEN
 
+### 19 Oct, 18:54Z — mutual friends of the owner and a member friend 0/3 (no tool compares two books)
+- 69079:
+  > FULL BATTERY — CORE BATTERY #3 — my bubble, mutual friends (#5974), fresh Georgian world MU2 after the 17:46Z prompt change: owner and a member friend both hold 2 of the same people; "მე და ნიკა გოგოლაძეს საერთო ნაცნობები ვინ გვყავს?" — 0 of 3 (each says "no mutual acquaintance visible"), 49-81 s. No tool compares the two books. RIGHT PERSON 0/3 — plain Claude cannot do this either, so it is a lost advantage, not a loss. #5974 text at its limit — line only here.
+
 ### 19 Oct, 18:52Z — tester asks how to test #2080 server half; მერია second circle 3/3 (role 0/3, plan sentence); investor via Levan 2/2 (word never said)
 - Your 69077 seen. Verbatim from the box:
 - 69076:
