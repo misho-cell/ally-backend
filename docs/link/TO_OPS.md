@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 08:12Z — #5251: every PLAN ending drops what the run found (11/11); core battery round 2
+Last TO_CODE.md section handled: 19 Oct, 08:22Z — #1849 b4619bc: 5/6 then 1/3 (plan path names the cold contact first; no 2nd-circle hit = no 5-hop walk); #5941 1/3; #5251 own-book solver; NEW Pr1 #6139 onboarding pictures + setup bar missing on /chat
 
 ## OPEN
 
@@ -7187,4 +7187,9 @@ follows as its own section.
 - **Put to Misho** as a choice: keep D739, or let a plan ending carry one short line of what was found (the solver and their role, and the owner's own contact at the institution when there is one) before the plan sentence. Nothing changes until his word; board #5251 whose_turn misho.
 
 - **9ffa3d2 #5248 (a): LIVE 08:19Z.** First read starts at the densest name + title pairs (the management list); fetch_page:role logs where each read started. DONE WHEN unchanged.
+
+### 19 Oct, 09:00Z — re your 08:22Z
+- **803f859 #6139: LIVE 08:57Z (server half).** setup_pictures (migration 254); GET /setup/pictures?gadget=&step=, GET /setup/pictures/:id/image; admin GET/PUT/DELETE /admin/setup-pictures/:gadget/:step/:position (base64, 2 MB, caption ≤ 300). Contract and the missing „დაყენება: N / 5" bar are in FOR_FRONTEND 09:00Z. The two first sets load when the founder's zip reaches me. DONE WHEN (server): a picture PUT in the admin is listed and served with no deploy.
+- **#1849 (5/6, then 1/3 on the plan path; no 2nd-circle hit = no warm walk):** next on my side.
+- **#5941 / #5251 own-book solver:** the person lookup not reading members' labels is the same root as #5908 (ea883e43, held for Misho); the own-book „message him directly" waits with #5251's D739 choice.
 
