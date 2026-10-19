@@ -1140,6 +1140,17 @@ export function listDownloadNote(status: ListStatus): string {
  * have him saved, got the full answer. A name missing from the owner's own
  * phonebook is where the work starts, not where it ends.
  */
+/**
+ * #1849 (the tester's world Z, 2 of 3): nobody in the owner's own book held the
+ * office, and the runs answered from the web with no way in; the network was
+ * never searched, so the five-hop walk never ran. An empty tag search now walks
+ * further itself, and says to search the second circle.
+ */
+const LOOK_INTO_THE_NETWORK =
+  'Nobody in the owner’s own phonebook is saved under these words. Before answering, ' +
+  'search_second_degree with the same words; a person found only on the web is never the ' +
+  'whole answer while the owner’s network has not been searched.';
+
 const LOOK_ONE_RING_OUT =
   'This exact person is NOT in the owner’s own phonebook (rows marked approximate are other ' +
   'people who share part of the name — never offer them as this person). Before answering, ' +
@@ -9821,11 +9832,23 @@ async function executeToolCall(
       const found = runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
       // #510: the profession's other words, searched by the server in the same call.
       const related = relatedProfessionWords(typeof tagQuery === 'string' ? tagQuery : '');
-      if (related.length === 0) return found;
-      const family = await searchProfessionFamily(found, related, (word) =>
-        searchByTag(userId, word),
-      );
-      return { ...family, also_searched_note: ALSO_SEARCHED_NOTE };
+      const searched =
+        related.length === 0
+          ? await found
+          : {
+              ...(await searchProfessionFamily(found, related, (word) =>
+                searchByTag(userId, word),
+              )),
+              also_searched_note: ALSO_SEARCHED_NOTE,
+            };
+      return notInThePhonebook(searched)
+        ? withFurtherOut(
+            userId,
+            tagQuery,
+            { ...searched, look_further: LOOK_INTO_THE_NETWORK },
+            runId,
+          )
+        : searched;
     }
     case 'search_by_insight':
       return runLoggedSearch(

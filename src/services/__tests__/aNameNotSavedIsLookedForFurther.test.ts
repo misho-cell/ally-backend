@@ -34,3 +34,15 @@ describe('a name not in the owner’s phonebook is looked for one ring out', () 
     expect(chat).toContain('Never answer „not found" from the phonebook alone.');
   });
 });
+
+/** #1849 (the tester's world Z, 2 of 3): an empty tag search ended on the web. */
+describe('an empty tag search walks the network too', () => {
+  it('walks further and says to search the second circle', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const handler = chat.slice(chat.indexOf("case 'search_by_tag': {")).slice(0, 1200);
+    expect(handler).toContain('notInThePhonebook(searched)');
+    expect(handler).toContain('withFurtherOut(');
+    expect(handler).toContain('look_further: LOOK_INTO_THE_NETWORK');
+    expect(chat).toContain('search_second_degree with the same words');
+  });
+});
