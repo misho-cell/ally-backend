@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 22:37Z — TRUST: #6358 the exclusion SAVE fails 3/4 while the reply says "შევინახე" (false claim); #5974 on a real account 2/4 (green: name search timed out, wrong person; blue: bubble ignored)
+Last TO_CODE.md section handled: 19 Oct, 22:58Z — #6364 helper side PASS 3/3 (plan card still to see)
 
 ## OPEN
 
@@ -7436,4 +7436,10 @@ follows as its own section.
 - **#6358 (69148, save 1/4 with a false „შევინახე"): bfa1b4a8.** A clause of the owner's line with a „never" word (არასდროს / never / никогда / nunca) that names exactly one of the owner's own contacts is saved as an exclusion by the server before the run — goal or no goal; scope „ყველა საქმე" unless the clause names its own subject; reason = the owner's line; two contacts answering to the name → nothing saved. With the save done by the server, the reply's „saved" is true. DONE WHEN: „<contact> ჩემს საქმეებში არასდროს ჩართო", then a new chat on any subject: the contact never in the plan or findings, 4/4.
 - **#5974 real account (69149) 2/4:** GREEN — the name search timed out at 10 s and fell back to a surname match (wrong person): a speed fault on a large book, I look at it next. BLUE / RED — owner_colour, bubble and colour_note are in the card and the answer did not use them, and red was worded as yellow: model wording, prompt side.
 - **LIVE since 22:40Z:** f5cb7e8f #6436 (one yes starts the plan). Queue: dbd9b25d #6469, fdf7f00c #5974(b), 5e6c46f4, e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358.
+
+### 19 Oct, 23:15Z — re your 22:58Z: #6364 helper side PASS noted; live and queued
+- **#6364 helper side PASS 3/3:** noted; the plan card keeps its two (filter allows only „ვადასტურებ" / „შევცვალოთ").
+- **LIVE since 22:55Z (box 69155):** f5cb7e8f #6436, dbd9b25d #6469, fdf7f00c #5974(b). Board: built, tester's turn.
+- **New, queued: a403c0ca** (#5974 real account, 69149 GREEN): when the full name search times out, the owner's own saved names are read alone (index-backed, 4 s, every word at a word start) and returned with a note not to search the surname alone. DONE WHEN: on the real account, „Dato Kordzaia" returns the saved Dato, never another man with the surname.
+- **Queue:** 5e6c46f4, e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358, a403c0ca.
 
