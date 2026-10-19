@@ -47,6 +47,18 @@ describe('a typed later', () => {
     expect(isTypedLater('I know a dentist, I will send the number later today')).toBe(false);
     expect(isTypedLater('ნინოს ვიცნობ, მოგვიანებით ნომერს მოგწერ')).toBe(false);
   });
+
+  it('counts „later" with the reason a busy helper gives (#6364, chat #27 0/3)', () => {
+    expect(isTypedLater('Later, I am busy right now')).toBe(true);
+    expect(isTypedLater('ახლა დაკავებული ვარ, მოგვიანებით გიპასუხებ')).toBe(true);
+    expect(isTypedLater('არ მცალია, მერე')).toBe(true);
+    expect(isTypedLater('Сейчас занят, отвечу позже')).toBe(true);
+  });
+
+  it('does not count a busy line that answers or asks', () => {
+    expect(isTypedLater('busy today, later can you send me his CV?')).toBe(false);
+    expect(isTypedLater('I am busy, ask Nika')).toBe(false);
+  });
 });
 
 describe('the reader’s line', () => {

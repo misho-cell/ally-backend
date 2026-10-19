@@ -50,9 +50,31 @@ const TYPED_LATER_MAX_CHARS = 40;
 const TYPED_LATER_RE =
   /^(?:\s*(?:ok|კარგი|ok,)?\s*)(?:მოგვიანებით|მერე|ცოტა ხანში|later|not now|позже|потом|más tarde|luego)[\s.!,]*(?:გიპასუხებ|გეტყვი|i'?ll answer|отвечу|respondo)?[\s.!]*$/iu;
 
+/**
+ * #6364, carried from #6354 (the tester's chat #27, 0 of 3): a helper typed
+ * „Later, I am busy right now" and it went to the owner as the answer. With
+ * the later buttons gone (D586, D846) the reader only types, and a typed
+ * „later" comes with its reason. A short line holding a later word AND a
+ * busy word, and no question, is a „later" too; a later word alone in a
+ * longer sentence („call Nika later this week") still is not.
+ */
+const BUSY_LATER_MAX_CHARS = 80;
+const LATER_WORD_RE = /(?:მოგვიანებით|მერე|ცოტა ხანში|later|not now|позже|потом|más tarde|luego)/iu;
+const BUSY_WORD_RE = /(?:დაკავებ|არ მცალია|ვერ ვიცლი|busy|occupied|in a meeting|занят|ocupad)/iu;
+
+function isBusyLater(said: string): boolean {
+  return (
+    said.length <= BUSY_LATER_MAX_CHARS &&
+    !said.includes('?') &&
+    LATER_WORD_RE.test(said) &&
+    BUSY_WORD_RE.test(said)
+  );
+}
+
 export function isTypedLater(message: string): boolean {
   const said = message.trim();
-  return said.length > 0 && said.length <= TYPED_LATER_MAX_CHARS && TYPED_LATER_RE.test(said);
+  if (said.length === 0) return false;
+  return (said.length <= TYPED_LATER_MAX_CHARS && TYPED_LATER_RE.test(said)) || isBusyLater(said);
 }
 
 /** The SQL for „that many days from today, at 09:30 Tbilisi time", as an expression of $days. */
