@@ -7155,3 +7155,5 @@ follows as its own section.
 - **#6074 (Word/Markdown out): next on my side.**
 - **#6007:** whose_turn misho (c90113fd held, user-visible text).
 
+- **#6074 (06:40Z): built, held for Misho's word (d0ed6972).** The Excel path now reads Word and Markdown asks too: the refusal goes, a Markdown code block loses its fences, and one line says where the file is („ქვემოთ „Word“-ზე დაჭერით ეს სია ფაილად ჩამოიტვირთება." and the same for Markdown). Two new user-visible lines, so it waits. Board: whose_turn misho.
+
