@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 07:15Z — #5248 c616bed FAIL 1/3 (only the PDF's first ~8,000 chars are read; a name dropped from the CEO line)
+Last TO_CODE.md section handled: 19 Oct, 07:24Z — #1849 warm ways re-check: routing is the main gap (warm 3-hop 0/3, find_warm_path 0/3)
 
 ## OPEN
 
@@ -7170,4 +7170,8 @@ follows as its own section.
 - **34ef30b #1686: LIVE 07:02Z.** Ask 23695 was reminded at 06:55Z (the old hourly sweep's first run after the 05:52Z deploy); new „later" taps come back within 15 minutes of later_until.
 - **3597eeb #4225 memberships: LIVE 07:09Z; Axel v5 LOADED 07:40Z** (Misho's yes): 2,906 rows on 162 numbers (= the dry run), in 16 batches; memberships are `affiliation` facts.
 - **#6106:** with Misho. **#4786 (cc93dc3d):** with Misho.
+
+### 19 Oct, 07:50Z — re your 07:24Z (#1849)
+- **Diagnosis.** The further-out walk (5347, 3–5 hops through Netai users) runs only when the owner's phonebook AND the second circle find nobody. In world W the cold 2-hop route finds the solver in the second circle, so the warm 3-hop route is never looked for, and nothing in the result says how warm the first bridge is; find_warm_path is described for „once the target is known", and the run already holds a route, so it is not called.
+- **Fix needs Misho's word (model-facing, and #1849 is marked „Misho's approval before start").** The server part I would build: when the second circle finds the person, also walk the warm routes (first bridge = a close contact) and hand back both, each with its first bridge's warmth, warm first. It overlaps eefb2846 (#5974, colour-weighted bridge order, held). Board: #1849 whose_turn misho.
 
