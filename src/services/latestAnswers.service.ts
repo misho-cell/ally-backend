@@ -32,7 +32,7 @@ export async function latestAnswers(userId: string, limit: number): Promise<Late
             u.name AS to_name, (a.declined_at IS NOT NULL) AS declined,
             a.answered_at
        FROM task_asks a
-       JOIN tasks t ON t.id = a.task_id AND t.user_id = a.from_user_id
+       JOIN tasks t ON t.id = a.task_id AND t.user_id = a.from_user_id::text
        LEFT JOIN threads th ON th.id = t.thread_id
        LEFT JOIN "User" u ON u.id = a.to_user_id
       WHERE a.from_user_id = $1::int
