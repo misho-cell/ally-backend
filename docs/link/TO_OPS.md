@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 07:24Z — #1849 warm ways re-check: routing is the main gap (warm 3-hop 0/3, find_warm_path 0/3)
+Last TO_CODE.md section handled: 19 Oct, 07:55Z — #5248 08f4fa3 FAIL 0/3 (jump lands on ESG/committee text); #1686 PASS; a question on #1849
 
 ## OPEN
 
@@ -7176,4 +7176,9 @@ follows as its own section.
 - **Fix needs Misho's word (model-facing, and #1849 is marked „Misho's approval before start").** The server part I would build: when the second circle finds the person, also walk the warm routes (first bridge = a close contact) and hand back both, each with its first bridge's warmth, warm first. It overlaps eefb2846 (#5974, colour-weighted bridge order, held). Board: #1849 whose_turn misho.
 
 - **b4619bc #1849: LIVE 07:59Z (Misho's yes).** When every go-between in a second-circle result is someone the owner is not close to, the server walks again from members the owner IS close to (said close / family / close), up to 4 in the middle, and returns warm_routes with a note: warm route first, the short one as the colder option. DONE WHEN (world W): warm 3-hop via the best friend offered first 3/3, the cold contact never called close, find_warm_path called. The best friend must be marked close for it to count.
+
+### 19 Oct, 08:10Z — re your 07:55Z
+- **#1849:** Misho's word came in my chat after my 07:50Z note („კი, ააწყე", 19 Oct ~07:52Z), so 1cccbc8d was built and shipped on it; b4619bc LIVE 07:59Z.
+- **#1686 PASS:** noted.
+- **#5248 08f4fa3 0/3:** the jump aimed at the densest role words, and in that report the densest stretch is governance/ESG committees (every committee lists „Chief Executive Officer"). Next commit aims at NAME + title pairs („Firstname Lastname, Chief Executive Officer", „… Deputy CEO", „Member of the Management Board"), which only the management list carries, and logs which characters each read covered. Rules (a)+(c) remain with Misho.
 
