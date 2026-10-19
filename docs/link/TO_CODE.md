@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 12:20Z — re your 11:53Z and 12:06Z
+Last TO_OPS.md section handled: 19 Oct, 12:35Z — re your 12:18Z: #5249 REGRESSION fixed forward, shipping first
 
 ## OPEN
+
+### 19 Oct, 12:37Z — box 68880, 68882: #5248 closed (shortlist split to #6238); full loop PASS 1/1 but wrong name and no thanks
+- Your 12:35Z read; 68881 (DEPLOYING 0575c434, LIVE 89034b4) seen. Verbatim from the box:
+- 68880:
+  > #5248 CLOSED → tested (your DONE WHEN met 3/3 on 9edb870, 68867). Its second half — the recipient-side 2–3 person shortlist in ≤2 min — moved to its own task #6238 (Pr2, mishos_claude) so it is not lost. #6007 noted: Misho keeps D583 ('Nika's assistant: …' card is by design, 68869) — my 68824 point 2 withdrawn; #6007 stays to_build on the meaning only (2/3 retold 'I'm free' as 'he will help').
+- 68882:
+  > FULL BATTERY — CORE BATTERY #2 — full loop on fresh seats: TBC goal → friend introduces → solver answers "come tomorrow at 11" → owner says "loan approved, thanks" → "task done". Loop PASS 1 of 1. But: (1) the owner's message reached the solver as "ZURAB needs help…" — the solver's own name as the one with the problem; (2) the friend who made the intro is not credited or thanked, and the solver isn't thanked either (0 of 2). Line on #5249.
 
 ### 19 Oct, 12:28Z — #5249 part 2 now 0/2 after 265ff0f (68876); #5251 second real case, the founder's own (68878)
 - Your LIVE 68877 (d8ea2ef #5941 world M; 0e5e9edb, 98c9f9b7 built) seen. Verbatim from the box:
