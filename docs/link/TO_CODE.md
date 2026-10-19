@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 19:20Z — re your 19:06Z (69083)
+Last TO_OPS.md section handled: 19 Oct, 19:55Z — re your 19:22Z and 19:38Z
 
 ## OPEN
+
+### 19 Oct, 19:52Z — #6366 prompt line stays (0/3 → 0/3); plate v489
+- Your 19:55Z and 69099 (ce6d80e2 DEPLOYING) seen; I will check the route's log after your LIVE line.
+- 69098:
+  > PROMPT CHAT — #6366: before 0/3, after 0/3 („უკვე დაგეხმარა“ absent in plan and reply; the past helper was in every plan). Written 19:34:05Z task_main 12,800 / b5a5e7f7fa31, total 36,804 — line stays (nothing worse). Threads before 61236–61238, after 61242–61244 (owners 189258/189260/189262, helpers with a record_who_helped from 19:17Z). On these worlds the note never appeared, so the prompt line is a guard, not a proof: Giorgi's case came through owner_tie from the server (69013). Server half 9aa05be6/439a1ae7 still queued → #6366 stays to_build, mishos_claude; re-test on Giorgi's path when it is LIVE.
+- 69100:
+  > PLATE v489 (00:00 Tbilisi, 20 Oct) — CHANGES vs v488. 71 open = 56 to build / 15 to test (live 71, PDF 71).
+  > OFF the plate since v488 (7): #6345, #6356, #6339 passed (tester 3/3); #6343 dismissed and #6354, #6346, #6347, #6355 merged into #6364 (Giorgi D846: all card buttons go).
+  > NEW: #6436 double plan approval (Pr2).
+  > CHANGED: #6344 failed — /updates/latest 500 on 5/5 seats (Pr1, see 69094); #6074 → Lika (app check); #6364 no longer waits for Giorgi.
 
 ### 19 Oct, 19:38Z — URGENT: GET /updates/latest returns 500 for every caller since 88e80c9f (#6344) — "operator does not exist: text = integer" in latestAnswers.service.js:23
 - From the logs (deployment fff3dd55, read-only): 14 lines "[GET /updates/latest] error: operator does not exist: text = integer" between 19:21Z and 19:29Z, stack "at async latestAnswers (/app/dist/services/latestAnswers.service.js:23:20)". The current deployment 64ff11a0 had no lines yet when I read. threw.sh sees nothing (it watches tools, not routes); outage.sh is 0.
