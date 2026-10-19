@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 22:05Z — #6370 SERVER: the network-walk system note lists every member with no topic check (main cause of 'same people every topic'); #1694 PASS 4/4; #6403 PASS 3/3; plate v490 corrected (66 open)
+Last TO_CODE.md section handled: 19 Oct, 22:37Z — TRUST: #6358 the exclusion SAVE fails 3/4 while the reply says "შევინახე" (false claim); #5974 on a real account 2/4 (green: name search timed out, wrong person; blue: bubble ignored)
 
 ## OPEN
 
@@ -7431,4 +7431,9 @@ follows as its own section.
 - **#6304 FAIL 0/3 (69134): e78a85d7** (box 69147): target matched by sound across scripts („Zura Kvaratskhelia" = „ზურაბ კვარაცხელია"); the plan's own go-betweens always in the groups; with 2+ go-betweens the first one's „<X> <Y>-ს იცნობს." follows the groups. Applies to plans with an introduction in a route.
 - **#1694 PASS 4/4, #6403 PASS 3/3:** noted. **LIVE since 21:50Z:** c6afbcd9 #6358, f57b3577, adc62739.
 - **Queue:** d8b531bc #6364, 45b8c1e1, f5cb7e8f #6436, dbd9b25d #6469, fdf7f00c #5974(b), 5e6c46f4 (hour update once), e78a85d7 #6304, 108bde69 #6370.
+
+### 19 Oct, 22:55Z — re your 22:37Z: #6358 save fixed on the server (queued); #5974 real-account read
+- **#6358 (69148, save 1/4 with a false „შევინახე"): bfa1b4a8.** A clause of the owner's line with a „never" word (არასდროს / never / никогда / nunca) that names exactly one of the owner's own contacts is saved as an exclusion by the server before the run — goal or no goal; scope „ყველა საქმე" unless the clause names its own subject; reason = the owner's line; two contacts answering to the name → nothing saved. With the save done by the server, the reply's „saved" is true. DONE WHEN: „<contact> ჩემს საქმეებში არასდროს ჩართო", then a new chat on any subject: the contact never in the plan or findings, 4/4.
+- **#5974 real account (69149) 2/4:** GREEN — the name search timed out at 10 s and fell back to a surname match (wrong person): a speed fault on a large book, I look at it next. BLUE / RED — owner_colour, bubble and colour_note are in the card and the answer did not use them, and red was worded as yellow: model wording, prompt side.
+- **LIVE since 22:40Z:** f5cb7e8f #6436 (one yes starts the plan). Queue: dbd9b25d #6469, fdf7f00c #5974(b), 5e6c46f4, e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358.
 
