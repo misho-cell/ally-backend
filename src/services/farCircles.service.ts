@@ -1,11 +1,12 @@
 import { query } from '../db/postgres/client';
 import { IS_MEMBER_SQL } from './memberPaths.service';
-import { normalizePhone } from './phone';
+import { normalizePhone, phoneDigits } from './phone';
 import { labelsAlongChain } from './chainLabels';
 import { namesFor } from './tools/findWarmPath';
 import { georgianStem } from './tools/georgianStem';
 import { normalizeSearchToken } from './tools/normalizeSearchToken';
 import { NETAI_ACTIVE_SUBSCRIPTION_STATUSES } from './tools/membership';
+import { isWarmTie, ownerTiesTo } from './ownerTies';
 
 /**
  * 5347 (the founder's word, 16 Oct; the tester's 63203, 0 of 4). 0372 let
@@ -121,13 +122,27 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
   return result.rows;
 }
 
-/** The rings out to the furthest, the owner's own members first. */
-async function ringsFrom(ownerId: number): Promise<Link[][]> {
+/** #1849: only the owner's own members the owner is close to. */
+async function warmOnly(ownerId: number, ring: readonly Link[]): Promise<Link[]> {
+  const ties = await ownerTiesTo(
+    String(ownerId),
+    ring.map((link) => link.phone),
+  );
+  return ring.filter((link) => isWarmTie(ties.get(phoneDigits(link.phone))?.reason));
+}
+
+/**
+ * The rings out to the furthest, the owner's own members first. With
+ * `warmStart`, the first ring is only the members the owner is close to, so
+ * every chain found starts with a warm link (#1849).
+ */
+async function ringsFrom(ownerId: number, warmStart = false): Promise<Link[][]> {
   const seen = new Set<number>([ownerId]);
   const rings: Link[][] = [];
   let ring: Link[] = [{ userId: ownerId, phone: '', before: null }];
   for (let depth = 1; depth <= MAX_PEOPLE_IN_THE_MIDDLE && ring.length > 0; depth += 1) {
     ring = await nextRing(ring, seen);
+    if (warmStart && depth === 1) ring = await warmOnly(ownerId, ring);
     rings.push(ring);
   }
   return rings;
@@ -137,9 +152,10 @@ async function ringsFrom(ownerId: number): Promise<Link[][]> {
 async function hitsFrom(
   rings: readonly Link[][],
   patterns: readonly string[],
+  firstRing: number = FIRST_RING_SEARCHED_HERE,
 ): Promise<{ readonly link: Link; readonly row: HitRow }[]> {
   const found = new Map<string, { readonly link: Link; readonly row: HitRow }>();
-  for (let index = FIRST_RING_SEARCHED_HERE - 1; index < rings.length; index += 1) {
+  for (let index = firstRing - 1; index < rings.length; index += 1) {
     const ring = rings[index];
     if (ring.length === 0) continue;
     const byId = new Map(ring.map((link) => [link.userId, link]));
@@ -158,7 +174,25 @@ async function hitsFrom(
 export async function farMembersHolding(ownerId: number, text: string): Promise<FarHit[]> {
   const patterns = wordPatterns(text);
   if (patterns.length === 0) return [];
-  const hits = await hitsFrom(await ringsFrom(ownerId), patterns);
+  return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId), patterns));
+}
+
+/**
+ * #1849 (Misho's yes, 19 Oct): who is saved under these words along a chain
+ * that STARTS with a member the owner is close to, at any ring — the warm
+ * route, even when a colder, shorter one exists.
+ */
+export async function warmChainsHolding(ownerId: number, text: string): Promise<FarHit[]> {
+  const patterns = wordPatterns(text);
+  if (patterns.length === 0) return [];
+  return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId, true), patterns, 1));
+}
+
+/** Each hit with the names along the chain that reaches it. */
+async function chainsTo(
+  ownerId: number,
+  hits: readonly { readonly link: Link; readonly row: HitRow }[],
+): Promise<FarHit[]> {
   if (hits.length === 0) return [];
   const chains = hits.map(({ link }) => chainOf(link));
   const [names, labels] = await Promise.all([

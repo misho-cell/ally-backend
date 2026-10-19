@@ -58,6 +58,17 @@ export const TIE_NOTE: Readonly<Record<RunLanguage, Record<OwnerTieReason, strin
   },
 };
 
+/** #1849: the ties that make a link warm — the owner said so, family, or a close relationship. */
+const WARM_REASONS: ReadonlySet<string> = new Set([
+  OwnerTieReason.SaidClose,
+  OwnerTieReason.Family,
+  OwnerTieReason.Close,
+]);
+
+export function isWarmTie(reason: unknown): boolean {
+  return typeof reason === 'string' && WARM_REASONS.has(reason);
+}
+
 export interface OwnerTie {
   readonly closeness: number;
   readonly reason: OwnerTieReason | null;

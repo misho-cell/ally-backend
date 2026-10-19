@@ -140,7 +140,8 @@ import { safetyReplyFor } from './safetyWorry';
  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
  */
 const OFFER_TOOLS_ON = true;
-import { FarHit, farMembersHolding } from './farCircles.service';
+import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
+import { isWarmTie } from './ownerTies';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
@@ -1176,6 +1177,48 @@ export async function withFurtherOut<T extends object>(
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[far-circles] the walk past the second circle failed:', (err as Error).message);
+    return found;
+  }
+}
+
+/**
+ * #1849 (Misho's yes, 19 Oct; the tester's world W, 0 of 3): the second circle
+ * found the solver through a contact the owner barely knows, so the longer
+ * route through the owner's best friend was never looked for.
+ */
+const WARM_ROUTES_NOTE =
+  'None of the go-betweens above is close to the owner. These people are reached by a longer ' +
+  'chain that STARTS with someone the owner is close to, through people who use Netai. Offer ' +
+  'the warm route first and say why (it starts with someone close to them); give the shorter ' +
+  'route as the colder option. Never call a go-between close unless owner_tie says so. Call ' +
+  'find_warm_path with the phone id for the route.';
+
+/** No go-between in this second-circle result is someone the owner is close to. */
+export function noWarmBridge(result: object): boolean {
+  const rows = (result as { results?: unknown }).results;
+  if (!Array.isArray(rows) || rows.length === 0) return false;
+  return rows.every((row) => {
+    const bridges = (row as { via_contacts?: unknown }).via_contacts;
+    return !Array.isArray(bridges) || !bridges.some((b) => isWarmTie(b?.owner_tie));
+  });
+}
+
+/** Warm routes beside a second circle with only cold go-betweens; the result unchanged otherwise. */
+export async function withWarmRoutes<T extends object>(
+  userId: string,
+  words: unknown,
+  found: T,
+  runId?: string,
+): Promise<T | (T & { warm_routes: FarHit[]; warm_routes_note: string })> {
+  if (typeof words !== 'string' || !noWarmBridge(found)) return found;
+  try {
+    const warm = await warmChainsHolding(Number(userId), words);
+    if (warm.length === 0) return found;
+    if (runId !== undefined) noteFoundFurtherOut(runId, warm);
+    return { ...found, warm_routes: warm, warm_routes_note: WARM_ROUTES_NOTE };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[warm-routes] the warm walk failed:', (err as Error).message);
     return found;
   }
 }
@@ -9810,7 +9853,7 @@ async function executeToolCall(
         }
         return secondCircleEmpty(found)
           ? withFurtherOut(userId, input['tag_query'], found, runId)
-          : found;
+          : withWarmRoutes(userId, input['tag_query'], found, runId);
       });
       // The tester's 1102 (C10): the second circle was searched under one word, so a
       // vet saved as „ვეტექიმი" by one friend was never found when another friend's
