@@ -290,6 +290,7 @@ import {
 } from './warmPathAfterSearch';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
+import { answersTheRequestOnly } from './requestReferral';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
@@ -16924,17 +16925,23 @@ export async function processChat(
   const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
   // 3731: a reader's line that refers the asker to somebody relays only through the card's tap.
   const relayHeld = ownerAbsent || thread.type !== 'incoming_ask' || !refersSomebody(userMessage);
+  // #5249 (68815): a mediator's „ask Davit instead" on a pending introduction request answers it.
+  const requestAnswerOnly =
+    !ownerAbsent &&
+    (await answersTheRequestOnly(thread.type, thread.introduction_request_id, userMessage));
   const runTools =
     !ownerAbsent && isReminderRequestOnly(userMessage)
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
-      : tools.filter(
-          (tool) =>
-            (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
-            (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
-            (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
-            (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
-            (relayHeld || tool.name !== RELAY_ASK_TOOL.name),
-        );
+      : requestAnswerOnly
+        ? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)
+        : tools.filter(
+            (tool) =>
+              (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
+              (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
+              (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
+              (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
+              (relayHeld || tool.name !== RELAY_ASK_TOOL.name),
+          );
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
