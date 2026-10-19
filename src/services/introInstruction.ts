@@ -98,9 +98,9 @@ export function nameStemOf(name: string): string | null {
 }
 
 /**
- * Is this ask the introduction the owner asked for? True unless the recipient is
- * named in the owner's words only outside the introduction sentences — when that
- * cannot be told (no name, a name in both), the owner's introduction stands.
+ * Is this ask the introduction the owner asked for? The newest sentence of the
+ * owner's that names the recipient decides; when none names them (or the name
+ * is too short to read), the owner's introduction stands.
  */
 export function askIsTheIntroduction(
   ownerLines: readonly string[],
@@ -113,7 +113,10 @@ export function askIsTheIntroduction(
   const sentences = partsOf(ownerLines, splitParts);
   const named = sentences.filter((s) => s.toLowerCase().includes(stem));
   if (named.length === 0) return true;
-  return named.some((s) => OWNER_INTRO_RE.test(s));
+  // #6361 (Giorgi, goal 29308): „ask Lika whether she has any news" was refused
+  // as an introduction because an EARLIER line had asked Lika to introduce him.
+  // The owner's newest words about this person decide what this ask is.
+  return OWNER_INTRO_RE.test(named[named.length - 1]);
 }
 
 export const USE_INTRODUCTION_REFUSAL =

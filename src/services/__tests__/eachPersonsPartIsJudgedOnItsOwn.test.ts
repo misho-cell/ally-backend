@@ -32,3 +32,18 @@ describe('each person’s part of the owner’s message is judged on its own', (
     );
   });
 });
+
+/** #6361 (Giorgi, goal 29308): a follow-up to a go-between is never refused as an introduction. */
+describe('#6361: the owner’s newest words about a person decide', () => {
+  const earlier = 'სთხოვე ლიკას, დამაკავშიროს თემურთან';
+
+  it('lets a later question to the same go-between go as a question', () => {
+    expect(askIsTheIntroduction([earlier, 'ჰკითხე ლიკას, ხომ არ აქვს რამე სიახლე'], 'ლიკა')).toBe(
+      false,
+    );
+  });
+
+  it('still reads the introduction when it is the newest word about her', () => {
+    expect(askIsTheIntroduction(['ჰკითხე ლიკას, როგორ არის', earlier], 'ლიკა')).toBe(true);
+  });
+});
