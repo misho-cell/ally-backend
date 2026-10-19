@@ -20,14 +20,58 @@ export async function getUserProfile(userId: string): Promise<Record<string, str
  */
 export const PROFILE_LINE_NEEDS_BOTH = 'Pass both a key and a value.';
 
+/**
+ * #6469 (the tester's 69108, 3 of 3): „delete the fact that I work at TBC"
+ * left „უცნობია" / „არ არის მითითებული" in the profession. An empty value is
+ * refused, so the model wrote a word for „nothing" — and the profile then
+ * claimed one. A value that only says „none / unknown / not specified" is
+ * the owner taking the line back: the line is removed, never stored.
+ */
+const NOTHING_VALUES: ReadonlySet<string> = new Set([
+  'უცნობია',
+  'უცნობი',
+  'არ არის მითითებული',
+  'არ არის',
+  'არაფერი',
+  'წაშლილია',
+  'unknown',
+  'none',
+  'n/a',
+  'not specified',
+  'not set',
+  'removed',
+  'deleted',
+  'не указано',
+  'неизвестно',
+  'нет',
+  'desconocido',
+  'ninguno',
+  '-',
+  '—',
+]);
+
+export function saysNothing(value: string): boolean {
+  return NOTHING_VALUES.has(
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[.!„"“”']/gu, '')
+      .trim(),
+  );
+}
+
 export async function setUserProfileField(
   userId: string,
   key: string,
   value: string,
   mode: 'set' | 'append' = 'set',
-): Promise<{ saved: boolean; error?: string }> {
+): Promise<{ saved: boolean; deleted?: boolean; error?: string }> {
   if (key.trim() === '' || value.trim() === '') {
     return { saved: false, error: PROFILE_LINE_NEEDS_BOTH };
+  }
+  if (saysNothing(value)) {
+    await deleteUserProfileFields(userId, [key]);
+    return { saved: false, deleted: true };
   }
   if (mode === 'append') {
     await query(
