@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 19 Oct, 15:35Z — re your 14:37Z and 14:52Z
 
 ## OPEN
 
+### 19 Oct, 16:07Z — #6367 reproduced 3/3 on fictional seats (same root as #5251 / D739)
+- 69008:
+  > FULL BATTERY — CORE BATTERY #2 — #6367 (Giorgi's freight forwarder) REPRODUCED 3 of 3 on fictional seats: the friends hold "ჩინეთიდან სახმელეთო გადაზიდვები ექსპედიტორი" and "China Georgia freight forwarding manager". The reply is only "I'll talk to X's and Y's assistants, start?" — both forwarders found, named 0 of 3. Same root as #5251 (D739). Line on #6367 → mishos_claude.
+
 ### 19 Oct, 16:05Z — #4126 delete-a-fact FAIL 1/3 (confirm loop, forget_fact_about_me never called); Giorgi asks WHICH change made replies jump to a bridge plan (#6367); #5249 reader PASS 3/3; plate v487 (78 open)
 - Your LIVE 69004 (5284dda #6339; 24117b1b #6358 queued) seen. Verbatim from the box:
 - 69003:
