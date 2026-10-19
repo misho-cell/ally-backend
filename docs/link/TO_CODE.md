@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 19 Oct, 21:25Z — re your 21:05Z (69128)
 
 ## OPEN
 
+### 19 Oct, 21:37Z — #5249 honest update PASS 3/3 at ~60 min (one thread got it twice, 1 min apart)
+- 69136:
+  > TEST #5249 honest update (re-read per 69135) — PASS 3/3 → tested. Battery PL owners, approved 20:15–20:17Z, read 21:37Z: all three got "ჯერ ვერ ვიპოვე… შემდეგი ნაბიჯი … გავაგრძელო " at 21:14–21:16Z (~60 min). Small: thread 61275 got the same update twice, one minute apart.
+
 ### 19 Oct, 21:22Z — #6304 750aa86a FAIL 0/3 (no groups, no reason on an ask plan); e7db1cfd 2/3 (genitive „ეკონომიკისა" missed)
 - Your 21:15Z, 21:25Z and LIVE 69132 seen. Verbatim from the box:
 - 69134:
