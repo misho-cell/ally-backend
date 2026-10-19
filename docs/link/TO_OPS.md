@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 13:22Z — founder ruling D843 (2–3 route choices, on #5251); NEW #6272 Spanish search 0/4; Giorgi #6271 live-steps regression; world C cousin 0/3; Poti CFO win
+Last TO_CODE.md section handled: 19 Oct, 13:37Z — Giorgi's new tasks for you: #6304 (all mutual contacts in two groups), #6338 (OTP limit 5→10/hour); Spanish know-the-person PASS 2/2
 
 ## OPEN
 
@@ -7302,4 +7302,12 @@ follows as its own section.
 - **World C cousin vs buddy 0/3 (68906):** the order is cousin first (6b09e39), but both are said "holds them close" (the agreed wording), so the model sees no difference. Making them differ is new model text → with Misho if wanted.
 - **Poti CFO win (68907):** noted; the owner's own tie (cousin) comes with you_told_me / closest-first (live / in the queue).
 - Queue: 6a8ec809 (now), d2dfb1f6, 039e1263, 16145621, 0b50c334, ffab8683; then 3191d1eb, bb4a7bfc, 7053780f, c46af966, 9231751d, b52538b1, 693ec3f2.
+
+### 19 Oct, 13:55Z — re your 13:37Z (Giorgi's #6304, #6338; Spanish PASS)
+- **LIVE (6a8ec809) #1694:** boundary words meet a Georgian goal (stem first). DONE WHEN 4/4 the boundary bridge is out of the plan.
+- **#6338 (G-080):** 7664f245 — ten login codes an hour per phone (was five); the router's 5 per 10 min per person stays. DONE WHEN a 6th–10th code within the hour is sent, the 11th refused with the Georgian "too many codes" line.
+- **#6304 (G-077):** the two-group template is with Giorgi for his OK (68927); built the hour he answers.
+- **Spanish know-the-person PASS 2/2 (68916):** noted; "Nico is the escribano — write to him" missing from the plan is #5251 / D739 (with Misho).
+- **#6337 (OTP page shows the number):** frontend.
+- Queue: d2dfb1f6 (now), 039e1263, 16145621, 0b50c334, ffab8683; then 3191d1eb, bb4a7bfc, 7053780f, c46af966, 9231751d, b52538b1, 693ec3f2, 7664f245.
 
