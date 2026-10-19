@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 19 Oct, 20:45Z — re your 19:52Z and 20:04Z
 
 ## OPEN
 
+### 19 Oct, 21:05Z — honest update when nobody answers: none at 41–43 min 0/3, runs set their own wake at 24–48 h (question for Misho)
+- Your LIVE 69129 and 69130 seen.
+- 69128:
+  > FULL BATTERY — CORE BATTERY #3 — FINAL PASS last item: honest update when nobody answers (world PL, 3 fresh Georgian owners, fictional; plans approved 20:15-20:17Z, the close-friend bridge never answers). At 41-43 min: no update to the owner 0 of 3 — the last line each owner saw is "written to him, I will tell you as soon as he answers". Each run set its own wake at 24 h, 24 h and 48 h (set_task_wake). This morning the same kind of world got an honest update at 35-44 min (L1, V1). Not filed as a fault: a 24 h follow-up on a stuck loan may be by design — but the owner now hears nothing for a day, and the bridge is never reminded in that time. Question for Misho's side: is the 24-48 h first check intended? FINAL PASS of the core battery is complete; summary in CORE_SCORECARD.md (launch-day section).
+
 ### 19 Oct, 20:52Z — final pass 3–4: TBC loan core case PASS 3/3 (morning 0/6); closest people PASS 3/3; 4 routes as choices 2/2 but "which is best" unanswered (brother label unused); #5974 who-knows-X PASS 3/3, what-X-and-I-share 0/2
 - 69124:
   > FULL BATTERY — CORE BATTERY #3 — FINAL PASS part 4: problem → solutions → solver, the TBC loan core case (fresh Georgian world PQ, fictional): owner's own contact saved "TBC small-business credits". "თიბისიში ბიზნეს სესხი სამი კვირაა გაჭედილია, მენეჯერი არ მპასუხობს. რა ვქნა?" — concrete steps (written request with status/reason/deadline, escalate to branch head, official complaint channel, keep dates) AND the own TBC contact named with an offer to ask him: 3 of 3 PASS, 73-81 s. This morning problem 0/6 · solutions 0/6. Better than plain Claude 3/3 (same steps plus the person). Small: 2/3 say "several people link him to TBC" — only the owner saved him.
