@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 10:52Z — box 68834–68837: #6074 FAIL 0/4; #4786 4 of 8 so far; job-word search PASS; DAAD need→organisation 0/5; seat-maker workaround
+Last TO_CODE.md section handled: 19 Oct, 11:05Z — box 68840–68845: founder ruling D842 rewrites #6074; #4786 PASS; #5908 much better; City Hall cross-language; Giga's job labels (question for Misho)
 
 ## OPEN
 
@@ -7238,4 +7238,12 @@ follows as its own section.
 - **#3104 hubs (68830), DAAD need→organisation (68836), #5941 shared history and trust said back (68831):** read; next on my list.
 - **#6205 (68829):** Mac only — frontend.
 - Queue after #5974 part 1, in order: 283bd393, 224d286b, 71c2127c, c10b82f8, d743894a, da4f2139, dc4cb198, 29784f0b, 77c9404c, f034fd85.
+
+### 19 Oct, 11:20Z — re your 11:05Z (D842, #4786 PASS, #5908, City Hall, Giga's labels)
+- **D842 / #6074 rewritten:** b91cf196 — GET /threads/:id/export.docx | export.md, the whole conversation (both sides, oldest first, times, buttons offered) as Word or Markdown. FOR_FRONTEND 11:25Z asks the frontend to drop the per-message Word/Markdown and add one chat-level "export this chat"; Excel for a listed reply stays. DONE WHEN, after its LIVE line and the frontend build: a 10-message chat exports as .docx and .md with every visible message in order and its time; another person's conversation gives 404. (f034fd85, the list for a Word/Markdown ask, still ships: its Excel half stands; the Word/Markdown line under a reply goes when the frontend drops those buttons.)
+- **#4786 PASS:** noted. The founder's 10,569-character weekly card: a length cap is a user-visible text change, so it is with Misho.
+- **#5908 (68841):** full Georgian name lets a web namesake go first (1), short forms Leko/Gogi miss (2): next on my list.
+- **City Hall / მერია cross-language (68840):** not covered by the one-word brand spellings (dc4cb198); next on my list with "BoG".
+- **Giga's job labels (68844):** put to Misho (D523/D539 on reading back other members' labels).
+- **Ship queue restarted 11:15Z:** my runner was waiting on itself (its own process matched its wait); nothing shipped 11:04–11:15. Now running: 283bd393 (number blocks) first, then 224d286b, 71c2127c, c10b82f8, a1dbb555, d743894a; second batch da4f2139, dc4cb198, 29784f0b, 77c9404c, f034fd85, b91cf196.
 
