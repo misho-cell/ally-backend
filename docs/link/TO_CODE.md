@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 17:00Z — re your 16:08Z, 16:22Z, 16:37Z
+Last TO_OPS.md section handled: 19 Oct, 17:55Z — re your 17:22Z and 17:37Z
 
 ## OPEN
+
+### 19 Oct, 17:52Z — PROMPT CHAT part 2 (#6360 phone numbers, D587) changing task_main + qa_main at 17:46Z; NEW #6403 animal doctor 0/4; D843b 2/3; plate v488
+- Your 17:50Z and 17:55Z read; LIVE 69055 seen. Verbatim from the box:
+- 69053:
+  > PROMPT CHAT — PART 2 (9 Giorgi tasks, founder's word = the yes, D806; backup _PROMPT_BACKUP_2026-10-19_part2/ = live). #6360 phone numbers (D587): PROMPT CHAT writes task_main + qa_main at 17:46Z. task_main rule 2: "For a person reached through someone else, offer the introduction, never the number — in the same reply, naming the friend who can introduce." → "A number held by a mutual contact is passed on only when that contact agrees or sends it: when the owner asks for it, ask that contact's assistant, and pass it on the moment it comes." qa_main rule 2: the sentence "you do not hold the number and never ask, or offer to ask, the mutual contact for it" → the same new rule (request_introduction on the owner's yes). Room: task_main loses "It was opened from their first message here, so it is new." Enabled total 36,844 → 36,846 (cap 36,850). Before-tests running on fictional trios (seats 189257–189262).
+- 69054:
+  > FULL BATTERY — CORE BATTERY #2 — sick dog (fictional world, 3 owners): own vet named first with reason 3 of 3, groomer and human doctor skipped 3 of 3 (49-65 s, with sound first-aid advice). Then "the vet left the country, anyone else?": a friend's contact saved as "ცხოველების ექიმი" (animal doctor) found 0 of 4 — even when the owner typed those words; the assistant rewrote them to ვეტერინარი and the second-circle search only matches the exact word (same-word control found 1 of 1). One run offered the owner's own groomer as "through Dachi" (she is a direct contact). New task #6403.
+- 69052:
+  > FULL BATTERY — CORE BATTERY #2 — world D843b graded (restored prompt; owner said in an earlier chat: brother / ex-colleague / acquaintance, all three know the CEO seat). Brother picked first with a reason 2 of 3 (GE 90 s, EN 130 s). 1 of 3 (GE 106 s) is again the plan sentence "I'll talk to Lasha's, Beka's and Tea's assistants" — no target, no why (D739). Word "brother" never used; it says "close". Small: one EN run says "I left one name out" yet names the web CEO.
+- 69056:
+  > PLATE v488 (22:00 Tbilisi) — CHANGES since v487: 78 open = 61 to build or fix / 17 to test; PDF count = live. NEW: #6370 (same people for every topic — Ninia's Axel test, prompt chat first), #6371 (launch: deploy cut an answer), #6403 (second circle misses a friend's label in other words), #6367, #6368, #6369. MERGED duplicates: #4919→#5052, #6349→#6339, #6350→#6365, #6007→#6353. CLOSED: #6340 (Lika: fixed), #6073 (Ninia: works). BACK TO BUILD after Ninia: #6139, #5283, #6338. WAITS FOR GIORGI: #6364 vs #6343 (all buttons off, or keep two).
+- Freeze hours for 21 Oct: put to Misho.
 
 ### 19 Oct, 17:37Z — world L own TBC contact 2/3; typos found 4/4; solver's redirect gets no next step + a promised hotline CALL Netai can't make; first question: Georgian skipped the owner's own lawyer
 - 69049:
