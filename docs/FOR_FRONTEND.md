@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 19 October, 16:35Z — #5413 (Giorgi reopened): the case description is on the server and never reached the panel
+
+**Nothing in the app reads it.** The server has written `case_description` since 16 Oct: two or three plain sentences per goal conversation (what the owner wants, for whom, where it stands), rewritten after every run on the goal. 588 conversations carry one, Giorgi's 60691 included. It was never written into this file, and the app's source has no `case_description` anywhere. Hence „the panel shows no description".
+
+Where it is:
+- `GET /threads` and `GET /threads/:id`: each thread carries `case_description` (string, or null until the first goal run writes it).
+- SSE `thread_updated`: `{ "id": 12345, "case_description": "…" }` the moment it is rewritten, so an open panel can follow it without polling.
+
+```json
+{ "id": 12345, "short_title": "ნოტარიუსი", "case_description": "<two or three sentences: what the owner wants, for whom, where it stands>", "…": "…" }
+```
+
+The description itself is AI text (not D582). The label above it in the panel is yours, and its wording is for Giorgi to approve. Show nothing (not an empty box) while it is null.
+
 ## 19 October, 16:10Z — #6342: every route says whom it leads to; #6344: a helper's answer is a home-card row
 
 **#6342 (Giorgi, G-087), commit b6147ed8, queued.** Each row of `GET /threads/:id/routes` and of the owner's chain position `next` now carries `target_name` (string or null): the person the route leads to, even when they are not on Netai. On goal 29308 every row reads `"target_name": "თემურ ბოლოთაშვილი"`, so the path can end „თქვენ → ბესო → თემურ ბოლოთაშვილი" and the helpers stop looking like the targets. An introduction carries its own target. For a question, the target is the goal's when its plan leads to exactly one person. It is null when nobody is known, or when the person on the route is the one sought. Nothing else in the row changes.
