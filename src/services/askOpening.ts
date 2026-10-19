@@ -581,23 +581,30 @@ export function buttonToldByNetai(
  * this only replaces silence with what the reader actually said.
  *
  * #6007 (D647/D648): the tap is never quoted and never in the helper's first
- * person. One of our buttons is retold in the third person; a button the model
- * wrote for this question („კი, თავისუფალი ვარ") gets the general sentence,
- * since its words cannot be turned around without the model.
+ * person. One of our buttons is retold in the third person.
+ *
+ * #6007 retest (the tester's 68824, 2 of 3): a button the model wrote for this
+ * question („კი, თავისუფალი ვარ" to „are you free tomorrow evening?") got the
+ * general „says he will help — details soon", which is not what he said. Its
+ * words cannot be turned around without the model, and the helper's run
+ * writes them as Netai's sentence seconds later („ხვალ საღამოს თავისუფალია"),
+ * so nothing is said at the tap: null, and that sentence reaches the card.
  */
 export function askTapLineForAsker(
   tap: AskTap.Yes | AskTap.Later,
   language: RunLanguage,
   readerName: string,
   tappedLabel?: string,
-): string {
+): string | null {
   const name = nameToSay(readerName, language);
-  const retold =
-    tap === AskTap.Yes && tappedLabel !== undefined
-      ? buttonToldByNetai(tappedLabel, language, name)
-      : null;
-  const told = tap === AskTap.Yes ? YES_TOLD : LATER_TOLD;
-  return retold ?? (told[language] ?? told.ka)(name);
+  if (tap === AskTap.Later) return (LATER_TOLD[language] ?? LATER_TOLD.ka)(name);
+  if (tappedLabel === undefined) return (YES_TOLD[language] ?? YES_TOLD.ka)(name);
+  return buttonToldByNetai(tappedLabel, language, name);
+}
+
+/** Is this „yes" one of our buttons, told to the asker at the tap? (See askTapLineForAsker.) */
+export function yesIsToldAtTheTap(label: string): boolean {
+  return BUTTONS_TOLD.some(([labels]) => matchesAnyLanguage(labels, label));
 }
 
 function matchesAnyLanguage(

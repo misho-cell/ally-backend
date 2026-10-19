@@ -4306,6 +4306,8 @@ export async function answerAskTapAtOnce(threadId: number, message: string): Pro
       tap === AskTap.Later && claimed.later_until
         ? laterSentenceForAsker(readerName, claimed.later_until, language)
         : askTapLineForAsker(tap, language, readerName, message);
+    // #6007 retest: a model-written „yes" is told by the answer card, in Netai's words.
+    if (line === null) return;
     await saveThreadMessage(claimed.task_thread_id, claimed.from_user_id, 'assistant', line);
   } catch (err) {
     // eslint-disable-next-line no-console

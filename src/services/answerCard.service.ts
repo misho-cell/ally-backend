@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
-import { buttonToldByNetai } from './askOpening';
+import { buttonToldByNetai, yesIsToldAtTheTap } from './askOpening';
 import { nameToSay } from './spokenName';
 import { relayedForReader } from './askTranslation.service';
 import { geoName } from './georgianCase';
@@ -156,20 +156,46 @@ async function writeCard(target: AnswerCardTarget, answers: readonly CardAnswer[
 const TAP_ECHO_MINUTES = 5;
 /** Longer than this, the answer carries something of its own and is shown. */
 const TAP_ECHO_MAX_CHARS = 120;
+/** The meaning a model-written „yes" button carries (task_asks.choices). */
+const YES_MEANS = 'yes';
+
+interface TappedAsk {
+  readonly id: number;
+  readonly choices: unknown;
+}
+
+/** The „yes" label of an ask's own buttons; null for an ask with ours alone. */
+function yesLabelOf(choices: unknown): string | null {
+  if (!Array.isArray(choices)) return null;
+  const yes = choices.find(
+    (c: unknown) => (c as { means?: unknown } | null)?.means === YES_MEANS,
+  ) as { label?: unknown } | undefined;
+  return typeof yes?.label === 'string' ? yes.label : null;
+}
+
+/**
+ * #6007 retest (the tester's 68824): only a tap that was TOLD is an echo. A
+ * model-written „yes" („კი, თავისუფალი ვარ") is not told at the tap (see
+ * askTapLineForAsker), so its answer is the only place the owner reads it.
+ */
+function wasToldAtTheTap(ask: TappedAsk): boolean {
+  const label = yesLabelOf(ask.choices);
+  return label === null || yesIsToldAtTheTap(label);
+}
 
 async function toldAtTheTap(answers: readonly CardAnswer[]): Promise<ReadonlySet<number>> {
   const candidates = answers
     .filter((a) => !a.verbatim && a.answer.trim().length <= TAP_ECHO_MAX_CHARS)
     .map((a) => a.askId);
   if (candidates.length === 0) return new Set();
-  const result = await query<{ id: number }>(
-    `SELECT id FROM task_asks
+  const result = await query<TappedAsk>(
+    `SELECT id, choices FROM task_asks
       WHERE id = ANY($1::int[]) AND offered_help_at IS NOT NULL
         AND answered_at <= offered_help_at + make_interval(mins => $2)`,
     [candidates, TAP_ECHO_MINUTES],
     SHOWN_QUERY_TIMEOUT_MS,
   );
-  return new Set(result.rows.map((r) => r.id));
+  return new Set(result.rows.filter(wasToldAtTheTap).map((r) => r.id));
 }
 
 export async function showAnswersToOwner(
