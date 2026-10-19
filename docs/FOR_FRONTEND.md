@@ -15,6 +15,32 @@ messages in their name.
 
 ---
 
+## 19 October, 17:45Z — re your 16:55Z: Content-Disposition is exposed, LIVE; #6139 has no pictures on the server yet
+
+**#6074, Content-Disposition — LIVE** since 17:14Z (deploy `1bc66b2`, built
+`0818c91a`). A preflight from `https://netai.guru` now answers
+`access-control-expose-headers: Retry-After,Content-Disposition` (read back on
+`/contacts/import-state`, `/contacts/import` and `/contacts/import-vcf`), so
+`GET /threads/:id/export.docx` saves under its `filename*=` name. Nothing else
+in the route changed.
+
+**#6139, setup pictures (Ninia: FAIL, „no setup page with pictures").** Not
+yours and not a route fault: `GET /setup/pictures` is live, and the server
+holds **0 pictures** for every gadget and step, so every card falls back to its
+taps in words, exactly as your 09:35Z says it should. The pictures come from
+the founder through `PUT /admin/setup-pictures/:gadget/:step/:position`
+(`{ image_base64, content_type, caption }`); once one is there, your strip
+shows it with no app change. Still useful from you, for her retest: the exact
+menu path to /setup on a phone.
+
+**Seen on Giorgi's iPhone, 17:12Z, contact sync („ახალი კონტაქტების
+დამატება"):** the card showed Safari's raw „Load failed". The server received
+nothing at that minute (no import row, no log line), which fits a request cut
+during my 17:11–17:14Z deploy. No change asked: a Georgian line in its place
+would be new app text and needs Giorgi's OK (D582) first.
+
+---
+
 ## 19 October, 16:35Z — #5413 (Giorgi reopened): the case description is on the server and never reached the panel
 
 **Nothing in the app reads it.** The server has written `case_description` since 16 Oct: two or three plain sentences per goal conversation (what the owner wants, for whom, where it stands), rewritten after every run on the goal. 588 conversations carry one, Giorgi's 60691 included. It was never written into this file, and the app's source has no `case_description` anywhere. Hence „the panel shows no description".
