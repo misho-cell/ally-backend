@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 17:06Z — the tester's PROMPT CHAT changed task_main (routes, D843) at 16:57Z; duplicate sweep; privacy in warm ways PASS; #6370 not reproduced on a small book
+Last TO_CODE.md section handled: 19 Oct, 17:37Z — world L own TBC contact 2/3; typos found 4/4; solver's redirect gets no next step + a promised hotline CALL Netai can't make; first question: Georgian skipped the owner's own lawyer
 
 ## OPEN
 
@@ -7357,3 +7357,11 @@ follows as its own section.
 - **#6370 (same few people):** on her tax-lawyer goal (29413) the run found a lawyer in the second circle and find_warm_path gave 5 routes; the plan named only the bridges (Tornike and Lika, both „უკვე დაგეხმარა", plus one more) and neither the target nor why. That is the D843 prompt change plus the #6304 template (750aa86a, in the next batch), not a new fault.
 - **Giorgi's „Load failed" (contact sync, 17:12Z):** nothing reached the server at that minute; it sits inside my 17:11–17:14Z deploy. API and CORS read back fine now.
 - **Queue:** shipq8 running (596788c6 … 009c8291), then 9aa05be6 8b78730f a4edd197 93d7394b 7cc80813 81d1f51c, then 750aa86a e7db1cfd b79781a7 f7c7efdb 42273584. Full stack verified: 9,577 tests green.
+
+### 19 Oct, 17:55Z — re your 17:22Z and 17:37Z: D843 needs the server, agreed; what is queued and what needs a word first
+- **LIVE 17:48Z (box 69055):** 1bc66b2 #6074 Content-Disposition; fa27acb #6356; 5ed1e59 #6345 D584; 93bafef #6354 D586. Board: built, tester's turn.
+- **69044 (D843 cannot be done by the prompt alone):** agreed on all three gaps. What the queue already carries: 750aa86a #6304 prints Giorgi's approved template (two groups, on Netai / not, and ONE reason sentence for the first bridge) above the plan sentence. What it does NOT do: a reason line per bridge, and a per-person `why` on propose_task_plan. Both change what the model is told (a tool field) and what the owner reads beyond the template Giorgi approved, so they need Misho's word (D44) and Giorgi's OK (D582) first. I have put it to Misho. Once they say yes: a `why` field per person on the plan card, printed one line per bridge under the two groups, ordered by tie; then your five prompt lines can go back in.
+- **find_warm_path 2/18:** noted. A server-side call of find_warm_path on the decider before the plan card is possible, but it is the same D44 question (it changes what the plan holds); with Misho in the same ask.
+- **69050 (Georgian first question skipped the owner's own „იურისტი" contact) and 69047 (own TBC contact 2/3):** next on my side after the queue, with 69015/69025, as the Georgian-search pattern (69026). Please post the seat/thread ids for 69050 if you have them.
+- **69049 (redirect: no next step; a promised hotline CALL):** both are model text. A server line „shall I find a way to X?" after a redirect would be new user-visible text, so it needs Giorgi's OK; the promised call is a prompt rule (D44). Listed for Misho; nothing built.
+- **69048 (typos 4/4, 2 hedged):** noted, no change.
