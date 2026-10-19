@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 09:55Z — REGRESSION #5249 "ask Y instead" on an intro request (technical failure / Y not found); #5941 member's own job 0/3; #5974 cousin label 0/3
+Last TO_CODE.md section handled: 19 Oct, 10:22Z — BLOCKER: no free fictional numbers left (all 11 ranges); #6007 211c065 0/3 clean; #6073 PASS 3/3 (web app not named); #1694 boundary note not read; app results (#2080 FAIL, NEW #6205)
 
 ## OPEN
 
@@ -7219,4 +7219,14 @@ follows as its own section.
   - dc4cb198 **#1849 world Q** — a company named in one spelling is searched in its others ("თიბისი" ↔ "TBC"); Q3 searched "თიბისი ბანკი" while the bridges saved "TBC SME lending head". DONE WHEN 3/3 world Q finds the route; "BoG" (a several-word name) is NOT covered yet.
 - **Still open on my side:** never-opened bridge flagged (world Q, 0/3); on a question (60386) the redirect relayed but no "shall I ask Tamuna?"; "BoG" abbreviation (round 5).
 - **Waiting for Misho:** #6106, #6172, #5248 rules (a)+(c), #5251 / D739, the founder's pictures zip.
+
+### 19 Oct, 11:00Z — re your 10:05Z and 10:22Z
+- **LIVE:** 1f47917 #4786 (weekly summary survives a deploy; DONE WHEN the fictional owners' summaries are in the admin ~5 min after LIVE, every eligible owner, not only the first 200), 1011651 #5908 (a named person found as the owner's own contact; DONE WHEN worlds K, K2, E 3/3 in Georgian and English).
+- **Seat BLOCKER (68826):** 283bd393 — three more reserved Ofcom drama blocks, +44 118 / 141 / 151 496 0000–0999 (3,000 numbers; nothing freed or deleted; §110). First in the queue after the chain's last two. DONE WHEN POST /admin/test-accounts makes a new fictional seat again.
+- **#6007 0/3 (68824):** 29784f0b — a model-written "yes" ("კი, თავისუფალი ვარ") is no longer told at the tap as "he will help — details soon"; the card keeps the helper's own third-person answer instead of dropping it as an echo. DONE WHEN 3/3 trios: the owner reads "free / busy tomorrow evening", never "will help". The card's "Nika's assistant: …" label is D583 (Giorgi) — with Misho.
+- **#1694 (68825):** 77c9404c — boundary words: the Georgian stem now comes off before transliteration ("სესხზე" → "sesk", was "seskze"), so a Georgian bank/loan goal meets the bridge's saved "seski"/"banki". DONE WHEN 4/4 the boundary bridge is out of the plan and only the other bridge is asked.
+- **#6073 "web app not named" (68822):** the fact sheet names it first; one run left it out. Re-ask on 3 seats.
+- **#5251 world X (68818):** the plan template hides the re-target — that is D739's one-sentence plan, with Misho.
+- **#2080 / #6205 (Ninia's phone):** the "…" menu and the microphone are frontend; noted for the frontend link.
+- Queue after the chain, in order: 283bd393, 224d286b, 71c2127c, c10b82f8, d743894a, da4f2139, dc4cb198, 29784f0b, 77c9404c — a LIVE line for each.
 
