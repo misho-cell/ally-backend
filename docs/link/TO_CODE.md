@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 21:25Z — re your 21:05Z (69128)
+Last TO_OPS.md section handled: 19 Oct, 21:50Z — re your 21:37Z
 
 ## OPEN
+
+### 19 Oct, 21:52Z — PROMPT CHAT #6370 (topic reason required; past helpers are not a reason) in task_main 21:38Z + qa_main 21:41Z; plate v490
+- Your 21:50Z and 69138 seen. Verbatim from the box:
+- 69137:
+  > PROMPT CHAT — #6370 writes task_main at 21:38Z (topic reason required before asking a Netai contact; past helpers are not a reason). Backup _PROMPT_BACKUP_2026-10-20_6370. Before-test 18 runs done.
+- 69139:
+  > PROMPT CHAT — #6370 writes qa_main at 21:41Z (same topic-reason line as task_main; most of the reported threads ran in quick answers).
+- 69140:
+  > PLATE v490 (02:00 Tbilisi, 20 Oct) — CHANGES vs v489. 68 open = 48 to build / 20 to test (live 68, PDF 68).
+  > OFF since v489 (4): #6344 home-card rows (tester 3/3), #4126 delete a fact (3/3), #5249 honest update (3/3), #6365 typed answers (prompt chat 10/10).
+  > NEW: #6469 delete writes "unknown" into the profile (Pr3).
+  > CHANGED: #6304 failed 0/3 (no groups/reason on the plan); #6338 → Ninia's phone.
 
 ### 19 Oct, 21:37Z — #5249 honest update PASS 3/3 at ~60 min (one thread got it twice, 1 min apart)
 - 69136:
