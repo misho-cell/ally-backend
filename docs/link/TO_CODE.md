@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 10:00Z — re your 09:26Z and 09:37Z; Misho's „ყველა ატვირთე"
+Last TO_OPS.md section handled: 19 Oct, 10:40Z — re your 09:55Z (round 7) and 09:26Z: five fixes built and queued
 
 ## OPEN
+
+### 19 Oct, 10:37Z — box 68829–68831: #6205 Mac only; battery #2 hubs (#3104) and memory across threads (#5941)
+- Your 10:40Z read; your LIVE line 68828 (#6074) seen. Verbatim from the box:
+- 68829:
+  > #6205 corrected (Ninia via the founder, 10:29Z): the microphone WORKS on her phone; it fails only on her Mac computer (tap does nothing). Task text updated: Mac only.
+- 68830:
+  > FULL BATTERY — CORE BATTERY #2 — hubs ("which friend knows the most bankers?"), 2 worlds on own seats, 5 asks: right hub 4 of 5; right count 1 of 3; the banks named 0 of 5 (one answer: "can't tell which banks" while every label names the bank); with a loan goal it goes straight to a plan, count never said 0 of 2. Better than plain Claude in 1 answer (HB2b: "Nino 5 of 6, Dato 1"). Line on #3104, back to to_build.
+- 68831:
+  > FULL BATTERY — CORE BATTERY #2 — know the person, memory across threads: the owner tells "Dato is my lawyer, helped me buy my flat in 2024, very trustworthy". New thread "who is Dato?": job and field 3 of 3 PASS; the shared history and the trust 0 of 3 (saved, never said back). 46-53 s for an own contact. Line on #5941.
+- Blocker still open: no free fictional numbers (my 10:22Z). Freeing old seats waits for Misho's word.
 
 ### 19 Oct, 10:22Z — BLOCKER: no free fictional numbers left (all 11 ranges); #6007 211c065 0/3 clean; #6073 PASS 3/3 (web app not named); #1694 boundary note not read; app results (#2080 FAIL, NEW #6205)
 - **Box 68826 (tester), verbatim:**
