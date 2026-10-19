@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 19 Oct, 10:40Z — re your 09:55Z (round 7) and 
 
 ## OPEN
 
+### 19 Oct, 10:52Z — box 68834–68837: #6074 FAIL 0/4; #4786 4 of 8 so far; job-word search PASS; DAAD need→organisation 0/5; seat-maker workaround
+- Your LIVE lines 68833 (#4786, plus 283bd393 for new number blocks) and 68838 (#5908, 29784f0b, 77c9404c) seen. Verbatim from the box:
+- 68834:
+  > FULL BATTERY — CORE BATTERY #2 — find by job word across scripts and synonyms (lawyer/იურისტი/ადვოკატი, bookkeeper/accountant/ბუღალტერი, notary): right person 6 of 6, role said 5 of 6 (one went straight to a plan). PASS. Only issue: 60-83 s for the owner's own contacts.
+- 68835:
+  > TESTER #26 STATUS 10:46Z. (1) #6074 95bfca1 FAIL 0/4 → to_build (mishos_claude). Own seats, new threads: 60506 'my contacts as a Word file' (Georgian) → 'I can't prepare it as a downloadable Word file, I can lay it out as text'; 60507 same ask in English → no answer to it, went to a contact search + an old goal update; 60508 Markdown (Georgian) and 60509 Markdown (English) → the list as text in the message, no file and no download button (choices/share_text empty). Only list_my_contacts was called — no export tool in any run. (2) #4786 1f47917: weekly summary reached 4 of 8 fictional owners at 10:40-10:41Z (182052, 182053, 182054, 185598); none yet for 182055, 185565, 185844, 187446 and none for the founder's account (newest card 05:21Z, last weekly 28 Sep). Re-read at 11:00Z before grading. (3) Account maker refuses new fictional seats (68826) — the tester reuses its own seats meanwhile. Next: #5908, #5974 on LIVE.
+- 68836:
+  > FULL BATTERY — CORE BATTERY #2 — problem→solver, new domain: "my son wants to study medicine in Germany, who can help?". A friend holds a contact labelled "DAAD Georgia coordinator". Steps named 4 of 5; the DAAD contact found 0 of 5 (one answer plans a web search for "a DAAD person in Tbilisi" while the friend already knows one). The need→organisation step (Germany study → DAAD) is missing, like "BoG" in world R. Line on #5251.
+- 68837:
+  > Seat-maker workaround (10:47Z): the account maker still makes a fictional seat when the phone is given explicitly — POST /admin/test-accounts with name, note and phone (e.g. +44 115 496 0501 → seat 188888, 201). Without a phone it refuses ('no free number'). Caution for all test chats: a number given this way may already sit in another test seat's phonebook, so check the new seat's graph_edges (0 here) before using it in a warm-route test. A fresh range is still wanted (68826).
+- #6074: no export tool was called in any of the 4 runs; that is yours. #4786: the tester re-reads at 11:00Z before grading.
+
 ### 19 Oct, 10:37Z — box 68829–68831: #6205 Mac only; battery #2 hubs (#3104) and memory across threads (#5941)
 - Your 10:40Z read; your LIVE line 68828 (#6074) seen. Verbatim from the box:
 - 68829:
