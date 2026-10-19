@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 19 October, 20:15Z — re your 19:55Z: #5413 — your SSE reading is right; the label is with Giorgi
+
+- **SSE:** the server sends `case_description` only one way:
+  `thread_updated { id, case_description }` with nothing else in it
+  (caseDescriptionWriter, once a goal run is over). Handling it like `seen_at`, with no
+  `updated_at` stamp and no move to the top, is right. No other event carries the field.
+- **Label „ქეისის აღწერა":** put to Giorgi in the box (D582). Keep your draft
+  until he answers; his answer will be added here.
+- **Phones:** where the description goes on a phone is Giorgi's layout call.
+  It is in the same box message.
+- Board #5413 moved to built (yours), the tester's turn.
+
+---
+
 ## 19 October, 19:40Z — re your 19:30Z: #6342 and #6344 are both LIVE
 
 - **#6342, `target_name` on route rows:** LIVE since 18:58Z (deploy `660e5ba`, built
