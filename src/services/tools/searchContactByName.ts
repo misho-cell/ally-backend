@@ -37,6 +37,18 @@ const FUZZY_THRESHOLD = 0.45;
 // fallback below): two, at a word start.
 const FUZZY_HEAD_CHARS = 2;
 const RESULT_LIMIT = 20;
+/**
+ * #5941 world M (the tester's 68815, 0 of 3): a member who told their own Netai
+ * „I am a notary" has it as their profile's profession, not in "User"."jobPosition",
+ * and the owner who found them by name read no work at all. The profession
+ * stands in when the account's own field is empty, unless they hid their work.
+ * user_profile_kv.user_id is TEXT; one profession row per account (its key is unique).
+ */
+const OWN_PROFESSION_JOIN = `LEFT JOIN user_profile_kv own_kv
+         ON own_kv.user_id = u.id::text AND own_kv.key = 'profession'`;
+const OWN_JOB = `COALESCE(
+                MAX(NULLIF(TRIM(u."jobPosition"), '')),
+                MAX(NULLIF(TRIM(own_kv.value), '')) FILTER (WHERE u."hideUserWorkInfo" IS NOT TRUE))`;
 
 export interface NameRow {
   phone: string;
@@ -183,13 +195,14 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
               array_agg(DISTINCT ut.tag)           AS all_tags,
               array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
               MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
-              MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
+              ${OWN_JOB} AS "jobPosition",
               MAX(NULLIF(TRIM(u.city), ''))        AS city
        FROM hits h
        LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
        LEFT JOIN "UserTags"  ut ON ut.phone = h.phone
        LEFT JOIN "UserPhone" up ON up.phone = h.phone
        LEFT JOIN "User"      u  ON u.id     = up."userId"
+       ${OWN_PROFESSION_JOIN}
        GROUP BY h.phone`;
 
     /**
@@ -262,13 +275,14 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
                   array_agg(DISTINCT ut.tag)           AS all_tags,
                   array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
                   MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
-                  MAX(NULLIF(TRIM(u."jobPosition"), '')) AS "jobPosition",
+                  ${OWN_JOB} AS "jobPosition",
                   MAX(NULLIF(TRIM(u.city), ''))        AS city
            FROM hits h
            LEFT JOIN "UserAlias" ua ON ua.phone = h.phone AND ua."contactId" = $1
            LEFT JOIN "UserTags"  ut ON ut.phone = h.phone
            LEFT JOIN "UserPhone" up ON up.phone = h.phone
            LEFT JOIN "User"      u  ON u.id     = up."userId"
+           ${OWN_PROFESSION_JOIN}
            GROUP BY h.phone
            ORDER BY MAX(ua.alias)
            LIMIT 20`,

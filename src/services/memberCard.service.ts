@@ -94,6 +94,31 @@ function filled(value: string | null | undefined): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
+/** What the member wrote about their own work, with every field they hid left out. */
+export type MemberOwnWork = Pick<MemberCard, 'role' | 'company' | 'city' | 'areas'>;
+
+function ownWorkFields(row: MemberRow, profile: ReadonlyMap<string, string>): MemberOwnWork {
+  const showWork = row.hide_work !== true;
+  return {
+    role: showWork ? (filled(row.job) ?? filled(profile.get('profession'))) : null,
+    company: showWork ? filled(row.employer) : null,
+    city: filled(row.city) ?? filled(profile.get('city')),
+    areas: row.hide_tags !== true ? areasOf(profile) : [],
+  };
+}
+
+/**
+ * #5941 world M (the tester's 68815, 0 of 3): a member who told their own Netai
+ * „I am a notary in Vake" was, to an owner asking „tell me about him", a common
+ * name with no work. The card the frontend opens already showed it; the same
+ * fields, under the same hide flags, now reach the owner's run. Null for no member.
+ */
+export async function memberOwnWork(memberId: number): Promise<MemberOwnWork | null> {
+  const row = await memberRow(memberId);
+  if (row === null) return null;
+  return ownWorkFields(row, await profileValues(memberId));
+}
+
 /** The card; null when the id is not one this owner was given, or the person is not a member. */
 export async function memberCardFor(ownerId: number, ref: string): Promise<MemberCard | null> {
   const memberId = await memberIdFor(ownerId, ref);
@@ -101,15 +126,10 @@ export async function memberCardFor(ownerId: number, ref: string): Promise<Membe
   const row = await memberRow(memberId);
   if (row === null) return null;
   const [profile, offers] = await Promise.all([profileValues(memberId), openOffers(memberId)]);
-  const showWork = row.hide_work !== true;
-  const showTags = row.hide_tags !== true;
   return {
     id: ref,
     name: filled(row.name),
-    role: showWork ? (filled(row.job) ?? filled(profile.get('profession'))) : null,
-    company: showWork ? filled(row.employer) : null,
-    city: filled(row.city) ?? filled(profile.get('city')),
-    areas: showTags ? areasOf(profile) : [],
-    open_to: showTags ? offers : [],
+    ...ownWorkFields(row, profile),
+    open_to: row.hide_tags !== true ? offers : [],
   };
 }

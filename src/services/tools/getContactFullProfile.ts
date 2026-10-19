@@ -1,8 +1,11 @@
 import { query } from '../../db/postgres/client';
 import { getContactInsight } from '../insights.service';
 import { getVisibleFacts, VisibleFactsResult } from '../contactFacts.service';
+import { MemberOwnWork, memberOwnWork } from '../memberCard.service';
 import {
   AccountState,
+  AccountDetails,
+  accountDetailsFor,
   fetchAccountStates,
   isMemberPhone,
   isSubscriberPhone,
@@ -29,6 +32,8 @@ interface ContactFullProfile extends LikelyEmployer, Partial<OwnContactView> {
   others_labels_count: number;
   insights: Record<string, unknown> | null;
   facts_and_ask: VisibleFactsResult;
+  /** #5941: a member's own work, as they told their own Netai; absent when they said nothing. */
+  member_says_about_own_work?: MemberOwnWork;
 }
 
 const NUMERIC_ONLY_RE = /^\d+$/;
@@ -79,6 +84,27 @@ export function ownLabelsOnly(
   };
 }
 
+function saysAnything(work: MemberOwnWork): boolean {
+  return work.role !== null || work.company !== null || work.city !== null || work.areas.length > 0;
+}
+
+/** The member's own work for the card; a failed read leaves the card as it was. */
+async function ownWorkFor(
+  accountStates: Map<string, AccountDetails>,
+  phone: string,
+): Promise<Pick<ContactFullProfile, 'member_says_about_own_work'>> {
+  const details = accountDetailsFor(accountStates, phone);
+  if (details.state !== 'netai_user' || details.user_id === null) return {};
+  try {
+    const work = await memberOwnWork(details.user_id);
+    return work !== null && saysAnything(work) ? { member_says_about_own_work: work } : {};
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[contact-profile] member work unavailable:', (err as Error).message);
+    return {};
+  }
+}
+
 export async function getContactFullProfile(
   userId: string,
   phone: string,
@@ -118,6 +144,7 @@ export async function getContactFullProfile(
   }
 
   const accountStates = await fetchAccountStates([phone]);
+  const ownWork = await ownWorkFor(accountStates, phone);
 
   return {
     phone,
@@ -129,5 +156,6 @@ export async function getContactFullProfile(
     facts_and_ask: factsAndAsk,
     ...likelyEmployer,
     ...ownContact,
+    ...ownWork,
   };
 }
