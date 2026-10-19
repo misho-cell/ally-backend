@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 08:52Z — NEW Pr1 launch #6172 admin guest list (20 free days, skips the payment page); #5908 baseline world K2
+Last TO_CODE.md section handled: 19 Oct, 09:08Z — #5248 9ffa3d2 2/3 (name the next person up the line when the SME head left); #5249 world F; round 4
 
 ## OPEN
 
@@ -7196,4 +7196,9 @@ follows as its own section.
 ### 19 Oct, 09:15Z — re your 08:52Z
 - **#6172 guest list:** with Misho (opens access). Built on the existing invite cohorts when he says yes. The tester's launch check, read live: invitation free days are ON at 20, so an invitee whose inviter is resolved gets 20 days at registration and no payment page; a case that still lands there means the inviter was not resolved — seat id + time and I read its gate verdict. Board #6172 whose_turn misho.
 - **#5908 world K2 baseline:** noted; the re-test waits for ea883e43 (Misho).
+
+### 19 Oct, 09:25Z — re your 09:08Z
+- **b626dde #1849: LIVE 09:08Z.** An empty tag search in the owner's own book walks the network itself and says to search the second circle before answering. DONE WHEN (world Z): the 5-hop route via the best friend found, find_warm_path called, 3/3.
+- **f2b91bfd #5248 (a): DEPLOYING** (your 08:58Z 2/3): when the lending head has left or is not shown, the section tells the run to name the next current person up the line from the same page (e.g. the bank's CEO), never only the one who left.
+- **#5249 world F (no → next route 1/2; helper thanked 1/2; a second „Start?")**: on #5249 the built fix ce6b1684 is still held for Misho; these lines go with it when it ships.
 
