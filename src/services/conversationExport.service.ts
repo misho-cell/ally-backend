@@ -1,4 +1,10 @@
 import { RunLanguage } from './runLanguage';
+import {
+  DOCX_CONTENT_TYPE,
+  docxFile,
+  MARKDOWN_CONTENT_TYPE,
+  markdownFile,
+} from './messageDocument';
 import { getThreadMessages, ThreadMessage } from './threads.service';
 
 /**
@@ -16,6 +22,7 @@ const PAGE_SIZE = 200;
 const MAX_PAGES = 15;
 /** Kinds a person reads in the chat that belong in the file; a failure line does not. */
 const EXPORTED_KINDS: ReadonlySet<string> = new Set(['message', 'pending']);
+const TEXT_EXTENSION = 'txt';
 
 interface ExportWords {
   readonly owner: string;
@@ -66,14 +73,82 @@ function messageBlock(m: ThreadMessage, words: ExportWords): string {
 }
 
 /** A file name a phone and a desktop both accept: letters of any script, digits, dashes. */
-export function exportFilename(title: string | null, threadId: number, nowIso: string): string {
+export function exportFilename(
+  title: string | null,
+  threadId: number,
+  nowIso: string,
+  extension = TEXT_EXTENSION,
+): string {
   const base = (title ?? '')
     .normalize('NFC')
     .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
   const day = nowIso.slice(0, 10);
-  return `${base === '' ? `netai-${threadId}` : base}-${day}.txt`;
+  return `${base === '' ? `netai-${threadId}` : base}-${day}.${extension}`;
+}
+
+function visible(messages: readonly ThreadMessage[]): ThreadMessage[] {
+  return messages.filter((m) => EXPORTED_KINDS.has(m.kind) && m.content.trim() !== '');
+}
+
+/**
+ * #6074, the founder's D842 (19 Oct): „we need export of whole chat, not of
+ * each message". The whole conversation, both sides in order with their
+ * times, as Markdown — and, through the same text, as Word: the title a
+ * heading, who and when in bold, then what was said.
+ */
+export function conversationMarkdown(
+  title: string | null,
+  messages: readonly ThreadMessage[],
+  language: RunLanguage,
+  nowIso: string,
+): string {
+  const words = wordsFor(language);
+  const header = [`# ${title?.trim() || words.untitled}`, words.exported(minuteOf(nowIso))];
+  const body = visible(messages).map((m) => {
+    const who = m.role === 'user' ? words.owner : words.assistant;
+    const lines = [`**[${minuteOf(m.created_at)}] ${who}:**`, m.content.trim()];
+    if (m.choices !== null && m.choices.length > 0) {
+      lines.push(`(${words.buttons}: ${m.choices.join(' | ')})`);
+    }
+    return lines.join('\n\n');
+  });
+  return [...header, ...body].join('\n\n') + '\n';
+}
+
+export enum ConversationFormat {
+  Markdown = 'md',
+  Word = 'docx',
+}
+
+export function isConversationFormat(v: unknown): v is ConversationFormat {
+  return typeof v === 'string' && (Object.values(ConversationFormat) as string[]).includes(v);
+}
+
+export interface ConversationDownload {
+  readonly filename: string;
+  readonly contentType: string;
+  readonly bytes: Buffer;
+}
+
+/** The whole conversation as a Markdown or Word file. */
+export async function exportConversationFile(
+  thread: { readonly id: number; readonly title: string | null },
+  language: RunLanguage,
+  nowIso: string,
+  format: ConversationFormat,
+): Promise<ConversationDownload> {
+  const markdown = conversationMarkdown(
+    thread.title,
+    await wholeHistory(thread.id),
+    language,
+    nowIso,
+  );
+  const filename = exportFilename(thread.title, thread.id, nowIso, format);
+  return format === ConversationFormat.Word
+    ? { filename, contentType: DOCX_CONTENT_TYPE, bytes: await docxFile(markdown) }
+    : { filename, contentType: MARKDOWN_CONTENT_TYPE, bytes: markdownFile(markdown) };
 }
 
 /** The readable text of a conversation's messages, already in reading order. */
@@ -85,9 +160,7 @@ export function conversationText(
 ): string {
   const words = wordsFor(language);
   const header = [title?.trim() || words.untitled, words.exported(minuteOf(nowIso))].join('\n');
-  const body = messages
-    .filter((m) => EXPORTED_KINDS.has(m.kind) && m.content.trim() !== '')
-    .map((m) => messageBlock(m, words));
+  const body = visible(messages).map((m) => messageBlock(m, words));
   return [header, ...body].join('\n\n') + '\n';
 }
 

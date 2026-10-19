@@ -2,7 +2,11 @@ import { runLatencyLine } from '../../services/runLatency';
 import { refreshCaseDescription } from '../../services/caseDescriptionWriter.service';
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
-import { exportConversation } from '../../services/conversationExport.service';
+import {
+  exportConversation,
+  exportConversationFile,
+  isConversationFormat,
+} from '../../services/conversationExport.service';
 import { tableFromMessage, tableWorkbook } from '../../services/messageTable';
 import {
   DOCX_CONTENT_TYPE,
@@ -809,6 +813,47 @@ threadsRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /threads/:id/export]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not export the conversation' });
+    }
+  },
+);
+
+/**
+ * #6074, the founder's D842 (19 Oct): one „export this chat" for the whole
+ * conversation — both sides, in order, with times — as Word or Markdown.
+ * Same ownership check and the same visible rows as /export.
+ *
+ *   GET /threads/:id/export.md | export.docx
+ *   200 the file (attachment; the name is the conversation's title and the day)
+ *   404 no such thread, or not theirs
+ */
+threadsRouter.get(
+  '/:id/export.:format',
+  rateLimit({ windowMs: 60_000, max: 10 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  param('format').custom(isConversationFormat).withMessage('format is md or docx'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const format = String(req.params.format);
+      const thread = await getThread(threadId, userId);
+      if (thread === null || !isConversationFormat(format)) {
+        res.status(404).json({ success: false, error: 'Thread not found' });
+        return;
+      }
+      const language = await threadLanguage(threadId).catch((): RunLanguage => 'ka');
+      const file = await exportConversationFile(thread, language, new Date().toISOString(), format);
+      res.setHeader('Content-Type', file.contentType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="netai-${threadId}.${format}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+      );
+      res.status(200).send(file.bytes);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/:id/export.:format]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Could not export the conversation' });
     }
   },

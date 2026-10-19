@@ -5,9 +5,13 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { getThreadMessages, ThreadMessage } from '../threads.service';
 import {
+  ConversationFormat,
+  conversationMarkdown,
   conversationText,
   exportConversation,
+  exportConversationFile,
   exportFilename,
+  isConversationFormat,
 } from '../conversationExport.service';
 
 const mockMessages = getThreadMessages as jest.MockedFunction<typeof getThreadMessages>;
@@ -102,5 +106,45 @@ describe('the route', () => {
     expect(route).toContain('const thread = await getThread(threadId, userId);');
     expect(route).toContain("res.status(404).json({ success: false, error: 'Thread not found' });");
     expect(route).toContain('res.status(200).json({ success: true, data: file });');
+  });
+});
+
+/** #6074, the founder's D842: the whole conversation as Markdown or Word. */
+describe('a conversation as a Markdown or Word file', () => {
+  it('puts the title as a heading, then who and when in bold, then what was said', () => {
+    const md = conversationMarkdown(
+      'ნოტარიუსი',
+      [
+        msg({ content: 'მჭირდება ნოტარიუსი' }),
+        msg({
+          role: 'assistant',
+          content: 'ვკითხო ნინოს?',
+          created_at: '2026-10-03T09:31:00.000Z',
+          choices: ['კი', 'არა'],
+        }),
+        msg({ kind: 'error', content: 'try again' }),
+      ],
+      'ka',
+      NOW,
+    );
+    expect(md).toBe(
+      '# ნოტარიუსი\n\nNetai-დან ექსპორტი, 2026-10-03 10:45 (დრო UTC-ით)\n\n' +
+        '**[2026-10-03 09:30] შენ:**\n\nმჭირდება ნოტარიუსი\n\n' +
+        '**[2026-10-03 09:31] Netai:**\n\nვკითხო ნინოს?\n\n(ღილაკები: კი | არა)\n',
+    );
+  });
+
+  it('names the file by its format', async () => {
+    mockMessages.mockResolvedValueOnce([msg({ content: 'hi' })]);
+    const file = await exportConversationFile(
+      { id: 9, title: 't' },
+      'en',
+      NOW,
+      ConversationFormat.Word,
+    );
+    expect(file.filename).toBe('t-2026-10-03.docx');
+    expect(file.bytes.subarray(0, 2).toString()).toBe('PK');
+    expect(isConversationFormat('md')).toBe(true);
+    expect(isConversationFormat('pdf')).toBe(false);
   });
 });

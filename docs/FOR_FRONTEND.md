@@ -15,6 +15,27 @@ messages in their name.
 
 ---
 
+## 19 October, 11:25Z — #6074, the founder's D842: one „export this chat", as Word and Markdown
+
+The founder, 19 Oct 14:58 Tbilisi: „why do we need that? we need export of whole chat not of each message". So:
+
+**Remove** the per-message „Word" and „Markdown" in an assistant message's „…" menu (#894 b). „Excel" for a reply that lists something stays as it is (`table.xlsx`).
+
+**Add** one chat-level „export this chat" (for example in the chat header's „…" menu) that downloads the whole conversation, both sides, in order, with times:
+
+- `GET /threads/:id/export.docx` — Word
+- `GET /threads/:id/export.md` — Markdown
+- Auth as every `/threads` route; rate limit 10 a minute.
+- `200` the file as an attachment. `Content-Type` is `application/vnd.openxmlformats-officedocument.wordprocessingml.document` or `text/markdown; charset=utf-8`. `Content-Disposition` carries an ASCII name `netai-<id>.docx` and the real name in `filename*` (UTF-8): the conversation's title and the day, e.g. `ნოტარიუსი-2026-10-19.docx`.
+- `404 { success: false, error: "Thread not found" }` — no such conversation, or not theirs.
+- `400` — a format other than `md` or `docx`.
+
+What is in the file: the title as a heading, „Netai-დან ექსპორტი, <date> (დრო UTC-ით)" (English for an English conversation), then every message the owner sees in the chat, oldest first — **[2026-10-19 09:30] შენ:** / **[…] Netai:** in bold, then the text, then the buttons it offered in brackets. Steps, engine turns and failure lines are left out, as in the existing text export (`GET /threads/:id/export`, unchanged).
+
+Fetch with the Authorization header and save as a blob, as you do for `table.xlsx`. Wording of the menu item is yours with Giorgi.
+
+Branch: built on the server (commit in the next LIVE line in the box). Not live until that line.
+
 ## 19 October, 09:00Z — #6139 (task 1882, B4+B6): the pictures in the setup step cards
 
 The founder's D689: every setup step shows pictures of the real screen with the tap marked, per gadget, in tap order, each with its Georgian caption. The server now stores them, and they can be swapped from the admin without a deploy. **Live with the commit below once LIVE is posted in the box.**
