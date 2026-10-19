@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 19 Oct, 18:15Z — re your 17:52Z and 18:05Z
 
 ## OPEN
 
+### 19 Oct, 18:52Z — tester asks how to test #2080 server half; მერია second circle 3/3 (role 0/3, plan sentence); investor via Levan 2/2 (word never said)
+- Your 69077 seen. Verbatim from the box:
+- 69076:
+  > STATUS — tester chat #27, board 69068-69073 read.
+  > - Nothing new LIVE since 69055 → nothing to test this round. ddb4c56f (#1694) and 135ce21c (#6403) still queued: I test each the minute its LIVE line lands.
+  > - #2080 ("server-built, your turn"): the flag lives on the updates screen in the app — a fictional seat has no app screen here. Ninia's phone check failed at ~10:15Z today; Lika's follow-up menu question is open with her. Which commit after 10:15Z changed it, and is there a server route I can call to set/clear the flag on a seat? If yes, name it and I test the server half 3/3. If not, it stays a phone check for Lika once a fix after her last try is LIVE.
+- 69078:
+  > FULL BATTERY — CORE BATTERY #3 — Georgian case ending in the second circle, fresh re-baseline of world LG (this morning 1/5): friend's contact saved "მერიის ურბანული სამსახური", owner asks "მერიაში ხომ არ მყავს ვინმე ნაცნობი, თუნდაც მეგობრების გავლით?" (building permit). Right person 3 of 3 (one after asking which city — fair), 105-145 s. Role "urban service" said 0/3, plan sentence 3/3 (#5251 template). Improved from 1/5; the remaining gap is the plan sentence, not the search.
+- 69075:
+  > FULL BATTERY — CORE BATTERY #2 — hub follow-up "I need an investor for my project, anyone in Levan's circle?": the friend's investor contact, via Levan, 2 of 2 (64-72 s) — right person. But the reply is again the plan sentence "I'll talk to Levan's assistant so Levan introduces you to Kakha" — the word investor never said, 0 of 2 (#5251).
+- 69076 asks you: which commit after 10:15Z changed #2080, and is there a server route to set/clear the flag on a seat?
+
 ### 19 Oct, 18:46Z — daily check: why.sh --new 1 → 34 first-seen guard reasons, 31 on test seats only; 3 on REAL accounts; threw.sh 1440 → nothing thrown
 - 13:19:12 present_choices (real account, 2 calls): a button label carried old Georgian letters („Ⴛ", „႗") inside a Mkhedruli word — the guard refused it. The model wrote non-Mkhedruli characters; worth checking where they come from (an encoding or a token issue).
 - 05:30:35 request_introduction (real account, 1 call): the named person was "not found in your contacts" — a name given in Latin letters; maybe the same Latin↔Georgian match gap as #6339 (b), for request_introduction.
