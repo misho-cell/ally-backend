@@ -24,7 +24,11 @@ jest.mock('../membership', () => ({
 
 import { query } from '../../../db/postgres/client';
 import { accountDetailsFor } from '../membership';
-import { getContactFullProfile, withContactsWhoKnowThem } from '../getContactFullProfile';
+import {
+  contactsYouBothHave,
+  getContactFullProfile,
+  withContactsWhoKnowThem,
+} from '../getContactFullProfile';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockDetails = accountDetailsFor as jest.MockedFunction<typeof accountDetailsFor>;
@@ -182,7 +186,12 @@ describe('#5974 (68996): a name search carries who else of the owner’s knows t
   beforeEach(() => mockQuery.mockReset());
 
   it('adds the owner’s own contacts to the first rows, by the owner’s names', async () => {
-    mockQuery.mockResolvedValue({ rows: [{ name: 'ზურა' }, { name: 'ლიკა' }] } as never);
+    mockQuery.mockImplementation(((sql: string) =>
+      Promise.resolve({
+        rows: String(sql).includes('FROM "UserPhone" up')
+          ? []
+          : [{ name: 'ზურა' }, { name: 'ლიკა' }],
+      })) as never);
     const out = await withContactsWhoKnowThem('171', {
       found: true,
       results: [{ name: 'ნანა', phone: PHONE }],
@@ -198,7 +207,8 @@ describe('#5974 (68996): a name search carries who else of the owner’s knows t
     mockQuery.mockResolvedValue({ rows: [] } as never);
     const many = { results: [1, 2, 3, 4, 5].map((i) => ({ name: `n${i}`, phone: `p${i}` })) };
     await withContactsWhoKnowThem('171', many);
-    expect(mockQuery).toHaveBeenCalledTimes(3);
+    // Two reads per row (who else knows them, and what the two books share), three rows.
+    expect(mockQuery).toHaveBeenCalledTimes(6);
     const none = { found: false };
     expect(await withContactsWhoKnowThem('171', none)).toBe(none);
   });
@@ -206,5 +216,43 @@ describe('#5974 (68996): a name search carries who else of the owner’s knows t
   it('is wired into search_contact_by_name', () => {
     const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('await withContactsWhoKnowThem(userId, byName)');
+  });
+});
+
+describe('#5974 (69079, 69126): the contacts the owner and a member both have', () => {
+  beforeEach(() => mockQuery.mockReset());
+
+  it('names them by the owner’s own names, from the member’s book', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ name: 'ზაზა ბერიძე' }, { name: 'მარი' }] } as never);
+
+    expect(await contactsYouBothHave('171', PHONE)).toEqual({
+      contacts_you_both_have: ['ზაზა ბერიძე', 'მარი'],
+    });
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain('JOIN "UserAlias" theirs ON theirs."contactId" = up."userId"');
+    expect(String(sql)).toContain('TRIM(own.alias)');
+    expect(String(sql)).not.toContain('theirs.alias');
+    expect(params?.[0]).toBe('171');
+  });
+
+  it('adds nothing for a non-member or a failed read', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    expect(await contactsYouBothHave('171', PHONE)).toEqual({});
+    mockQuery.mockRejectedValueOnce(new Error('timeout'));
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(await contactsYouBothHave('171', PHONE)).toEqual({});
+  });
+
+  it('rides on the name search beside who else knows them', async () => {
+    mockQuery.mockImplementation(((sql: string) =>
+      Promise.resolve({
+        rows: String(sql).includes('FROM "UserPhone" up') ? [{ name: 'მარი' }] : [],
+      })) as never);
+    const out = await withContactsWhoKnowThem('171', { results: [{ name: 'ნიკა', phone: PHONE }] });
+    expect(out.results[0]).toEqual({
+      name: 'ნიკა',
+      phone: PHONE,
+      contacts_you_both_have: ['მარი'],
+    });
   });
 });

@@ -50,6 +50,8 @@ interface ContactFullProfile extends LikelyEmployer, Partial<OwnContactView> {
   member_says_about_own_work?: MemberOwnWork;
   /** #5974 (68872): the owner's own contacts who also have this person saved, by the owner's names. */
   your_contacts_who_know_them?: readonly string[];
+  /** #5974 (69079, 69126): when this person is a member, the owner's contacts they also have saved. */
+  contacts_you_both_have?: readonly string[];
   /** #5941 (68831): the owner's own notes about this person, newest first; absent when none. */
   you_told_me?: readonly string[];
 }
@@ -197,6 +199,39 @@ export async function contactsWhoKnowThem(
 }
 
 /**
+ * #5974 (the tester's 69079 and 69126, 0 of 5): „who are Nika's and my mutual
+ * acquaintances?" — Nika is a member and the two books share two people, but
+ * nothing compared them: the run looked Nika up by name and answered „no mutual
+ * acquaintance". When the person is a member, the owner's own contacts that
+ * the member has saved too, by the names the OWNER gave them; never how the
+ * member saved them. A failed read adds nothing.
+ */
+export async function contactsYouBothHave(
+  userId: string,
+  phone: string,
+): Promise<Pick<ContactFullProfile, 'contacts_you_both_have'>> {
+  try {
+    const result = await query<{ name: string }>(
+      `SELECT DISTINCT TRIM(own.alias) AS name
+         FROM "UserPhone" up
+         JOIN "UserAlias" theirs ON theirs."contactId" = up."userId"
+         JOIN "UserAlias" own    ON own."contactId" = $1::int AND own.phone = theirs.phone
+        WHERE up.phone = $2 AND up."userId" <> $1::int
+          AND NULLIF(TRIM(own.alias), '') IS NOT NULL
+        LIMIT $3`,
+      [userId, phone, MAX_MUTUAL],
+      MUTUAL_QUERY_TIMEOUT_MS,
+    );
+    const names = result.rows.map((r) => r.name).filter((n) => HAS_LETTER_RE.test(n));
+    return names.length === 0 ? {} : { contacts_you_both_have: names };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[contact-profile] shared contacts not read:', (err as Error).message);
+    return {};
+  }
+}
+
+/**
  * #5974 (the tester's 68996, 1 of 6): „who do I know who knows Nana?" named both
  * friends only in the one run that opened her card; the others searched by name
  * and said nobody else was connected. A name search's first rows carry the
@@ -214,7 +249,10 @@ export async function withContactsWhoKnowThem<T extends object>(
     rows.slice(0, MUTUAL_ROWS_READ).map((row: unknown) => {
       const phone = (row as { phone?: unknown } | null)?.phone;
       return typeof phone === 'string' && phone !== ''
-        ? contactsWhoKnowThem(userId, phone)
+        ? Promise.all([
+            contactsWhoKnowThem(userId, phone),
+            contactsYouBothHave(userId, phone),
+          ]).then(([knowThem, both]) => ({ ...knowThem, ...both }))
         : Promise.resolve({});
     }),
   );
@@ -234,7 +272,7 @@ export async function getContactFullProfile(
 ): Promise<ContactFullProfile> {
   const lookupId = neo4jContactId ?? phone;
 
-  const [tagsResult, factsAndAsk, likelyEmployer, ownContact, mutual] = await Promise.all([
+  const [tagsResult, factsAndAsk, likelyEmployer, ownContact, mutual, shared] = await Promise.all([
     query<TagSummary & { own: boolean }>(
       `SELECT
          ut.tag,
@@ -253,6 +291,7 @@ export async function getContactFullProfile(
     // 5908: the names the network knows this own contact by.
     ownContactOnTheCard(userId, phone, askedName),
     contactsWhoKnowThem(userId, phone),
+    contactsYouBothHave(userId, phone),
   ]);
 
   let insightData: Record<string, unknown> | null = null;
@@ -281,5 +320,6 @@ export async function getContactFullProfile(
     ...ownWork,
     ...toldNotes(factsAndAsk.facts),
     ...mutual,
+    ...shared,
   };
 }
