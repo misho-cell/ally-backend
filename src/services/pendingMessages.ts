@@ -396,6 +396,22 @@ function textsFor(language: RunLanguage): PendingTexts {
 }
 
 /**
+ * The buttons under an introduction request: accept, decline, later. #6040:
+ * the request's own conversation shows the same three as the regular one.
+ * `target` is the person to introduce; null when the reader is the one to meet.
+ */
+export function introRequestChoices(
+  language: RunLanguage,
+  requesterName: string,
+  target: string | null,
+): string[] {
+  const t = textsFor(language);
+  const accept =
+    target === null ? t.introAcceptDirect(requesterName) : t.introAcceptMediated(target);
+  return [accept, t.introDecline, t.later];
+}
+
+/**
  * One pending item as its own message, or null when its payload cannot say
  * anything true — a silent skip beats an invented sentence.
  */
@@ -509,7 +525,7 @@ export function renderPendingMessage(
       if (direct) {
         return {
           text: t.introDirect(who) + tail,
-          choices: [t.introAcceptDirect(who), t.introDecline, t.later],
+          choices: introRequestChoices(language, who, null),
           ref: { kind: item.kind, request_id: requestId },
           instruction,
         };
@@ -521,7 +537,7 @@ export function renderPendingMessage(
       if (target === null) return null;
       return {
         text: t.introMediated(who, target) + tail,
-        choices: [t.introAcceptMediated(target), t.introDecline, t.later],
+        choices: introRequestChoices(language, who, target),
         ref: { kind: item.kind, request_id: requestId },
         instruction,
       };

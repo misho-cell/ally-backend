@@ -23,6 +23,7 @@ import {
   stripRedactionArtifactsForDisplay,
 } from './privacyScrub';
 import { relayedForReader } from './askTranslation.service';
+import { introRequestChoices } from './pendingMessages';
 import { isRequesterSide, RequestThread, SharedRequestSide } from './requestThreadSide';
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
@@ -1655,7 +1656,15 @@ export async function createIncomingRequestThread(
       statusLine: RUN_STRINGS[opening.language].statusLines.needs_you,
     },
   );
-  await saveThreadMessage(thread.id, mediatorUserId, 'assistant', opening.text);
+  await saveThreadMessage(
+    thread.id,
+    mediatorUserId,
+    'assistant',
+    opening.text,
+    'message',
+    null,
+    introRequestChoices(opening.language, requesterName, direct ? null : targetName),
+  );
   return thread;
 }
 
