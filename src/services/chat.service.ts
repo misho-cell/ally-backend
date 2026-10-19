@@ -285,6 +285,7 @@ import {
   FoundPerson,
   peopleFoundIn,
   walksToTheNamedPerson,
+  isRouteToSomeoneFound,
   walkTargetPhone,
   WARM_PATH_TOOL,
 } from './warmPathAfterSearch';
@@ -1186,7 +1187,11 @@ export async function withFurtherOut<T extends object>(
   if (typeof words !== 'string') return found;
   try {
     const further = await farMembersHolding(Number(userId), words);
-    if (runId !== undefined) noteFoundFurtherOut(runId, further);
+    if (runId !== undefined) {
+      noteFoundFurtherOut(runId, further);
+      // #1849 world Y: the walk to one of them is the route, never a refused ninth search.
+      notePeopleFound(runId, { further_out: further });
+    }
     return further.length === 0
       ? found
       : { ...found, further_out: further, further_out_note: FURTHER_OUT_NOTE };
@@ -9815,7 +9820,11 @@ async function executeToolCall(
         'presses the button themselves. Do not tell them it was approved.',
     };
   }
-  if (runId !== undefined && searchBudgetSpent(runId, name)) {
+  if (
+    runId !== undefined &&
+    !isRouteToSomeoneFound(name, input, runFoundPeople.get(runId) ?? []) &&
+    searchBudgetSpent(runId, name)
+  ) {
     // eslint-disable-next-line no-console
     console.log(`[search-budget] run ${runId}: ${name} refused, ${MAX_SEARCHES_PER_RUN} spent`);
     return { found: false, error: SEARCH_BUDGET_SPENT };

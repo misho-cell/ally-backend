@@ -49,11 +49,18 @@ export interface FoundPerson {
   readonly name: string | null;
 }
 
-/** The people a person-search result returned, by its `results` rows. */
+/**
+ * The people a person-search result returned: its `results` rows, and the
+ * people found further out through a chain (`further_out`, 5347) — #1849 world
+ * Y: the walk to one of them is the route, not another search.
+ */
 export function peopleFoundIn(result: unknown): FoundPerson[] {
-  const rows = (result as { results?: unknown } | null)?.results;
-  if (!Array.isArray(rows)) return [];
-  return rows.flatMap((row) => {
+  const shown = result as { results?: unknown; further_out?: unknown } | null;
+  const rows = [
+    ...(Array.isArray(shown?.results) ? shown.results : []),
+    ...(Array.isArray(shown?.further_out) ? shown.further_out : []),
+  ];
+  return rows.flatMap((row: unknown) => {
     const r = (row ?? {}) as { phone?: unknown; name?: unknown };
     if (typeof r.phone !== 'string' || r.phone === '') return [];
     return [{ phone: r.phone, name: typeof r.name === 'string' ? r.name : null }];
@@ -70,6 +77,24 @@ function sameName(a: string, b: string): boolean {
  * person this run's own searches found, the walk takes that person's phone id.
  * Only those people: a name never reaches anyone the run has not been shown.
  */
+/**
+ * #1849 world Y (the tester's 68805, Y3 60307): a 4-link chain to the head of
+ * customs was found, the run had spent its 8 searches on web pages, and
+ * find_warm_path for that very person was refused as a ninth search. The reply
+ * then called the chain a direct link („Zuriko knows the head of customs"). The
+ * walk to a person this run already found is the route to its answer: it is
+ * never refused by the search budget.
+ */
+export function isRouteToSomeoneFound(
+  tool: string,
+  input: Readonly<Record<string, unknown>>,
+  found: readonly FoundPerson[],
+): boolean {
+  if (tool !== WARM_PATH_TOOL) return false;
+  const target = walkTargetPhone(String(input['target_phone'] ?? ''), found);
+  return found.some((person) => person.phone === target);
+}
+
 export function walkTargetPhone(given: string, found: readonly FoundPerson[]): string {
   if (found.some((person) => person.phone === given)) return given;
   const named = found.filter((person) => person.name !== null && sameName(person.name, given));

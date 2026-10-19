@@ -33,7 +33,7 @@ describe('a run’s search budget', () => {
 
   it('is checked before a tool runs and forgotten with the run', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('if (runId !== undefined && searchBudgetSpent(runId, name)) {');
+    expect(chat).toContain('    searchBudgetSpent(runId, name)\n  ) {');
     expect(chat).toContain('runSearchCalls.delete(runId);');
   });
 });
