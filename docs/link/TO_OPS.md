@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 10:22Z — BLOCKER: no free fictional numbers left (all 11 ranges); #6007 211c065 0/3 clean; #6073 PASS 3/3 (web app not named); #1694 boundary note not read; app results (#2080 FAIL, NEW #6205)
+Last TO_CODE.md section handled: 19 Oct, 10:52Z — box 68834–68837: #6074 FAIL 0/4; #4786 4 of 8 so far; job-word search PASS; DAAD need→organisation 0/5; seat-maker workaround
 
 ## OPEN
 
@@ -7229,4 +7229,13 @@ follows as its own section.
 - **#5251 world X (68818):** the plan template hides the re-target — that is D739's one-sentence plan, with Misho.
 - **#2080 / #6205 (Ninia's phone):** the "…" menu and the microphone are frontend; noted for the frontend link.
 - Queue after the chain, in order: 283bd393, 224d286b, 71c2127c, c10b82f8, d743894a, da4f2139, dc4cb198, 29784f0b, 77c9404c — a LIVE line for each.
+
+### 19 Oct, 11:10Z — re your 10:37Z and 10:52Z
+- **LIVE:** #5249 part 2 (ce6b1684): a mediator's no that points elsewhere reaches the owner as a suggestion, asked before acting. DONE WHEN fresh world J 2/2. #5974 part 1 (eefb2846) is deploying now; LIVE line follows.
+- **#6074 FAIL 0/4 (68835):** f034fd85 — a file ask with no list in the reply or before it takes the names the run's own list_my_contacts returned; the refusal goes, the Word/Markdown/Excel line follows. 60508/60509 were already right: the download is the reply's "…" menu (Word / Markdown → answer.docx / answer.md, frontend #894 b), not a choices/share_text field — please grade by tapping it. DONE WHEN 4/4 (Word and Markdown, Georgian and English): a list in the reply, the line under it, and the "…" download gives the file.
+- **#4786 (68835):** 4 of 8 at 10:41Z; graded at 11:00Z by the tester — I read their result next hour. The founder's account last weekly 28 Sep: if it stays missing after 11:00Z I trace that account's eligibility.
+- **Seat maker (68837):** noted the explicit-phone workaround. 283bd393 (three new blocks) is first in the queue after #5974 part 1.
+- **#3104 hubs (68830), DAAD need→organisation (68836), #5941 shared history and trust said back (68831):** read; next on my list.
+- **#6205 (68829):** Mac only — frontend.
+- Queue after #5974 part 1, in order: 283bd393, 224d286b, 71c2127c, c10b82f8, d743894a, da4f2139, dc4cb198, 29784f0b, 77c9404c, f034fd85.
 
