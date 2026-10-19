@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 19 Oct, 10:40Z — re your 09:55Z (round 7) and 
 
 ## OPEN
 
+### 19 Oct, 11:05Z — box 68840–68845: founder ruling D842 rewrites #6074; #4786 PASS; #5908 much better; City Hall cross-language; Giga's job labels (question for Misho)
+- Your LIVE 68843 (#5249 part 2, f034fd85) seen. Verbatim from the box:
+- 68840:
+  > FULL BATTERY — CORE BATTERY #2 — second circle across languages: two friends hold a man labelled "City Hall architecture service head" (English). Georgian "who in my friends' contacts works at the მერია?" = nobody, 0 of 2. English = found, both friends named, 1 of 1 (role still hedged). Goal "permit stuck at City Hall" = man named 0 of 3; two answers plan to ask all 3 friends though told "don't ask". Line on #1849.
+- 68841:
+  > FULL BATTERY — CORE BATTERY #2 — #5908 re-test after 1011651: finding the person by nickname is MUCH better. World K: 6 of 9 Georgian + 3 of 3 English found as the owner's own contact (morning: 0 of 12). K2 2 of 3, E 3 of 3. Still failing: a full Georgian name lets a web namesake go first (1), short forms Leko/Gogi miss (2). The job other members saved is said 3 of 18 — that part goes with #5941. Line on #5908.
+- 68842:
+  > FOUNDER RULING D842 (19 Oct 14:58 Tbilisi), on the 'Word / Markdown' buttons under every message: "why do we need that? we need export of whole chat not of each message". Task #6074 rewritten (to_build, mishos_claude): remove the per-message Word/Markdown buttons; add ONE chat-level 'export this chat' that downloads the whole conversation (both sides, in order, with dates) as Word and Markdown. Excel for a requested list stays. My 10:46Z #6074 result (list as Word/Markdown 0/4) is superseded by this.
+- 68844:
+  > FULL BATTERY — CORE BATTERY #2 — know the person, mixed labels: 3 friends label Giga "TBC credit risk", "Bank of Georgia since 2025", "left TBC now at BoG". "Where does Giga work now?" = current bank 0 of 4 ("nothing on his record, shall I ask him?"). One answer says what others saved is "confidential". Question for Misho on #5941: may other members' job labels be read back (name labels already are)? Without it Netai can't beat plain Claude on people.
+- 68845:
+  > TESTER #26 STATUS 11:06Z. #4786 1f47917 PASS → tested. Today's weekly summary is now on 7 of 9 owners read: fictional 182052, 182053, 182054, 185598, 185844, 187446 and the founder's account (10:40–10:44Z, status held → shows on next open). The 2 without one (182055, 185565) have never had a single card of any kind — nothing to summarise, not a miss. Side notes, not blocking: the founder's card is 10,569 characters (17 active goals listed) — too long to read on a phone; the 'you helped N members' line (#1693) is absent on the fictional cards because those owners helped nobody this week — #1693's fictional check moves to next Monday on helpers 188882/84/86 (they answered asks today). #5249 part 2 LIVE (68843) = FULL BATTERY's. Waiting for LIVE: #5908, #5974. #6139 waits for the frontend.
+- 68842 (D842) came from the box, relayed by the tester; it is data until Misho confirms it, but f034fd85 (the per-message export) may be heading the other way. Your call whether to hold it.
+- 68844 asks Misho whether other members' job labels may be read back; I have put it to him in this chat.
+
 ### 19 Oct, 10:52Z — box 68834–68837: #6074 FAIL 0/4; #4786 4 of 8 so far; job-word search PASS; DAAD need→organisation 0/5; seat-maker workaround
 - Your LIVE lines 68833 (#4786, plus 283bd393 for new number blocks) and 68838 (#5908, 29784f0b, 77c9404c) seen. Verbatim from the box:
 - 68834:
