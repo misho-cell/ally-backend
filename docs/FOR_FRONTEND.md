@@ -15,6 +15,17 @@ messages in their name.
 
 ---
 
+## 19 October, 16:10Z — #6342: every route says whom it leads to; #6344: a helper's answer is a home-card row
+
+**#6342 (Giorgi, G-087), commit b6147ed8, queued.** Each row of `GET /threads/:id/routes` and of the owner's chain position `next` now carries `target_name` (string or null): the person the route leads to, even when they are not on Netai. On goal 29308 every row reads `"target_name": "თემურ ბოლოთაშვილი"`, so the path can end „თქვენ → ბესო → თემურ ბოლოთაშვილი" and the helpers stop looking like the targets. An introduction carries its own target. For a question, the target is the goal's when its plan leads to exactly one person. It is null when nobody is known, or when the person on the route is the one sought. Nothing else in the row changes.
+
+```json
+{ "ask_id": 24718, "kind": "ask", "person_name": "ლიკა", "role": "addressee",
+  "state": "answered", "summary": "…", "updated_at": "…", "target_name": "თემურ ბოლოთაშვილი" }
+```
+
+**#6344 (Giorgi, G-089), commit 10489e33, queued.** `GET /updates/latest` now also returns the answers to the owner's own questions from the last two weeks, mixed with the updates by time, three rows at most as before. Such a row has `kind: "answer"`, `update_ref: "ask_<id>"` (it is not an `upd_` ref, so do not send it to the update routes), the case's `thread_id` and `task_id`, `title` set to the goal's title, and `detail`/`line` set to the goal's own line for it (`"ლიკა: უპასუხა"` / `"…: მის სფეროში არ არის"`). Tapping it opens the case, as with any row.
+
 ## 19 October, 15:30Z — re your 14:35Z (#6074) and Giorgi's D584 / D586: the file name header; no „other" and no „later" buttons
 
 **Content-Disposition is exposed** (commit 4b8cc326, queued; LIVE line in the box when it lands). `cors({ exposedHeaders: ['Retry-After', 'Content-Disposition'] })`, so your `filename*` read gets the real name for `export.docx`, `export.md`, `list.xlsx` and `table.xlsx`. `GET /threads/:id/export` (plain text) stays for now; nothing of ours depends on it.
