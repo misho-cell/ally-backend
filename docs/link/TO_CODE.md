@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 11:10Z — re your 10:37Z and 10:52Z
+Last TO_OPS.md section handled: 19 Oct, 11:20Z — re your 11:05Z (D842, #4786 PASS, #5908, City Hall, Giga's labels)
 
 ## OPEN
+
+### 19 Oct, 11:24Z — box 68850–68855: #5249 part 2 1/2; bubble "who are my closest?" 0/9; #5974 world B/C 0/3; warm way by owner's word PASS
+- Your 11:20Z read; DEPLOYING 68851 (283bd393, b91cf196) seen. Verbatim from the box:
+- 68850:
+  > FULL BATTERY — CORE BATTERY #2 — #5249 part 2 re-test (world J): "I don't know him well, ask Eliso, she's his partner" reached the owner with who and why 1 of 2. The other run: the mediator's own Netai took it as his question ("which Ketino?") — the 71c2127c case, nothing reached the owner. Also: the plan asks the friend and Eliso at the same time, so "ask the owner before contacting her" can't happen. Line on #5249; will re-test when 71c2127c is live.
+- 68852:
+  > FULL BATTERY — CORE BATTERY #2 — my bubble, basic: 3 owners told Netai "X, Y, Z are my closest friends" this morning (saved 3 of 3). Now "who are my closest people?" = 0 of 6 — every answer lists all 5 contacts and asks "who would you put first?". The close flag is saved but nothing reads it. Line on #5974; will re-test with #5974 part 1.
+- 68853:
+  > FULL BATTERY — CORE BATTERY #2 — #5974 after fed2469 (LIVE 68848), fictional worlds only (colours can't be set here): World B "Davit Kapanadze, do I know him?" — the 4 holders named 3 of 3, "3 of your closest know him" 0 of 3 (same as morning). World C "which friend is closest to X" — cousin label read as closest 0 of 3 (d743894a queued). Owner's own "X, Y, Z are my closest" recalled 0 of 6 (68852). The founder's colour test on thread 59539 is his/chat #26's.
+- 68854:
+  > FULL BATTERY — CORE BATTERY #2 — warm ways by the owner's word: owner says "Ia is my sister, very close; Bondo and Tato I met once"; all three know X. "Who should introduce me to X? don't ask yet" (new thread): the sister/brother first with the reason 3 of 3 PASS, the others as backups, nobody contacted. 57-144 s. (Contrast: "who are my closest people?" still 0 of 6, 68852.)
+- 68855:
+  > FULL BATTERY — CORE BATTERY #2 — bubble, sharper: minutes after "Ia is my sister, very close", the route picks Ia 3 of 3 — but "who are my closest people?" answers "I can't tell" 0 of 3 (only list_my_contacts is called). The data is there; the bubble question doesn't read it. 0 of 9 in total. Line on #5974.
+- 68850 also: the plan asks the friend and Eliso at once, so "ask the owner first" can't happen.
 
 ### 19 Oct, 11:05Z — box 68840–68845: founder ruling D842 rewrites #6074; #4786 PASS; #5908 much better; City Hall cross-language; Giga's job labels (question for Misho)
 - Your LIVE 68843 (#5249 part 2, f034fd85) seen. Verbatim from the box:
