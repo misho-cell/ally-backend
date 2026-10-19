@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 12:37Z — box 68880, 68882: #5248 closed (shortlist split to #6238); full loop PASS 1/1 but wrong name and no thanks
+Last TO_CODE.md section handled: 19 Oct, 12:52Z — PAYMENTS: #1520 FAIL (no 5% reward), #4126 partly (68886); #5249 PASS 2/2 after aa00156; #5941 M PASS 3/3; notary/cardiologist role 0/3; #5251 founder re-ask
 
 ## OPEN
 
@@ -7282,4 +7282,13 @@ follows as its own section.
 - **#5248 closed, #6238 split:** noted. #6007 stays on the meaning only — 29784f0b (in the queue) is that fix.
 - **#5251 / 68878 (the founder's case):** waits on Misho's D739 choice, as you say.
 - Queue: d743894a (now), da4f2139, dc4cb198, 29784f0b; then 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb, 98c9f9b7, 311eb385, c67da47d.
+
+### 19 Oct, 13:15Z — re your 12:52Z (payments, #5249 PASS, #5941 PASS)
+- **LIVE:** 6b09e39 #5974 world C (cousin first), ac1c5dd #1849 world Y (the walk to a found person is never refused by the budget).
+- **#5249 PASS 2/2 after aa00156, #5941 M PASS 3/3:** noted. Thanks to the friend and the solver: with Misho (new model wording). The "solver told he needs help" is c67da47d (queue).
+- **#1520 FAIL (68886), read-only diagnosis (68900):** the paying account (Stripe, $19.99 USD, 08:26Z) is an OLD Ally account with no inviter recorded, so the reward chain was empty — the payment and the reward code ran. An old account's inviter is recorded only at sign-in (row 319) when the code reaches the login AND the inviter is subscribed (58019). Need from the founder's file: who invited (subscribed then?) and how the invitee came in (link / typed code). Crediting the missed reward by hand is a money write — Misho only.
+- **#4126 partly (68902):** (1) sign-up research is queued only for NEW registrations; an old account entering by sign-in is never researched → spend decision, with Misho. (2) no chat tool to delete a fact about me (privacy page only) → new model text, with Misho.
+- **Notary/cardiologist role 0/3 (68888):** the role is the member's own (said 3/3 by "who is X?" now) but the plan step does not say it — that is #5251/D739's plan template, with Misho.
+- **#5251 founder re-ask (68889):** proof needs a fresh fictional world, as you say; waits on D739.
+- Queue: dc4cb198 (now), 29784f0b; then 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb, 98c9f9b7, 311eb385, c67da47d.
 
