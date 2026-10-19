@@ -131,6 +131,17 @@ const BOOT_SWEEP_DELAY_MS = 45_000;
  * and far too little for two ticks of the same hour to both claim.
  */
 const CLAIM_WINDOW_MINUTES = REMINDER_INTERVAL_MINUTES - 5;
+/**
+ * #1686 (the tester's 06:28Z): a „later" set to return at 05:30Z had not come
+ * back at 06:28Z. The sweeps were only ASKED once an hour from boot, so after
+ * a deploy at 05:52Z the next ask was 06:52Z, and a reminder due at 05:30Z
+ * waited for it. The claim decides whether a sweep runs; it is now asked
+ * every five minutes, and the reminder sweep may run every ten, so a „later"
+ * comes back within fifteen minutes of its time. A reminder is still sent
+ * once: the same UPDATE that picks an ask stamps `reminded_at`.
+ */
+const SWEEP_POLL_MS = 5 * 60_000;
+const REMINDER_CLAIM_WINDOW_MINUTES = 10;
 const MAX_REMINDERS_PER_SWEEP = 10;
 // Answer-wake backstop (ticket 4 blocker 1): re-deliver any answered ask whose
 // task never woke — a deploy-window failure is late by minutes, not by a day.
@@ -2005,7 +2016,7 @@ export function startTaskTicker(): void {
    * the answer comes from a timestamp that outlives the container.
    */
   const runHourlySweeps = (): void => {
-    void claimSweep(SWEEP_ASK_REMINDERS, CLAIM_WINDOW_MINUTES).then((due) => {
+    void claimSweep(SWEEP_ASK_REMINDERS, REMINDER_CLAIM_WINDOW_MINUTES).then((due) => {
       if (!due) return;
       void sendDueAskReminders(MAX_REMINDERS_PER_SWEEP).catch((err) =>
         // eslint-disable-next-line no-console
@@ -2059,8 +2070,9 @@ export function startTaskTicker(): void {
    */
   setTimeout(runHourlySweeps, BOOT_SWEEP_DELAY_MS).unref();
 
+  setInterval(runHourlySweeps, SWEEP_POLL_MS).unref();
+
   setInterval(() => {
-    runHourlySweeps();
     // C9.7's timer half: silence IS an outcome — a week-old unanswered intro
     // produces a no_reply row without anyone touching the app.
     void sweepUnansweredIntroOutcomes()

@@ -75,9 +75,10 @@ describe('the engine asks before it sweeps', () => {
   const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
 
   it('gates all three starved sweeps on a claim', () => {
-    for (const slot of ['SWEEP_ASK_REMINDERS', 'SWEEP_SILENT_GOALS', 'SWEEP_METHOD_CHANGES']) {
+    for (const slot of ['SWEEP_SILENT_GOALS', 'SWEEP_METHOD_CHANGES']) {
       expect(engine).toContain(`claimSweep(${slot}, CLAIM_WINDOW_MINUTES)`);
     }
+    expect(engine).toContain('claimSweep(SWEEP_ASK_REMINDERS, REMINDER_CLAIM_WINDOW_MINUTES)');
   });
 
   /**
@@ -86,6 +87,17 @@ describe('the engine asks before it sweeps', () => {
    */
   it('asks once shortly after boot, not only on the hour', () => {
     expect(engine).toContain('setTimeout(runHourlySweeps, BOOT_SWEEP_DELAY_MS)');
+  });
+
+  /**
+   * #1686 (the tester's 06:28Z): asked only hourly from boot, a „later" due at
+   * 05:30Z was still waiting at 06:28Z after a 05:52Z deploy. The claims are
+   * asked every five minutes, and reminders may run every ten.
+   */
+  it('asks every five minutes, so a „later" comes back within fifteen', () => {
+    expect(engine).toContain('const SWEEP_POLL_MS = 5 * 60_000;');
+    expect(engine).toContain('setInterval(runHourlySweeps, SWEEP_POLL_MS)');
+    expect(engine).toContain('const REMINDER_CLAIM_WINDOW_MINUTES = 10;');
   });
 
   /** The migration seeds the slots in the PAST, so a fresh database is due. */
