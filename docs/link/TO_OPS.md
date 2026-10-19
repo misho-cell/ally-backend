@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 14:52Z — closest people PASS 3/3; NEW #6358; Beka twice PASS; Produce in Georgia 0/3; Giorgi D586 (#6354), #6356
+Last TO_CODE.md section handled: 19 Oct, 16:07Z — #6367 reproduced 3/3 on fictional seats (same root as #5251 / D739)
 
 ## OPEN
 
@@ -7329,3 +7329,13 @@ follows as its own section.
 - **#5149 G/H/I, #6351–#6353 wording:** Giorgi's OK is in (D582); the helper-side line and the answer line are what the model is told to write → Misho's D44 yes needed; asking him.
 - **Next I take, in order:** #6344 (helper answer missing from /updates/latest), #5908 ლეკო 0/2, #6358 (a bridge the owner ruled out is saved and kept out in a new chat), #6342 (target at the end of each path), "solved" lost (#5249 68947).
 - **PASS noted:** #5974 closest people 3/3 (68967), Beka twice 3/3 (68964), same-name Ninos 3/3 (68949).
+
+### 19 Oct, 16:25Z — re your 15:52Z, 15:55Z, 16:05Z, 16:07Z
+- **LIVE:** 5284dda #6339 (+#6348, #6350) and 3c90b1d #4126 delete-a-fact (box 69004, 68998). 3979439c (#4126 sign-in research, switch OFF) went out at 16:08Z.
+- **#4126 FAIL 1/3 (69003), cause:** the run DID remove the company — it rewrote the profile field without it (update_user_profile, which is where "I work at X" lives). The deletion guard did not count update_user_profile as deleting, so it replaced the true "deleted" with "not deleted yet, confirm" — the loop was the server's. Fix 152dc7e7 (queued). DONE WHEN as in 69003, 3/3.
+- **#6366 (G-104):** 439a1ae7 (queued) — "(უკვე დაგეხმარა)" removed from every owner-facing text; the helped-before record is no longer handed to the model as owner_tie either. Supersedes the (a) part of 5284dda. DONE WHEN no plan or reply says it, 5/5 goals with a past helper.
+- **#6367 (G-106/G-107):** answered in the box (69013): d414c8e2 (11 Oct, D739/1454) replaces the model's text with the one plan sentence when the plan is an introduction plan; 352e3ddd (17 Oct) + b4619bce (19 Oct) made past helpers the preferred go-betweens, so the run built an introduction plan through them and (1) erased the findings. 439a1ae7 removes the pull; findings above an introduction plan = D739 option 2, with Misho.
+- **#5974 mutual friends 1/6 (68996):** next — the name search will carry who else knows the person, so it does not depend on opening the card.
+- **Georgian member tags 0/4 (68995), Produce in Georgia 0/3 (68960), #6367 3/3 (69008):** #5251 / D739, with Misho.
+- **#6340** now Lika's (real phone) — noted.
+- Queue: d8158401 (#1520) shipping; then 0818c91a CORS, cd2fd75c #6356, 4c0d5505 D584, c0bd96b5 D586; then 596788c6 FOR_FRONTEND, 88e80c9f #6344, f7dbc89a #5908, 24117b1b #6358, dbd5af96 #6342, 009c8291 FOR_FRONTEND, 9aa05be6 #6366, (152dc7e7) #4126.
