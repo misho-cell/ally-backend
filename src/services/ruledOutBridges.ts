@@ -141,7 +141,79 @@ export async function keepRuledOutBridges(
  */
 const SHARED_WORDS_NEEDED = 2;
 
+/**
+ * The tester's 69082 (#6358, 3 of 3): „never involve Gia in my matters" was
+ * kept as „ყველა საქმე" / „ნებისმიერი საქმე" (all / any matter), which shares
+ * no word with „a notary for inheritance papers", so the next chat asked Gia.
+ * A scope that is only „every" plus a word for „matter" is every subject.
+ */
+const EVERY_WORDS: readonly string[] = [
+  'ყველა',
+  'ნებისმიერ',
+  'ყველაფერ',
+  'all',
+  'any',
+  'every',
+  'everything',
+  'все',
+  'всё',
+  'любо',
+  'todo',
+  'toda',
+  'cualquier',
+];
+const MATTER_WORDS: readonly string[] = [
+  'საქმ',
+  'საკითხ',
+  'რამ',
+  'matter',
+  'thing',
+  'issue',
+  'case',
+  'affair',
+  'дел',
+  'вопрос',
+  'asunto',
+  'cosa',
+  'tema',
+];
+/** Whole words that carry no subject: „all MY matters" is still every matter. */
+const FILLER_WORDS: ReadonlySet<string> = new Set([
+  'ჩემი',
+  'ჩემს',
+  'ჩემ',
+  'ჩემთვის',
+  'my',
+  'mine',
+  'of',
+  'in',
+  'for',
+  'the',
+  'мои',
+  'моих',
+  'в',
+  'mis',
+  'en',
+  'de',
+]);
+const SCOPE_WORD_RE = /[\p{L}\p{M}]+/gu;
+
+function startsWithAny(word: string, stems: readonly string[]): boolean {
+  return stems.some((stem) => word.startsWith(stem));
+}
+
+export function scopeIsEverything(scope: string): boolean {
+  const words = scope.toLowerCase().match(SCOPE_WORD_RE) ?? [];
+  return (
+    words.some((w) => startsWithAny(w, EVERY_WORDS)) &&
+    words.every(
+      (w) => FILLER_WORDS.has(w) || startsWithAny(w, EVERY_WORDS) || startsWithAny(w, MATTER_WORDS),
+    )
+  );
+}
+
 export function scopeCovers(scope: string, subjectTerms: readonly string[]): boolean {
+  if (scopeIsEverything(scope)) return true;
   const scopeTerms = queryTerms(scope);
   const shared = scopeTerms.filter((s) =>
     subjectTerms.some((t) => s === t || s.startsWith(t) || t.startsWith(s)),

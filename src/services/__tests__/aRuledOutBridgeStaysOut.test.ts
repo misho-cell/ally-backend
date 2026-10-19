@@ -3,7 +3,7 @@ import { join } from 'path';
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
 import { queryTerms } from '../askBoundary.service';
-import { ruledOutIn, scopeCovers } from '../ruledOutBridges';
+import { ruledOutIn, scopeCovers, scopeIsEverything } from '../ruledOutBridges';
 
 /** #6358 (the tester's 68966): „not Gigi, he's abroad" / „not Tea, we quarrelled". */
 const GIGI = { phone: '+995500000011', labels: ['გიგი ბერიძე', 'გიგი'] };
@@ -49,6 +49,26 @@ describe('#6358: an exclusion covers a subject that shares its words', () => {
 
   it('is not carried to another goal by one shared everyday word', () => {
     expect(scopeCovers('ბინის გაქირავებაში დახმარება', subject)).toBe(false);
+  });
+
+  it('covers every subject when the owner ruled the person out of all matters (69082)', () => {
+    const notary = queryTerms('სანდო ნოტარიუსი მემკვიდრეობის საბუთებისთვის');
+    for (const scope of [
+      'ყველა საქმე',
+      'ნებისმიერი საქმე',
+      'ჩემი ყველა საქმე',
+      'all matters',
+      'any matter',
+    ]) {
+      expect(scopeIsEverything(scope)).toBe(true);
+      expect(scopeCovers(scope, notary)).toBe(true);
+    }
+  });
+
+  it('keeps „all" with a subject to that subject', () => {
+    expect(scopeIsEverything('ყველა საბანკო საქმე')).toBe(false);
+    expect(scopeIsEverything('all banking matters')).toBe(false);
+    expect(scopeIsEverything('საქმე')).toBe(false);
   });
 });
 
