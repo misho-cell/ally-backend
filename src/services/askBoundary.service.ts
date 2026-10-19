@@ -234,7 +234,23 @@ export async function saveAskBoundary(
  * can see and correct.
  */
 export async function boundaryExclusionsFor(searchQuery: string): Promise<string[]> {
-  const terms = queryTerms(searchQuery);
+  return exclusionsForTerms(queryTerms(searchQuery), `"${searchQuery}"`);
+}
+
+/**
+ * #1694 (the tester's 68935, thread 60773): the owner wrote that they need a
+ * bank loan; the run searched „ბანკი" and „კრედიტი", Nika's boundary („სესხის
+ * თემაზე": sesk, loan, credit) shares no word with either, and he came back,
+ * was offered as a choice and was then refused at the send. What a person is
+ * asked about is the owner's need, not the word one search happened to use, so
+ * a run's searches also withhold whoever closed a subject the owner's own line
+ * names. Logged without the line: it is the owner's own words.
+ */
+export async function boundaryExclusionsForOwnerLine(ownerLine: string): Promise<string[]> {
+  return exclusionsForTerms(queryTerms(ownerLine), "the owner's line");
+}
+
+async function exclusionsForTerms(terms: readonly string[], label: string): Promise<string[]> {
   if (terms.length === 0) return [];
   try {
     const result = await query<{ phone: string }>(
@@ -252,7 +268,7 @@ export async function boundaryExclusionsFor(searchQuery: string): Promise<string
     if (result.rows.length > 0) {
       // eslint-disable-next-line no-console
       console.log(
-        `[ask-boundary] "${searchQuery}": ${result.rows.length} phone(s) withheld — their own boundary`,
+        `[ask-boundary] ${label}: ${result.rows.length} phone(s) withheld — their own boundary`,
       );
     }
     return result.rows.map((r) => r.phone);

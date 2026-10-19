@@ -296,6 +296,8 @@ import {
   walkTargetPhone,
   WARM_PATH_TOOL,
 } from './warmPathAfterSearch';
+import { withoutWithheldPeople } from './withoutWithheldPeople';
+import { boundaryExclusionsForOwnerLine } from './askBoundary.service';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
 import { answersTheRequestOnly } from './requestReferral';
@@ -1193,7 +1195,10 @@ export async function withFurtherOut<T extends object>(
 ): Promise<T | (T & { further_out: FarHit[]; further_out_note: string })> {
   if (typeof words !== 'string') return found;
   try {
-    const further = await farMembersHolding(Number(userId), words);
+    const further = withoutWithheldPeople(
+      { further_out: await farMembersHolding(Number(userId), words) },
+      await withheldForRun(runId),
+    ).further_out;
     if (runId !== undefined) {
       noteFoundFurtherOut(runId, further);
       // #1849 world Y: the walk to one of them is the route, never a refused ninth search.
@@ -5899,6 +5904,21 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
 // it; in-app a single transient/cold-cache spike reached the user as "timeout,
 // come back later" — thread 7428), then log the activity with its result count
 // (fire-and-forget so logging never blocks or fails the search).
+/** #1694: whoever closed a subject the owner's own line names, read once per run. */
+const runWithheldByOwnerLine = new Map<string, Promise<ReadonlySet<string>>>();
+
+function withheldForRun(runId: string | undefined): Promise<ReadonlySet<string>> {
+  const line = runId === undefined ? '' : (runOwnerLine.get(runId) ?? '');
+  if (runId === undefined || line.trim() === '') return Promise.resolve(new Set<string>());
+  const known = runWithheldByOwnerLine.get(runId);
+  if (known !== undefined) return known;
+  const read = boundaryExclusionsForOwnerLine(line).then(
+    (phones) => new Set(phones.map((phone) => phone.replace(/\D/g, ''))),
+  );
+  runWithheldByOwnerLine.set(runId, read);
+  return read;
+}
+
 /** 3732: who this run's own searches returned, so the walk can take a name the run was shown. */
 const runFoundPeople = new Map<string, FoundPerson[]>();
 /** 4297: who this run's searches found one step away, with the contacts who know them. */
@@ -5962,7 +5982,11 @@ async function runLoggedSearch(
   runId?: string,
   threadId?: number | null,
 ): Promise<object> {
-  const result = await searchWithRetry(() => run(userId, searchQuery));
+  const [found, withheld] = await Promise.all([
+    searchWithRetry(() => run(userId, searchQuery)),
+    withheldForRun(runId),
+  ]);
+  const result = withoutWithheldPeople(found, withheld);
   const rawCount = (result as { count?: unknown }).count;
   const resultCount = typeof rawCount === 'number' ? rawCount : 0;
   // Awaited (not fire-and-forget, unlike before): the outcome ladder needs
@@ -9624,6 +9648,7 @@ function clearRunState(runId: string): void {
   runListedContacts.delete(runId);
   runServerSentLines.delete(runId);
   forgetNamesAsked(runId);
+  runWithheldByOwnerLine.delete(runId);
 }
 
 /**
@@ -9920,12 +9945,15 @@ async function executeToolCall(
       const searched =
         related.length === 0
           ? await found
-          : {
-              ...(await searchProfessionFamily(found, related, (word) =>
-                searchByTag(userId, word),
-              )),
-              also_searched_note: ALSO_SEARCHED_NOTE,
-            };
+          : withoutWithheldPeople(
+              {
+                ...(await searchProfessionFamily(found, related, (word) =>
+                  searchByTag(userId, word),
+                )),
+                also_searched_note: ALSO_SEARCHED_NOTE,
+              },
+              await withheldForRun(runId),
+            );
       return notInThePhonebook(searched)
         ? withFurtherOut(
             userId,
