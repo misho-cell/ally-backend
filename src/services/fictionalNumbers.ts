@@ -58,6 +58,15 @@ const RANGES: readonly FictionalRange[] = [
    */
   { prefix: '+44121496', digits: 4, from: 0, to: 999 },
   { prefix: '+44131496', digits: 4, from: 0, to: 999 },
+  /**
+   * Blocks twelve to fourteen, 19 Oct: „no free number left" in all eleven
+   * (tester box 68826, every test chat blocked). Ofcom's Reading, Glasgow and
+   * Liverpool drama ranges, 0118 / 0141 / 0151 496 0000–0999 — reserved for
+   * fiction like the rest; numbers are ours to decide (§110).
+   */
+  { prefix: '+44118496', digits: 4, from: 0, to: 999 },
+  { prefix: '+44141496', digits: 4, from: 0, to: 999 },
+  { prefix: '+44151496', digits: 4, from: 0, to: 999 },
 ];
 
 function slotText(range: FictionalRange, slot: number): string {
