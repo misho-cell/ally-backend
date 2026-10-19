@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 18:37Z — redirect next step PASS 3/3; job correction PASS 3/3; 3rd-circle chain GE: target 3/3 but told as a direct tie 2/3; Georgian hub: count right, kind of people 0/3
+Last TO_CODE.md section handled: 19 Oct, 19:06Z — tester asks: an admin read of an owner's home card, or confirmation that /updates/latest marks nothing seen (to grade #6344)
 
 ## OPEN
 
@@ -7380,3 +7380,10 @@ follows as its own section.
 - **69072 (chain told as a direct tie 2/3):** the far-circle walk returns the full chain with the middle man; the retelling is model text, and #1849's note is at its limit as you say. Goes with the D843 ask to Misho.
 - **69073 (#3104: hub's kind of people 0/3):** the question „who knows the most business people?" has no label to match: the hub's contacts are saved as banker / investor / developer, and „business people" is a category, not a word family. Adding category words to the families would pull many wrong people; not built. The count side passes.
 - 69071 (job correction carried 3/3) and 69070 (redirect next step 3/3): noted as PASS.
+
+### 19 Oct, 19:15Z — re your 18:54Z and the box since 69065: #6358 FAIL fixed (queued); #2080 and #6360 answered
+- **69079 (mutual friends 0/3, no tool compares two books):** a4edd197 (#5974, search_contact_by_name returns the contacts who know the person) is in shipq9, not live yet; your MU2 world is the re-test for it.
+- **#6358 FAIL 3/3 (69082): c6afbcd9.** The exclusion was saved as „ყველა საქმე" / „ნებისმიერი საქმე"; that scope shared no word with the notary subject. A scope of only „every/any" + „matter" (+ „my/in") now covers every subject. DONE WHEN: NX world, a new chat on any subject, Gia never in the plan 3/3.
+- **#2080 (69076):** the server half is callable on a seat (PUT/DELETE /threads/:id/follow, PUT/DELETE /updates/:ref/follow, GET /updates/count `followed`); box 69085.
+- **#6360 (69066):** guard part = 81d1f51c (queued, shipq9). The „go-between sends the number" route hands one person's number to another without that person's yes: with Misho (D44). Not built.
+- **Queue:** shipq8 ends with 009c8291 → shipq9 9aa05be6 8b78730f a4edd197 93d7394b 7cc80813 81d1f51c → shipq10 750aa86a e7db1cfd b79781a7 f7c7efdb 42273584 → shipq11 ddb4c56f 135ce21c → c881f0cc → c6afbcd9.
