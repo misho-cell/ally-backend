@@ -48,6 +48,8 @@ interface ContactFullProfile extends LikelyEmployer, Partial<OwnContactView> {
   facts_and_ask: VisibleFactsResult;
   /** #5941: a member's own work, as they told their own Netai; absent when they said nothing. */
   member_says_about_own_work?: MemberOwnWork;
+  /** #5974 (68872): the owner's own contacts who also have this person saved, by the owner's names. */
+  your_contacts_who_know_them?: readonly string[];
   /** #5941 (68831): the owner's own notes about this person, newest first; absent when none. */
   you_told_me?: readonly string[];
 }
@@ -159,6 +161,41 @@ function toldNotes(facts: readonly VisibleFact[]): Pick<ContactFullProfile, 'you
   return told.length === 0 ? {} : { you_told_me: told };
 }
 
+const MUTUAL_QUERY_TIMEOUT_MS = 3_000;
+const MAX_MUTUAL = 10;
+
+/**
+ * #5974 (the tester's 68872, 0 of 4): the owner has Nana, and two of his friends
+ * have her too. „Which of my friends also know Nana?" got „none" — the second
+ * circle leaves out anyone already in the owner's own book, so nothing said who
+ * else holds her. The owner's own contacts (members) who have her saved, by the
+ * names the OWNER gave them; never how they saved her. A failed read adds nothing.
+ */
+async function contactsWhoKnowThem(
+  userId: string,
+  phone: string,
+): Promise<Pick<ContactFullProfile, 'your_contacts_who_know_them'>> {
+  try {
+    const result = await query<{ name: string }>(
+      `SELECT DISTINCT TRIM(own.alias) AS name
+         FROM "UserAlias" theirs
+         JOIN "UserPhone" up  ON up."userId" = theirs."contactId"
+         JOIN "UserAlias" own ON own."contactId" = $1::int AND own.phone = up.phone
+        WHERE theirs.phone = $2 AND theirs."contactId" <> $1::int
+          AND NULLIF(TRIM(own.alias), '') IS NOT NULL
+        LIMIT $3`,
+      [userId, phone, MAX_MUTUAL],
+      MUTUAL_QUERY_TIMEOUT_MS,
+    );
+    const names = result.rows.map((r) => r.name).filter((n) => HAS_LETTER_RE.test(n));
+    return names.length === 0 ? {} : { your_contacts_who_know_them: names };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[contact-profile] mutual contacts not read:', (err as Error).message);
+    return {};
+  }
+}
+
 export async function getContactFullProfile(
   userId: string,
   phone: string,
@@ -167,7 +204,7 @@ export async function getContactFullProfile(
 ): Promise<ContactFullProfile> {
   const lookupId = neo4jContactId ?? phone;
 
-  const [tagsResult, factsAndAsk, likelyEmployer, ownContact] = await Promise.all([
+  const [tagsResult, factsAndAsk, likelyEmployer, ownContact, mutual] = await Promise.all([
     query<TagSummary & { own: boolean }>(
       `SELECT
          ut.tag,
@@ -185,6 +222,7 @@ export async function getContactFullProfile(
     likelyEmployerFor(userId, phone),
     // 5908: the names the network knows this own contact by.
     ownContactOnTheCard(userId, phone, askedName),
+    contactsWhoKnowThem(userId, phone),
   ]);
 
   let insightData: Record<string, unknown> | null = null;
@@ -212,5 +250,6 @@ export async function getContactFullProfile(
     ...ownContact,
     ...ownWork,
     ...toldNotes(factsAndAsk.facts),
+    ...mutual,
   };
 }

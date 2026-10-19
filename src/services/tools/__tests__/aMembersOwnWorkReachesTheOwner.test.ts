@@ -143,3 +143,37 @@ describe('#5941: the name search carries the member’s own profession', () => {
     expect(byName).toContain(`FILTER (WHERE u."hideUserWorkInfo" IS NOT TRUE)`);
   });
 });
+
+describe('#5974 (68872): the owner’s own contacts who also know this person', () => {
+  beforeEach(() => mockQuery.mockReset());
+
+  it('names them by the owner’s own names, never by how they saved her', async () => {
+    mockDetails.mockReturnValue({
+      state: 'none',
+      user_id: null,
+      netai_subscriber: false,
+      old_ally_paid: false,
+      staff: false,
+    });
+    mockQuery.mockImplementation(((sql: string) =>
+      Promise.resolve({
+        rows: sql.includes('theirs') ? [{ name: 'ზურა' }, { name: 'ლიკა' }, { name: '599' }] : [],
+      })) as never);
+    const card = await getContactFullProfile('171', PHONE);
+    expect(card.your_contacts_who_know_them).toEqual(['ზურა', 'ლიკა']);
+    const sql = String(mockQuery.mock.calls.find(([q]) => String(q).includes('theirs'))?.[0]);
+    expect(sql).toContain('own."contactId" = $1::int');
+    expect(sql).not.toContain('theirs.alias');
+  });
+
+  it('adds nothing when nobody else has them, or the read fails', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockQuery.mockImplementation(((sql: string) =>
+      sql.includes('theirs')
+        ? Promise.reject(new Error('timeout'))
+        : Promise.resolve({ rows: [] })) as never);
+    const card = await getContactFullProfile('171', PHONE);
+    expect(card).not.toHaveProperty('your_contacts_who_know_them');
+    warn.mockRestore();
+  });
+});
