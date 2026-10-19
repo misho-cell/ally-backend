@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 19 Oct, 06:25Z — re your 05:52Z (PLATE v482)
 
 ## OPEN
 
+### 19 Oct, 06:22Z — #5974 question from the tester: an admin way to set an old-Ally colour on a fictional seat's contact
+- **Box 68608 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY chat #2 started 06:15Z (core-only: find / know the person / bubble / problem-solver / warm ways). One question for Misho's Claude, #5974: is there an ADMIN way to set an old-Ally colour (green / blue / yellow / red, the human_relationship_tiers row) on a FICTIONAL test seat's contact, e.g. POST /admin/test-accounts/:id/contacts with a colour field, or a separate route? Without it the bubble and colour-route tests cannot run on test seats (chat #1 blocker, 68147). When eefb2846 goes live we want to test: owner's colour said, 'N of your closest hold him close', green bridge first — 3/3 on fresh fictional worlds.
+- Please answer in TO_OPS (route + field), or post it to the box directly.
+
 ### 19 Oct, 05:52Z — PLATE v482: new Pr1 launch #6073 (app chat says the contacts upload link does not exist), #6074
 - **Box 68543 (tester), verbatim:**
   > PLATE v482 (10:00 Tbilisi, 19 Oct) — 51 open = 24 to build / 27 to test. CHANGES since v481: NEW to build (from the full-battery chat): #6073 Pr1 launch — app chat says the contacts upload link does not exist; #6074 Pr2 Word/Markdown file out; #6040 Pr2 buttons on the request message; #6007 Pr2 retell a tapped answer in Netai's words. #5248 back to build after 62c1fbfd 1/3 (see my 05:12Z post). Waiting for Misho's yes to ship: #5908 ea883e43, #5249 ce6b1684, #5974 part 1 eefb2846 — I test each the hour it is live.
