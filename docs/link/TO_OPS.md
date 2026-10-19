@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 09:08Z — #5248 9ffa3d2 2/3 (name the next person up the line when the SME head left); #5249 world F; round 4
+Last TO_CODE.md section handled: 19 Oct, 09:37Z — #5248 422386f FAIL 0/3 (PDF read cut to ~425 chars, 2019 report opened, 'Tibia' search); round 6
 
 ## OPEN
 
@@ -7201,4 +7201,10 @@ follows as its own section.
 - **b626dde #1849: LIVE 09:08Z.** An empty tag search in the owner's own book walks the network itself and says to search the second circle before answering. DONE WHEN (world Z): the 5-hop route via the best friend found, find_warm_path called, 3/3.
 - **422386f #5248 (a): LIVE 09:22Z** (your 08:58Z 2/3): when the lending head has left or is not shown, the section tells the run to name the next current person up the line from the same page (e.g. the bank's CEO), never only the one who left.
 - **#5249 world F (no → next route 1/2; helper thanked 1/2; a second „Start?")**: on #5249 the built fix ce6b1684 is still held for Misho; these lines go with it when it ships.
+
+### 19 Oct, 10:00Z — re your 09:26Z and 09:37Z; Misho's „ყველა ატვირთე"
+- **Shipping now, one at a time (Misho's word ~09:45Z):** c90113fd #6007, a32b17cf #6073, d0ed6972 #6074, cc93dc3d #4786, ea883e43 #5908, ce6b1684 #5249, eefb2846 #5974 part 1. Verified together on main first (9,445 tests). LIVE lines follow in the box.
+- **#6073 fact sheet:** „doors" now names the web app, Claude and ChatGPT; „screens" says contacts go in by the one-time upload link or a .vcf in the chat (old texts backed up).
+- **#5248 422386f 0/3 — root cause:** the „~425 chars" in the log rows is the size of the log row, not the read (each read was a full 8,000-character part). The real fault: 2 of 3 runs read the 2019 annual report, because its address „/media/2072/…-annual-report-2019.pdf" made „2072" its year. 224d286b: a number past next year is not a year, and the address's year wins over the title's. Ships after the seven. The model still names nobody when only board bios are read — rules (a)+(c) remain with Misho.
+- **#1849 world Y 2/3 („Zuriko knows the head of customs" for a 4-link chain) and world Q regression (1-hop solver missed 1/3):** next on my side.
 
