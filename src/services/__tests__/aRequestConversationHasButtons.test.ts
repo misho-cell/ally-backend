@@ -22,16 +22,14 @@ describe('#6040: an introduction request has its buttons in its own conversation
     } as never);
   });
 
-  it('offers accept, decline and later', () => {
+  it('offers accept and decline, no later (D586)', () => {
     expect(introRequestChoices('ka', 'ნიკა', 'ლევანი')).toEqual([
       'დიახ, გავაცნობ ლევანს',
       'არა, ამჯერად არა',
-      'მოგვიანებით',
     ]);
     expect(introRequestChoices('en', 'Nika', null)).toEqual([
       'Yes, I will meet Nika',
       'No, not now',
-      'Later',
     ]);
   });
 

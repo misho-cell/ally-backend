@@ -96,7 +96,7 @@ import {
   isSmallTalk,
   isToolFreeSmallTalk,
 } from './smallTalk';
-import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
+import { AskChoice, choicesProblem, parseAskChoices, withoutLaterButton } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
@@ -17915,10 +17915,13 @@ export async function processChat(
    * where a tool name can reach a screen without appearing in that search.
    */
   // #6345, D584 (Giorgi): no button set carries „other, I'll write it".
-  const storedChoices = withoutOtherChoice(
-    safeChoices
-      ? safeChoices.map((label) => scrubInternalToolNames(scrubButtonLabel(label), threadId))
-      : null,
+  // #6354, D586 (Giorgi): nor a „მოგვიანებით …" button.
+  const storedChoices = withoutLaterButton(
+    withoutOtherChoice(
+      safeChoices
+        ? safeChoices.map((label) => scrubInternalToolNames(scrubButtonLabel(label), threadId))
+        : null,
+    ),
   );
   // Ticket 19 [7]: counted, not rewritten — see labelCramsTwoThings.
   // The server's own „სხვა, მე დავწერ" is one thing, and was counted on every run.

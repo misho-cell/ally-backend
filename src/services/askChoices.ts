@@ -1,4 +1,4 @@
-import { AskTap, askTapOf, laterChoice } from './askOpening';
+import { AskTap, allLaterChoices, askTapOf, laterChoice } from './askOpening';
 import { isAnOtherOption } from './otherChoice';
 import { RunLanguage } from './runLanguage';
 
@@ -220,4 +220,28 @@ export function tappedPersonText(message: string, choices: readonly AskChoice[])
     (choice) => choice.detail !== undefined && choice.label.toLowerCase() === said,
   );
   return pressed ? `${pressed.label} (${pressed.detail})` : null;
+}
+
+/**
+ * #6354, RULE D586 (Giorgi, G-093, 19 Oct): no card carries a „მოგვიანებით …"
+ * button — not the helper's question, not the owner's cards. A reader who
+ * wants time simply answers later; a typed „later" still offers the days.
+ */
+const LATER_BUTTON_START_RE =
+  /^\s*(?:მოგვიანებით|later\b|i'?ll answer later|позже|отвечу позже|más tarde)/iu;
+
+export function isLaterButton(label: string): boolean {
+  return allLaterChoices().includes(label.trim()) || LATER_BUTTON_START_RE.test(label);
+}
+
+/** A helper's question without its „later". */
+export function withoutLaterOption(choices: readonly AskChoice[]): AskChoice[] {
+  return choices.filter(
+    (choice) => choice.means !== ChoiceMeaning.Later && !isLaterButton(choice.label),
+  );
+}
+
+/** The owner's buttons without a „later"; none stays none. */
+export function withoutLaterButton(labels: readonly string[] | null): string[] | null {
+  return labels === null ? null : labels.filter((label) => !isLaterButton(label));
 }

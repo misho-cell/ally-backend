@@ -194,8 +194,8 @@ describe('what the owner is shown, and what it does not do', () => {
     expect(card?.text).toContain('Tinatin Ratiani');
     expect(card?.text).toContain('Arci');
     expect(card?.text).toContain('a tiler in Tbilisi');
-    // Yes / no / later — and nothing is sent by the card itself.
-    expect(card?.choices).toHaveLength(3);
+    // Yes / no (no later, D586) — and nothing is sent by the card itself.
+    expect(card?.choices).toHaveLength(2);
   });
 
   it('says nothing at all when it cannot say which goal or which organisation', () => {

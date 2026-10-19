@@ -116,6 +116,6 @@ describe('what it must not do', () => {
   it('keeps its buttons', () => {
     const out = renderPendingMessage(item({ count: 3, by_kind: { debrief: 3 } }), 'en');
 
-    expect(out?.choices).toHaveLength(2);
+    expect(out?.choices).toHaveLength(1);
   });
 });

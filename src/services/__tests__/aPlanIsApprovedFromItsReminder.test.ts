@@ -41,8 +41,8 @@ describe('a waiting plan’s reminder card', () => {
     );
 
   it('carries the plan card’s own approve and change buttons', () => {
-    expect(card(true)?.choices).toEqual(['ვადასტურებ', 'შევცვალოთ', 'მოგვიანებით']);
-    expect(card(true, 'en')?.choices).toEqual(['I approve', 'Change it', 'Later']);
+    expect(card(true)?.choices).toEqual(['ვადასტურებ', 'შევცვალოთ']);
+    expect(card(true, 'en')?.choices).toEqual(['I approve', 'Change it']);
   });
 
   it('whose approve label is the one the server approves on (row 323)', () => {
@@ -54,8 +54,8 @@ describe('a waiting plan’s reminder card', () => {
     expect(card(true)?.instruction).toContain('handled by the server');
   });
 
-  it('keeps answer now / later for a question that is not about a waiting plan', () => {
-    expect(card(false)?.choices).toEqual(['ვუპასუხებ ახლა', 'მოგვიანებით']);
+  it('keeps answer now (no later, D586) for a question that is not about a waiting plan', () => {
+    expect(card(false)?.choices).toEqual(['ვუპასუხებ ახლა']);
   });
 });
 

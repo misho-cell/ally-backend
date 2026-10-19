@@ -51,7 +51,7 @@ describe('a waiting request as its own message', () => {
 
     expect(rendered?.text).toContain('თორნიკე აბულაძე');
     expect(rendered?.ref).toEqual({ kind: 'intro_request', request_id: 1057 });
-    expect(rendered?.choices).toHaveLength(3);
+    expect(rendered?.choices).toHaveLength(2);
   });
 
   it('scrubs and shortens the other person’s words before they cross accounts', () => {

@@ -72,7 +72,6 @@ function bool(payload: Record<string, unknown>, key: string): boolean {
 interface PendingTexts {
   chorusAsk: (who: string) => string;
   chorusOpen: string;
-  later: string;
   goalQuestionWith: (goal: string, question: string) => string;
   goalQuestionBare: (goal: string) => string;
   goalAnswerNow: string;
@@ -179,7 +178,6 @@ interface PendingTexts {
    * strike-off stops being an inference.
    */
   myGoalsWaiting: (count: number) => string;
-  myGoalsLater: string;
   /** 3367: why a goal with no written question is on the list. */
   goalWaitsForPlan: string;
   goalWaitsForNextStep: string;
@@ -222,7 +220,6 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
   ka: {
     chorusAsk: (who: string) => `„${who}"-ის მოწვევაზე შეკითხვა გელოდება, ცალკე თემაში.`,
     chorusOpen: 'ვნახავ ახლა',
-    later: 'მოგვიანებით',
     goalQuestionWith: (goal: string, question: string) =>
       `მიზანი „${goal}" შენს პასუხს ელოდება: ${question}`,
     goalQuestionBare: (goal: string) => `მიზანი „${goal}" შენს პასუხს ელოდება.`,
@@ -286,7 +283,6 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       count === 1
         ? 'ერთი შენი მიზანი შენს პასუხს ელოდება:'
         : `${count} შენი მიზანი შენს პასუხს ელოდება:`,
-    myGoalsLater: 'მოგვიანებით',
     goalWaitsForPlan: 'გეგმა შენს თანხმობას ელოდება',
     goalWaitsForNextStep: 'შედეგები გაქვს, შემდეგ ნაბიჯს შენ წყვეტ',
     questionsWaiting: (count) =>
@@ -298,7 +294,6 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
     chorusOpen: 'Open it now',
-    later: 'Later',
     goalQuestionWith: (goal: string, question: string) =>
       `The goal „${goal}" is waiting on you: ${question}`,
     goalQuestionBare: (goal: string) => `The goal „${goal}" is waiting on your answer.`,
@@ -366,7 +361,6 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       count === 1
         ? 'One of your goals is waiting on your answer:'
         : `${count} of your goals are waiting on your answer:`,
-    myGoalsLater: 'Later',
     goalWaitsForPlan: 'the plan is waiting for your OK',
     goalWaitsForNextStep: 'the results are in; the next step is yours',
     questionsWaiting: (count) =>
@@ -408,7 +402,7 @@ export function introRequestChoices(
   const t = textsFor(language);
   const accept =
     target === null ? t.introAcceptDirect(requesterName) : t.introAcceptMediated(target);
-  return [accept, t.introDecline, t.later];
+  return [accept, t.introDecline];
 }
 
 /**
@@ -456,7 +450,7 @@ export function renderPendingMessage(
       return {
         text:
           named === null || named.length === 0 ? t.morePending(count) : t.morePendingKinds(named),
-        choices: [t.morePendingOpen, t.later],
+        choices: [t.morePendingOpen],
         ref: { kind: item.kind },
         instruction,
       };
@@ -465,7 +459,7 @@ export function renderPendingMessage(
       if (who === null) return null;
       return {
         text: t.chorusAsk(who),
-        choices: [t.chorusOpen, t.later],
+        choices: [t.chorusOpen],
         ref: { kind: item.kind, thread_id: num(p, 'thread_id') },
         instruction,
       };
@@ -478,8 +472,8 @@ export function renderPendingMessage(
       return {
         text: question === null ? t.goalQuestionBare(goal) : t.goalQuestionWith(goal, question),
         choices: planWaiting
-          ? [APPROVE_LABEL[language], CHANGE_LABEL[language], t.later]
-          : [t.goalAnswerNow, t.later],
+          ? [APPROVE_LABEL[language], CHANGE_LABEL[language]]
+          : [t.goalAnswerNow],
         ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
         instruction: planWaiting ? `${instruction} ${PLAN_CARD_TAP_NOTE}` : instruction,
       };
@@ -554,7 +548,7 @@ export function renderPendingMessage(
       if (organisation === null || goal === null) return null;
       return {
         text: t.newMemberFits(who ?? t.someoneNew, organisation, goal),
-        choices: [t.newMemberAsk, t.introDecline, t.later],
+        choices: [t.newMemberAsk, t.introDecline],
         ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
         instruction,
       };
@@ -569,7 +563,7 @@ export function renderPendingMessage(
       if (who === null || days === undefined) return null;
       return {
         text: t.introExpired(who, days),
-        choices: [t.introAskAgain, t.later],
+        choices: [t.introAskAgain],
         ref: { kind: item.kind, request_id: num(p, 'request_id') },
         instruction,
       };
@@ -627,7 +621,7 @@ export function renderPendingMessage(
       if (lines.length === 0) return null;
       return {
         text: `${t.myGoalsWaiting(lines.length)}\n${lines.join('\n')}`,
-        choices: [t.myGoalsLater],
+        choices: [],
         ref: { kind: item.kind },
         instruction,
       };

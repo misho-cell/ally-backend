@@ -39,7 +39,7 @@ describe('#6345 D584: no card offers „other, I will write it"', () => {
   it('is applied where the owner’s buttons are stored and a question’s are built', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(chat).toContain('const storedChoices = withoutOtherChoice(');
-    expect(asks).toContain('const choices = withoutOtherOption(');
+    expect(chat).toContain('withoutOtherChoice(');
+    expect(asks).toContain('withoutOtherOption(');
   });
 });

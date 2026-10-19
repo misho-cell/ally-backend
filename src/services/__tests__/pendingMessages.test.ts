@@ -81,7 +81,7 @@ describe('renderPendingMessage', () => {
       },
       'ka',
     );
-    expect(out?.choices).toEqual(['ვნახავ ახლა', 'მოგვიანებით']);
+    expect(out?.choices).toEqual(['ვნახავ ახლა']);
     expect(out?.ref).toEqual({ kind: 'chorus_ask', thread_id: 13399 });
   });
 
@@ -119,11 +119,7 @@ describe('renderPendingMessage', () => {
     );
 
     expect(out?.text).toBe('თორნიკე აბულაძეს შენი გაცნობა სურს.');
-    expect(out?.choices).toEqual([
-      'დიახ, გავიცნობ თორნიკე აბულაძეს',
-      'არა, ამჯერად არა',
-      'მოგვიანებით',
-    ]);
+    expect(out?.choices).toEqual(['დიახ, გავიცნობ თორნიკე აბულაძეს', 'არა, ამჯერად არა']);
     // The ref is how the tap finds its request again.
     expect(out?.ref).toEqual({ kind: 'intro_request', request_id: 1057 });
   });
@@ -164,7 +160,7 @@ describe('renderPendingMessage', () => {
       'ka',
     );
     expect(out?.text).toBe('Netai-ს მომხმარებელს შენი გაცნობა სურს.');
-    expect(out?.choices).toHaveLength(3);
+    expect(out?.choices).toHaveLength(2);
   });
 
   it('speaks English without declining the name', () => {
@@ -188,7 +184,6 @@ describe('renderPendingMessage', () => {
     expect(out?.choices).toEqual([
       'Yes, I will introduce them to Ketevan Khuntsaria',
       'No, not now',
-      'Later',
     ]);
   });
 
@@ -247,7 +242,7 @@ describe('row 98 second pass — "more are still coming"', () => {
     const out = renderPendingMessage(item(6), 'ka');
 
     expect(out?.text).toContain('6');
-    expect(out?.choices).toEqual(['ვნახოთ', 'მოგვიანებით']);
+    expect(out?.choices).toEqual(['ვნახოთ']);
     expect(out?.ref.kind).toBe('more_pending');
   });
 
@@ -260,7 +255,7 @@ describe('row 98 second pass — "more are still coming"', () => {
 
   it('matches the language of the answer above it', () => {
     expect(renderPendingMessage(item(3), 'en')?.text).toBe('3 more updates are waiting.');
-    expect(renderPendingMessage(item(3), 'en')?.choices).toEqual(['Show them', 'Later']);
+    expect(renderPendingMessage(item(3), 'en')?.choices).toEqual(['Show them']);
   });
 
   it('says nothing at all when nothing is waiting', () => {
