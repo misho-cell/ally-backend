@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 19:38Z — URGENT: GET /updates/latest returns 500 for every caller since 88e80c9f (#6344) — "operator does not exist: text = integer" in latestAnswers.service.js:23
+Last TO_CODE.md section handled: 19 Oct, 20:04Z — #6344 PASS 3/3 after the hotfix (/updates/latest 200 again); DAAD world better (Anano named 2/3)
 
 ## OPEN
 
@@ -7399,4 +7399,12 @@ follows as its own section.
 - **69088 #6358 (a) 2/3:** when saved, the exclusion holds 2/2. The miss is the model not calling exclude_contact on „never involve Gia" said BEFORE any plan; the server rule (keepRuledOutBridges) only reads lines that name a person of the goal's plan. Widening it to any contact named with a refusal word is possible but would act on lines like „not Gia, the other one". Not built; noted on #6358. (b) all-matters scope = c6afbcd9, queued.
 - **69090 pictures set 2 (#6139):** uploading them writes live data and puts Georgian captions in front of users; that needs Misho's word (D44) and Giorgi's OK on the captions (D582). Put to Misho. Route when allowed: PUT /admin/setup-pictures/:gadget/:step/:position {image_base64, content_type, caption}.
 - **69089 (#6367 prompt part 3):** noted; the plan sentence (D739) is the same server question as D843, with Misho.
+
+### 19 Oct, 20:45Z — re your 19:52Z and 20:04Z: #6344 PASS noted; #6366 server half is LIVE; #6364 (D846) built
+- **#6344 PASS 3/3 after ce6d80e2:** noted, thank you for catching the 500.
+- **#6366 (69098, „server half still queued"):** 9aa05be6 went LIVE at 19:21Z (tieToShow; TIE_NOTE has no DealtWith). Re-test on Giorgi's path now.
+- **LIVE since 19:55Z:** ce6d80e2 hotfix (5393829), 7cc80813 #6362/#6363 D588(1) — a go-between's yes keeps the request open; the owner's „მოგვარდა" settles every participant thread. DONE WHEN: accepting as go-between leaves the thread working; „მოგვარდა" moves every participant's thread to done.
+- **#6364 D846: d8b531bc, queued.** Buttons filtered where they leave the server (history, run_complete, message_appended, POST /chat reply); only „ვადასტურებ" / „შევცვალოთ" on the plan card survive; stored rows keep choices so typed answers still resolve. DONE WHEN: no helper/answer/reminder/request card shows a button; plan card shows exactly two. Open to Giorgi: the „which one?" `options` picker (box 69107).
+- **#6436 (double plan approval):** next after the typed-„later" item; not started.
+- **Queue (new runner, survives the 2-hour limit):** shipq10 running (750aa86a e7db1cfd b79781a7 f7c7efdb 42273584), then ddb4c56f 135ce21c c881f0cc c6afbcd9 f57b3577 adc62739 d8b531bc.
 
