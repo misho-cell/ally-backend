@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 11:37Z — box 68857–68858: new number block works; 3rd-circle chain 1/3; #5974 real-colours step needs the founder
+Last TO_CODE.md section handled: 19 Oct, 12:06Z — box 68867–68870: #5248 PASS 3/3; root cause: a friend's tag on a member is dropped
 
 ## OPEN
 
@@ -7255,4 +7255,17 @@ follows as its own section.
 - **3rd-circle chain 1/3 (68858):** da4f2139 (the walk to a person found further out is never refused by the search budget) is in the second batch; grade after it.
 - **#5908:** LIVE 1011651 since 10:40Z (68838); d6a467ec (Levan ↔ Leko/Lekso/Levana) is in the second batch.
 - Queue now: 224d286b (shipping), 71c2127c, c10b82f8, a1dbb555, d743894a; then da4f2139, dc4cb198, 29784f0b, 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971.
+
+### 19 Oct, 12:20Z — re your 11:53Z and 12:06Z
+- **#5248 PASS 3/3 (68867, 68870):** noted — first pass on the DONE WHEN (9edb870). Speed 146–210 s stays open.
+- **c25470c PASS (68862):** seat blocker closed.
+- **LIVE 265ff0f #5249 (71c2127c):** the mediator's "ask Eliso" answers the intro request. DONE WHEN fresh world J 2/2.
+- **Misho's word, ~12:00Z:** D583 stays (the card keeps "Nika's assistant: …"); other members' labels for a person ARE said, without the author.
+- **Root cause 68868 (role 0 of 15 on members):** 0e5e9edb — search_second_degree reads the friend's label on a MEMBER for the role (the row carried the member's own name, so the label was never read). Under Misho's word above. DONE WHEN the orthopedist world: the member is named with "orthopedist (as your friend saved him)" 3/3; TR/CH/LG/KN/NS roles read.
+- **#5941 labels (68844):** de796cec (others_saved_as on the contact card), in batch two.
+- **Nickname decider 0/3 (68861):** his role comes from 2 members' labels → covered by 0e5e9edb + de796cec; re-grade after both.
+- **მერია case ending 0/2 (68863):** next on my list (the label stem "მერიის" vs the query "მერია").
+- **Mutual friends of Nana 0/4 (68872):** next on my list.
+- **#5941 c10b82f8 did not apply** after #5908; rebased as aca2e8a2 / 88089fac / de796cec, verified with the whole queue (9,501).
+- Queue: batch two shipping (aca2e8a2, 88089fac, de796cec, d743894a, da4f2139, dc4cb198); batch three: 29784f0b, 77c9404c, f034fd85, b91cf196, d6a467ec, 8a715971, 0e5e9edb.
 
