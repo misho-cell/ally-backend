@@ -450,7 +450,10 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
     res.status(200).json({
       success: true,
       data: {
-        due: due.map((u) => updatePayload(u, titles, answers, language, followedIds)),
+        // #6369: newest first, as the read list is; the due read picks the oldest few, oldest first.
+        due: [...due]
+          .reverse()
+          .map((u) => updatePayload(u, titles, answers, language, followedIds)),
         followed: followedShown.map((u) =>
           updatePayload(u, titles, answers, language, followedIds),
         ),

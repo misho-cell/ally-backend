@@ -114,3 +114,11 @@ describe('a card is due or it is history, not both in one reply', () => {
     expect(source).toMatch(/listSeenUpdates\(userId\),\s*countHeldUpdates\(userId\)/);
   });
 });
+
+describe('#6369: the new cards come newest first, like the read ones', () => {
+  const source = readFileSync(join(__dirname, '..', 'updates.routes.ts'), 'utf8');
+
+  it('turns the due list (read oldest first, for the cap) round before it is sent', () => {
+    expect(source).toMatch(/due: \[\.\.\.due\]\s*\.reverse\(\)/);
+  });
+});
