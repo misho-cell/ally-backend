@@ -37,6 +37,18 @@ function declineVowelStem(word: string, c: GeoCase): string {
   return c === 'gen' || c === 'dat' ? word + 'ს' : c === 'erg' ? word + 'მ' : word + 'ზე';
 }
 
+const GEORGIAN_CONSONANT_RE = /[ბგდვზთკლმნპჟრსტფქღყშჩცძწჭხჯჰ]/u;
+
+function declineConsonantStem(word: string, c: GeoCase): string {
+  return c === 'gen'
+    ? word + 'ის'
+    : c === 'erg'
+      ? word + 'მა'
+      : c === 'dat'
+        ? word + 'ს'
+        : word + 'ზე';
+}
+
 function declineLastWord(word: string, c: GeoCase): string | null {
   const last = word.slice(-1);
   const stem = word.slice(0, -1);
@@ -63,7 +75,9 @@ function declineLastWord(word: string, c: GeoCase): string | null {
     case 'უ': // მიშო → მიშოს, მიშომ, მიშოს, მიშოზე
       return declineVowelStem(word, c);
     default:
-      return null;
+      // #6352 (the tester's 69803): a name written without its -ი — ლევან, დავით,
+      // მერაბ — takes the ending straight on: ლევანის, ლევანმა, ლევანს, ლევანზე.
+      return GEORGIAN_CONSONANT_RE.test(last) ? declineConsonantStem(word, c) : null;
   }
 }
 

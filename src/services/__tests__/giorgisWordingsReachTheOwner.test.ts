@@ -5,6 +5,9 @@ import { query } from '../../db/postgres/client';
 import { relayedForReader } from '../askTranslation.service';
 import { buildAnswerCard, CardAnswer } from '../answerCard.service';
 import { withAssistantsSentLine } from '../assistantsSentLine';
+import { withoutAllyLabelWord } from '../allyLabelWord';
+import { geoName } from '../georgianCase';
+import { scrubMechanicalForStorage } from '../privacyScrub';
 import {
   georgianFirstName,
   georgianNamesFor,
@@ -97,5 +100,27 @@ describe('#6353: the answer card in Georgian', () => {
   it('is unchanged in English', async () => {
     const card = await buildAnswerCard([{ ...answer, answer: 'She knows him.' }], 'en', names);
     expect(card.startsWith('An answer came in:')).toBe(true);
+  });
+});
+
+describe('#6352 retest: „Ally" leaves every owner-facing line (69803, 69804)', () => {
+  it('drops the word after a name and puts the Georgian ending back on', () => {
+    expect(withoutAllyLabelWord('ლევან Ally-ისთვის გაიგზავნა გაცნობის მოთხოვნა.')).toBe(
+      'ლევანისთვის გაიგზავნა გაცნობის მოთხოვნა.',
+    );
+    expect(withoutAllyLabelWord('ლიკა Ally-ის ასისტენტი')).toBe('ლიკას ასისტენტი');
+    expect(withoutAllyLabelWord('ნინო კახიძე Ally-ის')).toBe('ნინო კახიძის');
+    expect(withoutAllyLabelWord('ეკა Ally და ლუკა Ally.')).toBe('ეკა და ლუკა.');
+    expect(withoutAllyLabelWord('Lika Ally-ის ასისტენტი')).toBe('Lika-ის ასისტენტი');
+  });
+
+  it('is part of the storage scrub every assistant line goes through', () => {
+    expect(scrubMechanicalForStorage('ახლა ვწერ ლევან Ally-ს.')).toBe('ახლა ვწერ ლევანს.');
+  });
+
+  it('declines a name written without its -ი („ლევან-ის" → „ლევანის")', () => {
+    expect(geoName('ლევან', 'gen')).toBe('ლევანის');
+    expect(geoName('დავით', 'erg')).toBe('დავითმა');
+    expect(geoName('მერაბ', 'dat')).toBe('მერაბს');
   });
 });

@@ -1,3 +1,5 @@
+import { withoutAllyLabelWord } from './allyLabelWord';
+
 // Phone-number scrubber shared by every surface that can emit free text to a
 // client or model: the MCP connector's tool results and the in-app agent's
 // streamed narration / final answers. Phone-shaped runs of digits are redacted
@@ -242,7 +244,8 @@ function stripMarkdownMarkers(text: string): string {
 }
 
 export function scrubMechanicalForStorage(text: string): string {
-  return mtavruliToMkhedruli(stripMarkdownMarkers(text))
+  // #6352 (D583): the old app's „Ally" never follows a name on the owner's screen.
+  return withoutAllyLabelWord(mtavruliToMkhedruli(stripMarkdownMarkers(text)))
     .replace(COLON_BEFORE_LIST, '$1')
     .replace(/\s+—\s+/g, ', ')
     .replace(/—/g, '-');

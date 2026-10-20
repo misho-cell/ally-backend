@@ -205,7 +205,8 @@ export function incomingRequestFollowUp(
     default:
       return direct
         ? `**${geoName(requesterName, 'dat')}** ახლა პირდაპირ შენი გაცნობა უნდა. დათანხმდები?`
-        : `**${requesterName}** ახლა გთხოვს, გააცნო **${geoName(targetName, 'dat')}**. დაეხმარები? 🤝`;
+        : // #6351 retest (the tester's 69804): the request inside an open thread is Giorgi's text too.
+          georgianIntroductionAsk(requesterName, targetName);
   }
 }
 

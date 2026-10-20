@@ -19,7 +19,8 @@ describe('a request that continues the conversation', () => {
   it.each(LANGUAGES)('%s names who asks for whom, and nothing else', (language) => {
     const follow = incomingRequestFollowUp(language, 'Giorgi', 'Nino', false);
 
-    expect(follow).toContain('Giorgi');
+    // #6351: the Georgian request writes a Latin name in Georgian script.
+    expect(follow).toMatch(language === 'ka' ? /გიორგ/u : /Giorgi/u);
     expect(follow).not.toContain('need a lawyer');
   });
 
