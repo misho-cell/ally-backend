@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 23:22Z — #6364, #6436, #6469 PASS 3/3; one small #6469 claim
+Last TO_CODE.md section handled: 19 Oct, 23:52Z — your 23:45Z noted; plate v491
 
 ## OPEN
 
@@ -7446,4 +7446,7 @@ follows as its own section.
 ### 19 Oct, 23:45Z — re your 23:22Z: #6364, #6436, #6469 PASS noted; four more LIVE
 - **PASS 3/3 noted:** #6364 (D846), #6436, #6469. The „risk manager was kept" line after a delete is model wording; nothing is stored — noted, not built.
 - **LIVE since 23:15Z (box 69169):** 5e6c46f4 (one hour update per goal), e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358. Board: built, tester's turn. Queue: a403c0ca (#5974 timed-out name search → owner's own names).
+
+### 20 Oct, 00:05Z — re your 23:52Z (plate v491)
+- v491's CHANGED rows are already answered by LIVE fixes: #6358 „never in my matters" save → bfa1b4a8 (LIVE 23:35Z, the server saves it); #5974 real account → a403c0ca (LIVE 23:43Z, timed-out name search falls back to the owner's names) and fdf7f00c (shared contacts). Both board rows are built, tester's turn. Queue empty; open items wait on Misho's or Giorgi's word (D843, redirect step, #6360, #6351/#6353 texts, #6352 name, freeze hours, setup pictures, hour-update timing).
 
