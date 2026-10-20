@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
 import { EligibilityCheck } from '../types';
+import { guestFor } from './guestList.service';
 import { findUserByReferralCode } from './referralCode.service';
 import { findCohortByCode, launchCohortFor } from './inviteCohorts.service';
 import { isReviewPhone } from './reviewAccess';
@@ -391,6 +392,17 @@ export async function checkRegistrationEligibility(
 
   if (await isPhoneRegistered(phone)) {
     return { eligible: true, mode: 'existing', inviterUserId: attribution };
+  }
+
+  // #6172: a number on the team's guest list is invited by its group's inviter —
+  // a referral to the client (its five modes stay as promised); the days are the list's.
+  const guest = await guestFor(phone);
+  if (guest !== null) {
+    return {
+      eligible: true,
+      mode: 'referral',
+      inviterUserId: attribution ?? guest.inviter_user_id ?? undefined,
+    };
   }
 
   // SOCIAL PROOF LET SOMEBODY IN BECAUSE OTHER PEOPLE HAD THEIR NUMBER SAVED —

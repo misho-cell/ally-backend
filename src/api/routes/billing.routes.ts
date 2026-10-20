@@ -28,6 +28,11 @@ import {
 import { createTopupCheckout } from '../../services/stripeTopup.service';
 import { CancelOutcome, setPlanEndsAtPeriodEnd } from '../../services/stripeCancel.service';
 import { InvitedPerson, listInvitedPeople } from '../../services/invitedPeople.service';
+import {
+  claimInviteDays,
+  InviteDaysOutcome,
+  InviteDaysResult,
+} from '../../services/inviteDaysClaim.service';
 
 const SPEND_ERRORS: Record<string, { status: number; message: string }> = {
   insufficient_balance: { status: 402, message: 'რეფერალური ბალანსი საკმარისი არ არის' },
@@ -270,6 +275,51 @@ billingRouter.post(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[POST /billing/referral/spend-subscription]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #6341 (launch 21 Oct): the server door behind „continue free" on the Pro page.
+ *
+ *   POST /billing/invite-days   { "referral_code"?: string }
+ *   200 { outcome: "granted" | "already_has_access", trial_ends_at }
+ *   409 { error, reason: "already_used" | "no_invitation" | "free_days_off" }
+ */
+const INVITE_DAYS_REFUSED: Readonly<Record<string, string>> = {
+  [InviteDaysOutcome.AlreadyUsed]: 'უფასო დღეები ამ ანგარიშზე უკვე გამოყენებულია',
+  [InviteDaysOutcome.NoInvitation]: 'ამ ანგარიშზე მოწვევა ვერ მოიძებნა',
+  [InviteDaysOutcome.FreeDaysOff]: 'მოწვევის უფასო დღეები ახლა გამორთულია',
+};
+const MAX_REFERRAL_CODE_CHARS = 64;
+
+billingRouter.post(
+  '/invite-days',
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ outcome: string; trial_ends_at: string | null }>>,
+  ) => {
+    const raw = (req.body as { referral_code?: unknown } | undefined)?.referral_code;
+    const code =
+      typeof raw === 'string' && raw.trim().length <= MAX_REFERRAL_CODE_CHARS
+        ? raw.trim()
+        : undefined;
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const result: InviteDaysResult = await claimInviteDays(userId, code || undefined);
+      const refused = INVITE_DAYS_REFUSED[result.outcome];
+      if (refused !== undefined) {
+        res.status(409).json({ success: false, error: refused, reason: result.outcome });
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        data: { outcome: result.outcome, trial_ends_at: result.trialEndsAt },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[invite-days] claim failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

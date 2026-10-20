@@ -1,3 +1,9 @@
+// #6172: these gates are read with nobody on the guest list.
+jest.mock('../guestList.service', () => ({
+  __esModule: true,
+  guestFor: async () => null,
+  startGuestDays: async () => false,
+}));
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -121,7 +127,8 @@ describe('the gate itself', () => {
     expect(SOURCE).toContain(
       'const gateOn = !account.belongs_to_netai && (await isLoginInviteOnlyEnabled());',
     );
-    expect(SOURCE).toContain('if (gateOn && invitation === null) {');
+    // #6172: a number on the guest list is the one more way to be invited.
+    expect(SOURCE).toContain('if (gateOn && invitation === null && !listed) {');
   });
 
   /** A refused person should be able to tell what happened from the log line. */

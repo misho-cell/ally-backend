@@ -23,6 +23,7 @@ import { inviteFreeDays, inviteFreeDaysCohort } from './inviteReward.service';
 import { attributeCampaignJoin } from './chorusCampaign.service';
 import { tellOwnersANewMemberFitsAGoal } from './newMemberForGoal.service';
 import { AuthPayload, EligibilityCheck, EligibilityReason } from '../types';
+import { guestFor, startGuestDays } from './guestList.service';
 import { normalizePhone } from './phone';
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
@@ -651,6 +652,8 @@ export async function grantWhateverFreePeriodIsOwed(
   cleanPhone: string,
   gate: EligibilityCheck,
 ): Promise<void> {
+  // #6172: a listed number's days start at this first sign-in and outrank the rest.
+  if (await startGuestDays(userId, cleanPhone)) return;
   if (gate.mode === 'cohort' && gate.cohortCode) {
     const cohort =
       gate.cohortCode === LAUNCH_COHORT_CODE
@@ -976,7 +979,9 @@ export async function completeLogin(
    */
   const gateOn = !account.belongs_to_netai && (await isLoginInviteOnlyEnabled());
   const invitation = gateOn ? await resolveLoginInvitation(userId, phone, invite) : null;
-  if (gateOn && invitation === null) {
+  // #6172: a number on the guest list is invited, whatever link it came by.
+  const listed = gateOn && invitation === null ? (await guestFor(phone)) !== null : false;
+  if (gateOn && invitation === null && !listed) {
     // eslint-disable-next-line no-console
     console.log(
       `[login] account ${userId} REFUSED: never registered through Netai and never used it, gate on`,
@@ -994,6 +999,12 @@ export async function completeLogin(
       console.error(`[login] account ${userId}: inviter not recorded:`, (err as Error).message),
     );
   }
+
+  // #6172: a listed number's free days start at its first sign-in, member or not.
+  await startGuestDays(userId, phone).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error(`[guest-list] account ${userId}: days not started:`, (err as Error).message),
+  );
 
   if (!account.belongs_to_netai && !gateOn) {
     // An account that existed before tonight, opening Netai for the first

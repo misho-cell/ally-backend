@@ -53,6 +53,14 @@ import {
   TokenAdjustmentOutOfRange,
 } from '../../services/tokenWallet.service';
 import { randomUUID } from 'crypto';
+import {
+  addGuests,
+  DEFAULT_GUEST_DAYS,
+  listGuests,
+  MAX_GUEST_DAYS,
+  MAX_GUESTS_PER_CALL,
+  setGuestDays,
+} from '../../services/guestList.service';
 import { MessageKind, setUserMessageKind } from '../../services/messageKind.service';
 import { hideErrorLine, showErrorLine } from '../../services/errorLineVisibility.service';
 import {
@@ -3959,6 +3967,137 @@ adminRouter.post(
  * is signed: a reversal is a row beside the grant, never a deletion. `was`
  * comes back in the reply so the undo does not depend on reading a log.
  */
+/**
+ * #6172 (launch 21 Oct): the GUEST LIST — numbers approved ahead of time, by
+ * group, with free days that start at the first sign-in.
+ *
+ *   POST  /admin/guest-list                { group, days?, inviter_user_id?, phones: string[] | "pasted list" }
+ *         201 { added, invalid }
+ *   GET   /admin/guest-list?group=Axel     200 { guests: [{ id, phone, group, free_days, inviter_user_id,
+ *                                                       state: waiting|active|ended, signed_in_at, days_left }] }
+ *   PATCH /admin/guest-list/groups/:group  { days }  200 { updated }
+ *   PATCH /admin/guest-list/:id            { days }  200 { updated }
+ */
+const GUEST_GROUP_MAX_CHARS = 40;
+const PASTED_PHONES_SPLIT_RE = /[\n,;]+/u;
+
+function pastedPhones(value: unknown): string[] {
+  const list = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(PASTED_PHONES_SPLIT_RE)
+      : [];
+  return list
+    .filter((p): p is string => typeof p === 'string')
+    .map((p) => p.trim())
+    .filter((p) => p !== '');
+}
+
+adminRouter.post(
+  '/guest-list',
+  body('group').isString().trim().isLength({ min: 1, max: GUEST_GROUP_MAX_CHARS }),
+  body('days').optional().isInt({ min: 1, max: MAX_GUEST_DAYS }),
+  body('inviter_user_id').optional({ nullable: true }).isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    const phones = pastedPhones((req.body as { phones?: unknown }).phones);
+    if (
+      !validationResult(req).isEmpty() ||
+      phones.length === 0 ||
+      phones.length > MAX_GUESTS_PER_CALL
+    ) {
+      res.status(400).json({
+        success: false,
+        error:
+          `group (1-${GUEST_GROUP_MAX_CHARS} chars), days 1-${MAX_GUEST_DAYS}, and 1-${MAX_GUESTS_PER_CALL} phones ` +
+          '(a list, or one pasted text with one number per line) are needed.',
+      });
+      return;
+    }
+    const {
+      group,
+      days,
+      inviter_user_id: inviter,
+    } = req.body as {
+      group: string;
+      days?: number;
+      inviter_user_id?: number | null;
+    };
+    try {
+      const outcome = await addGuests({
+        group: String(group).trim(),
+        days: days === undefined ? DEFAULT_GUEST_DAYS : Number(days),
+        inviterUserId: inviter === undefined || inviter === null ? null : Number(inviter),
+        phones,
+        addedBy: String((req as AuthenticatedRequest).user.userId),
+      });
+      // No phones in the line (D149): the group and the counts are enough.
+      // eslint-disable-next-line no-console
+      console.log(
+        `[guest-list] ${outcome.added} added to „${String(group).trim()}", ${outcome.invalid} invalid`,
+      );
+      res.status(201).json({ success: true, data: outcome });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[guest-list] add failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+adminRouter.get(
+  '/guest-list',
+  queryParam('group').optional().isString().trim().isLength({ min: 1, max: GUEST_GROUP_MAX_CHARS }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res
+        .status(400)
+        .json({ success: false, error: `group must be 1-${GUEST_GROUP_MAX_CHARS} chars.` });
+      return;
+    }
+    const group = typeof req.query['group'] === 'string' ? req.query['group'].trim() : null;
+    try {
+      res.status(200).json({ success: true, data: { guests: await listGuests(group) } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[guest-list] list failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+function guestDaysRoute(
+  target: (req: Request) => { group: string } | { id: number },
+): (req: Request, res: Response) => Promise<void> {
+  return async (req: Request, res: Response): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: `days must be 1-${MAX_GUEST_DAYS}.` });
+      return;
+    }
+    try {
+      const updated = await setGuestDays(target(req), Number((req.body as { days: number }).days));
+      res.status(200).json({ success: true, data: { updated } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[guest-list] days not changed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  };
+}
+
+adminRouter.patch(
+  '/guest-list/groups/:group',
+  param('group').isString().trim().isLength({ min: 1, max: GUEST_GROUP_MAX_CHARS }),
+  body('days').isInt({ min: 1, max: MAX_GUEST_DAYS }),
+  guestDaysRoute((req) => ({ group: String(req.params.group).trim() })),
+);
+
+adminRouter.patch(
+  '/guest-list/:id',
+  param('id').isInt({ min: 1 }),
+  body('days').isInt({ min: 1, max: MAX_GUEST_DAYS }),
+  guestDaysRoute((req) => ({ id: Number(req.params.id) })),
+);
+
 /**
  * #6106 (the board's words for the same two fields): `amount` and `reason` are
  * accepted beside `tokens` and `note`, on both wallet routes.

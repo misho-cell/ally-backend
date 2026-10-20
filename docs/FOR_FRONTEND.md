@@ -15,6 +15,40 @@ messages in their name.
 
 ---
 
+## 20 October, 08:10Z — LAUNCH: #6341 „continue free" and #6172 the guest list — server LIVE with this commit
+
+**Why the invited user looped (#6341).** „გამოტოვება და უფასო ვერსიით გაგრძელება" links to `/chat`; `GET /threads`
+answers `subscription_required`, and the app sends them to `/pricing` again. The server granted the invitation's
+20 days only at `/register`, and only when the link's code reached it. Two accounts from 16–17 Oct came in with no
+inviter on record and never got them.
+
+**#6341: the button now needs one call before `/chat`.**
+`POST /billing/invite-days` with `{ "referral_code": "<the code from the invite link, if the app still has it>" }`
+(the body may be empty).
+- 200 `{ "outcome": "granted", "trial_ends_at": "2026-11-09T10:00:00.000Z" }`, then go to `/chat`.
+- 200 `{ "outcome": "already_has_access", … }`: go to `/chat` too.
+- 409 `{ "error": "<Georgian line>", "reason": "no_invitation" | "already_used" | "free_days_off" }`: show `error`
+  under the button and stay. Never loop. The three lines are the server's existing style; Giorgi has not yet seen them.
+It grants once, when the account can show an invitation: the code you send, the inviter already on the account,
+or the guest list below.
+Please also keep sending the invite code to `POST /auth/register` (and the login) on every path. That is still
+where most invited people get their days without ever seeing the Pro page.
+
+**#6172: the guest list (admin).** Numbers approved ahead of time, by group. A listed number passes the invite-only
+gate, is invited by the group's inviter, and gets its free days at its FIRST sign-in, so it never sees the payment
+page until they end.
+- `POST /admin/guest-list` with `{ "group": "Axel", "days": 20, "inviter_user_id": 171, "phones": ["+995 5xx …", …] }`.
+  `phones` may also be one pasted text, one number per line (or comma separated), up to 500 per call.
+  → 201 `{ "added": 12, "invalid": 1 }`. 400 when the group, days (1–90) or phones are missing.
+- `GET /admin/guest-list?group=Axel` → 200 `{ "guests": [{ "id", "phone": "+995…", "group", "free_days",
+  "inviter_user_id", "state": "waiting" | "active" | "ended", "signed_in_at", "days_left" }] }`, newest first.
+- `PATCH /admin/guest-list/groups/Axel` with `{ "days": 30 }` → 200 `{ "updated" }`. Everyone not yet ended gets the
+  new length, counted from their first sign-in.
+- `PATCH /admin/guest-list/:id` with `{ "days": 30 }`: the same, for one number.
+These are admin screens only. Labels are yours, since none of it is user-facing text.
+
+---
+
 ## 20 October, 07:20Z — #6106: the admin's „Top up tokens" box — server LIVE with this commit
 
 Misho's yes (20 Oct): the team adds or corrects a user's tokens from the admin. Use it on

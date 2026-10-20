@@ -1,3 +1,9 @@
+// #6172: these gates are read with nobody on the guest list.
+jest.mock('../guestList.service', () => ({
+  __esModule: true,
+  guestFor: async () => null,
+  startGuestDays: async () => false,
+}));
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

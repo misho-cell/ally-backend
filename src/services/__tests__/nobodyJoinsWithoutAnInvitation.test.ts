@@ -1,3 +1,9 @@
+// #6172: these gates are read with nobody on the guest list.
+jest.mock('../guestList.service', () => ({
+  __esModule: true,
+  guestFor: async () => null,
+  startGuestDays: async () => false,
+}));
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
