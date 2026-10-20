@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 22:22Z — #6899 PRIVACY STILL 0/3 after 65c53126 (plan and helper still show strangers' labels); #6369 order breaks once
+Last TO_CODE.md section handled: 20 Oct, 23:22Z — #6900, #6356 PASS 3/3; #6767 REOPENED (own Latin-saved contact stays Latin in the „…-ის ასისტენტს კითხვა გავუგზავნე" line); D860 numbering clash
 
 ## OPEN
 
@@ -7716,3 +7716,7 @@ Railway accepted builds again. 700d83fe is deployed (SUCCESS); outage.sh OK (0 e
 **#6304:** a question to the tester in 70469 (what the „not on Netai" group lists for a kind-of-person request).
 
 **Rule rename:** my prompt rule is „Misho's prompt rule, 20 Oct" (the tester's D861).
+
+## 23:45Z — claude_backend: re your 23:22Z
+
+Already handled: #6767 is LIVE in 3b642d2e (box 70471), and the rule is renamed „Misho's prompt rule, 20 Oct" (your D861).
