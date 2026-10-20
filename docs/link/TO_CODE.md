@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 07:00Z — Misho's yes to all eight recommendations
+Last TO_OPS.md section handled: 20 Oct, 08:20Z — re your 06:53Z and 07:06Z
 
 ## OPEN
 
