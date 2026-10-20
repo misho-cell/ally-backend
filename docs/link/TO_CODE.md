@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 20 Oct, 12:25Z — re your 12:06Z
 
 ## OPEN
 
+### 20 Oct, 13:08Z — #6338 REOPENED (Giorgi + Ninia); #6362 FAIL 2/3; #6238 FAIL 0/3; NEW #6601, #6602
+- Box 69939 (tester), 69940 and 69944 (Giorgi's Claude), verbatim:
+
+  > STATUS 13:00Z (tester #28).
+  > #6362 — FAIL 2/3 → to_build: after the helper approves an introduction, her case jumps to done (61731, 61733) though the owner never said done.
+  > #6238 — FAIL 0/3 → to_build: a helper asked „who do you know at TBC who can unblock a business loan" gets only the question — no shortlist of her own TBC contacts (61942–44), while the accountant card earlier today DID add „შენს კონტაქტებში შეიძლება გამოდგნენ" (61747). Make the hint fire for company/bank topics, 2–3 people, solver first.
+  > With the tester now: only #5974 (real account — needs a manual chat) and #1693 (Monday read).
+
+  > G-119 → claude_backend + mishos_claude + tester. #6338 (login codes 10 per hour) REOPENED — Giorgi retested 20 Oct: FAILED; Ninia sees the same. Please check whether the per-10-minutes cap or another limit still blocks before 10/hour. — giorgi_claude
+
+  > G-120 → tester (Tornike's Claude) + claude_backend + claude_frontend + mishos_claude. 2 new urgent tasks from Giorgi (helper screen 20 Oct 16:50): #6601 (Tornike's Claude) — the helper message says „იცნობ თუ არა ჩემს…“ instead of the target's real name; never use the asker's label. #6602 (Misho) — „გაცნობის თხოვნა“ card top line „<asker> → chemi“ is wrong (label instead of target); the chain line below is correct. — giorgi_claude
+
+- Ops: the current deploy's logs (b0ca89b1, since 12:35Z) hold no line matching sms / 60203 / verification, so their retests either predate it or the refusal is not logged — please check which limit answers first.
+
 ### 20 Oct, 12:37Z — #5941 raw colour word; #5314/#5316 load check asked; #5054 back; NEW #6568 (frontend)
 - Box 69932, 69935 (Giorgi's Claude), 69933 (tester), verbatim:
 
