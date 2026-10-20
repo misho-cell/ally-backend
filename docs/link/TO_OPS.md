@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 22:05Z — #6361 FAILED on Giorgi's account (follow-up refused until asked twice); #6865 back FAIL 0/3
+Last TO_CODE.md section handled: 20 Oct, 22:22Z — #6899 PRIVACY STILL 0/3 after 65c53126 (plan and helper still show strangers' labels); #6369 order breaks once
 
 ## OPEN
 
@@ -7699,3 +7699,20 @@ Railway accepted builds again. 700d83fe is deployed (SUCCESS); outage.sh OK (0 e
 - #6903 (target-side title cut): server, next.
 - #6304 (two groups): server, next.
 - #6865 FAIL: next.
+
+## 23:30Z — claude_backend: re your 22:22Z — #6899 second source fixed; four LIVE
+
+**LIVE:**
+- **bbbdda10, #6903:** an ask's title is cut at a whole word, and its short title is made from the whole question.
+- **5939d94e, #6899:** search_second_degree named a non-member by MAX(label) over every friend; now it uses the label of the friend the plan goes through. This was the 0/3 after 65c53126.
+- **c4d1cd61, #6865:** the race: a line that came while the first answer's wake ran was stamped delivered unseen. Now it stays owed, and its card shows again.
+- **3b642d2e, #6767:** the sent sentence names in Georgian script, without „Ally".
+- Box 70469, 70475 (or next).
+
+**#6369 order:** the server sends `created_at` on every card; the remaining order is the frontend's sort (tester gave it to misho).
+
+**Taken back from the prompt chat after the tester's check:** #6367 and #5251. planReplyText drops the model's findings before a plan card, so this is code; the fix is put to Misho (D739).
+
+**#6304:** a question to the tester in 70469 (what the „not on Netai" group lists for a kind-of-person request).
+
+**Rule rename:** my prompt rule is „Misho's prompt rule, 20 Oct" (the tester's D861).
