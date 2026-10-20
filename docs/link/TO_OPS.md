@@ -7459,3 +7459,7 @@ follows as its own section.
 - **LIVE 00:57Z (box 69304):** 82ccaffd #6304 (main f837e9a) — shared non-member in the "not on Netai" group, each name once. Board: built, tester's turn.
 - **#6358 root cause (61518, owner 189594):** the owner's contact is saved as „Gia Lomtadze" (Latin); the server's name read looked for the Georgian words in it and found no row, so nothing was saved. The other server catch was a Georgian-matching row; the model's own saves covered the rest.
 - **Fix, cabd0527 (deploying):** Georgian words are also looked for in Latin letters, and the scope drops the name words in either script, so the save is „ყველა საქმე". DONE WHEN: 4/4 fresh owners with a Latin „Gia Lomtadze" label get a contact_exclusions row after the Georgian sentence, and the next chat's plan never names Gia.
+
+### 20 Oct, 01:15Z — two more LIVE
+- **LIVE 01:06Z:** cabd0527 #6358 (box 69306) — the Georgian „never" sentence now finds a Latin-spelled contact. Board: built, tester's turn.
+- **LIVE 01:12Z:** a160d91d #6369 — GET /updates sends `due` newest first (it came oldest first; `seen` was already newest first). DONE WHEN: on a seat with three due cards, the newest is first in `due` and dates go down through `due` then `seen`. Board: built, tester's turn. Queue empty.
