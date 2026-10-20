@@ -1011,10 +1011,14 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     captured?: boolean;
     /** The asker already had the answer: the UPDATE leaves it as it was. */
     alreadyDelivered?: boolean;
+    /** #6865: whether a deliberate addition after delivery joins the answer. */
+    addedAfter?: boolean;
   }): void {
     mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
       if (sql.includes('SELECT to_user_id, status'))
         return Promise.resolve(rows(opts.ask ? [opts.ask] : []) as never);
+      if (sql.includes('wake_delivered_at = NULL'))
+        return Promise.resolve(rows(opts.addedAfter === true ? [{ id: 77 }] : []) as never);
       if (sql.includes('UPDATE task_asks') && sql.includes('SET answer'))
         return Promise.resolve(
           rows(
@@ -1119,8 +1123,23 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     expect(mockSetThreadStatus).toHaveBeenCalledWith('7', 55, 'done', { isTask: true });
   });
 
-  /** Tester 39931: the asker already had the answer; a later line did not travel. */
-  it('says so, and wakes nobody, when the answer had already reached the asker', async () => {
+  /** #6865 (tester #29, 3/3): a deliberate addition after delivery reaches the asker. */
+  it('carries a deliberate addition after the answer reached the asker, and wakes the goal', async () => {
+    routeApprovedAnswerQueries({
+      ask: { to_user_id: 7, status: 'answered' },
+      alreadyDelivered: true,
+      addedAfter: true,
+    });
+
+    const out = await sendApprovedAskAnswer('7', 55, 'და კიდევ ერთი რამ');
+    await settle();
+
+    expect(out).toEqual({ sent: true });
+    expect(deliverAnswersWhenFree).toHaveBeenCalledWith(3);
+  });
+
+  /** Tester 39931: the same line again does not travel twice, and says so. */
+  it('says so, and wakes nobody, when the addition is already in the answer', async () => {
     routeApprovedAnswerQueries({
       ask: { to_user_id: 7, status: 'answered' },
       alreadyDelivered: true,

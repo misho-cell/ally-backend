@@ -2301,6 +2301,29 @@ const ALREADY_DELIVERED_ERROR =
   'later message on it does not travel. Tell the owner so in one line; if they want the asker ' +
   'to have more, the asker can ask again.';
 
+/**
+ * #6865 (tester #29, 3 of 3): the helper's second message — sent on purpose,
+ * through send_answer_to_asker — was dropped with „ეს დამატება არ გაიგზავნა",
+ * because the first answer had already reached the asker. The append window
+ * (recordAskAnswer) is for lines captured from the thread, so a chat with the
+ * helper's own assistant never joins the answer; a deliberate send is not such
+ * a line. It joins the answer, and the asker's goal is woken again with it.
+ * The same line twice is still not added.
+ */
+async function addedAfterDelivery(askId: number, text: string): Promise<boolean> {
+  const result = await query<{ id: number }>(
+    `UPDATE task_asks
+        SET answer = answer || E'\n' || $2,
+            wake_delivered_at = NULL
+      WHERE id = $1 AND answer IS NOT NULL
+        AND NOT ($2 = ANY(string_to_array(answer, E'\n')))
+      RETURNING id`,
+    [askId, text],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
+}
+
 export async function sendApprovedAskAnswer(
   recipientUserId: string,
   askThreadId: number,
@@ -2342,7 +2365,13 @@ export async function sendApprovedAskAnswer(
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
   }
   if (!captured.carried) {
-    return { sent: false, already_delivered: true, error: ALREADY_DELIVERED_ERROR };
+    if (!(await addedAfterDelivery(captured.askId, captured.answer))) {
+      return { sent: false, already_delivered: true, error: ALREADY_DELIVERED_ERROR };
+    }
+    // #6865: the addition is the asker's to hear; the goal is woken with it.
+    const { deliverAnswersWhenFree } = await import('./taskEngine.service');
+    deliverAnswersWhenFree(captured.taskId);
+    return { sent: true };
   }
 
   await deliverCapturedAnswer(captured, recipientUserId);
