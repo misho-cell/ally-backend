@@ -14,7 +14,14 @@ const DESCRIPTION_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haik
 const DESCRIPTION_MAX_TOKENS = 220;
 const DESCRIPTION_TIMEOUT_MS = 15_000;
 const QUERY_TIMEOUT_MS = 5_000;
-const LINES_READ = 8;
+/**
+ * #6535 / #5413 failed again (Giorgi, G-151, 20 Oct evening): the description
+ * listed what the assistant did — „თქვენი ასისტენტი კიდევ კითხავს ბესოს…". It
+ * was written from the goal's working notes and the LATEST lines, which are the
+ * progress. The description is the owner's problem, so it is written from how
+ * the case began: the title and its first lines, never the notes.
+ */
+const LINES_READ = 4;
 
 const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
   ka: 'Georgian',
@@ -25,7 +32,6 @@ const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
 
 interface FactRow {
   readonly title: string | null;
-  readonly brief: string | null;
 }
 
 interface LineRow {
@@ -33,35 +39,28 @@ interface LineRow {
   readonly content: string;
 }
 
-/** The case's title, its goal's notes and its latest lines; null when it carries no goal. */
+/** The case's title and its first lines. */
 async function caseFacts(threadId: number): Promise<CaseFacts | null> {
   const head = await query<FactRow>(
-    `SELECT t.title, g.brief
-       FROM threads t
-       JOIN tasks g ON g.thread_id = t.id
-      WHERE t.id = $1
-      ORDER BY (g.status = 'open') DESC, g.id DESC
-      LIMIT 1`,
+    `SELECT t.title FROM threads t WHERE t.id = $1 LIMIT 1`,
     [threadId],
     QUERY_TIMEOUT_MS,
   );
   const row = head.rows[0];
   if (row === undefined) return null;
   const lines = await query<LineRow>(
-    `SELECT role, content FROM (
-       SELECT c.role, c.content, c.created_at
-         FROM conversations c
-        WHERE c.thread_id = $1 AND c.kind = 'message' AND length(trim(c.content)) > 0
-          AND c.role IN ('user', 'assistant')
-        ORDER BY c.created_at DESC
-        LIMIT $2) latest
-     ORDER BY created_at`,
+    `SELECT c.role, c.content
+       FROM conversations c
+      WHERE c.thread_id = $1 AND c.kind = 'message' AND length(trim(c.content)) > 0
+        AND c.role IN ('user', 'assistant')
+      ORDER BY c.created_at ASC
+      LIMIT $2`,
     [threadId, LINES_READ],
     QUERY_TIMEOUT_MS,
   );
   return {
     title: row.title,
-    brief: row.brief,
+    brief: null,
     lines: lines.rows.map((l) => `${l.role === 'user' ? 'owner' : 'assistant'}: ${l.content}`),
   };
 }
@@ -138,15 +137,27 @@ export async function refreshCaseDescription(
 const MISSING_TRIED_FOR_MS = 30 * 60_000;
 const missingTriedAt = new Map<number, number>();
 
-/** True when the thread carries an open goal and no description yet. */
+/**
+ * G-151: a go-between's case and an introduction request are cases too, and had
+ * none — only a conversation holding an open goal was described. A description
+ * written before the rule above was progress, so it counts as missing and is
+ * written again from the case's beginning. The cut-off is after this change is
+ * live (it ships before 20:00Z), so no description written the old way stays.
+ */
+const FROM_THE_BEGINNING_SINCE = '2026-10-20T20:00:00Z';
+const CASE_TYPES_WITHOUT_A_GOAL = ['incoming_ask', 'outgoing_request'];
+
+/** True when the thread is a case with no description, or one written from progress. */
 async function lacksDescription(threadId: number): Promise<boolean> {
   const result = await query<{ lacks: boolean }>(
-    `SELECT (t.case_description IS NULL OR trim(t.case_description) = '') AS lacks
+    `SELECT (t.case_description IS NULL OR trim(t.case_description) = ''
+             OR t.case_description_at IS NULL OR t.case_description_at < $2::timestamptz) AS lacks
        FROM threads t
       WHERE t.id = $1
-        AND EXISTS (SELECT 1 FROM tasks g WHERE g.thread_id = t.id AND g.status = 'open')
+        AND (t.type = ANY($3::text[])
+             OR EXISTS (SELECT 1 FROM tasks g WHERE g.thread_id = t.id AND g.status = 'open'))
       LIMIT 1`,
-    [threadId],
+    [threadId, FROM_THE_BEGINNING_SINCE, CASE_TYPES_WITHOUT_A_GOAL],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0]?.lacks === true;

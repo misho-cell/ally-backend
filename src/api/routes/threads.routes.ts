@@ -1016,8 +1016,9 @@ threadsRouter.get(
         return;
       }
       // 5413 retest: a case opened without a description gets one written. Not gated on
-      // is_task — a goal older than that flag is a case too; the check reads the goal itself.
-      if (thread.type !== 'incoming_ask') void describeIfMissing(userId, threadId);
+      // is_task — a goal older than that flag is a case too; the check reads the thread itself
+      // (G-151: a go-between's case included).
+      void describeIfMissing(userId, threadId);
       // #1684: the reader opening an ask's conversation is what „seen" means.
       if (thread.type === 'incoming_ask') {
         markAsksSeen(threadId, userId).catch((err: unknown) => {

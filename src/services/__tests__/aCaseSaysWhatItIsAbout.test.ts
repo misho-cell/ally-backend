@@ -85,7 +85,7 @@ describe('a case says what it is about', () => {
     expect(mockEmit).toHaveBeenCalledWith('7', { id: 9, case_description: GOOD });
   });
 
-  it('when on: a conversation with no goal gets no description', async () => {
+  it('when on: a thread that is not there gets no description', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
     await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(false);
     expect(mockCreate).not.toHaveBeenCalled();
@@ -125,5 +125,32 @@ describe('a case opened without a description', () => {
     await expect(describeIfMissing('7', 102, T0)).resolves.toBe(false);
     await expect(describeIfMissing('7', 103, T0)).resolves.toBe(false);
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+/** G-151 (Giorgi, 20 Oct evening): the description listed the assistant's actions. */
+describe('a description is the owner’s problem, from how the case began', () => {
+  it('is written from the title and the first lines, never the working notes', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ title: 'არქიტექტორი' }] })
+      .mockResolvedValueOnce({ rows: [{ role: 'user', content: 'სახლის პროექტი მჭირდება' }] })
+      .mockResolvedValueOnce({ rows: [] });
+    answers(GOOD);
+    await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(true);
+    const [head] = mockQuery.mock.calls[0] as [string];
+    expect(head).not.toContain('brief');
+    const [lines, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(lines).toContain('ORDER BY c.created_at ASC');
+    expect(params).toEqual([9, 4]);
+    const sent = mockCreate.mock.calls[0][0] as { messages: { content: string }[] };
+    expect(sent.messages[0].content).not.toContain('Working notes');
+  });
+
+  it('counts a go-between’s case and a request as cases, and an old progress one as missing', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ lacks: false }] });
+    await describeIfMissing('7', 201, 5_000_000);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('case_description_at < $2::timestamptz');
+    expect(params).toEqual([201, '2026-10-20T20:00:00Z', ['incoming_ask', 'outgoing_request']]);
   });
 });
