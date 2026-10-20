@@ -250,19 +250,47 @@ async function goalTarget(taskId: number): Promise<string | null> {
   }
 }
 
+/**
+ * #6342 reopened (Giorgi's retest, 20 Oct): no plan names a target. Of the
+ * last week's 165 plans not one carried an introduction's `to_name`, because
+ * their routes are named after the helpers. Goal 29308's target, თემურ
+ * ბოლოთაშვილი (not on Netai), is on its introduction request. So when the plan
+ * names nobody, the goal's introductions do, if they all name one person (the
+ * same start of the first name, so „თემური" and „თემურ ბოლოთაშვილი" are one).
+ * The fullest spelling is shown.
+ */
+const SAME_PERSON_PREFIX = 4;
+
+function personKey(name: string): string {
+  return (name.trim().split(/\s+/u)[0] ?? '').toLowerCase().slice(0, SAME_PERSON_PREFIX);
+}
+
+export function introsTargetName(targetNames: readonly string[]): string | null {
+  const names = [...new Set(targetNames.map((n) => n.trim()).filter((n) => n !== ''))];
+  if (names.length === 0) return null;
+  if (new Set(names.map(personKey)).size !== 1) return null;
+  return names.reduce((longest, n) => (n.length > longest.length ? n : longest));
+}
+
+/** The person on this route is the one sought: the path ends at them, not past them. */
+function isTheTarget(personName: string | null, target: string | null): boolean {
+  return personName !== null && target !== null && personKey(personName) === personKey(target);
+}
+
 /** Every person this conversation's goal (or its goal-less introductions) is talking to, once each. */
 export async function routesOfOwnGoal(userId: number, threadId: number): Promise<RouteRow[]> {
   const taskId = await goalOfOwnThread(userId, threadId);
-  const [asks, intros, target] = await Promise.all([
+  const [asks, intros, planTarget] = await Promise.all([
     taskId === null ? Promise.resolve([]) : asksOf(userId, taskId),
     introsOf(userId, taskId, threadId),
     taskId === null ? Promise.resolve(null) : goalTarget(taskId),
   ]);
+  const target = planTarget ?? introsTargetName(intros.map((i) => i.target_name));
   const now = new Date();
   return oncePerPerson([
     ...asks.map((a) => ({
       personId: a.person_id,
-      route: { ...askRoute(a, now), target_name: target },
+      route: { ...askRoute(a, now), target_name: isTheTarget(a.name, target) ? null : target },
     })),
     ...intros.map((i) => ({ personId: i.person_id, route: introRoute(i) })),
   ]);

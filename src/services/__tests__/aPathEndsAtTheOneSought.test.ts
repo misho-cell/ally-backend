@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
 import { query } from '../../db/postgres/client';
-import { planTargetName, routesOfOwnGoal } from '../routesBoard.service';
+import { introsTargetName, planTargetName, routesOfOwnGoal } from '../routesBoard.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -64,6 +64,68 @@ describe('#6342: each path ends at the person it leads to', () => {
     const routes = await routesOfOwnGoal(501, 60691);
     expect(routes.map((r) => [r.person_name, r.target_name])).toEqual([
       ['თორნიკე', 'თემურ ბოლოთაშვილი'],
+      ['ლიკა', 'თემურ ბოლოთაშვილი'],
+    ]);
+  });
+
+  // Reopened 20 Oct (Giorgi's retest): no plan names a target; 29308's is on Lika's introduction.
+  it('takes the one person the goal’s introductions name when the plan names none', () => {
+    expect(introsTargetName(['თემურ ბოლოთაშვილი'])).toBe('თემურ ბოლოთაშვილი');
+    expect(introsTargetName(['თემური', ' თემურ ბოლოთაშვილი '])).toBe('თემურ ბოლოთაშვილი');
+    expect(introsTargetName(['თემური', 'ნინო ბერიძე'])).toBeNull();
+    expect(introsTargetName([])).toBeNull();
+  });
+
+  it('ends every route at the introduction’s target on a plan named after the helpers', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 29308 }] } as never)
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            person_id: 11,
+            name: 'თორნიკე',
+            status: 'sent',
+            answer: null,
+            declined_at: null,
+            seen_at: null,
+            later_until: null,
+            expired_at: null,
+            updated_at: '2026-10-19T13:38:22Z',
+          },
+          {
+            id: 2,
+            person_id: 13,
+            name: 'თემური',
+            status: 'sent',
+            answer: null,
+            declined_at: null,
+            seen_at: null,
+            later_until: null,
+            expired_at: null,
+            updated_at: '2026-10-19T13:40:00Z',
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 7,
+            person_id: 12,
+            name: 'ლიკა',
+            status: 'accepted',
+            target_name: 'თემურ ბოლოთაშვილი',
+            updated_at: '2026-10-19T14:37:51Z',
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [{ plan: { routes: [{ name: 'თორნიკე აბულაძის გზა' }] }, plan_proposed: null }],
+      } as never);
+    const routes = await routesOfOwnGoal(501, 60691);
+    expect(routes.map((r) => [r.person_name, r.target_name])).toEqual([
+      ['თორნიკე', 'თემურ ბოლოთაშვილი'],
+      ['თემური', null],
       ['ლიკა', 'თემურ ბოლოთაშვილი'],
     ]);
   });
