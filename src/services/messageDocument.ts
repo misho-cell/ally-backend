@@ -75,6 +75,25 @@ function paragraphXml(line: string): string {
   return `<w:p>${runsOf(text, heading).map(runXml).join('')}</w:p>`;
 }
 
+/**
+ * #6832 (Lika's Mac, 20 Oct): the whole-chat export opened as three narrow
+ * columns. The section said nothing (`<w:sectPr/>`): no page size, margins or
+ * column count, so the reader laid it out by its own guess. The page is now
+ * spelled out — A4, 2.5 cm margins, one column. Sizes in twentieths of a point.
+ */
+const A4_WIDTH = 11906;
+const A4_HEIGHT = 16838;
+const MARGIN = 1418;
+const HEADER_FOOTER = 708;
+const ONE_COLUMN = 1;
+const SECTION_XML =
+  '<w:sectPr>' +
+  `<w:pgSz w:w="${A4_WIDTH}" w:h="${A4_HEIGHT}"/>` +
+  `<w:pgMar w:top="${MARGIN}" w:right="${MARGIN}" w:bottom="${MARGIN}" w:left="${MARGIN}" ` +
+  `w:header="${HEADER_FOOTER}" w:footer="${HEADER_FOOTER}" w:gutter="0"/>` +
+  `<w:cols w:num="${ONE_COLUMN}" w:space="${HEADER_FOOTER}"/>` +
+  '</w:sectPr>';
+
 function documentXml(reply: string): string {
   const paragraphs = reply
     .trim()
@@ -85,7 +104,7 @@ function documentXml(reply: string): string {
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-    `<w:body>${paragraphs}<w:sectPr/></w:body></w:document>`
+    `<w:body>${paragraphs}${SECTION_XML}</w:body></w:document>`
   );
 }
 

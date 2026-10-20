@@ -29,6 +29,14 @@ describe('an answer as Word', () => {
     return (await zip.file('word/document.xml')?.async('string')) ?? '';
   };
 
+  // #6832 (Lika's Mac): an empty section opened as three narrow columns.
+  it('is an A4 page with one column', async () => {
+    const xml = await documentOf(reply);
+    expect(xml).toContain('<w:pgSz w:w="11906" w:h="16838"/>');
+    expect(xml).toContain('<w:cols w:num="1"');
+    expect(xml).not.toContain('<w:sectPr/>');
+  });
+
   it('keeps every line, the Georgian text readable', async () => {
     const xml = await documentOf(reply);
     expect(xml.match(/<w:p>/gu)).toHaveLength(4);
