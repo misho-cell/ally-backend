@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 04:22Z — #3732: tester moves the "never opened Netai" line to their prompt queue under D806
+Last TO_CODE.md section handled: 20 Oct, 07:06Z — #6370 PASS 6/6; connector note (Claude + ChatGPT) for you
 
 ## OPEN
 
@@ -7522,3 +7522,24 @@ Misho: „ყველაფერი შენი რეკომენდა�
 6. **#6139 (setup pictures):** yes, once Giorgi OKs the captions.
 7. **Hour update:** stays at 60 minutes.
 8. **#6360:** the prompt chat wrote the number rule on 19 Oct (D806); tester please verify and close. Board: tester's turn.
+
+### 20 Oct, 08:20Z — re your 06:53Z and 07:06Z: launch blockers built; #233 already done; connector answer
+- **LIVE:** ceb9ce93 #6352 + #6353 (07:17Z, box 69797); cd6079b3 #6351 (07:24Z, box 69799). Board: built, tester's turn.
+  - #6352 DONE WHEN: 3 fresh sends, „ახლა ვწერ ასისტენტებს:" with Georgian-script names, no „Ally".
+  - #6353 DONE WHEN: 3 helper answers show „<owner>, ვესაუბრე <H>-ს ასისტენტს და მითხრა, რომ …", no „მოვიდა პასუხი:".
+  - #6351 DONE WHEN: 3 introductions sent by request_introduction show Giorgi's text to the helper. A plain ask_contact question is model-written (prompt queue).
+- **Deploying in this order:**
+  - **7b2f9aa2 #6106:** an admin wallet change records the admin; `GET /admin/users/:id/tokens/history` shows who/why/when; `amount`/`reason` accepted. DONE WHEN: on a fictional seat, +100 then −50 with reasons, both in the history with the admin; −50 with no reason refused (400). Fictional seats only until Misho says otherwise.
+  - **c857fa03 LAUNCH #6341 + #6172.**
+    - **#6341:** `POST /billing/invite-days` is the server door behind „continue free" (grants the invitation's days once when an invitation can be shown, else 409 with the reason).
+    - **#6172:** the guest list (migration 255): `POST/GET /admin/guest-list`, `PATCH /admin/guest-list/groups/:group` and `/:id`. A listed number passes the invite-only gate as invited by the group's inviter and gets its days at its first sign-in.
+    - DONE WHEN (#6172): list a fictional number under a test group → it signs in → no payment page, 20 days from that sign-in; set the group to 30 → its trial moves; an unlisted, uninvited number is still stopped.
+    - DONE WHEN (#6341): once the app calls the new route, an invited fictional account taps „continue free" once and lands in the app, 3/3.
+    - Cause of the loop: the two 16–17 Oct accounts were admitted with no inviter on record, so no days; the button opened /chat, the gate refused, the app went back to /pricing. The app side is in FOR_FRONTEND 08:10Z.
+- **#233:** already built. The clawback on refund (stripeRefund.service), and D717 (62591200: the chain is paid on the first payment that is NOT refunded). Matches the tester's reading of D677/D673/D717. Board: tester's turn. DONE WHEN: a refunded first payment's shares get one negative line each; the next payment pays the chain once.
+- **#6371:** ceb9ce93 was pushed 07:13:50Z and was live by 07:17:23Z. The restart fell inside that window (box 69799).
+- **Frontend's ten rows (TO_BACKEND 07:40Z):** moved to built, tester's turn. Rows: #6271 #6357 #5052 #4919 #5117 #6273 #6337 #6359 #6368 #6205, plus #5283 and #4889. #5054 → Giorgi (iPhone status bar: white bar as now, or see-through with white text).
+- **Connector note (69734):**
+  - ChatGPT is served by the same `/mcp` endpoint as Claude, with the same instructions („inside Netai") and the same 97 tools incl. record_who_helped. A ChatGPT connector added before 18 Oct may need „refresh" in its settings to re-read the tool list.
+  - Items 3/4/5 are server behaviour, which both connectors already get: groups #6304, exclusions #6358, no buttons D846.
+  - Items 1/2/6/7 are instruction text (model-facing), so they go to the prompt queue (D806) like #3732.
