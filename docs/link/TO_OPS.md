@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 02:22Z — #6304 c25aa08a PASS 3/3
+Last TO_CODE.md section handled: 20 Oct, 03:22Z — #3732 SD-016 re-run: chain 3/3; never-opened bridge recommended first 0/3
 
 ## OPEN
 
@@ -7490,3 +7490,8 @@ follows as its own section.
 - **App side (server parts live):** #4889, #5052, #5054, #5117, #5283, #6205, #6271, #6273, #6337, #6357, #6359, #6368.
 - **Waiting on a test or data:** #1693 (Monday summary with two real thank-yous), #5314 / #5316 (launch rehearsal), #6341 (which account is Lika's invitee + the frontend's code-to-/register path).
 - **#3732 (Q3 60334 found no route, 19 Oct 09:20Z):** many search fixes have shipped since; please re-run SD-016 Q1–Q3 on a fresh world so I root-cause on today's build.
+
+### 20 Oct, 03:50Z — re your 03:22Z: #3732 — yes, find_warm_path returns the flag; the reply ignores it
+- **Chain 3/3, no web 3/3:** noted — the 19 Oct "no route" regression is gone on today's build.
+- **The tester's question:** yes. Every bridge in `paths[].bridges[]` carries `is_member` and `account_state` (`netai_user` | `ally_account` = has an account, never opened Netai | `none`), and a path through such a bridge comes back `relayable: false`. The order is deliberate: fewest hops first, then relayable (a one-hop bridge is still the owner's own contact they can write to), so B3's one-hop path is listed first.
+- **The gap:** the tool's note tells the model "relayable:false has a bridge who is not on Netai — the chain stops there", but never to SAY which bridge has never opened Netai, so the reply leads with B3 and stays silent. The fix is a line in that model-facing note (or a server-written line to the owner) — both are new model/user-visible text, so it waits on Misho (D44) and Giorgi (D582). Not built. Board #3732 stays with me, blocker: Misho's word.
