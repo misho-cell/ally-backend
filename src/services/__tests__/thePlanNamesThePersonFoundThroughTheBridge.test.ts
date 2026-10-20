@@ -26,10 +26,10 @@ function lawyerRow(name: string, viaPhone: string): Record<string, unknown> {
 }
 
 describe('the people a search found through a bridge', () => {
-  it('reads each named second-circle row with its bridges’ phones', () => {
+  it('reads each named second-circle row with its bridges’ phones and its own (69268)', () => {
     const result = { results: [lawyerRow('ნინო იურისტი', TEMO_PHONE)] };
     expect(foundThroughBridges(result)).toEqual([
-      { name: 'ნინო იურისტი', viaPhones: [TEMO_PHONE] },
+      { name: 'ნინო იურისტი', viaPhones: [TEMO_PHONE], phone: '+995 555 00 00 99' },
     ]);
   });
 

@@ -96,6 +96,8 @@ export interface FoundThroughBridge {
   /** Found past the second circle: the first link does not know them themself. */
   readonly far?: boolean;
   readonly role?: string;
+  /** The found person's own phone, when the search returned it (#6304, 69268). */
+  readonly phone?: string;
 }
 
 /** Corroborating members a saved role needs before it is told as a fact (D449). */
@@ -127,6 +129,7 @@ export function foundThroughBridges(result: unknown): FoundThroughBridge[] {
       jobPosition?: unknown;
       role_source?: unknown;
       role_sources?: unknown;
+      phone?: unknown;
     };
     const name = typeof r.name === 'string' ? r.name.trim() : '';
     if (r.ownership !== SECOND_DEGREE || name === '' || !Array.isArray(r.via_contacts)) return [];
@@ -135,7 +138,15 @@ export function foundThroughBridges(result: unknown): FoundThroughBridge[] {
       .filter((phone): phone is string => typeof phone === 'string' && phone !== '');
     if (viaPhones.length === 0) return [];
     const role = roleToldAsFact(r);
-    return [{ name, viaPhones, ...(role !== undefined && { role }) }];
+    const phone = typeof r.phone === 'string' && r.phone !== '' ? r.phone : undefined;
+    return [
+      {
+        name,
+        viaPhones,
+        ...(role !== undefined && { role }),
+        ...(phone !== undefined && { phone }),
+      },
+    ];
   });
 }
 

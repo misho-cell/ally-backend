@@ -6,7 +6,7 @@ import { nameKey } from './tools/transliterate';
 import { phoneDigits } from './phone';
 import { routeIntroductions } from './planClosedRoute';
 import type { RunLanguage } from './runLanguage';
-import { fetchAccountStates, isMemberPhone } from './tools/membership';
+import { AccountDetails, fetchAccountStates, isMemberPhone } from './tools/membership';
 
 /**
  * #6304 (Giorgi, G-077; his OK on the template as written, G-111, 19 Oct): a
@@ -141,6 +141,87 @@ function foundTarget(
 }
 
 /**
+ * The tester's 69268 (#6304, 0 of 3): a non-member saved in both the owner's and
+ * the target's phonebook never showed. The search walks members' books, so a
+ * person with no book of their own is never found through it; the target's own
+ * book says they know each other. Only non-members are added this way — members
+ * who know the target are the search's to find.
+ */
+async function sharedWithTarget(
+  userId: string,
+  targetDigits: readonly string[],
+): Promise<string[]> {
+  const result = await query<{ digits: string }>(
+    `WITH target_book AS (
+       SELECT DISTINCT regexp_replace(a.phone, '\\D', '', 'g') AS digits
+         FROM "UserAlias" a
+        WHERE a."contactId" IN (SELECT "userId" FROM "UserPhone"
+                                 WHERE regexp_replace(phone, '\\D', '', 'g') = ANY($2::text[]))
+     )
+     SELECT DISTINCT regexp_replace(o.phone, '\\D', '', 'g') AS digits
+       FROM "UserAlias" o
+       JOIN target_book t ON t.digits = regexp_replace(o.phone, '\\D', '', 'g')
+      WHERE o."contactId" = $1::int AND NOT (t.digits = ANY($2::text[]))
+      LIMIT $3`,
+    [userId, targetDigits, MAX_NAMES],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => r.digits);
+}
+
+/** The target's own phone: the plan's, else the one the search found them by. */
+function targetDigits(planInput: unknown, foundTargets: readonly FoundThroughBridge[]): string[] {
+  const phones = [
+    ...routeIntroductions(planInput).map((intro) => intro.toPhone ?? ''),
+    ...foundTargets.map((person) => person.phone ?? ''),
+  ];
+  return [...new Set(phones.map(phoneDigits))].filter((d) => d !== '');
+}
+
+/** The shared contacts not on Netai, after the ones already listed. */
+async function sharedNonMembers(
+  userId: string,
+  target: readonly string[],
+  listed: readonly string[],
+): Promise<string[]> {
+  if (target.length === 0) return [];
+  const shared = (await sharedWithTarget(userId, target)).filter((d) => !listed.includes(d));
+  if (shared.length === 0) return [];
+  const states = await fetchAccountStates(shared);
+  return shared.filter((d) => !isMemberPhone(states, d));
+}
+
+/** The owner's names, each said once; a name on Netai under any number counts as on Netai. */
+function contactsOnce(
+  digits: readonly string[],
+  names: ReadonlyMap<string, string>,
+  states: Map<string, AccountDetails>,
+): MutualContact[] {
+  const byName = new Map<string, MutualContact>();
+  for (const d of digits) {
+    const name = names.get(d);
+    if (name === undefined) continue;
+    const onNetai = isMemberPhone(states, d) || byName.get(name)?.onNetai === true;
+    byName.set(name, { name, onNetai });
+  }
+  return [...byName.values()];
+}
+
+/** The plan's go-betweens first, then everyone the run found knowing the target. */
+function knownDigits(
+  planned: readonly string[],
+  foundTargets: readonly FoundThroughBridge[],
+): string[] {
+  return [
+    ...new Set(
+      [...planned, ...foundTargets.flatMap((person) => person.viaPhones.map(phoneDigits))].filter(
+        (d) => d !== '',
+      ),
+    ),
+  ];
+}
+
+/**
  * Every contact of the owner's this run found knowing the plan's one target,
  * grouped — the plan's own go-betweens always among them. With `withReason`
  * (the plan sentence carries no „who knows whom" line, as when two
@@ -157,25 +238,17 @@ export async function mutualGroupsFor(
   const target = planTarget(planInput);
   if (target === null || WORDS[language] === undefined) return null;
   const planned = routeIntroductions(planInput).map((intro) => phoneDigits(intro.viaPhone));
-  const digits = [
-    ...new Set(
-      [
-        ...planned,
-        ...foundTarget(found, target).flatMap((person) => person.viaPhones.map(phoneDigits)),
-      ].filter((d) => d !== ''),
-    ),
-  ].slice(0, MAX_NAMES);
-  if (digits.length === 0) return null;
+  const foundTargets = foundTarget(found, target);
   try {
+    const known = knownDigits(planned, foundTargets);
+    const shared = await sharedNonMembers(userId, targetDigits(planInput, foundTargets), known);
+    const digits = [...known, ...shared].slice(0, MAX_NAMES);
+    if (digits.length === 0) return null;
     const [names, states] = await Promise.all([
       ownersNames(userId, digits),
       fetchAccountStates(digits),
     ]);
-    const contacts = digits.flatMap((d) => {
-      const name = names.get(d);
-      return name === undefined ? [] : [{ name, onNetai: isMemberPhone(states, d) }];
-    });
-    const groups = mutualGroupsText(target, contacts, language);
+    const groups = mutualGroupsText(target, contactsOnce(digits, names, states), language);
     const first = names.get(planned.find((d) => names.has(d)) ?? '');
     const reason =
       withReason && language === 'ka' && first !== undefined
