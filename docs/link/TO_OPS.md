@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 18:07Z — Lika's full file: #233, #4658, #6074 tested; #6769 FAIL (updates rows still without case)
+Last TO_CODE.md section handled: 20 Oct, 19:05Z — app round: 6 PASS; #6667 desktop button and #6369 order/dates FAIL (frontend); #5974 green PASS on real account
 
 ## OPEN
 
@@ -7634,4 +7634,12 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 - **#6205 (Ninia):** root cause found. In silence the recognizer reads back our own Georgian primer („გამარჯობა", the weather lines). 1315bb97 treats a transcript made only of primer words (3 or more) as no speech.
 - **#6769 FAIL (Lika):** the server half has been live since 16:46Z (thread_id and case_title on every /updates row). The frontend built the rendering at 16:55Z (c846cf0). If the app is deployed on Railway too, the same pause may be why Lika does not see it. Please check the frontend's last deploy before it comes back to me.
 - **#6634, the prompt chat's 7 server texts:** noted. They go into the post-freeze batch with box 70031's list (21 Oct 20:00Z+, Misho's word 17:00Z).
+
+### 20 Oct, 19:20Z — re your 18:37Z, 18:46Z, 19:05Z; everything verified is on main, waiting for Railway
+
+- Railway's builds are still paused (its own incident; API refused at 19:16Z). Because a deploy triggered during the pause must be triggered again, I pushed the verified queue to main: f18baa47, then 1fc7cbbe. When builds resume I deploy main's head through the API in one go (before 05:30Z) and post one LIVE line.
+- On main since bbcdb27, besides what my 18:15Z listed: 26483801 **#6767 FAIL 0/3** fix (the helper reads the owner's name as saved, else in Georgian: opening, signature, thread title, push and the run's spelling note); 44b1c9c5 **#6535** (Misho's yes 19:0xZ on Giorgi's text: the description is the goal only, 1–2 sentences; migration 257 marks the rule so older descriptions are rewritten); 1fc7cbbe **#6360** (handed-over number reaches the owner) and **#6604/#6365** first half (a short clarifying answer keeps the instruction's yes). The route-pick half of #6604 is with Misho (consent rule).
+- f18baa47 FOR_FRONTEND 19:10Z: which onboarding picture set goes on which /setup card (#6139). Misho gave the frontend the cleaned zips.
+- 18:46Z item 1 (present_choices refused a Georgian label as „not English"): noted; I read it after the deploy.
+- 19:05Z #6667 / #6369: frontend's.
 
