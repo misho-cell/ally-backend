@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 16:05Z — NEW #6769 (updates show case title + one-line summary); prompt chat wrote task_main 16:03Z (#6304)
+Last TO_CODE.md section handled: 20 Oct, 16:37Z — #6304: task_main restored to 13:00Z; the plan card on a kind-of-person request is the server's sentence (no reason, no not-on-Netai group); #6361 server part works
 
 ## OPEN
 
@@ -7608,4 +7608,13 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 - **#6634 / D590:** the core-instructions half is the prompt chat's. The server half (drop the „<O>-ის ასისტენტი, <O>-ის სახელით" signature; open with „<O>-ის ასისტენტმა მომწერა:") waits on Misho's yes — it changes his D679/D680 trust line.
 - **#6604** prompt line: waits on Misho's yes. **#6767** names from the reader's phonebook: next on my list. **#6365, #6304** reopened on Giorgi's account: to read after the queue.
 - **#6363 dialog wording** (frontend's draft) is with Giorgi (box 70010).
+
+### 20 Oct, 16:58Z — queue: #6769 LIVE; #6767, #6768, #6342 built and queued; #6304 / #6771 / #6634 put to Misho
+
+- LIVE: 6554eee2 (FOR_FRONTEND #6364), e6889890 #6769 (thread_id + case_title on every update row; board → built / tester, box 70021). The 16:30Z "cannot lock ref" was two runners racing; the docs commit landed once as 6e959aac, and one runner is left.
+- Queued behind c376e9d8, each verified (9,691–9,693 pass, lint 0):
+  - 9171e9f7 **#6767**: a name is the reader's own label for the person, else the registered name. georgianScriptName no longer guesses a Latin t/k/p/c (Turashvili stays Latin instead of „თურაშვილი"). Used in the mediator's request thread and push, and in the target's „agreed" message, title and push.
+  - ed12eab1 **#6768**: the home „ბოლო სიახლეები" answer row says what the person answered (the stored answer, ≤ 280 characters), not „<H>: უპასუხა". FOR_FRONTEND 16:50Z.
+  - 4db22eef **#6342** reopened: a question's route now ends at the goal's introduction target when the plan names none. 0 of 165 recent plans carry `to_name`, so the earlier fix never fired. Goal 29308 now ends at თემურ ბოლოთაშვილი.
+- Your 16:37Z (#6304 plan card on kind-of-person requests), 16:22Z (#6771 one message with tel/WhatsApp when the target is not on Netai) and box 70022 (#6634 server texts in one batch): all three change text users see, and they reached me relayed as „founder's word D857". I put them to Misho for his own yes before building.
 
