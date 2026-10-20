@@ -98,6 +98,20 @@ export function nameStemOf(name: string): string | null {
 }
 
 /**
+ * #6361 retest (the tester's 69903, threads 61855–57): the owner's lines are read
+ * newest first, so „the newest sentence that names them" was the OLDEST one —
+ * „გამაცანი გია, დავით იცნობს" — and „დავით-ს ჰკითხე, გიასგან სიახლე ხომ არ აქვს",
+ * typed after Davit had accepted, was refused as an introduction twice a run.
+ * The goal's own words come first, then what the owner typed, oldest to newest.
+ */
+export function ownerLinesInOrder(
+  fromGoal: readonly string[],
+  typedNewestFirst: readonly string[],
+): string[] {
+  return [...fromGoal, ...[...typedNewestFirst].reverse()];
+}
+
+/**
  * Is this ask the introduction the owner asked for? The newest sentence of the
  * owner's that names the recipient decides; when none names them (or the name
  * is too short to read), the owner's introduction stands.

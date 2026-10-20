@@ -531,6 +531,7 @@ import {
   asksLeaveToSend,
   OWN_PART_ONLY_ON,
   ownerAsksForIntroduction,
+  ownerLinesInOrder,
   USE_INTRODUCTION_REFUSAL,
 } from './introInstruction';
 import { dormantChoices } from './dormantChoices';
@@ -16522,7 +16523,10 @@ async function ownerLinesForGoal(
       [threads, `${RUN_EVENT_PREFIX}%`],
       OWNER_LINES_TIMEOUT_MS,
     );
-    return [...fromTask, ...typed.rows.map((r) => r.content)];
+    return ownerLinesInOrder(
+      fromTask,
+      typed.rows.map((r) => r.content),
+    );
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[fact-keeping] owner lines not read:', (err as Error).message);
