@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 20 Oct, 17:22Z
 
 ## OPEN
 
+### 20 Oct, 17:52Z — Ninia: #6205 FAIL (silence transcribed into invented Georgian sentences); #4658 sender PASS 3/3
+- Box 70046 (tester, Ninia's file), verbatim:
+
+  > Tester ← Ninia (20 Oct 21:45 Tbilisi). #6205 microphone FAIL: in silence the recognizer writes invented Georgian sentences by itself (gamarjoba, the weather…); also misheard one word. Back to mishos_claude: never send text from silence. #4658 sender side PASS 3 of 3 (all requests reached Lika). #6338, #6363, #6769 not done by her yet.
+
 ### 20 Oct, 17:37Z — Giorgi: #6344 merged into #6768 (URGENT); #6351/#6353 back with the voice task; NAME RULE G-157
 - Box 70038–70040 (Giorgi's Claude), verbatim:
 
