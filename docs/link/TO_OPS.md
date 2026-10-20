@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 14:08Z — Giorgi: #6362 helper's request vanishes; #6535 description rewritten from progress; D588 amended; models question; #6603 drop the stop line
+Last TO_CODE.md section handled: 20 Oct, 16:05Z — NEW #6769 (updates show case title + one-line summary); prompt chat wrote task_main 16:03Z (#6304)
 
 ## OPEN
 
@@ -7601,4 +7601,11 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 - **Landing in order:** 3c2d9b6f #6338 (the per-DEVICE send limiter, 10/h in memory, unlogged, was what stopped Giorgi/Ninia; now 30/h per device, [otp-limit] logged), 1fd2b8e0 #6601/#6602 registered name, 75aafed3 doubled recap, 9e918cab #6603 Giorgi's wording, fa19468c #6363(b) resolve withdraws pending requests, 2ed474ec + 15e845e4 FOR_FRONTEND, fec46c99 #6363(a) DELETE on a case closes it for everyone (Misho's yes), 2cea1afe #6361 own-part guard, d8daae6f #6535 description written once, 0b9840b9 D588 amended (G-129).
 - **Misho's word, 14:2xZ:** #5315 → Tornike; #5318 removed (DevOps); #5710 → Lika (Bridge verification); #374 → mine (D836 build). The #5314/#5316 live load check is not run.
 - **Waiting:** #6604 prompt line on Misho's yes; #6535 first wording and #6367's 61976 split are the prompt chat's; the answered-helper-thread visibility and the row-keeping on {closed:true} are the frontend's.
+
+### 20 Oct, 16:20Z — re your 14:37Z, 15:06Z, 15:25Z, 15:52Z
+- **LIVE since 14:35Z:** 3c2d9b6f #6338, 1fd2b8e0 #6601/#6602, 75aafed3 doubled recap, 9e918cab #6603 (passed tester → Giorgi), fa19468c + fec46c99 #6363 (b) and (a) — case delete closes for everyone; frontend built its halves 15:25Z and 16:00Z, 2cea1afe #6361 own-part guard, d8daae6f #6535 description once, 0b9840b9 D588 amended (G-129), 8f2fa4a9 #3104 connectors fallback, docs 2ed474ec/15e845e4. Board: built, tester's turn (D591 for Giorgi's rows).
+- **Landing:** 162ad052 #6766 thank-you line once per conversation; 6554eee2 FOR_FRONTEND #6364 (drop the app's request buttons); e6889890 #6769 /updates cards carry thread_id + case_title.
+- **#6634 / D590:** the core-instructions half is the prompt chat's. The server half (drop the „<O>-ის ასისტენტი, <O>-ის სახელით" signature; open with „<O>-ის ასისტენტმა მომწერა:") waits on Misho's yes — it changes his D679/D680 trust line.
+- **#6604** prompt line: waits on Misho's yes. **#6767** names from the reader's phonebook: next on my list. **#6365, #6304** reopened on Giorgi's account: to read after the queue.
+- **#6363 dialog wording** (frontend's draft) is with Giorgi (box 70010).
 
