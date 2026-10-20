@@ -15,6 +15,30 @@ messages in their name.
 
 ---
 
+## 20 October, 19:10Z — #6139 / task 1882: the onboarding pictures, what goes on which setup card (Misho)
+
+Misho has handed you the pictures as three zips, `NETAI_ONBOARDING_CLEAN_1of3…`, `2of3…` and `3of3…`. **Use only these.** They are the cleaned set: the phone number, codes, invite codes, people's names and case titles are blurred in every picture. Lika's raw zips and the `_source_videos` still show all of that and must not ship.
+
+**Layout inside each zip:** one folder per gadget and step. `NN.png` is the full 1920×1080 slide (step list, Georgian caption, tap highlighted). `phone_only/NN.png` (iPhone, 512×1057) and `screen_only/NN.png` (Mac/desktop, 1320×825) are the same picture cut to the screen. `captions_ka.txt` has one Georgian line per picture, in tap order. `08a`/`08b` are two taps inside one step: show them in that order.
+
+**Which card gets which set** (the five /setup steps, by the gadget `/setup/state` already reports):
+
+| /setup step | iphone | android | mac | windows |
+|---|---|---|---|---|
+| 1 install | `iphone/step1_install` (8) | none: text only | none | none |
+| 2 notifications | `iphone/step2_notifications` (7) | the same iPhone set | none | none |
+| 3 contacts | `iphone/step3_contacts` (12) | none: text only | `mac/step3_contacts` (10) | none: text only |
+| 4 freshness | none | none | none | none |
+| 5 connector | Claude: `iphone/step5_connector_claude` (13); ChatGPT: `iphone/step5_connector_chatgpt` (12) | none | `desktop/step5_connector_chatgpt` (14) | the same desktop set |
+
+On the iPhone connector card, let the person choose Claude or ChatGPT (two tabs or two buttons) and show that set. The laptop set is chatgpt.com, and its steps are the same for Claude on the desktop (the founder's note).
+
+**How to show them:** one picture at a time, a swipe or arrows with „N / total", and the caption under it from `captions_ka.txt`. The caption is the text already in the picture, so it can be small. On the phone use `phone_only/`. On a desktop screen use the full slide, or `screen_only/` for the Mac/desktop sets. Convert to WebP (or JPEG at ~80%) when you bundle: the PNGs are 0.3–0.6 MB each.
+
+**Two notes from the tester's file:** the contacts pictures reach the upload through profile → „ჩემი კონტაქტები" → „კონტაქტების განახლება" → „ატვირთე .vcf ფაილი". The /setup step 3 button ends on the same upload, so the card's button can stay as it is. The Claude pictures use the Claude iPhone **app**, not the phone browser.
+
+**The server side stays as it is.** `GET /setup/pictures` (19 Oct 09:00Z section below) is live, but its table is empty. For the launch, bundle the pictures with the app. After the launch I can load the same set into the server so the admin can swap one without your deploy. Then the card reads the server first and falls back to the bundled set. Say if you would rather read from the server from day one.
+
 ## 20 October, 17:55Z — #6768 URGENT (G-155, #6344 merged in): an introduction answer is a „ბოლო სიახლეები" row too
 
 `GET /updates/latest` rows can now have `kind: "intro_answer"` and `update_ref: "intro_<id>"`: someone answered the owner's introduction request. `detail` and `line` read „ლიკა: თემურ ბოლოთაშვილზე გაცნობის მოთხოვნა მიღებულია." (the conversation's own line, after the name). `thread_id` and `case_title` work as on every row. Nothing new to draw: treat it like `kind: "answer"`.
