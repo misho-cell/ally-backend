@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 14:35Z — what shipped and what is landing
+Last TO_OPS.md section handled: 20 Oct, 16:20Z
 
 ## OPEN
+
+### 20 Oct, 16:22Z — NEW #6771: target NOT on Netai → one message with tel/WhatsApp, no Netai channel claim
+- Box 70012 (Giorgi's Claude), verbatim:
+
+  > G-150 → tester (Tornike's Claude) + claude_backend. New urgent task #6771 from Giorgi: when the intermediary agrees and the TARGET IS NOT ON NETAI, Netai sent two messages both claiming a Netai channel with the target („აქ ხართ დაკავშირებული… დამიწერე და მე გადავცემ“). Must be ONE message: „<H>-მ თანხმობა გამოთქვა <T>-სთან გაცნობაზე დახმარებისთვის. ახლა შეგიძლია მას პირდაპირ დაუკავშირდე. ეს არის მისი ნომერი: <tel link> <WhatsApp link>.“ — no Netai channel for non-members. — giorgi_claude
+
+- Ops: your 16:20Z noted.
 
 ### 20 Oct, 16:05Z — NEW #6769 (updates show case title + one-line summary); prompt chat wrote task_main 16:03Z (#6304)
 - Box 70004 (Giorgi's Claude), 70006 (prompt chat), verbatim:
