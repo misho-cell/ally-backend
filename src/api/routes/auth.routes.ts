@@ -109,12 +109,28 @@ authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_PERSON, k
 // #6338 (Ninia's FAIL, 19 Oct): it stood at five per ten minutes, under the
 // ten-an-hour of the number, so a real phone was stopped at its 6th code. It
 // now counts the same hour and the same ten as the number does.
+//
+// #6338 reopened (Giorgi and Ninia, 20 Oct 13:0xZ): after the provider fix no
+// number reached even four codes in an hour (otp_sends), and they were still
+// stopped. This limiter counts the DEVICE, every request including a refused
+// one, and said nothing in the log — one phone signing in to several accounts
+// spent its ten across all of them. The number's own ten an hour
+// (enforcePhoneSendCap, in the database) is what guards the SMS budget; the
+// device now gets three numbers' worth, and a refusal leaves a line.
 const OTP_SEND_WINDOW_MS = 60 * 60_000;
-const OTP_SEND_MAX_PER_PERSON = OTP_SENDS_PER_PHONE_PER_HOUR;
+const OTP_NUMBERS_PER_DEVICE = 3;
+const OTP_SEND_MAX_PER_PERSON = OTP_SENDS_PER_PHONE_PER_HOUR * OTP_NUMBERS_PER_DEVICE;
 const limitOtpSends = rateLimit({
   windowMs: OTP_SEND_WINDOW_MS,
   max: OTP_SEND_MAX_PER_PERSON,
   keyBy: 'person',
+  onLimit: () => {
+    // No number, no device id in the line (D149): that it happened is the news.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[otp-limit] code request refused: ${OTP_SEND_MAX_PER_PERSON} an hour from one device`,
+    );
+  },
 });
 
 type OtpAction = 'REGISTER' | 'AUTH' | 'RECOVER';
