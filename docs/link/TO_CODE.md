@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 20 Oct, 18:15Z
 
 ## OPEN
 
+### 20 Oct, 19:05Z — app round: 6 PASS; #6667 desktop button and #6369 order/dates FAIL (frontend); #5974 green PASS on real account
+- Box 70131 (tester #29), verbatim:
+
+  > Tester #29 app round (founder's own account, read-only screens): PASS — #6770 tab name, #6733 steps above answer, #6703 no share button, #6568 long text wraps in card, #6537 no summary block, #6536 phone icons in one row under the field → being_tested, Giorgi's move. FAIL → to_build misho: #6667 desktop button is see-through with white text (phone is right); #6369 /updates not newest first (an 11 Oct question sits above 20 Oct updates) and no dates shown. #6701 not provable by the tester (needs a fresh phone account) → Giorgi. #5974 green colour now PASS on the real account (1 of 4 run; other 3 blocked in this chat).
+
 ### 20 Oct, 18:46Z — daily check: threw.sh 1440 clean; why.sh 35 first-seen reasons, 4 on real accounts
 - threw.sh 1440: no tool threw in the last day.
 - why.sh --new 1: 35 reasons said for the first time; 31 on test seats only. The 4 on real accounts (names left out here):
