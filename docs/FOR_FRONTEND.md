@@ -15,6 +15,37 @@ messages in their name.
 
 ---
 
+## 20 October, 06:30Z — Misho: every app-side row on the board is yours; the server parts are live
+
+Misho asked me to hand you every task that waits on the app. Twelve rows. Where the
+server has a part, it is LIVE on main and named below. Any new or changed words on
+screen need Giorgi's OK first (D582); none of these needs new words except where noted.
+
+**Server contracts these rows use (all LIVE):**
+- `GET /threads` rows: `title`, `short_title` (2–3 words), `one_word_title` (phone), `seen_at`, `last_message_at`, `updated_at`. `thread_updated` carries changes to every device.
+- `POST /threads/:id/seen` → 200 `{ "seen_at": "<ISO>" }`; every other device gets `thread_updated { id, seen_at }`. 404 = not theirs.
+- `POST /threads/:id/unread` → 200 `{ "seen_at": null }`, same event with `seen_at: null`.
+- `POST /threads/:id/resume`, no body → 200; resumes a PAUSED goal (and a stopped one). `/dismiss` still refuses a paused goal (409).
+- `GET /updates`: `due` now comes newest first (a160d91d, 20 Oct 01:12Z), like `seen`.
+
+**The rows (priority 1 first):**
+1. **#6271 — steps live again (regression).** While the assistant works, the steps show one by one live (#397); after the reply only the newest „ნაბიჯები (N)" stays (#5414 — keep that). The server still sends each step as a `caption` message and a live step event, unchanged since #397. Please also write on the board which change broke (1). DONE WHEN: 3 fresh requests, phone and desktop, steps live one by one; after the reply one „ნაბიჯები" only.
+2. **#6357 — unread dot.** A case whose `last_message_at` is later than `seen_at` (or `seen_at` null) shows a small green dot on its card; the title may be bolder. Opening the case calls `POST /threads/:id/seen`; the dot goes on every device through `thread_updated`. No new words. DONE WHEN: a new helper reply shows the dot within a minute on phone and desktop; opening the case removes it everywhere.
+3. **#5052 / #4919 — long case titles cut off on the phone.** Use `short_title` in the case list and the chat header (`one_word_title` for the chips on a phone); when null, the full `title` cut to its first 5 words, with no „…". DONE WHEN: no case title over 5 words or ending in „…", phone and desktop.
+4. **#5283 — Resume button on a paused case.** A card whose row says `goal_paused: true` shows Resume → `POST /threads/:id/resume`. The goal must not move to Resolved. The button's label needs Giorgi's OK if it is new. DONE WHEN: pause → resume by the button, phone and web, 3/3.
+5. **#4889 — the four versions must match.** Mobile browser = mobile app, desktop browser = desktop app; where they differ, the MOBILE APP is right (Giorgi). First: remove the „მოთხოვნები" block from the sidebar where the mobile app has none; also the code in the bottom-right corner is cut off in the phone app. Then list the differences found and fixed on the board.
+6. **#5054 — phone status bar colour.** In the NATIVE mobile app (not only the web theme-color): light green on home, the chat header's dark green on a chat. Desktop is already right.
+7. **#5117 — inner green outline while typing, phone home screen.** Remove the inner focus ring on the phone home input too (desktop is done).
+8. **#6273 — „+ ფაილის ატვირთვა" looks like part of the placeholder.** Make it a separate small outlined pill or add a thin divider. Same words.
+9. **#6337 — OTP page shows no number.** Show the number just entered (formatted, with country code) and a way back to change it. Any new wording → Giorgi first.
+10. **#6359 — logo / „Netai" name does nothing.** Make them one clickable area that opens home from any screen.
+11. **#6368 — „ქეისის კონტექსტი" panel is white.** Same light background as the app; cards inside styled like the rest.
+12. **#6205 — microphone on Ninia's Mac does nothing.** Open voice input and record; if that browser cannot record, the button says so (that sentence needs Giorgi's OK).
+
+When one is done, write „built #N" in TO_BACKEND.md and I move it on the board the same hour.
+
+---
+
 ## 19 October, 20:15Z — re your 19:55Z: #5413 — your SSE reading is right; the label is with Giorgi
 
 - **SSE:** the server sends `case_description` only one way:
