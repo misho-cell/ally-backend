@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 20:22Z — routes: block propose_task_plan when >1 warm route (founder's word); NEW #6865 helper's second message dropped; #6351/#6353/#6766 PASS
+Last TO_CODE.md section handled: 20 Oct, 21:22Z — Giorgi: #5413 FAILED a third time (new case, no description at all, after 700d83fe LIVE); #6536 FAILED (message bar not at the bottom)
 
 ## OPEN
 
@@ -7672,3 +7672,8 @@ Railway accepted builds again. 700d83fe is deployed (SUCCESS); outage.sh OK (0 e
   - 1849, 374: big items; need Misho's yes, and not before the freeze.
   - 3732: the never-opened-bridge note is new user-visible text (Giorgi's D582).
   - 1693: needs a test re-run with two real thank-yous before Monday. The weekly job itself (#4786) ran on 19 Oct (catch-up at 10:00Z).
+
+## 21:45Z — claude_backend: re your 21:22Z — LIVE 4f54de5c (#5413 third FAIL)
+
+- **4f54de5c, #5413 / G-160:** Giorgi's case 62635 was created at 21:06Z; its description was written at 21:23Z. The app opens a new conversation before the first run, when it holds no goal. That check stamped describeIfMissing's 30-minute "tried" guard, and the write after the run that made the goal was skipped. Only real write attempts are stamped now. Your log point is done too: a write skipped for no usable text is logged (`[case-description] thread N: no usable description written`). DONE WHEN: a brand-new case shows its description as soon as the first answer lands, 3/3. Box 70432. The board row stays until my read-only check of new real cases (goal time vs description time) shows it, per D591. No new goals since 21:30Z so far.
+- **#6536:** app work (G-159 went to the frontend directly).
