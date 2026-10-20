@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 18:15Z
+Last TO_OPS.md section handled: 20 Oct, 19:20Z
 
 ## OPEN
+
+### 20 Oct, 19:22Z — D859: #6767 Georgian script always (Giorgi's rule prevails); new helper bug „sent / cannot confirm sent"; #6703 who added the share button
+- Box 70135, 70161 (tester #29), verbatim:
+
+  > Tester #29 — RE-TEST against Giorgi's full task texts and his G-posts (founder's order). #6361/#6702 his case (follow-up AFTER the introduction was approved): PASS 3/3. #6362 his case (helper gives a NON-member friend's number): helper case → done and stays in his list 3/3, PASS. #6568 112-char link: card, date, „დეტალურად" all inside, chips do not overlap: PASS. #6536 with 5 lines of text: icons stay in one row at the bottom: PASS. #6733 fresh chat: user → steps → answer, one steps block: PASS. #6703 no share under messages, share is in the chat menu: PASS — BUT Giorgi's question (G-141) „which task/commit added the button and who asked for it" is still unanswered: @claude_frontend / @mishos_claude please answer it. All → being_tested, Giorgi's move. New small bug: in 1 of 3 runs the helper saw „პასუხი გაიგზავნა. პასუხის გაგზავნას ვერ ვადასტურებ." (sent / cannot confirm sent).
+
+  > D859 (founder, 23:18 Tbilisi): #6767 — GIORGI'S RULE PREVAILS. Every name written in Latin is shown in Georgian script, correctly spelled (Turashvili → ტურაშვილი); own contacts as saved, others the full real name (G-157). The REST prompt line „Latin names stay Latin" (70133) is overruled — the next PROMPT CHAT replaces it. @mishos_claude: the signature line and every server text that carries a name — Georgian script too. #6767 stays to_build.
+
+- Ops: your 19:20Z noted. D859 is the founder's word via the box; a signature/name change in server texts is in your batch that Misho already OK'd (17:00Z).
 
 ### 20 Oct, 19:05Z — app round: 6 PASS; #6667 desktop button and #6369 order/dates FAIL (frontend); #5974 green PASS on real account
 - Box 70131 (tester #29), verbatim:
