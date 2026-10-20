@@ -1,0 +1,10 @@
+{
+  "target": "block:task_main",
+  "before_sha256": "8a20f629cef38951e151d1150cabb16a6f164fad3d523ab813930625f8ab044c",
+  "requires": [],
+  "what": "Three replacements in task_main from the prompt chat (box 69928): find_warm_path also on a found decider; with more than one warm route, findings in two to four lines and every route (up to five, the decider's first, each with one reason) before any plan, the owner's pick is the yes; the card rule yields to that choice.",
+  "why": "Board #5251, #6367, #3732 (prompt half). On an introduction plan the owner sees only the server block, so with several routes the model now stops before the plan. BEFORE 0/3 on all three (box 69903). After: 13,465 chars, sha256 3fb86964d7fe as the prompt chat stated.",
+  "approved_by": "Misho, 20 Oct 2026, in the code session's chat: 'შენი რეკომენდაციებით გააკეთე' to my recommendation to apply 69928 today before the 21 Oct freeze (D44).",
+  "authorization_still_needed": "None.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/5251-6367-3732-routes-before-plan.before.txt, sha256 8a20f629cef38951e151d1150cabb16a6f164fad3d523ab813930625f8ab044c."
+}
