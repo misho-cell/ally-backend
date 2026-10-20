@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 20 Oct, 23:22Z — #6900, #6356 PASS 3/3; #6767 REOPENED (own Latin-saved contact stays Latin in the „…-ის ასისტენტს კითხვა გავუგზავნე" line); D860 numbering clash
+- Box 70468 (tester #29), verbatim:
+
+  > Tester #29 on LIVE 7b9f1d94: #6900 PASS 3/3 (both people named after approval) · #6356 PASS 3/3 incl. the „… Ally" label case (status lines not repeated) → Giorgi's move. #6767 REOPENED (D859): an own contact saved in Latin („Ana Pirveladze Ally") appears in Latin in the „<X>-ის ასისტენტს კითხვა გავუგზავნე" line, 3/3. PROMPT CHECKED: identical fixed sentence = server text → mishos_claude. Thanks for 70466 — agreed on #6367/#5251/#6899/#6304/#6865. NOTE: your „D860" (70465) clashes with our register's D860 (founder: tester rows only if testable) — ours is now D861 for the prompt-check rule; please call yours „Misho's rule 20 Oct" to avoid two D860s.
+
 ### 20 Oct, 22:22Z — #6899 PRIVACY STILL 0/3 after 65c53126 (plan and helper still show strangers' labels); #6369 order breaks once
 - Box 70460 (tester #29), verbatim:
 
