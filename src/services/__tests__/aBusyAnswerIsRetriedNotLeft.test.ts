@@ -80,7 +80,7 @@ describe('an answer whose wake found the thread busy is retried, not left', () =
     deliverAnswersWhenFree(11155);
     await fire();
     const marked = mockQuery.mock.calls.filter(([sql]) =>
-      String(sql).includes('wake_delivered_at = NOW()'),
+      String(sql).includes('SET wake_delivered_at = CASE'),
     );
     expect(marked).toHaveLength(0);
     await fire();
@@ -147,7 +147,7 @@ describe('an answer whose wake found the thread busy is retried, not left', () =
     );
     expect(card?.[1]).toEqual([26700, 171937, expect.stringContaining(OWED.answer)]);
     const marked = mockQuery.mock.calls.filter(([sql]) =>
-      String(sql).includes('wake_delivered_at = NOW()'),
+      String(sql).includes('SET wake_delivered_at = CASE'),
     );
     expect(marked).toHaveLength(1);
     expect(mockTask).not.toHaveBeenCalled();

@@ -55,7 +55,7 @@ describe('sending an answer does not wait for the asker’s run', () => {
    * same goal a second time.
    */
   it('still records the delivery when the wake succeeds', () => {
-    expect(deliver).toContain("if (delivered === 'woken') await markAskWakeDelivered(");
+    expect(deliver).toContain('!(await markAskWakeDelivered(captured.askId, captured.answer))');
   });
 
   /**

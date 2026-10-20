@@ -1184,7 +1184,7 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     expect(out).toEqual({ sent: true });
     // No delivery marker — the sweep must still see it as unwoken.
     const markCall = mockQuery.mock.calls.find(([sql]) =>
-      (sql as string).includes('wake_delivered_at = NOW()'),
+      (sql as string).includes('SET wake_delivered_at = CASE'),
     );
     expect(markCall).toBeUndefined();
   });

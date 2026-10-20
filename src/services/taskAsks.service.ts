@@ -2363,7 +2363,9 @@ async function addedAfterDelivery(askId: number, text: string): Promise<boolean>
   const result = await query<{ id: number }>(
     `UPDATE task_asks
         SET answer = answer || E'\n' || $2,
-            wake_delivered_at = NULL
+            wake_delivered_at = NULL,
+            -- #6865 retest: the card shows again, with the line that came later.
+            answer_shown_at = NULL
       WHERE id = $1 AND answer IS NOT NULL
         AND NOT ($2 = ANY(string_to_array(answer, E'\n')))
       RETURNING id`,
@@ -2566,7 +2568,12 @@ async function deliverCapturedAnswer(
               ),
               { text: captured.answer, who: captured.fromName, verbatim },
             );
-        if (delivered === 'woken') await markAskWakeDelivered(captured.askId);
+        if (
+          delivered === 'woken' &&
+          !(await markAskWakeDelivered(captured.askId, captured.answer))
+        ) {
+          deliverAnswersWhenFree(captured.taskId);
+        }
         // Row 322: a busy thread is usually the previous answer's own wake.
         // Come back as soon as it is free, with every answer still waiting.
         if (delivered === 'busy') deliverAnswersWhenFree(captured.taskId);
@@ -3331,12 +3338,29 @@ export async function listUnwokenAnswersForTask(
   return result.rows;
 }
 
-export async function markAskWakeDelivered(askId: number): Promise<void> {
-  await query(
-    `UPDATE task_asks SET wake_delivered_at = NOW() WHERE id = $1`,
-    [askId],
+/**
+ * #6865 retest (tester 0/3 on 700d83fe; worlds 62669/62671/62673): the
+ * helper's second line arrived while the first answer's wake was still running
+ * (21:23:22). It joined the stored answer, the helper read „sent", and the run
+ * that had read only the first line then stamped the whole answer delivered
+ * (21:23:27) — the second line reached nobody. The stamp holds only for the
+ * answer that was delivered (`deliveredAnswer`); an answer that grew meanwhile
+ * stays owed, its card shown again. True when stamped.
+ */
+export async function markAskWakeDelivered(
+  askId: number,
+  deliveredAnswer: string | null = null,
+): Promise<boolean> {
+  const result = await query<{ delivered: boolean }>(
+    `UPDATE task_asks
+        SET wake_delivered_at = CASE WHEN $2::text IS NULL OR answer = $2 THEN NOW() END,
+            answer_shown_at = CASE WHEN $2::text IS NULL OR answer = $2 THEN answer_shown_at END
+      WHERE id = $1
+      RETURNING wake_delivered_at IS NOT NULL AS delivered`,
+    [askId, deliveredAnswer],
     ASK_QUERY_TIMEOUT_MS,
   );
+  return result.rows[0]?.delivered ?? true;
 }
 
 /** Everything this task has asked and heard back — for the prompt's task section. */

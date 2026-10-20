@@ -706,7 +706,7 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
         arrived.map((a) => ({ text: a.answer, who: a.fromName, verbatim: a.verbatim })),
       );
   if (woken !== 'woken') return 0;
-  for (const ask of owed) await markAskWakeDelivered(ask.id);
+  await markDeliveredOrOweAgain(taskId, owed);
   await moveWakeAfterAnswer(taskId, wakeBeforeRun, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
     // eslint-disable-next-line no-console
     console.error(
@@ -764,7 +764,19 @@ async function showClosedGoalAnswers(taskId: number): Promise<void> {
     );
     await showAnswersToOwner({ threadId, ownerId }, cards);
   }
-  for (const ask of owed) await markAskWakeDelivered(ask.id);
+  await markDeliveredOrOweAgain(taskId, owed);
+}
+
+/** #6865: each answer stamped as delivered as it was; one that grew meanwhile is delivered again. */
+async function markDeliveredOrOweAgain(
+  taskId: number,
+  owed: readonly { readonly id: number; readonly answer: string | null }[],
+): Promise<void> {
+  let grew = false;
+  for (const ask of owed) {
+    if (!(await markAskWakeDelivered(ask.id, ask.answer))) grew = true;
+  }
+  if (grew) deliverAnswersWhenFree(taskId);
 }
 
 /**
