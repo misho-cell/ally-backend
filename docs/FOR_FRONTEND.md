@@ -15,6 +15,10 @@ messages in their name.
 
 ---
 
+## 20 October, 16:50Z — #6768 (Giorgi): „ბოლო სიახლეები" says what the person answered
+
+`GET /updates/latest`: a row of `kind: "answer"` used to carry `detail` / `line` „<H>: უპასუხა". It now carries what they answered: „ლიკა: თანახმაა. რა გჭირდება მისგან კონკრეტულად?". This is the answer as the goal already stored it, so no new app text is involved. It is one line of up to 280 characters, cut on a word with „…". Rows with nothing stored keep „<H>: უპასუხა". No field was added or renamed. Your „მეტი" (#5382) and grouping by `case_title` (#5215) stay as they are; please just let the line wrap instead of cutting it at the old short length.
+
 ## 20 October, 16:40Z — Misho: every app-side row on the board, in one list (14 rows)
 
 Misho asked me to hand you every task that is the app's. The board cannot set whose_turn to you, so these 14 read „mishos_claude" there; each is yours. Server facts are given where the server is involved. Giorgi's rows follow D591: built → tester → being_tested (Giorgi) → only he closes. New words need Giorgi's OK (D582).
