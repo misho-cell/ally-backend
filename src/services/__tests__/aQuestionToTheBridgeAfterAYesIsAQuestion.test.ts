@@ -1,3 +1,4 @@
+import { questionCarriesAnotherPart } from '../ownPart';
 import { askIsTheIntroduction, ownerLinesInOrder } from '../introInstruction';
 
 const GOAL = ['გია ახალაძე — გაცნობა'];
@@ -20,5 +21,25 @@ describe('a question to the go-between after the introduction was accepted', () 
   it('while the first request to him is still the introduction', () => {
     const lines = ownerLinesInOrder(GOAL, [FIRST]);
     expect(askIsTheIntroduction(lines, 'დავით ცდიაშვილი')).toBe(true);
+  });
+});
+
+/** #6361 after 0abb7e47 (the tester's 69958, threads 61728–30). */
+describe('a question to the go-between that names the person she introduces', () => {
+  const lines = [
+    'სანტექნიკოსი მჭირდება თბილისში, სასწრაფოდ',
+    'კი, სთხოვე გამაცნოს გია',
+    'დავითს ჰკითხე, გიამ დაგირეკა თუ არა უკვე',
+  ];
+
+  it('is not another person’s part: that introduction names no other go-between', () => {
+    expect(
+      questionCarriesAnotherPart(lines, 'დავით ცდიაშვილი', 'გიამ დაგირეკა თუ არა უკვე?', true),
+    ).toBe(false);
+  });
+
+  it('while a part naming another go-between still is', () => {
+    const two = [...lines, 'ეკას სთხოვე, გამაცნოს ნინო'];
+    expect(questionCarriesAnotherPart(two, 'დავით ცდიაშვილი', 'ნინოს იცნობ?', true)).toBe(true);
   });
 });

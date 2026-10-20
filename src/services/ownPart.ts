@@ -27,6 +27,15 @@ function peopleOfIntroduction(part: string): string[] {
   );
 }
 
+/** The introduction verbs the go-between reader can pick up as a name („გამაცნო…"). */
+const INTRO_VERB_RE = /^(?:გამაცნ|გაგვაცნ|დამაკავშირ|დაგვაკავშირ|შემაერთ|შეგვაერთ)/u;
+
+/** True when the part names who is to make the introduction, not only whom to meet. */
+function namesAGoBetween(part: string): boolean {
+  const named = (instructionNamed(part) ?? '').trim();
+  return named !== '' && !INTRO_VERB_RE.test(named);
+}
+
 /**
  * True when the question to this recipient names someone from an introduction
  * part that is not this recipient's own. Parts are split as the guard splits
@@ -42,8 +51,15 @@ export function questionCarriesAnotherPart(
   const own = nameStemOf(recipientName);
   if (own === null) return false;
   const asked = question.toLowerCase();
+  // #6361 after 0abb7e47 (the tester's 69958, 61728–30): „კი, სთხოვე გამაცნოს
+  // გია" names no go-between — it is this conversation's own introduction, and
+  // the one asked to make it is the very person now asked „did Gia call you?".
+  // Only a part that names ANOTHER go-between is another person's part.
   const otherIntroductions = partsOf(ownerLines, true).filter(
-    (part) => ownerAsksForIntroduction([part]) && !part.toLowerCase().includes(own),
+    (part) =>
+      ownerAsksForIntroduction([part]) &&
+      !part.toLowerCase().includes(own) &&
+      namesAGoBetween(part),
   );
   return otherIntroductions
     .flatMap(peopleOfIntroduction)
