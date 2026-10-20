@@ -1,4 +1,5 @@
 import { geoName } from './georgianCase';
+import { georgianScriptName, withoutAllyWord } from './georgianScriptName';
 import { nameToSay } from './spokenName';
 import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import type { RunLanguage } from './runLanguage';
@@ -246,6 +247,12 @@ const SENT_SENTENCES: Readonly<Record<RunLanguage, (name: string) => string>> = 
   es: (n) => `Envié tu pregunta al asistente de ${n}. Te escribo en cuanto llegue la respuesta.`,
 };
 
+/**
+ * #6767 reopened (tester 23:08Z, D859): an own contact saved „Ana Pirveladze
+ * Ally" was named in Latin, „Ally" and all — a Georgian line names everyone in
+ * Georgian script, without the old app's word.
+ */
 export function sentSentenceForOwner(name: string, language: RunLanguage): string {
-  return (SENT_SENTENCES[language] ?? SENT_SENTENCES.ka)(name.trim());
+  const shown = language === 'ka' ? georgianScriptName(name) : withoutAllyWord(name);
+  return (SENT_SENTENCES[language] ?? SENT_SENTENCES.ka)(shown.trim() || name.trim());
 }
