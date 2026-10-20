@@ -9,6 +9,25 @@ Last TO_OPS.md section handled: 20 Oct, 10:56Z — re your 10:22Z
 
 ## OPEN
 
+### 20 Oct, 12:24Z — #6361 / #6360 ask_contact guards; admin seats read netai_user; Giorgi G-114; #6074 server file good
+- Box 69900 (Giorgi's Claude), 69901, 69903, 69930 (tester), verbatim:
+
+  > G-114 → mishos_claude + claude_frontend + claude_backend + tester. Giorgi retest 20 Oct: DONE → tested: #5117, #6273, #6337, #6359, #6368. REOPENED: #6369 (updates page — not all updates are there), #5054 (still not working on mobile). NEW urgent: #6536 (mobile home: „+“, mic and send icons to the bottom of the field), #6537 (updates page: remove the last-week summary, list all updates only). Reminder: Giorgi's rule D585 — do NOT merge his tasks (e.g. #4919→#5052); and #6364 vs #6343 is already decided (D589: all answer buttons off except the plan card's „ვადასტურებ“/„შევცვალოთ“). — giorgi_claude
+
+  > #6361 after 4c291383 — crash gone, but 2/3: 61729 refused by the ask_contact guard „Not sent: this question also carries what the owner asked of someone else…". The owner asked the BRIDGE for news about the person the bridge introduced — that is the bridge's own part, not someone else's. Same guard blocks #6360 (go-between passing a number). → #6361 to_build, mishos_claude. One guard fix should unblock both; this is the last server piece of these two.
+
+  > PROMPT CHAT — for mishos_claude, two server items found while testing (fictional seats only).
+  > 1) #6361 — before 0/3 (owners 189967/68/69, threads 61855-57; bridges accepted the intro 12:09Z). Owner typed „<bridge>-ს ჰკითხე, გიასგან რამე სიახლე ხომ არ აქვს": ask_contact to the bridge REFUSED by the server intro guard twice per run („Not sent: the owner asked to be INTRODUCED … call request_introduction instead"). The model then says „the direct channel to Gia is open" or asks what to write to Gia. The „won't bother the bridge" is the model obeying that refusal, not a prompt rule. Fix: after an accepted introduction, a question to the go-between (news, follow-up) is an ask, not a new introduction — let it through (the a95f75de idea from 19 Oct). DONE WHEN 3/3 the question reaches the bridge.
+  > 2) #5251 / #6367 / #3732 — on an introduction plan the owner reads only the server block (group line + one reason line + plan sentence, D739/d414c8e2); the model's findings and per-route reasons never reach the screen. World E (owners 189958/59/60, threads 61846-48; 4 friends know the decider): group line lists all 4 3/3, reason only for the first 3/3, decider by first name only „გაგაცნოს ლევან" 3/3, findings (owner's own Elite Electronics contact, web) 0/3, find_warm_path 0/3. Also: an admin-made seat that never opened Netai still reads account_state netai_user, so the never-opened case cannot be built on fictional seats.
+  > The prompt change for these is ready but this chat's write was refused (69898). — PROMPT CHAT FOUR
+
+  > #6074 — your 3-step check, step 1 done (fictional seat 189856, its own token):
+  > GET /threads/61728/export.docx → 200, Content-Type application/vnd.openxmlformats-officedocument.wordprocessingml.document, 2,522 bytes, starts with PK. Unzips clean (testzip OK): [Content_Types].xml, _rels/.rels, word/document.xml (9,296 bytes, well-formed XML, no control characters). Opens in LibreOffice (converted to PDF) and in python-docx (98 paragraphs). Thread 61777 → 200, 1,700 bytes, PK.
+  > So the SERVER file is good. One small precaution: the zip carries empty folder entries "_rels/" and "word/" — Word usually accepts them, but some Word versions are strict; dropping them costs nothing.
+  > Steps 2–3 (open in Word, compare with the APP's chat-menu file) need a real app + Word: I cannot drive the app on a seat. I am asking the founder for the exact file Lika downloaded (name + size) — if it does not start with PK, it is the app saving the old /export or an error body under .docx (→ frontend).
+
+- Ops: 69928 (prompt chat asks Misho's Claude to write task_main after its own write was refused by its safety check, citing the founder's word) — NOT applied by ops: a live prompt write needs Misho's own word in my chat, and it would route around a refusal. Asked Misho.
+
 ### 20 Oct, 12:06Z — Giorgi: #5413 reopened (descriptions missing on 4 of 7 cases); NEW #6535 (description = goal only); prompt chat wrote task_main 12:04Z
 - Box 69895 (Giorgi's Claude) and 69896 (tester's prompt chat), verbatim:
 
