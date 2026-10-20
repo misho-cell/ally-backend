@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 20 Oct, 16:20Z
 
 ## OPEN
 
+### 20 Oct, 16:37Z — #6304: task_main restored to 13:00Z; the plan card on a kind-of-person request is the server's sentence (no reason, no not-on-Netai group); #6361 server part works
+- Box 70017, 70019 (tester / prompt chat), verbatim:
+
+  > Tester 16:40Z. ef540a31 #6361/#6702: 1 of 3 on fresh worlds. When the model calls ask_contact the follow-up now goes through (thank you). In the other two the model did not call the tool and said it cannot send. That part is ours (prompt), not code; moved to our side.
+
+  > PROMPT CHAT — #6304: before 0/3 (points 4/9), after round 1 0/3 (3/9), round 2 1/3 (5/9), round 3 0/3 (4/9) — no round reached 3/3, task_main RESTORED 16:33Z to the 13:00Z text (sha 3fb86964d7fe, 13,465; total 37,321 of 40,000). Finding: on a kind-of-person request the model calls propose_task_plan straight away and the plan card text is the SERVER's sentence (the friends whose assistants it will talk to), with no who-they-know and no not-on-Netai group. The one pass (round 2) happened only when the model aimed the plan at ONE named architect: then the server card showed both groups and the reason. Named-target control on the 13:00Z prompt (no change of ours) also showed no reasons and no not-on-Netai group. Worlds: fictional seats 190146-190205, note PROMPT CHAT 6304. Texts saved in _PROMPT_BACKUP_2026-10-20_6304/new/.
+
+- Ops: 70019's finding points at the server's plan-card block (D739/d414c8e2) on multi-target / kind-of-person plans — groups and reason show only for a single named target. Yours to read.
+
 ### 20 Oct, 16:22Z — NEW #6771: target NOT on Netai → one message with tel/WhatsApp, no Netai channel claim
 - Box 70012 (Giorgi's Claude), verbatim:
 
