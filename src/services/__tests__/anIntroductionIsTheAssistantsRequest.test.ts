@@ -19,16 +19,17 @@ describe('an introduction request is the assistant’s', () => {
   });
 
   it('writes Latin names in Georgian script, without „Ally" (#6351)', () => {
-    const text = incomingRequestOpening(
-      'ka',
-      'Giorgi Kapanadze',
-      'Nino Japaridze Ally',
-      null,
-      false,
-    );
-    expect(text).toContain('დამიკავშირდა გიორგი კაპანაძის ასისტენტი, გიორგის აინტერესებს');
-    expect(text).toContain('იცნობ თუ არა ნინო ჯაპარიძეს');
+    const text = incomingRequestOpening('ka', 'Gela Beridze', 'Nino Beridze Ally', null, false);
+    expect(text).toContain('დამიკავშირდა გელა ბერიძის ასისტენტი, გელას აინტერესებს');
+    expect(text).toContain('იცნობ თუ არა ნინო ბერიძეს');
     expect(text).not.toMatch(/Ally|[A-Za-z]/);
+  });
+
+  it('keeps a name it could only guess as registered (#6767)', () => {
+    const text = incomingRequestOpening('ka', 'Giorgi Turashvili', 'Nino Japaridze', null, false);
+    expect(text).toContain('Giorgi Turashvili');
+    expect(text).toContain('Nino Japaridze');
+    expect(text).not.toContain('თურაშვილ');
   });
 
   it('does the same in English, and in the direct case', () => {

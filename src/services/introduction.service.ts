@@ -43,6 +43,7 @@ import {
   introSnoozedLine,
 } from './introOpening';
 import { relayedForReader } from './askTranslation.service';
+import { nameAsReaderSaved } from './readerSavedName';
 import { RunLanguage } from './runLanguage';
 
 /** §16: an accept that names no channel is read as a direct one. */
@@ -799,10 +800,17 @@ export async function deliverAcceptOutcome(
       // three the introduction writes it is the one that can least afford to
       // arrive in a script they cannot read.
       const language = await userLanguage(String(targetUserId)).catch(() => 'ka' as RunLanguage);
+      // #6767: the target reads both names as he saved them.
+      const [asker, between] = await Promise.all([
+        nameAsReaderSaved(targetUserId, req.requester_user_id, requester),
+        req.mediator_user_id === null
+          ? mediatorName
+          : nameAsReaderSaved(targetUserId, req.mediator_user_id, mediatorName),
+      ]);
       const thread = await createThread(
         String(targetUserId),
         'regular',
-        introAcceptedTitle(language, requester),
+        introAcceptedTitle(language, asker),
       );
       // Row 254, second cut: „their reason: „…"" — the frame is this reader's
       // and the reason is the requester's own sentence. Same shape as the ask.
@@ -814,14 +822,14 @@ export async function deliverAcceptOutcome(
         'assistant',
         introAcceptedOpening(
           language,
-          mediatorName,
-          requester,
+          between,
+          asker,
           relayed?.text ?? why,
           channel === 'direct' && targetPhone !== null,
         ),
       );
       await sendPushNotification(String(targetUserId), {
-        ...introAcceptedPush(language, mediatorName, requester),
+        ...introAcceptedPush(language, between, asker),
         url: `/chat/${thread.id}`,
       }).catch(() => undefined);
     } catch (err) {

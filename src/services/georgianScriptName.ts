@@ -9,17 +9,23 @@ import { hasGeorgian, latinToGeorgian, nameKey } from './tools/transliterate';
  * labels reached the owner as „ახლა ვწერ ასისტენტებს: Lika Osepashvili Ally".
  *
  * A first name comes from the names list (ownerNameGeorgian: one spelling per
- * Latin key, so „Lika" is ლიკა and never ლიქა). Anything else is read by rule,
- * with one correction: in a Latin-written Georgian name a lone „k" is კ
- * (Kapanadze, Kvaratskhelia), so the rule's ქ is turned into კ; „kh" stays ხ.
+ * Latin key, so „Lika" is ლიკა and never ლიქა). Any other word is read by rule
+ * only when the rule cannot be wrong.
+ *
+ * #6767 (Giorgi, 20 Oct): „Giorgi Turashvili" came out „გიორგი თურაშვილი" — the
+ * rule reads every „t" as თ, and he is ტურაშვილი. Latin t, k, p, c (and so ts,
+ * ch) each stand for two Georgian letters; the same rule made Osepashvili
+ * „ოსეპაშვილი" for ოსეფაშვილი. A guessed spelling is never written: a name
+ * with such a letter the list does not hold stays exactly as registered.
  * An acronym („TBC") or a word with digits is left as written.
  */
 const ALLY_WORD_RE = /^ally$/iu;
 const WORD_SPLIT_RE = /\s+/u;
 const LATIN_NAME_WORD_RE = /^[A-Za-z][A-Za-z'-]*$/u;
 const ACRONYM_RE = /^[A-Z]{2,}$/u;
-const RULE_K = 'ქ';
-const NAME_K = 'კ';
+/** Digraphs with one Georgian letter each; what is left of a word after them must be sure. */
+const SURE_DIGRAPHS_RE = /kh|sh|zh|gh|dz|th|ph/gu;
+const TWO_WAY_LETTER_RE = /[tkpc]/u;
 
 /** The label without the old app's „Ally" word. */
 export function withoutAllyWord(name: string): string {
@@ -30,25 +36,32 @@ export function withoutAllyWord(name: string): string {
     .join(' ');
 }
 
-function wordInGeorgian(word: string, isFirst: boolean): string {
-  if (!LATIN_NAME_WORD_RE.test(word) || ACRONYM_RE.test(word)) return word;
-  const listed = isFirst ? georgianFirstNameOf(word) : null;
-  return listed ?? latinToGeorgian(word).split(RULE_K).join(NAME_K);
+/** True when the rule spells this Latin word one way only. */
+function ruleIsSure(word: string): boolean {
+  return !TWO_WAY_LETTER_RE.test(word.toLowerCase().replace(SURE_DIGRAPHS_RE, ''));
 }
 
-/** The name as a Georgian line writes it: no „Ally", Georgian script. */
+/** The word in Georgian script; null when only a guess could write it. */
+function wordInGeorgian(word: string, isFirst: boolean): string | null {
+  if (!LATIN_NAME_WORD_RE.test(word) || ACRONYM_RE.test(word)) return word;
+  const listed = isFirst ? georgianFirstNameOf(word) : null;
+  if (listed !== null) return listed;
+  return ruleIsSure(word) ? latinToGeorgian(word) : null;
+}
+
+/** The name as a Georgian line writes it: no „Ally"; Georgian script when it is sure, else as registered. */
 export function georgianScriptName(name: string): string {
   const clean = withoutAllyWord(name);
   if (clean === '' || hasGeorgian(clean)) return clean;
-  return clean
-    .split(WORD_SPLIT_RE)
-    .map((word, index) => wordInGeorgian(word, index === 0))
-    .join(' ');
+  const words = clean.split(WORD_SPLIT_RE).map((word, index) => wordInGeorgian(word, index === 0));
+  return words.every((word): word is string => word !== null) ? words.join(' ') : clean;
 }
 
 /** The first name only, as a Georgian line writes it. */
 export function georgianFirstName(name: string): string {
-  return georgianScriptName(name).split(WORD_SPLIT_RE)[0] ?? '';
+  const first = withoutAllyWord(name).split(WORD_SPLIT_RE)[0] ?? '';
+  if (first === '' || hasGeorgian(first)) return first;
+  return wordInGeorgian(first, true) ?? first;
 }
 
 /**

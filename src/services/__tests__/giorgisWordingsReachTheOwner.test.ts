@@ -27,14 +27,22 @@ beforeEach(() => {
 describe('a name in a Georgian line', () => {
   it('drops the old app’s „Ally" and is written in Georgian script', () => {
     expect(withoutAllyWord('Lika Osepashvili Ally')).toBe('Lika Osepashvili');
-    expect(georgianScriptName('Lika Osepashvili Ally')).toBe('ლიკა ოსეპაშვილი');
+    expect(georgianScriptName('Gela Beridze Ally')).toBe('გელა ბერიძე');
     expect(georgianScriptName('ლიკა ოსეფაშვილი Ally')).toBe('ლიკა ოსეფაშვილი');
     expect(georgianFirstName('Giorgi Kapanadze')).toBe('გიორგი');
   });
 
-  it('reads a lone k as კ and keeps kh as ხ; leaves an acronym as written', () => {
-    expect(georgianScriptName('Zura Kvaratskhelia')).toBe('ზურა კვარაცხელია');
-    expect(georgianScriptName('Gia Lomtadze TBC')).toBe('გია ლომთაძე TBC');
+  it('leaves an acronym as written', () => {
+    expect(georgianScriptName('Nino Beridze TBC')).toBe('ნინო ბერიძე TBC');
+  });
+
+  // #6767 (Giorgi, 20 Oct): Turashvili is ტურაშვილი, Osepashvili ოსეფაშვილი — the rule guessed both wrong.
+  it('never guesses a letter Latin writes two ways (t, k, p, c): the registered name stays', () => {
+    expect(georgianScriptName('Giorgi Turashvili')).toBe('Giorgi Turashvili');
+    expect(georgianScriptName('Lika Osepashvili Ally')).toBe('Lika Osepashvili');
+    expect(georgianScriptName('Zura Kvaratskhelia')).toBe('Zura Kvaratskhelia');
+    expect(georgianScriptName('Gia Lomtadze TBC')).toBe('Gia Lomtadze TBC');
+    expect(georgianFirstName('Giorgi Turashvili')).toBe('გიორგი');
   });
 
   it('takes the base’s Georgian spelling when it is the same name by sound', async () => {

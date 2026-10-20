@@ -4,6 +4,7 @@ import { CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON, closedRouteFor } from '../closedRou
 import { reasonAboutAsker } from '../askEditor.service';
 import { geoName } from '../georgianCase';
 import { targetNameForMediator } from '../mediatorTargetName';
+import { nameAsReaderSaved } from '../readerSavedName';
 import { forwardedRequestPush } from '../introOpening';
 import { query } from '../../db/postgres/client';
 import { foldedLower } from './georgianCase';
@@ -618,7 +619,8 @@ async function requestIntroductionInner(
     requestRef: insertResult.rows[0].request_ref,
     requesterUserId,
     mediatorUserId,
-    requesterName,
+    // #6767: every line of this request is the mediator's, so the asker is named as he saved her.
+    requesterName: await nameAsReaderSaved(mediatorUserId, Number(requesterUserId), requesterName),
     mediatorDisplayName: phoneResult.displayName ?? mediatorName,
     targetName,
     mediatorTargetName: isDirect
@@ -640,12 +642,12 @@ async function requestIntroductionInner(
     await sendPushNotification(String(mediatorUserId), {
       title: 'Netai — გაცნობის მოთხოვნა',
       body: isDirect
-        ? `${geoName(requesterName, 'gen')} ასისტენტი გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
+        ? `${geoName(stored.requesterName, 'gen')} ასისტენტი გწერს: ${geoName(stored.requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
         : forwarderName !== null
-          ? forwardedRequestPush(forwarderName, requesterName, stored.mediatorTargetName)
+          ? forwardedRequestPush(forwarderName, stored.requesterName, stored.mediatorTargetName)
           : // #1420: the request is the assistant's, so the push says whose assistant asks.
             // 3895: the push is the mediator's too, so it names the target as he saved him.
-            `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
+            `${geoName(stored.requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
       url: pushUrl,
     });
   }
