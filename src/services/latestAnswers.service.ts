@@ -1,7 +1,9 @@
 import { query } from '../db/postgres/client';
 import { AskState, ownerAskLine } from './askState';
+import { introOutcomeLine } from './introOpening';
 import { stripAllowedSpans } from './privacyScrub';
 import type { RunLanguage } from './runLanguage';
+import { nameAsSavedBySql } from './savedNameSql';
 import { nameToSay } from './spokenName';
 
 /**
@@ -82,4 +84,70 @@ export function answerLine(answer: LatestAnswer, language: RunLanguage): string 
 
 export function answerRef(askId: number): string {
   return `${ANSWER_REF_PREFIX}${String(askId)}`;
+}
+
+/**
+ * #6768, URGENT since #6344 was merged into it (Giorgi, G-155, 20 Oct): Lika's
+ * yes to his introduction request never reached „ბოლო სიახლეები". An answer to
+ * an introduction request is not an ask's answer, so the card never read it.
+ * It reads them now, said with the line the owner's conversation already has
+ * for it, after the name of the person who answered.
+ */
+const INTRO_REF_PREFIX = 'intro_';
+export const INTRO_ANSWER_KIND = 'intro_answer';
+const ANSWERED_INTRO_STATES = ['accepted', 'declined'];
+
+export interface LatestIntroAnswer {
+  readonly request_id: number;
+  readonly task_id: number | null;
+  readonly thread_id: number | null;
+  readonly case_title: string | null;
+  /** The mediator as the owner saved them; null when the target answered directly. */
+  readonly mediator_name: string | null;
+  readonly target_name: string;
+  readonly accepted: boolean;
+  readonly answered_at: Date;
+}
+
+export async function latestIntroAnswers(
+  userId: string,
+  limit: number,
+): Promise<LatestIntroAnswer[]> {
+  const result = await query<LatestIntroAnswer>(
+    `SELECT ir.id AS request_id, ir.requester_task_id AS task_id,
+            COALESCE(t.thread_id, ir.requester_thread_id, ir.origin_thread_id) AS thread_id,
+            th.short_title AS case_title,
+            CASE WHEN ir.mediator_user_id IS NULL THEN NULL
+                 ELSE ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} END
+              AS mediator_name,
+            ir.target_name, (ir.status = 'accepted') AS accepted, ir.responded_at AS answered_at
+       FROM introduction_requests ir
+       LEFT JOIN tasks t ON t.id = ir.requester_task_id
+       LEFT JOIN threads th ON th.id = COALESCE(t.thread_id, ir.requester_thread_id, ir.origin_thread_id)
+      WHERE ir.requester_user_id = $1::int
+        AND ir.status = ANY($4::text[])
+        AND ir.responded_at > NOW() - make_interval(days => $2)
+      ORDER BY ir.responded_at DESC
+      LIMIT $3`,
+    [userId, ANSWERS_WINDOW_DAYS, limit, ANSWERED_INTRO_STATES],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** „ლიკა: თემურზე გაცნობის მოთხოვნა მიღებულია." — the conversation's own line, after who answered. */
+export function introAnswerLine(answer: LatestIntroAnswer, language: RunLanguage): string {
+  const direct = answer.mediator_name === null;
+  const line = introOutcomeLine(
+    language,
+    answer.target_name,
+    answer.accepted,
+    direct,
+    answer.mediator_name,
+  );
+  return direct ? line : `${nameToSay(answer.mediator_name ?? '', language)}: ${line}`;
+}
+
+export function introAnswerRef(requestId: number): string {
+  return `${INTRO_REF_PREFIX}${String(requestId)}`;
 }

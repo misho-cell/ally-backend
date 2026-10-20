@@ -55,16 +55,18 @@ interface Row {
   readonly released_at: string;
 }
 
-function answerQueries(updates: unknown[], answers: unknown[]): void {
+function answerQueries(updates: unknown[], answers: unknown[], intros: unknown[] = []): void {
   mockQuery.mockImplementation((sql: unknown) =>
     Promise.resolve({
       rows: String(sql).includes('FROM pending_updates p')
         ? updates
         : String(sql).includes('FROM task_asks a')
           ? answers
-          : String(sql).includes('FROM tasks')
-            ? [{ id: GOAL_ID, title: 'თემურ ბოლოთაშვილის გაცნობა' }]
-            : [],
+          : String(sql).includes('FROM introduction_requests ir')
+            ? intros
+            : String(sql).includes('FROM tasks')
+              ? [{ id: GOAL_ID, title: 'თემურ ბოლოთაშვილის გაცნობა' }]
+              : [],
       rowCount: 0,
     } as never),
   );
@@ -131,5 +133,42 @@ describe('GET /updates/latest — a helper’s answer', () => {
     expect(String(call?.[0])).toContain('a.from_user_id = $1::int');
     expect(String(call?.[0])).toContain("a.status = 'answered'");
     expect(call?.[1]).toEqual([OWNER, 14, LATEST_UPDATES_LIMIT]);
+  });
+});
+
+/** G-155 (#6344 merged into #6768, URGENT): Lika's yes to the introduction request. */
+describe('GET /updates/latest — an answer to an introduction request', () => {
+  const LIKA_AGREED = {
+    request_id: 7,
+    task_id: GOAL_ID,
+    thread_id: THREAD_ID,
+    case_title: 'ბოლოთაშვილი',
+    mediator_name: 'ლიკა',
+    target_name: 'თემურ ბოლოთაშვილი',
+    accepted: true,
+    answered_at: new Date('2026-10-19T14:37:51.000Z'),
+  };
+
+  it('is a row saying who answered and what, opening its case', async () => {
+    answerQueries([], [], [LIKA_AGREED]);
+    const [row] = await latest();
+    expect(row).toMatchObject({
+      update_ref: 'intro_7',
+      kind: 'intro_answer',
+      thread_id: THREAD_ID,
+      title: 'თემურ ბოლოთაშვილის გაცნობა',
+      released_at: '2026-10-19T14:37:51.000Z',
+    });
+    expect(row.detail).toBe('ლიკა: თემურ ბოლოთაშვილზე გაცნობის მოთხოვნა მიღებულია.');
+  });
+
+  it('reads only the owner’s own answered requests of the last two weeks', async () => {
+    answerQueries([], []);
+    await latest();
+    const call = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM introduction_requests ir'),
+    );
+    expect(String(call?.[0])).toContain('ir.requester_user_id = $1::int');
+    expect(call?.[1]).toEqual([OWNER, 14, LATEST_UPDATES_LIMIT, ['accepted', 'declined']]);
   });
 });

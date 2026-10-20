@@ -45,6 +45,11 @@ import { userLanguage } from '../../services/threads.service';
 import {
   ANSWER_KIND,
   answerLine,
+  INTRO_ANSWER_KIND,
+  introAnswerLine,
+  introAnswerRef,
+  LatestIntroAnswer,
+  latestIntroAnswers,
   answerRef,
   latestAnswers,
   type LatestAnswer,
@@ -245,14 +250,16 @@ async function latestRows(
   userId: string,
   chosen: RunLanguage | null,
 ): Promise<readonly LatestRowView[]> {
-  const [rows, answers, language] = await Promise.all([
+  const [rows, answers, introAnswers, language] = await Promise.all([
     latestUpdates(userId),
     latestAnswers(userId, LATEST_UPDATES_LIMIT),
+    latestIntroAnswers(userId, LATEST_UPDATES_LIMIT),
     chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
   ]);
   const titles = await goalTitlesFor([
     ...rows.map((u) => u.task_id),
     ...answers.map((a) => a.task_id),
+    ...introAnswers.map((a) => a.task_id),
   ]);
   const updateRows = rows.map((u: LatestUpdate) => {
     const heading = cardHeading(
@@ -273,7 +280,35 @@ async function latestRows(
       released_at: new Date(u.released_at).toISOString(),
     };
   });
-  return newestFirst([...updateRows, ...answers.map((a) => answerRow(a, titles, language))]);
+  return newestFirst([
+    ...updateRows,
+    ...answers.map((a) => answerRow(a, titles, language)),
+    ...introAnswers.map((a) => introAnswerRow(a, titles, language)),
+  ]);
+}
+
+/** G-155 (#6344 in #6768): an answer to the owner's introduction request, as a home card row. */
+function introAnswerRow(
+  answer: LatestIntroAnswer,
+  titles: ReadonlyMap<number, string>,
+  language: RunLanguage,
+): LatestRowView {
+  const detail = introAnswerLine(answer, language);
+  const title =
+    (answer.task_id === null ? undefined : titles.get(answer.task_id)) ??
+    answer.case_title?.trim() ??
+    '';
+  return {
+    update_ref: introAnswerRef(answer.request_id),
+    kind: INTRO_ANSWER_KIND,
+    task_id: answer.task_id,
+    thread_id: answer.thread_id,
+    case_title: answer.case_title?.trim() || null,
+    title,
+    detail,
+    line: storyLine({ title, detail }),
+    released_at: new Date(answer.answered_at).toISOString(),
+  };
 }
 
 /** #6344: an answer to the owner's question, as a home card row. */

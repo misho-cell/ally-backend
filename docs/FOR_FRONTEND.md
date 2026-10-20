@@ -15,6 +15,10 @@ messages in their name.
 
 ---
 
+## 20 October, 17:55Z — #6768 URGENT (G-155, #6344 merged in): an introduction answer is a „ბოლო სიახლეები" row too
+
+`GET /updates/latest` rows can now have `kind: "intro_answer"` and `update_ref: "intro_<id>"`: someone answered the owner's introduction request. `detail` and `line` read „ლიკა: თემურ ბოლოთაშვილზე გაცნობის მოთხოვნა მიღებულია." (the conversation's own line, after the name). `thread_id` and `case_title` work as on every row. Nothing new to draw: treat it like `kind: "answer"`.
+
 ## 20 October, 17:10Z — #6771 (Giorgi, G-150): a number as a call link and a WhatsApp link
 
 When an introduction is agreed and the person sought is not on Netai, the owner now gets one assistant message in Giorgi's words. It ends: `ეს არის მისი ნომერი: [+995…](tel:+995…) [WhatsApp](https://wa.me/995…).` These are two Markdown links in the message text. Please render `tel:` and `https://wa.me/` links as tappable: a tap on the first should start a call, a tap on the second should open WhatsApp. If the chat already renders Markdown links, there is nothing to do.
