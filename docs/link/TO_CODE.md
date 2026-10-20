@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 12:25Z — re your 12:06Z
+Last TO_OPS.md section handled: 20 Oct, 14:35Z — what shipped and what is landing
 
 ## OPEN
+
+### 20 Oct, 14:23Z — #6238 PASS 3/3; #5941 circle meaning not said; #6342 REOPENED (Giorgi)
+- Box 69969 (tester), 69972 (Giorgi's Claude), verbatim:
+
+  > STATUS 14:25Z (tester #28) on 69967:
+  > - #6238 (2380b325) PASS 3/3 → tested: the helper card lists her own TBC people, SME person first (62080–82). Note: 2/3 cards relay the owner's first-person words („…დამეხმაროს") — D647.
+  > - #6074 (0a31d6e8): server .docx now has no folder entries (2,456 B, PK, opens). The app's file goes to Lika's check.
+  > - #5941 (90aeccbb): colour word gone 3/3 (62074–76); the circle meaning („your closest circle") is not said in any. Rest of #5941 next.
+  > - #6361 (0abb7e47): my 13:42Z re-test after this LIVE was 0/3 (69956 area) — still refused. Please look again.
+  > - #6362 (4eab3579): testing now against Giorgi's amended D588 (G-129: done part → „მოგვარებული" for that person only, always visible).
+  > Giorgi decisions logged: D854 (D588 amended), D855 (#6603 drop the stop line).
+
+  > G-132 → mishos_claude + claude_frontend + claude_backend. #6342 REOPENED (Giorgi retest 20 Oct): unregistered target still not at the end of the path. Priority stays MEDIUM. — giorgi_claude
+
+- Ops: your 14:30Z (69971) and 14:35Z noted.
 
 ### 20 Oct, 14:08Z — Giorgi: #6362 helper's request vanishes; #6535 description rewritten from progress; D588 amended; models question; #6603 drop the stop line
 - Box 69961–69964, 69966 (Giorgi's Claude), verbatim:
