@@ -98,6 +98,43 @@ async function resolveConnectors(
   return out;
 }
 
+/**
+ * #3104 (the tester's SE-038 / SD-022 and core battery #2): „who are my
+ * strongest connectors?" came back empty for owners whose friends hold big
+ * phonebooks, while the second-circle search on the same seats found them.
+ * The graph is one copy of the phonebooks; `UserAlias` is the other, and the
+ * one every other person tool reads. When the graph ranks nobody, the same
+ * ranking is read from `UserAlias`: each of the owner's contacts who is a
+ * Netai member, by how many people in their own phonebook the owner lacks.
+ * Exact phone matches only — both tables store „+digits".
+ */
+const FALLBACK_QUERY_TIMEOUT_MS = 8_000;
+
+async function topConnectorsFromPhonebooks(
+  userId: string,
+  limit: number,
+): Promise<{ phoneKey: string; score: number }[]> {
+  const result = await query<{ phone: string; reach: number }>(
+    `SELECT mine.phone, COUNT(DISTINCT fa.phone)::int AS reach
+       FROM "UserAlias" mine
+       JOIN "UserPhone" up ON up.phone = mine.phone
+       JOIN "User" fu ON fu.id = up."userId" AND fu."deletedAt" IS NULL AND fu.id <> $1::int
+       JOIN "UserAlias" fa ON fa."contactId" = fu.id
+      WHERE mine."contactId" = $1::int
+        AND fa.phone NOT IN (SELECT op.phone FROM "UserPhone" op WHERE op."userId" = $1::int)
+        AND NOT EXISTS (
+          SELECT 1 FROM "UserAlias" o WHERE o."contactId" = $1::int AND o.phone = fa.phone
+        )
+      GROUP BY mine.phone
+     HAVING COUNT(DISTINCT fa.phone) > 0
+      ORDER BY reach DESC
+      LIMIT $2`,
+    [userId, limit],
+    FALLBACK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({ phoneKey: r.phone, score: Number(r.reach) }));
+}
+
 /** Rank the user's direct contacts by how many people they reach that the user doesn't already know. */
 export async function getTopConnectors(
   userId: string,
@@ -137,6 +174,13 @@ export async function getTopConnectors(
     await session.close();
   }
 
+  if (ranked.length === 0) {
+    try {
+      ranked = await topConnectorsFromPhonebooks(userId, limit);
+    } catch (err) {
+      console.error('getTopConnectors phonebook fallback error:', (err as Error).message);
+    }
+  }
   const results = await resolveConnectors(userId, ranked);
   if (results.length === 0) return { found: false, reason: 'no_connectors' };
   /**

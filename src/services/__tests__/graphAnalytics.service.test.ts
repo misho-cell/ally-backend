@@ -103,6 +103,23 @@ describe('getTopConnectors', () => {
     expect(result.reason).toBe('no_connectors');
   });
 
+  /** #3104: the graph ranked nobody; the phonebooks the other tools read do. */
+  it('falls back to the phonebooks when the graph ranks nobody', async () => {
+    mockGetKey.mockResolvedValue('p1');
+    mockGetSession.mockReturnValue(fakeSession([]) as unknown as ReturnType<typeof getSession>);
+    mockQuery
+      .mockResolvedValueOnce(rows([{ phone: '+995500000111', reach: 30 }]) as never)
+      .mockResolvedValueOnce(rows([{ phone: '+995500000111', name: 'Hub Friend' }]) as never);
+
+    const result = await getTopConnectors('7');
+
+    expect(result.found).toBe(true);
+    expect(result.results).toEqual([{ name: 'Hub Friend', phone: '+995500000111', score: 30 }]);
+    expect(String(mockQuery.mock.calls[0][0])).toContain(
+      'JOIN "UserAlias" fa ON fa."contactId" = fu.id',
+    );
+  });
+
   it('degrades gracefully when the user has no phone', async () => {
     mockGetKey.mockRejectedValue(new Error('No phones'));
 
