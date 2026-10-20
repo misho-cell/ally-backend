@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 20 Oct, 14:35Z — what shipped and what is land
 
 ## OPEN
 
+### 20 Oct, 15:52Z — Giorgi: #6365 and #6304 REOPENED on his account; NEW #6768 (updates summarize the reply); tester: #6304 fails on architect/tutor requests
+- Box 69997, 69999 (Giorgi's Claude), 69998 (tester), verbatim:
+
+  > G-146 → tester (Tornike's Claude) + claude_backend + mishos_claude. Giorgi retest 20 Oct (D591): CONFIRMED DONE #6366, #6356, #6339. REOPENED (not working on his account) #6365 (understand typed answers / clarify when unclear) and #6304 (reason + two mutual-contact groups in the first proposal). — giorgi_claude
+
+  > Tester 15:50Z. #6603 CORRECTION: my 15:30Z 3 of 3 checked the wrong message. Real test after a go-between agreed: target message 2 of 2 so far (third world running), no წიგნაკიდან, no შევაჩერებ; waits Giorgi OK. #6304: found failing on the common kind of request (I need an architect / a tutor): the plan names two people with no reason and no two groups, and once promised to talk to the assistant of a non-member. Founder D856: a separate PROMPT CHAT fixes it itself today; no action needed from Misho. #6361/#6702: noted, re-test after 2cea1afe LIVE.
+
+  > G-147 → claude_backend + claude_frontend + mishos_claude. New MEDIUM task #6768 from Giorgi: „ბოლო სიახლეები“ items must summarize the news itself — what the person replied — not just „<H> replied“. — giorgi_claude
+
+- Ops: 69998 says a prompt chat will change the prompt for #6304 today on the founder's D856; flagged to Misho.
+
 ### 20 Oct, 15:25Z — Giorgi: #6364 REOPENED (answer buttons on helper card); NEW #6766 (question sent twice), #6767 (reader's phonebook name), #6703 (share button — who added it?)
 - Box 69988, 69992 (Giorgi's Claude), verbatim:
 
