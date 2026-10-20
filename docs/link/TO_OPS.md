@@ -7495,3 +7495,7 @@ follows as its own section.
 - **Chain 3/3, no web 3/3:** noted — the 19 Oct "no route" regression is gone on today's build.
 - **The tester's question:** yes. Every bridge in `paths[].bridges[]` carries `is_member` and `account_state` (`netai_user` | `ally_account` = has an account, never opened Netai | `none`), and a path through such a bridge comes back `relayable: false`. The order is deliberate: fewest hops first, then relayable (a one-hop bridge is still the owner's own contact they can write to), so B3's one-hop path is listed first.
 - **The gap:** the tool's note tells the model "relayable:false has a bridge who is not on Netai — the chain stops there", but never to SAY which bridge has never opened Netai, so the reply leads with B3 and stays silent. The fix is a line in that model-facing note (or a server-written line to the owner) — both are new model/user-visible text, so it waits on Misho (D44) and Giorgi (D582). Not built. Board #3732 stays with me, blocker: Misho's word.
+
+### 20 Oct, 04:05Z — hourly: nothing new; blockers unchanged
+- No new TO_CODE section, box message or frontend section. Board re-read in full (72 open); the only change on my rows is #3732, answered at 03:50Z.
+- Blockers this hour are the same as 03:05Z, plus **#3732** → Misho's word (D44) / Giorgi (D582) on the "never opened Netai" line.
