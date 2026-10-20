@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 20 October, 16:40Z — Misho: every app-side row on the board, in one list (14 rows)
+
+Misho asked me to hand you every task that is the app's. The board cannot set whose_turn to you, so these 14 read „mishos_claude" there; each is yours. Server facts are given where the server is involved. Giorgi's rows follow D591: built → tester → being_tested (Giorgi) → only he closes. New words need Giorgi's OK (D582).
+
+1. **#6733 — „ნაბიჯები" above the answer** (Giorgi, urgent). Order in the chat: user message → „ნაბიჯები (N)" → the assistant's answer, during and after the run, phone and desktop. Keep #5414 (only the newest steps block) and #6271 (live steps one by one).
+2. **#6364 — no answer buttons on any card** (D589). See 16:05Z below: drop the accept / decline / snooze buttons drawn from `request_ref` on a helper's request; a typed yes / no / later already settles it on the server.
+3. **#6703 — remove the „გაზიარება" button under chat messages**; sharing stays only in the chat menu. The server sends no share choice on a message; if a server field drives it, tell me which and I remove it. Please also say on the board which commit added it (D581/D582).
+4. **#6667 — the header „მოგვარდა" button white, text only** (no ✓), phone and desktop.
+5. **#6770 — rename the tab „მოგვარებული" → „დასრულებული/დახურული"** (exact text, Giorgi's OK given), everywhere the tab name appears. D588 itself is unchanged.
+6. **#6568 — long links widen case cards past the screen** (mobile, check desktop): wrap or ellipsize inside the card (`overflow-wrap:anywhere`, `min-width:0` on flex children), chips never overlap. As #5053 did for bubbles.
+7. **#6536 — mobile home: „+", microphone and send in one row at the BOTTOM of the message field**, also when the text grows.
+8. **#5054 — status-bar colour per screen** (reopened 19 Oct, Giorgi's phone): light green on home, the chat header's dark green in a chat; theme-color + safe-area background updated per screen, iPhone and Android.
+9. **#6369 — /updates: every update of every case, newest first.** The server returns `due`, `followed` and `seen` (seen = the history). If you see fewer than you expect, tell me the count you get and I check the server's limit on `seen`.
+10. **#6537 — remove the „last week summary" block from /updates**; the page is only the list (#6369).
+11. **#6769 (with #6768) — each /updates card names its case**: new `thread_id` + `case_title` on every card (16:25Z below, commit e6889890, LIVE line follows); tap opens the case, the line under it is `detail`.
+12. **#6701 — Profile: setup steps 1–3 not yet done at the very top** (contacts imported, notifications on, app on the home screen); a done step leaves the top and stays only in „მოწყობილობის დაყენება". Say if you need a field from the server for any step's state.
+13. **#6700 — registration: one step after the contacts upload asking to allow notifications** (system prompt + one short line why, skippable). Words → Giorgi's OK first.
+14. **#2080 — „follow up" flag in the „…" menu of every update card and every დავალება row**, one tap sets / clears; a flagged item stays on top and counts in the sidebar number (D716). The server half (the followed list, `followed` on each card) is live.
+15. **#5283 — a paused goal shows a Resume button** on phone and web and is never in „მოგვარებული"; the server's `POST /threads/:id/resume` resumes a paused goal (FOR_FRONTEND 17 Oct 06:45Z).
+
+Plus #6363's case dialog wording (your 16:00Z draft) — with Giorgi (box 70010).
+
 ## 20 October, 16:25Z — #6769 (Giorgi, G-148): every update says which case it belongs to
 
 `GET /updates` — each card in `due`, `followed` and `seen` gains two fields (nothing existing moves):
