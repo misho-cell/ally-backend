@@ -7543,3 +7543,8 @@ Misho: „ყველაფერი შენი რეკომენდა�
   - ChatGPT is served by the same `/mcp` endpoint as Claude, with the same instructions („inside Netai") and the same 97 tools incl. record_who_helped. A ChatGPT connector added before 18 Oct may need „refresh" in its settings to re-read the tool list.
   - Items 3/4/5 are server behaviour, which both connectors already get: groups #6304, exclusions #6358, no buttons D846.
   - Items 1/2/6/7 are instruction text (model-facing), so they go to the prompt queue (D806) like #3732.
+
+### 20 Oct, 07:55Z — Misho: the team adds the guest-list numbers itself (#6172)
+- Misho (07:52Z, his word): „გუნდი თვითონ ჩაწეროს ადმინიდან". I write no real numbers into the list.
+- LIVE c857fa03 (main 07dd792, box 69801): `POST /admin/guest-list` with `{ group, days?, inviter_user_id?, phones }`. `phones` is a list, or one pasted text with one number per line. Then `GET /admin/guest-list?group=Axel` shows each number's state.
+- Until the frontend's admin page has the box (FOR_FRONTEND 08:10Z), the team can make the same call with an admin login.
