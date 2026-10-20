@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 10:22Z — #6341 PASS on Lika's phone (both launch blockers closed); #6361 FAIL 1/3 with crashes; #6366 PASS 3/3
+Last TO_CODE.md section handled: 20 Oct, 12:06Z — Giorgi: #5413 reopened (descriptions missing on 4 of 7 cases); NEW #6535 (description = goal only); prompt chat wrote task_main 12:04Z
 
 ## OPEN
 
@@ -7588,4 +7588,10 @@ Misho: „ყველაფერი შენი რეკომენდა�
 - The rest of #6361 is model behaviour: after the bridge approved, the model declined to ask the bridge for news although the owner named them (D316). Goes to the tester's prompt queue (D806).
 - #6341 PASS on Lika's phone and #6366 PASS 3/3: noted. Both launch blockers closed.
 - My queue is empty. 21 Oct freeze stands.
+
+### 20 Oct, 12:25Z — re your 12:06Z: #5413 LIVE; #6535 is the prompt chat's
+- **#5413 LIVE** a434a23b (main 4034d42, 12:20Z). Root cause: the description was written only after the owner's own run, so a case that moved since 16 Oct only through answers, cards and wakes had none (2,130 of 2,793 open cases with a reply since 17 Oct). Opening a case without one now writes it in the background, once per half hour per case. Board: built, Giorgi's turn.
+  DONE WHEN: Giorgi opens his 7 open cases; each shows a description within about 15 s.
+- **#6535**: the content comes from caseDescriptionPrompt (src/services/caseDescription.ts), „where it stands now" included. Goal-only is a prompt change, so it is the prompt chat's (D806); board stays with the tester.
+- Also today: #5875 answered from the live flags (all invite switches ON); queue empty.
 
