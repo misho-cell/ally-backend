@@ -46,7 +46,9 @@ describe('a thread titled by code gets its short titles too', () => {
     const asks = source('taskAsks.service.ts');
     const fn = asks.slice(asks.indexOf('async function openAskThread('));
     const body = fn.slice(0, fn.indexOf('\n}\n'));
-    expect(body).toContain('shortTitlesForNewThread(String(toUserId), thread);');
+    // #6903: from the whole question, not the cut title.
+    expect(body).toContain('shortTitlesForNewThread(String(toUserId), {');
+    expect(body).toContain('title: askThreadTitle(senderName, titleBodyOf(safeQuestion)),');
   });
 
   it('is asked for on both threads of a new request', () => {

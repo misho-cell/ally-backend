@@ -176,12 +176,23 @@ function questionWithoutCondition(question: string): string {
   return cleaned ?? question;
 }
 
-function titleSnippetFrom(question: string): string {
+/** The question as the title reads it: without a leading greeting. */
+function titleBodyOf(question: string): string {
   const stripped = question.replace(TITLE_GREETING_PREFIX, '').trim();
-  const body = stripped.length > 0 ? stripped : question.trim();
-  return body.length > ASK_TITLE_SNIPPET_CHARS
-    ? `${body.slice(0, ASK_TITLE_SNIPPET_CHARS - 1)}…`
-    : body;
+  return stripped.length > 0 ? stripped : question.trim();
+}
+
+/**
+ * #6903 (Giorgi, G-166, 21 Oct 01:32 Tbilisi): the helper's case read „გიორგ
+ * თბილისში სახლის" — the title was cut inside a word („…გეგმა…"), and the
+ * short title was made from that cut text. The title now ends at a whole word.
+ */
+export function titleSnippetFrom(question: string): string {
+  const body = titleBodyOf(question);
+  if (body.length <= ASK_TITLE_SNIPPET_CHARS) return body;
+  const cut = body.slice(0, ASK_TITLE_SNIPPET_CHARS - 1);
+  const lastSpace = cut.search(/\s\S*$/u);
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:–—-]+$/u, '')}…`;
 }
 /**
  * 1688 (Lika's phone, 15 Oct): the header read „Lika Ose: Lika Ose-ს კარგი
@@ -507,7 +518,11 @@ async function openAskThread(
     status: thread.status,
     status_line: thread.status_line,
   });
-  shortTitlesForNewThread(String(toUserId), thread);
+  // #6903: the short title is made from the whole question, not from the cut title.
+  shortTitlesForNewThread(String(toUserId), {
+    id: thread.id,
+    title: askThreadTitle(senderName, titleBodyOf(safeQuestion)),
+  });
   return thread.id;
 }
 
