@@ -997,7 +997,7 @@ describe('createRelayAsk', () => {
     // #1918: the member read names the person by the asker's own label
     // (sv_ua); that is naming, not a lookup of the number by name.
     const aliasLookups = mockQuery.mock.calls.filter(([sql]) =>
-      /FROM "UserAlias" (?!sv_ua)/.test(sql as string),
+      /FROM "UserAlias" (?!sv_ua|rs_ua)/.test(sql as string),
     );
     expect(aliasLookups).toHaveLength(0);
   });

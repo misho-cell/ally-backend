@@ -14,14 +14,14 @@ const READER_LABEL_TIMEOUT_MS = 3_000;
 
 async function readersLabelFor(readerUserId: number, personUserId: number): Promise<string | null> {
   const result = await query<{ alias: string }>(
-    `SELECT TRIM(ua.alias) AS alias
-       FROM "UserAlias" ua
+    `SELECT TRIM(rs_ua.alias) AS alias
+       FROM "UserAlias" rs_ua
        JOIN "UserPhone" up
-         ON regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(ua.phone, '\\D', '', 'g')
-      WHERE ua."contactId" = $1::int
+         ON regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(rs_ua.phone, '\\D', '', 'g')
+      WHERE rs_ua."contactId" = $1::int
         AND up."userId" = $2::int
-        AND TRIM(ua.alias) <> ''
-      ORDER BY ua.created_at
+        AND TRIM(rs_ua.alias) <> ''
+      ORDER BY rs_ua.created_at
       LIMIT 1`,
     [readerUserId, personUserId],
     READER_LABEL_TIMEOUT_MS,

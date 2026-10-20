@@ -83,8 +83,15 @@ export function georgianFirstNameOf(registeredName: string): string | null {
  * instruction about it here would be two rules on one question. Empty when
  * there is nothing to say, so a prompt gains no line it does not need.
  */
-export function georgianSpellingNote(registeredName: string): string {
-  const georgian = georgianFirstNameOf(registeredName);
+export function georgianSpellingNote(
+  registeredName: string,
+  fullGeorgian: string | null = null,
+): string {
+  // G-157: the whole name when its Georgian spelling is known (surname from the base), else the first.
+  const georgian =
+    fullGeorgian !== null && hasGeorgian(fullGeorgian)
+      ? fullGeorgian
+      : georgianFirstNameOf(registeredName);
   return georgian === null
     ? ''
     : `\nქართულად სახელი ასე იწერება: ${georgian}. ` +

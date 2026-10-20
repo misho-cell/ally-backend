@@ -1,4 +1,6 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
+import { georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
+import { nameAsReaderSaved } from './readerSavedName';
 import { MAX_RELAYS_IN_A_CHAIN, relaysBefore } from './relayChain';
 export { MAX_RELAYS_IN_A_CHAIN } from './relayChain';
 import { ownerWordsAnswerNote } from './ownerWordsAnswer';
@@ -182,6 +184,26 @@ function titleSnippetFrom(question: string): string {
  * ხვალ საღამოს თავისუფალი ხარ <asker>-ის ყ…". The name goes in front only when
  * the question does not name the asker anywhere.
  */
+/**
+ * #6767 FAIL 0/3 (tester #29, 20 Oct 18:37Z): the helper read the owner's name
+ * in Latin, in the ask's opening and in its signature — the registered name,
+ * as stored. G-157: the reader's own saved name for the owner first; else the
+ * registered name, in Georgian script for a Georgian reader when its spelling
+ * is sure (names list, sure rule, or the base's own Georgian labels).
+ */
+async function senderNameForReader(
+  toUserId: string | number,
+  fromUserId: string | number,
+  registered: string,
+  language: RunLanguage,
+): Promise<string> {
+  if (registered === '') return '';
+  const saved = await nameAsReaderSaved(Number(toUserId), Number(fromUserId), registered);
+  if (language !== 'ka') return saved;
+  await learnGeorgianSpellings([saved]);
+  return georgianScriptName(saved);
+}
+
 export function askThreadTitle(senderName: string, snippet: string): string {
   const name = senderName.trim();
   if (name === '' || snippet.toLowerCase().includes(name.toLowerCase())) return snippet;
@@ -1679,7 +1701,13 @@ async function createAskNow(
    * member who has never written anything, which is what this always was.
    */
   const language = await userLanguage(String(toUserId)).catch(() => 'ka' as RunLanguage);
-  const senderName = fromName.rows[0]?.name?.trim() || unknownSenderName(language);
+  const senderName =
+    (await senderNameForReader(
+      toUserId,
+      fromUserId,
+      fromName.rows[0]?.name?.trim() ?? '',
+      language,
+    )) || unknownSenderName(language);
 
   // The question crosses accounts — scrub it.
   const safeQuestion = scrubText(trimmed);
@@ -1900,7 +1928,7 @@ async function createAskNow(
       `[ask-length] ask thread ${askThreadId}: ${body.length} characters (over ${ASK_BODY_MAX_CHARS}), sent as written`,
     );
   }
-  const profileName = fromName.rows[0]?.name?.trim() ?? '';
+  const profileName = fromName.rows[0]?.name?.trim() ? senderName : '';
   if (profileName !== '') lines.push(disclosureLine(said, profileName));
   // 48089: and once more right before the message reaches the reader — shortening is a model call too.
   if (parentAskId === undefined && !(await goalStillOpen(taskId))) {

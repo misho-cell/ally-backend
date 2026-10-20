@@ -80,3 +80,16 @@ describe('a Latin surname in a Georgian line', () => {
     expect(console.warn).toHaveBeenCalled();
   });
 });
+
+/** #6767 FAIL 0/3 (tester #29): the run is handed the owner's whole name in Georgian when known. */
+describe('the owner’s spelling note', () => {
+  it('carries the whole Georgian name when its spelling is known', () => {
+    const { georgianSpellingNote } = jest.requireActual('../ownerNameGeorgian');
+    expect(georgianSpellingNote('Giorgi Turashvili', 'გიორგი ტურაშვილი')).toContain(
+      'ასე იწერება: გიორგი ტურაშვილი.',
+    );
+    expect(georgianSpellingNote('Giorgi Turashvili', 'Giorgi Turashvili')).toContain(
+      'ასე იწერება: გიორგი.',
+    );
+  });
+});

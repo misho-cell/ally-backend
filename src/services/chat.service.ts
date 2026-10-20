@@ -681,7 +681,7 @@ import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
 import { withAssistantsSentLine } from './assistantsSentLine';
-import { georgianNamesFor } from './georgianScriptName';
+import { georgianNamesFor, georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
 import { asksWhyAboutNamed, isShortWhy, whyAnswer } from './whyThisPersonCut';
 
 const HISTORY_LIMIT = 50;
@@ -5764,12 +5764,15 @@ async function buildAgentSystemPrompt(
   const base = configResult.rows[0]?.system_prompt ?? '';
   const basePromptId = configResult.rows[0]?.id ?? null;
   const registeredName = nameResult.rows[0]?.name?.trim() ?? '';
+  // G-157 (#6767 FAIL 0/3): the owner's whole name in Georgian when the base knows its spelling.
+  if (registeredName !== '') await learnGeorgianSpellings([registeredName]);
+  const georgianName = georgianScriptName(registeredName);
   const nameSection = registeredName
     ? `\n\n## მომხმარებლის სახელი\n${registeredName} — მიმართვისას მხოლოდ ეს სახელი გამოიყენე (იხ. წესი 16).` +
       // Ticket 20 row 146 found 1: the name is stored in Latin, so every
       // Georgian rendering of it was a model transliterating on the spot —
       // and „t" is two Georgian letters. One goal carried both.
-      georgianSpellingNote(registeredName)
+      georgianSpellingNote(registeredName, georgianName)
     : '';
   // 0316 + Misho's yes on the sentence: the owner's own name for their assistant.
   const assistantNameNote = assistantNameSection(
