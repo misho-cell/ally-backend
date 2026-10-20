@@ -14826,7 +14826,11 @@ async function runToolLoop(
     // findings are never erased by its last sentence.
     searchFoundSomething &&
     bestNarration.length >= MIN_BURIED_ANSWER_CHARS &&
-    claimsNothingFound(finalText)
+    claimsNothingFound(finalText) &&
+    // #6367 after-test (the tester's 61975 / 61977): the draft had already become
+    // the reply and been shortened, so its own „კავშირი ვერ ვიპოვე" put the
+    // whole draft back in front of its short form — the owner read it twice.
+    !promoted
   ) {
     finalText = `${bestNarration}\n\n${finalText}`;
     promoted = true;
