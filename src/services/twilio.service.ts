@@ -102,13 +102,48 @@ function reportSmsFailure(error: unknown): void {
   );
 }
 
+/**
+ * #6338 (Ninia's retest, 20 Oct): codes 1–6 came, the 8th failed with the
+ * „our side" line. The log said why: `code=60203 status=429 Max send attempts
+ * reached` — Twilio Verify's own cap of five sends on ONE pending verification,
+ * below our ten an hour (b79781a7). A fresh verification starts a fresh count,
+ * so on that one refusal the pending verification is cancelled and a new one
+ * sent, once. Our own per-number limit has already been checked before here.
+ */
+const MAX_SEND_ATTEMPTS_REACHED = 60203;
+
+type TwilioClient = ReturnType<typeof getTwilioClient>['client'];
+
+async function sendVerification(
+  client: TwilioClient,
+  serviceSid: string,
+  phone: string,
+): Promise<void> {
+  await client.verify.v2.services(serviceSid).verifications.create({ to: phone, channel: 'sms' });
+}
+
+async function sendAfterCancellingThePending(
+  client: TwilioClient,
+  serviceSid: string,
+  phone: string,
+): Promise<void> {
+  await client.verify.v2.services(serviceSid).verifications(phone).update({ status: 'canceled' });
+  await sendVerification(client, serviceSid, phone);
+  // eslint-disable-next-line no-console
+  console.log(
+    '[otp-sms] provider cap on one verification reached — cancelled and sent a fresh one',
+  );
+}
+
 export async function sendSmsOtp(phone: string): Promise<void> {
   try {
     const { client, verifyServiceSid } = getTwilioClient();
-    await client.verify.v2.services(verifyServiceSid).verifications.create({
-      to: phone,
-      channel: 'sms',
-    });
+    try {
+      await sendVerification(client, verifyServiceSid, phone);
+    } catch (first) {
+      if ((first as { code?: unknown }).code !== MAX_SEND_ATTEMPTS_REACHED) throw first;
+      await sendAfterCancellingThePending(client, verifyServiceSid, phone);
+    }
   } catch (error) {
     // The missing-configuration throw above is caught here too, on purpose: an
     // env var that was never set and a provider that refuses look the same to
