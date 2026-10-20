@@ -7,6 +7,8 @@ import { geoName } from './georgianCase';
 import { RunLanguage } from './runLanguage';
 import { emitMessageAppended } from './sse.service';
 import { saveServerLine, threadLanguage } from './threads.service';
+import { georgianFirstName, georgianNamesFor } from './georgianScriptName';
+import { registeredName } from './serverGreeting';
 
 /**
  * ROW 322(a) — THE ANSWERS REACH THE OWNER'S SCREEN BEFORE THE MODEL SPEAKS.
@@ -103,13 +105,74 @@ async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<stri
   return `${who}: ${relayed.text.trim()}${original}`;
 }
 
+/**
+ * #6353 (Giorgi's wording, Misho's yes 20 Oct): in Georgian the card is
+ * Netai telling the owner what it heard — „<owner>, ვესაუბრე <H>-ს ასისტენტს
+ * და მითხრა, რომ …" — with no „მოვიდა პასუხი:" heading, no „Ally", and the
+ * helper's first name in Georgian script. Their own words stay in quotes.
+ */
+export interface GeorgianCardNames {
+  /** The owner's first name, as the card opens with it; null when unknown. */
+  readonly ownerFirst: string | null;
+  /** Each saved label as a Georgian line writes it. */
+  readonly shown: ReadonlyMap<string, string>;
+}
+
+const KA_VIA = 'შუამავალი:';
+
+async function georgianCardLine(answer: CardAnswer, names: GeorgianCardNames): Promise<string> {
+  const from = answer.fromName?.trim();
+  if (!from) return cardLine(answer, 'ka');
+  const helper = georgianFirstName(names.shown.get(from) ?? from);
+  const via = answer.viaName?.trim();
+  const viaNote = via ? ` (${KA_VIA} ${names.shown.get(via) ?? via})` : '';
+  const spoke = `ვესაუბრე ${geoName(helper, 'gen')} ასისტენტს${viaNote} და მითხრა`;
+  const retold = buttonToldByNetai(answer.answer, 'ka', nameToSay(helper, 'ka'));
+  if (retold !== null) return `${spoke}, რომ ${retold}`;
+  const relayed = await relayedForReader(answer.answer, 'ka', 'answer');
+  if (relayed.original !== undefined) {
+    const original = answer.verbatim ? `\n(„${relayed.original.trim()}")` : '';
+    return `${spoke}, რომ ${relayed.text.trim()}${original}`;
+  }
+  return answer.verbatim
+    ? `${spoke}: „${answer.answer.trim()}"`
+    : `${spoke}, რომ ${answer.answer.trim()}`;
+}
+
 export async function buildAnswerCard(
   answers: readonly CardAnswer[],
   language: RunLanguage,
+  georgianNames?: GeorgianCardNames,
 ): Promise<string> {
+  if (language === 'ka' && georgianNames !== undefined) {
+    const lines = await Promise.all(answers.map((a) => georgianCardLine(a, georgianNames)));
+    const opening = georgianNames.ownerFirst;
+    if (opening !== null && lines.length > 0) lines[0] = `${opening}, ${lines[0]}`;
+    return lines.join('\n\n');
+  }
   const heading = HEADING[language] ?? HEADING.ka;
   const lines = await Promise.all(answers.map((answer) => cardLine(answer, language)));
   return [answers.length === 1 ? heading.one : heading.many, ...lines].join('\n\n');
+}
+
+/** The owner's first name and the helpers' names, as the Georgian card writes them. */
+async function georgianCardNames(
+  ownerId: number,
+  answers: readonly CardAnswer[],
+): Promise<GeorgianCardNames> {
+  const labels = [
+    ...new Set(
+      answers
+        .flatMap((a) => [a.fromName?.trim(), a.viaName?.trim()])
+        .filter((n): n is string => typeof n === 'string' && n !== ''),
+    ),
+  ];
+  const [owner, shown] = await Promise.all([
+    registeredName(String(ownerId)),
+    georgianNamesFor(String(ownerId), labels),
+  ]);
+  const ownerFirst = owner === null ? '' : georgianFirstName(owner);
+  return { ownerFirst: ownerFirst === '' ? null : ownerFirst, shown };
 }
 
 async function markAnswersShown(askIds: readonly number[]): Promise<void> {
@@ -124,7 +187,8 @@ async function markAnswersShown(askIds: readonly number[]): Promise<void> {
 /** Writes the card and pushes it to an open screen. */
 async function writeCard(target: AnswerCardTarget, answers: readonly CardAnswer[]): Promise<void> {
   const language = await threadLanguage(target.threadId);
-  const card = await buildAnswerCard(answers, language);
+  const names = language === 'ka' ? await georgianCardNames(target.ownerId, answers) : undefined;
+  const card = await buildAnswerCard(answers, language, names);
   const saved = await saveServerLine(target.threadId, target.ownerId, card);
   emitMessageAppended(String(target.ownerId), target.threadId, randomUUID(), {
     messageId: String(saved.id),

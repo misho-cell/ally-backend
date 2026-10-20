@@ -42,19 +42,25 @@ function claimsWritingTo(sentence: string, stems: readonly string[], verb: RegEx
   );
 }
 
-/** The reply with the agreed line in place of „I wrote to <name>"; unchanged in other languages. */
+/**
+ * The reply with the agreed line in place of „I wrote to <name>"; unchanged in other languages.
+ * #6352: `shownNames` gives each saved label as the line writes it (Georgian script, no „Ally");
+ * the model's own sentence is still found by either spelling.
+ */
 export function withAssistantsSentLine(
   reply: string,
   askedNames: readonly string[],
   language: RunLanguage,
+  shownNames: ReadonlyMap<string, string> = new Map(),
 ): string {
   const line = ASSISTANTS_SENT_LINE[language];
   const verb = SEND_VERB_RE[language];
   const names = [...new Set(askedNames.map((n) => n.trim()).filter((n) => n !== ''))];
   if (line === undefined || verb === undefined || names.length === 0) return reply;
-  const sentLine = line(names.join(', '));
+  const shown = [...new Set(names.map((name) => shownNames.get(name) ?? name))];
+  const sentLine = line(shown.join(', '));
   if (reply.includes(sentLine)) return reply;
-  const stems = names.map(nameStem);
+  const stems = [...names, ...shown].map(nameStem);
   let placed = false;
   const kept = (reply.match(SENTENCE_RE) ?? [reply]).map((sentence) => {
     if (!claimsWritingTo(sentence, stems, verb)) return sentence;

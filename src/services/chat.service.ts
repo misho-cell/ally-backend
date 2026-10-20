@@ -679,6 +679,7 @@ import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
 import { withAssistantsSentLine } from './assistantsSentLine';
+import { georgianNamesFor } from './georgianScriptName';
 import { asksWhyAboutNamed, isShortWhy, whyAnswer } from './whyThisPersonCut';
 
 const HISTORY_LIMIT = 50;
@@ -17578,7 +17579,10 @@ export async function processChat(
   }
   // #5149 (the founder's yes, 66994): a run that wrote says „ახლა ვწერ ასისტენტებს: …".
   if (runAskSent.has(runId)) {
-    effectiveFinal = withAssistantsSentLine(effectiveFinal, askedOne, language);
+    // #6352 (Giorgi's wording, Misho's yes 20 Oct): Georgian script, no „Ally".
+    const shownNames =
+      language === 'ka' ? await georgianNamesFor(userId, askedOne) : new Map<string, string>();
+    effectiveFinal = withAssistantsSentLine(effectiveFinal, askedOne, language, shownNames);
   }
   // D796 / D800, #6074: a file ask (Excel, Word, Markdown) answered with a list says where the file is.
   if (askedFileFormat(userMessage) !== null && tableFromMessage(effectiveFinal) === null) {

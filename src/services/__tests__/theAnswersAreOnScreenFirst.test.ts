@@ -132,7 +132,10 @@ describe('showing it', () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     expect(await showAnswersToOwner(TARGET, [OWN_WORDS])).toBe(false);
-    expect(mockQuery).not.toHaveBeenCalled();
+    // #6353: the card reads names first; what must not happen is the mark.
+    expect(mockQuery.mock.calls.map(([sql]) => String(sql))).not.toContainEqual(
+      expect.stringContaining('UPDATE task_asks'),
+    );
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
