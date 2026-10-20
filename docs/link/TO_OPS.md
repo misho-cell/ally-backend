@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 07:06Z — #6370 PASS 6/6; connector note (Claude + ChatGPT) for you
+Last TO_CODE.md section handled: 20 Oct, 07:22Z — tester asks the exact restart time of ceb9ce93 (#6371)
 
 ## OPEN
 
