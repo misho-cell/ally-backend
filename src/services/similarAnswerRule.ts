@@ -42,7 +42,26 @@ function isOnlyTheBareLine(reply: string): boolean {
   return Object.values(ANSWER_SENT_LINE).some((line) => line === trimmed);
 }
 
-export function withAnswerSentLine(reply: string, language: RunLanguage): string {
+/**
+ * Tester #29 (box 70135, 1 of 3): the helper read „პასუხი გაიგზავნა. პასუხის
+ * გაგზავნას ვერ ვადასტურებ." The answer had gone — the server says this line
+ * only after the send — and the model's own sentence said it could not confirm
+ * it. A sentence denying or doubting the send is false here and is dropped.
+ */
+const DOUBTS_IT_WENT_RE =
+  /(?:ვერ|არ)\s+(?:\S+\s+)?(?:ვადასტურებ|დავადასტურ|გაიგზავნ|გავაგზავნ|გავუგზავნ)|გაგზავნ\S*\s+(?:ვერ|არ)\s|\b(?:could\s*n[o']t|cannot|can't)\s+confirm\b|\b(?:was|is)\s*n[o']t\s+sent\b/iu;
+const SENTENCE_RE = /[^.!?\n]+[.!?]*[ \t]*\n*/gu;
+
+function withoutDoubtThatItWent(reply: string): string {
+  if (!DOUBTS_IT_WENT_RE.test(reply)) return reply;
+  return (reply.match(SENTENCE_RE) ?? [])
+    .filter((sentence) => !DOUBTS_IT_WENT_RE.test(sentence))
+    .join('')
+    .trim();
+}
+
+export function withAnswerSentLine(rawReply: string, language: RunLanguage): string {
+  const reply = withoutDoubtThatItWent(rawReply);
   // The tester's 1103 (33157): the model itself wrote the bare „პასუხი გაიგზავნა.",
   // so the empty-reply branch never ran and the helper still got no thanks.
   if (reply.trim() === '' || isOnlyTheBareLine(reply)) {
@@ -71,6 +90,7 @@ export function withAnswerSentLineOnce(
   alreadySaid: boolean,
 ): string {
   if (!alreadySaid) return withAnswerSentLine(reply, language);
-  const trimmed = reply.trim();
-  return trimmed === '' || isOnlyTheBareLine(trimmed) ? '' : reply;
+  const kept = withoutDoubtThatItWent(reply);
+  const trimmed = kept.trim();
+  return trimmed === '' || isOnlyTheBareLine(trimmed) ? '' : kept;
 }

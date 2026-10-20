@@ -36,12 +36,12 @@ describe('a name in a Georgian line', () => {
     expect(georgianScriptName('Nino Beridze TBC')).toBe('ნინო ბერიძე TBC');
   });
 
-  // #6767 (Giorgi, 20 Oct): Turashvili is ტურაშვილი, Osepashvili ოსეფაშვილი — the rule guessed both wrong.
-  it('never guesses a letter Latin writes two ways (t, k, p, c): the registered name stays', () => {
-    expect(georgianScriptName('Giorgi Turashvili')).toBe('Giorgi Turashvili');
-    expect(georgianScriptName('Lika Osepashvili Ally')).toBe('Lika Osepashvili');
-    expect(georgianScriptName('Zura Kvaratskhelia')).toBe('Zura Kvaratskhelia');
-    expect(georgianScriptName('Gia Lomtadze TBC')).toBe('Gia Lomtadze TBC');
+  // D859 (the founder, 20 Oct): Georgian script always. With nothing learned from the
+  // base, the rule's reading, a lone k as კ; the base corrects the rest (surnameSpelling).
+  it('is in Georgian script even when only the rule can spell it', () => {
+    expect(georgianScriptName('Zura Kvaratskhelia')).toBe('ზურა კვარაცხელია');
+    expect(georgianScriptName('Gia Lomtadze TBC')).toBe('გია ლომთაძე TBC');
+    expect(georgianScriptName('Lika Osepashvili Ally')).toBe('ლიკა ოსეპაშვილი');
     expect(georgianFirstName('Giorgi Turashvili')).toBe('გიორგი');
   });
 

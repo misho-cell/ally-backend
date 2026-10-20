@@ -57,15 +57,23 @@ describe('a Latin surname in a Georgian line', () => {
 
   it('is written as the base spells it once learned: Turashvili is ტურაშვილი', async () => {
     baseCounts({ ტურაშვილი: 200, თურაშვილი: 24 });
-    expect(georgianScriptName('Giorgi Turashvili')).toBe('Giorgi Turashvili');
+    // D859: Georgian script always — before the base is read, the rule's reading.
+    expect(georgianScriptName('Giorgi Turashvili')).toBe('გიორგი თურაშვილი');
     await learnGeorgianSpellings(['Giorgi Turashvili']);
     expect(georgianScriptName('Giorgi Turashvili')).toBe('გიორგი ტურაშვილი');
   });
 
-  it('stays as registered when the base has no clear spelling', async () => {
-    baseCounts({ თურაშვილი: 30, ტურაშვილი: 25 });
+  // D859 (the founder, 20 Oct): Georgian script always, Giorgi's rule over „as registered".
+  it('takes the spelling the base uses most when none leads clearly', async () => {
+    baseCounts({ ტურაშვილი: 30, თურაშვილი: 25 });
     await learnGeorgianSpellings(['Giorgi Turashvili']);
-    expect(georgianScriptName('Giorgi Turashvili')).toBe('Giorgi Turashvili');
+    expect(georgianScriptName('Giorgi Turashvili')).toBe('გიორგი ტურაშვილი');
+  });
+
+  it('keeps the rule’s reading when the base uses none of them', async () => {
+    baseCounts({});
+    await learnGeorgianSpellings(['Giorgi Turashvili']);
+    expect(georgianScriptName('Giorgi Turashvili')).toBe('გიორგი თურაშვილი');
   });
 
   it('asks the base nothing for a name the list and the rule already spell', async () => {
@@ -76,7 +84,7 @@ describe('a Latin surname in a Georgian line', () => {
   it('learns nothing when the read fails, and says so', async () => {
     mockQuery.mockRejectedValue(new Error('timeout'));
     await learnGeorgianSpellings(['Giorgi Turashvili']);
-    expect(georgianScriptName('Giorgi Turashvili')).toBe('Giorgi Turashvili');
+    expect(georgianScriptName('Giorgi Turashvili')).toBe('გიორგი თურაშვილი');
     expect(console.warn).toHaveBeenCalled();
   });
 });

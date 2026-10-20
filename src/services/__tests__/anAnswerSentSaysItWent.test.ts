@@ -69,3 +69,22 @@ describe('the answer-sent line, said once', () => {
     expect(withAnswerSentLineOnce('კარგი, გადავეცი.', 'ka', true)).toBe('კარგი, გადავეცი.');
   });
 });
+
+/** Tester #29 (box 70135): „პასუხი გაიგზავნა. პასუხის გაგზავნას ვერ ვადასტურებ." */
+describe('a reply that doubts the answer went', () => {
+  it('loses the doubting sentence: the server knows the answer went', () => {
+    expect(withAnswerSentLine('პასუხის გაგზავნას ვერ ვადასტურებ. კიდევ რამე?', 'ka')).toBe(
+      'პასუხი გაიგზავნა. კიდევ რამე?',
+    );
+    expect(withAnswerSentLine('პასუხის გაგზავნას ვერ ვადასტურებ.', 'ka')).toBe(
+      'მადლობა, პასუხი გაიგზავნა.',
+    );
+    expect(withAnswerSentLine("I can't confirm it was sent. Anything else?", 'en')).toBe(
+      'Your answer was sent. Anything else?',
+    );
+  });
+
+  it('leaves a reply that does not doubt it alone', () => {
+    expect(withAnswerSentLine('კარგი, გავუგზავნე.', 'ka')).toBe('კარგი, გავუგზავნე.');
+  });
+});

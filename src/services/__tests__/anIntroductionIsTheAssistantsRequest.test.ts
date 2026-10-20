@@ -25,11 +25,10 @@ describe('an introduction request is the assistant’s', () => {
     expect(text).not.toMatch(/Ally|[A-Za-z]/);
   });
 
-  it('keeps a name it could only guess as registered (#6767)', () => {
+  it('writes even an unsure name in Georgian script (D859)', () => {
     const text = incomingRequestOpening('ka', 'Giorgi Turashvili', 'Nino Japaridze', null, false);
-    expect(text).toContain('Giorgi Turashvili');
-    expect(text).toContain('Nino Japaridze');
-    expect(text).not.toContain('თურაშვილ');
+    expect(text).not.toMatch(/[A-Za-z]/);
+    expect(text).toContain('ნინო ჯაპარიძეს');
   });
 
   it('does the same in English, and in the direct case', () => {

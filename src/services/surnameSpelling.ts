@@ -8,8 +8,7 @@ import { latinToGeorgian } from './tools/transliterate';
  * Surnames have none, but the base is one: members saved thousands of people
  * in Georgian. So each spelling a Latin surname could have (t is თ or ტ, k is
  * კ or ქ, p is პ or ფ, ts is ც or წ, ch is ჩ or ჭ) is counted among the saved
- * labels, and the one people actually write wins — only when it clearly does.
- * Otherwise nothing is learned and the name stays as registered.
+ * labels, and the one people actually write wins (bestSpelling, D859).
  *
  * The lookup is async and the text builders are not, so callers learn the
  * names they are about to write first (learnSurnameSpellings), and the
@@ -63,6 +62,19 @@ export function clearWinner(counts: ReadonlyMap<string, number>): string | null 
 }
 
 /**
+ * D859 (the founder, 20 Oct 23:18 Tbilisi): Georgian script ALWAYS, Giorgi's
+ * rule over „leave it as registered". With no clear winner, the spelling the
+ * base uses most is still the best one there is; with none used at all, nothing
+ * is learned and the rule's own reading stands (georgianScriptName).
+ */
+export function bestSpelling(counts: ReadonlyMap<string, number>): string | null {
+  const winner = clearWinner(counts);
+  if (winner !== null) return winner;
+  const [first] = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  return first !== undefined && first[1] > 0 ? first[0] : null;
+}
+
+/**
  * One indexed count per candidate (idx_user_alias_trgm). Each candidate is its
  * own parameter: read from an unnested array the planner cannot use the index,
  * and the lookup ran past its timeout.
@@ -88,7 +100,7 @@ export async function learnSurnameSpellings(words: readonly string[]): Promise<v
   const todo = [...new Set(words.map((w) => w.toLowerCase()))].filter((w) => !learned.has(w));
   for (const word of todo) {
     try {
-      const spelling = clearWinner(await countsOf(surnameCandidates(word)));
+      const spelling = bestSpelling(await countsOf(surnameCandidates(word)));
       if (learned.size >= MAX_LEARNED) learned.clear();
       learned.set(word, spelling);
     } catch (err) {

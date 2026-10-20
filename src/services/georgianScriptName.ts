@@ -16,9 +16,9 @@ import { hasGeorgian, latinToGeorgian, nameKey } from './tools/transliterate';
  * #6767 (Giorgi, 20 Oct): „Giorgi Turashvili" came out „გიორგი თურაშვილი" — the
  * rule reads every „t" as თ, and he is ტურაშვილი. Latin t, k, p, c (and so ts,
  * ch) each stand for two Georgian letters; the same rule made Osepashvili
- * „ოსეპაშვილი" for ოსეფაშვილი. A guessed spelling is never written: such a
- * word takes the spelling the base's Georgian labels use (G-157, surnameSpelling),
- * and when the base has no clear one the name stays exactly as registered.
+ * „ოსეპაშვილი" for ოსეფაშვილი. Such a word takes the spelling the base's
+ * Georgian labels use (G-157, surnameSpelling); D859 keeps it in Georgian
+ * script even when the base has none.
  * An acronym („TBC") or a word with digits is left as written.
  */
 const ALLY_WORD_RE = /^ally$/iu;
@@ -51,15 +51,21 @@ function needsTheBase(word: string, isFirst: boolean): boolean {
 }
 
 /**
- * The word in Georgian script; null when only a guess could write it. G-157: a
- * word the rule cannot be sure of takes the spelling the base uses for it
- * (surnameSpelling), once learned.
+ * The word in Georgian script. G-157: a word the rule cannot be sure of takes
+ * the spelling the base uses for it (surnameSpelling), once learned. D859
+ * (the founder, 20 Oct): Georgian script always — with nothing learned, the
+ * rule's reading, a lone „k" read as კ as in Georgian surnames (Kapanadze,
+ * Kvaratskhelia); „kh" stays ხ.
  */
-function wordInGeorgian(word: string, isFirst: boolean): string | null {
+const RULE_K = 'ქ';
+const NAME_K = 'კ';
+
+function wordInGeorgian(word: string, isFirst: boolean): string {
   if (!LATIN_NAME_WORD_RE.test(word) || ACRONYM_RE.test(word)) return word;
   const listed = isFirst ? georgianFirstNameOf(word) : null;
   if (listed !== null) return listed;
-  return ruleIsSure(word) ? latinToGeorgian(word) : learnedSurnameSpelling(word);
+  if (ruleIsSure(word)) return latinToGeorgian(word);
+  return learnedSurnameSpelling(word) ?? latinToGeorgian(word).split(RULE_K).join(NAME_K);
 }
 
 /** Learns, from the base, the spelling of every word in these names the rule cannot be sure of. */
@@ -71,19 +77,21 @@ export async function learnGeorgianSpellings(names: readonly string[]): Promise<
   if (words.length > 0) await learnSurnameSpellings(words);
 }
 
-/** The name as a Georgian line writes it: no „Ally"; Georgian script when it is sure, else as registered. */
+/** The name as a Georgian line writes it: no „Ally", Georgian script (D859). */
 export function georgianScriptName(name: string): string {
   const clean = withoutAllyWord(name);
   if (clean === '' || hasGeorgian(clean)) return clean;
-  const words = clean.split(WORD_SPLIT_RE).map((word, index) => wordInGeorgian(word, index === 0));
-  return words.every((word): word is string => word !== null) ? words.join(' ') : clean;
+  return clean
+    .split(WORD_SPLIT_RE)
+    .map((word, index) => wordInGeorgian(word, index === 0))
+    .join(' ');
 }
 
 /** The first name only, as a Georgian line writes it. */
 export function georgianFirstName(name: string): string {
   const first = withoutAllyWord(name).split(WORD_SPLIT_RE)[0] ?? '';
   if (first === '' || hasGeorgian(first)) return first;
-  return wordInGeorgian(first, true) ?? first;
+  return wordInGeorgian(first, true);
 }
 
 /**
