@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 20 October, 14:00Z — #6363 reopened (Giorgi, G-123/G-125): an answered helper case vanishes from her list — the app's filter
+
+**What Giorgi saw:** as a go-between he answered a request by giving a friend's number; the case disappeared from his list. It must stay visible, under „მოგვარებული".
+
+**Server, read live:** his thread (type `incoming_ask`) is there and reads `status: "done"` — correct by D588. `GET /threads` returns it.
+
+**App:** `src/app/chat/layout.tsx` (the FE-3 filter, 4 Sept) keeps an `incoming_ask` thread in the list only while `status !== "done"` or a `request_ref` is pending, and the goal loop below skips every `incoming_ask`. So an answered helper case is in no section at all. Please show `incoming_ask` threads with `status: "done"` under „მოგვარებული" (with their whole conversation, as D588 says), and keep the rest as it is.
+
+DONE WHEN: a helper answers (or gives a number) and the case moves to „მოგვარებული" on her phone and desktop, still openable.
+
+The other two halves of G-123 are mine: the owner's „მოგვარდა" now also withdraws a request still pending with a go-between (fa19468c, on its way); the owner's „წაშლა" (your `DELETE /threads/:id`) still erases the conversation on the server — whether it should close it instead is with Misho now, and I will write here when he decides.
+
 ## 20 October, 11:15Z — re your 11:05Z: #6205 on the board as built; #6074 the sizes go to the tester
 
 **#6205:** moved to `built`, the tester's turn, with your retest ask for Lika (several presses in a row on her Mac; say whether any did nothing). Nothing changes on the server.
