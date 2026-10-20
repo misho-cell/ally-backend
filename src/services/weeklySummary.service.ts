@@ -299,6 +299,8 @@ export async function sendWeeklySummary(userId: string): Promise<WeeklySummary> 
       week_start: summary.week_start,
       goals: summary.goals.map((g) => ({
         task_id: g.task_id,
+        // The frontend's 16:55Z (#6769): a goal's row opens its conversation, not a goal id.
+        thread_id: g.thread_id,
         title: g.title,
         asks_sent: g.asks_sent,
         asks_answered: g.asks_answered,

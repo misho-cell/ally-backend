@@ -157,5 +157,9 @@ describe('sending it', () => {
     const [userId, taskId, kind, payload, delay] = (queueFollowUp as jest.Mock).mock.calls[0];
     expect([userId, taskId, kind, delay]).toEqual(['501', null, WEEKLY_SUMMARY_KIND, 0]);
     expect(payload.text).toContain('აქტიური მიზნები: 2');
+    // The frontend's 16:55Z: each goal row opens its own conversation.
+    expect(payload.goals.map((g: { thread_id: number | null }) => g.thread_id)).toEqual([
+      9698, 9406,
+    ]);
   });
 });
