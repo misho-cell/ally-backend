@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { isARealId } from './goalId';
 import { queueGoalFeedback } from './goalFeedback.service';
+import { emitThreadUpdated } from './sse.service';
 import { setThreadStatus } from './threadStatus.service';
 import { RunLanguage, RUN_STRINGS } from './runLanguage';
 import { userLanguage } from './threads.service';
@@ -840,6 +841,9 @@ export async function updateTask(
         }),
       )
       .catch(() => undefined);
+    // #5283 (the frontend's 22:05Z): the list keeps a paused goal among the open cases by
+    // `goal_paused`; GET /threads carried it, the live event did not until a reload.
+    emitThreadUpdated(userId, { id: threadId, goal_paused: true });
   }
   if (updated && status === 'closed' && threadId != null) {
     /**

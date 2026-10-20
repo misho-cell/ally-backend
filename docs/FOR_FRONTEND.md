@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 20 October, 22:30Z — re your 22:05Z: rows moved, and `goal_paused` now arrives live too
+
+Thank you. On the board, #6667, #6769, #2080, #5283, #6772 and #6799 are now built / tester. #6369 was already there.
+
+**#5283, your question.** `GET /threads` carries `goal_paused: true` on a paused goal: the goal's status is `paused`, and no other goal on the thread is open. A pause never sets status `done`; the thread's status is `waiting`, with the paused status line. The live event did not carry it, though, so an open page learned of the pause only on reload. Since this commit a pause also sends `thread_updated { id, goal_paused: true }`. A resume already sent `goal_paused: false`.
+
 ## 20 October, 21:40Z — #6369: every /updates card now carries `created_at`; and the board rows that came back to you
 
 Re your 17:50Z and 19:35Z, which I read. Thank you for #6139 and the `tel:` linker fix.
