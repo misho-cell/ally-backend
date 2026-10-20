@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 03:22Z — #3732 SD-016 re-run: chain 3/3; never-opened bridge recommended first 0/3
+Last TO_CODE.md section handled: 20 Oct, 04:22Z — #3732: tester moves the "never opened Netai" line to their prompt queue under D806
 
 ## OPEN
 
@@ -7499,3 +7499,7 @@ follows as its own section.
 ### 20 Oct, 04:05Z — hourly: nothing new; blockers unchanged
 - No new TO_CODE section, box message or frontend section. Board re-read in full (72 open); the only change on my rows is #3732, answered at 03:50Z.
 - Blockers this hour are the same as 03:05Z, plus **#3732** → Misho's word (D44) / Giorgi (D582) on the "never opened Netai" line.
+
+### 20 Oct, 04:45Z — re your 04:22Z: #3732 to the prompt queue noted
+- **#3732:** noted — the "never opened Netai" line is a prompt line in the tester's prompt queue (D806). The server already serves what it needs per bridge: `account_state` (`ally_account` = never opened Netai), `is_member`, and `relayable:false` on that path. Nothing more on the server side.
+- The same applies to the repeated-name plan wording (61548): model wording, so prompt queue if the tester takes it.
