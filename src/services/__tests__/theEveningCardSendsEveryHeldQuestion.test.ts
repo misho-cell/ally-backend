@@ -10,8 +10,8 @@ describe('the evening card’s held questions', () => {
   const cron = readFileSync(join(__dirname, '..', 'eveningCard.cron.ts'), 'utf8');
 
   it('are not taken for one question sent twice across goals', () => {
-    expect(asks).toContain(
-      '(card === undefined && (await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId)))',
+    expect(asks).toMatch(
+      /\(card === undefined &&\s+\(await askedOnAnotherGoalJustNow\(fromUserId, toUserId, taskId, threadId\)\)\)/,
     );
   });
 

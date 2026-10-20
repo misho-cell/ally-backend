@@ -1547,7 +1547,8 @@ async function createAskNow(
     // questions to the same person a second apart, each approved on its own
     // goal; the cross-goal check took the 2nd and 3rd for a model firing twice
     // and they were lost (cards 1057–1059: 3 of ~10 delivered).
-    (card === undefined && (await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId)));
+    (card === undefined &&
+      (await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId, threadId)));
   if (duplicate) {
     return {
       sent: false,
@@ -4168,6 +4169,14 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
  * goal only. The same sender to the same person on a different goal inside
  * one run's span, with no word from the owner since, is the same question
  * arriving twice.
+ *
+ * #6502 (Ninia's real account, 20 Oct, P1): three different questions to Lika,
+ * typed as three goals in three conversations inside two minutes — only the
+ * first went; the other two were refused as „already sent on this goal" and
+ * the owner was told they had reached her. 3532's two asks came out of ONE
+ * conversation; these came out of three. So the same question arriving twice
+ * is an ask from the same conversation; another conversation is another
+ * question. Without a conversation (the connector), the check is as before.
  */
 const CROSS_GOAL_DUPLICATE_SECONDS = 120;
 
@@ -4175,6 +4184,7 @@ async function askedOnAnotherGoalJustNow(
   fromUserId: string,
   toUserId: number,
   taskId: number,
+  originThreadId?: number,
 ): Promise<boolean> {
   try {
     const result = await query<{ duplicate: boolean }>(
@@ -4182,6 +4192,7 @@ async function askedOnAnotherGoalJustNow(
          SELECT 1 FROM task_asks a
           WHERE a.from_user_id = $1::int AND a.to_user_id = $2 AND a.task_id <> $3
             AND a.status IN ('sent', 'answered')
+            AND ($5::int IS NULL OR a.origin_thread_id = $5::int)
             -- Both columns are naive UTC (see ownerSpokeSince below).
             AND a.created_at > (NOW() AT TIME ZONE 'UTC') - make_interval(secs => $4)
             AND NOT EXISTS (
@@ -4190,7 +4201,7 @@ async function askedOnAnotherGoalJustNow(
                  AND TRIM(c.content) <> ''
                  AND c.created_at > a.created_at)
        ) AS duplicate`,
-      [fromUserId, toUserId, taskId, CROSS_GOAL_DUPLICATE_SECONDS],
+      [fromUserId, toUserId, taskId, CROSS_GOAL_DUPLICATE_SECONDS, originThreadId ?? null],
       ASK_QUERY_TIMEOUT_MS,
     );
     return result.rows[0]?.duplicate === true;

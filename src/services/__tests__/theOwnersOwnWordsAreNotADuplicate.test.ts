@@ -51,13 +51,24 @@ describe('the duplicate guard asks whether the owner added something', () => {
    */
   /** 3532: the same question to the same person on ANOTHER goal, inside one run, nothing said since. */
   it('also refuses the same person asked on another goal moments ago', () => {
-    expect(asks).toContain('(await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId))');
+    expect(asks).toContain(
+      '(await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId, threadId))',
+    );
     const at = asks.indexOf('async function askedOnAnotherGoalJustNow(');
     const fn = asks.slice(at, at + 1400);
     expect(fn).toContain('a.task_id <> $3');
     expect(fn).toContain("c.user_id = $1::int AND c.role = 'user' AND c.kind = 'message'");
     expect(fn).toContain('AND c.created_at > a.created_at');
     expect(fn).toContain('return false;');
+  });
+
+  /** #6502 (Ninia, 20 Oct, P1): three questions from three conversations are three questions. */
+  it('counts only an ask from the same conversation as the same question on another goal', () => {
+    const at = asks.indexOf('async function askedOnAnotherGoalJustNow(');
+    const fn = asks.slice(at, at + 1600);
+    expect(fn).toContain('AND ($5::int IS NULL OR a.origin_thread_id = $5::int)');
+    expect(fn).toContain('originThreadId ?? null');
+    expect(asks).toContain('askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId, threadId)');
   });
 
   it('keeps every condition the four duplicates were caught by', () => {
