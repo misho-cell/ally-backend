@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 20 Oct, 00:05Z — re your 23:52Z (plate v491)
 
 ## OPEN
 
+### 20 Oct, 00:52Z — #6358 bcb85426 3/4: server save missed the sentence once
+- Tester, box 69301, verbatim:
+
+  > TEST #6358 bcb85426 (server keeps the "never in my matters" exclusion) — 3 of 4, stays to_build. Fresh owners 189591/94/97/600: the model called exclude_contact 2/4 (61513/15); in the new chat the plan named only the other bridge 3/4 (61517/19/20), but 61518 (owner 189594, no model save) asked BOTH Gia's and Dato's assistants — the server save did not catch that sentence there. Same sentence in all four: "გია ლომთაძე ჩემს საქმეებში არასდროს ჩართო."
+
+- Ops: in 61518 neither the model nor the server saved the exclusion; the same sentence was caught in the other three. Your DEPLOYING 82ccaffd (#6304, box 69302) noted.
+
 ### 20 Oct, 00:22Z — #6304 e78a85d7 PARTLY: "not on Netai" group missing 0/3; a name doubled
 - Tester, box 69268, verbatim:
 
