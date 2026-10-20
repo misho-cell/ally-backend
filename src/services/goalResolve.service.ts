@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { cancelIntroductionRequestsForTask } from './introduction.service';
 import { offerOpenAsksChoice } from './openAsksAfterSolved';
 import { emitChoicesCleared } from './sse.service';
 import { getGoalOnThread, updateTask } from './taskStore.service';
@@ -110,6 +111,11 @@ export async function resolveGoalOnThread(
   // After the buttons are cleared, so the keep-or-close card it may write stays.
   const openQuestions = await offerOpenAsksChoice(goal.id, threadId, Number(userId));
   await setThreadStatus(userId, threadId, 'done');
+  // #6363 reopened (Giorgi, G-123): a go-between still holding the request read
+  // the case as open after the owner's „მოგვარდა" — request 7327 stayed
+  // pending. It is withdrawn, as a stop withdraws it, before the threads settle.
+  // withdrawRequests catches and logs its own failure; the resolve goes on regardless.
+  await cancelIntroductionRequestsForTask(goal.id);
   await settleParticipantThreads(goal.id, threadId);
   return {
     outcome: ResolveOutcome.Resolved,

@@ -1,3 +1,7 @@
+const mockCancelRequests = jest.fn();
+jest.mock('../introduction.service', () => ({
+  cancelIntroductionRequestsForTask: (...a: unknown[]) => mockCancelRequests(...a),
+}));
 const mockGetThread = jest.fn();
 const mockClearChoices = jest.fn();
 jest.mock('../threads.service', () => ({
@@ -42,6 +46,7 @@ beforeEach(() => {
   mockOffer.mockResolvedValue(0);
   mockClearChoices.mockResolvedValue(0);
   mockSetStatus.mockResolvedValue(undefined);
+  mockCancelRequests.mockResolvedValue(0);
 });
 
 /** #6363, RULE D588 (1) (Giorgi): the owner's „მოგვარდა" settles the case for everybody in it. */
@@ -70,5 +75,14 @@ describe('the owner’s „მოგვარდა" reaches every participant',
     expect(out.outcome).toBe('resolved');
     expect(mockSetStatus).toHaveBeenCalledTimes(1);
     warn.mockRestore();
+  });
+});
+
+/** #6363 reopened (G-123): request 7327 stayed pending after the owner's „მოგვარდა". */
+describe('a request still waiting on a go-between when the owner says „მოგვარდა"', () => {
+  it('is withdrawn with the goal', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+    await resolveGoalOnThread(OWNER, OWNER_THREAD);
+    expect(mockCancelRequests).toHaveBeenCalledWith(900);
   });
 });

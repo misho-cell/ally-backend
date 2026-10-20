@@ -1,3 +1,7 @@
+const mockCancelRequests = jest.fn();
+jest.mock('../introduction.service', () => ({
+  cancelIntroductionRequestsForTask: (...a: unknown[]) => mockCancelRequests(...a),
+}));
 const mockGetThread = jest.fn();
 const mockClearChoices = jest.fn();
 jest.mock('../threads.service', () => ({
