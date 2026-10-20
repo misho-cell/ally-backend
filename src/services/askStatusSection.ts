@@ -1,4 +1,5 @@
 import { askStateOf, isOpenAskState, ownerAskLine, AskState, type AskStamps } from './askState';
+import { withoutAllyWord } from './georgianScriptName';
 import type { RunLanguage } from './runLanguage';
 
 /**
@@ -25,6 +26,17 @@ export interface HeldAskStamp {
   readonly reopens_at: string;
 }
 
+/**
+ * #6356 reopened (Giorgi, G-167, 21 Oct 01:40 Tbilisi): the waiting line came
+ * back under every reply. Giorgi saved Lika as „… Ally"; the line kept the old
+ * app's word, the stored reply did not, so „already shown" never matched. The
+ * line names the person without it, as every name is written (#6767).
+ */
+function lineName(name: string | null, language: RunLanguage): string {
+  const clean = withoutAllyWord(name ?? '');
+  return clean === '' ? FALLBACK_NAME[language] : clean;
+}
+
 /** The newest ask per person decides that person's line. */
 function latestPerPerson(asks: readonly StatedAsk[]): StatedAsk[] {
   const byPerson = new Map<number, StatedAsk>();
@@ -44,12 +56,12 @@ export function openAskLines(
     asked.add(ask.to_user_id);
     const state = askStateOf(ask, now);
     if (!isOpenAskState(state)) continue;
-    lines.push(ownerAskLine(ask.to_name ?? FALLBACK_NAME[language], ask, state, language));
+    lines.push(ownerAskLine(lineName(ask.to_name, language), ask, state, language));
   }
   for (const row of held) {
     if (asked.has(row.to_user_id)) continue;
     const stamps: AskStamps = { status: 'held', held_until: row.reopens_at };
-    lines.push(ownerAskLine(row.contact_name, stamps, AskState.Held, language));
+    lines.push(ownerAskLine(lineName(row.contact_name, language), stamps, AskState.Held, language));
   }
   return lines;
 }
