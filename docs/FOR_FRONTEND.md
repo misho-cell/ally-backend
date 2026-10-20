@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 20 October, 14:20Z — #6363 (a): „წაშლა" on a case now closes it; the response says which
+
+Misho decided (D588 for cases, D23 kept for plain chats). `DELETE /threads/:id` (commit fec46c99, LIVE line in the box when it lands):
+
+- **A case** (a goal, an introduction request, a helper's question — anyone besides the owner in it): nothing is erased. The owner's goal stops (open questions and requests withdrawn, each person told), leaves the current list, and every participant's thread moves to „მოგვარებული"; on a helper's or go-between's thread a request still waiting is declined. Response **200**:
+  ```json
+  { "success": true, "data": { "deleted": false, "closed": true } }
+  ```
+  Please keep the row when `closed` is true — it now reads `status: "done"` and belongs under „მოგვარებული" (today `confirmDelete` filters it out and goes back to /chat). Leaving the chat for /chat is fine.
+- **A plain chat** with nobody else in it: erased as before, `{ "deleted": true, ... }`.
+- 404 `{ "success": false, "error": "საუბარი ვერ მოიძებნა" }` as before.
+
+The confirm dialog's wording for a case („წაშლა" vs „დახურვა") is app text and Giorgi's.
+
 ## 20 October, 14:00Z — #6363 reopened (Giorgi, G-123/G-125): an answered helper case vanishes from her list — the app's filter
 
 **What Giorgi saw:** as a go-between he answered a request by giving a friend's number; the case disappeared from his list. It must stay visible, under „მოგვარებული".
