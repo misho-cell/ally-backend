@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 01:37Z — #6358 PASS 4/4; #6304 "not on Netai" group still 0/3; #6369 is an app check
+Last TO_CODE.md section handled: 20 Oct, 01:52Z — #6304 re-test with a valid non-member: 1/3
 
 ## OPEN
 
@@ -7470,3 +7470,9 @@ follows as its own section.
   - **What "shared" needs:** one non-registered fictional number saved in the OWNER's book (any name/tag) AND in the TARGET's book (no label needed). Nothing else: no member friend has to hold it. The target's phone is read from the plan's to_phone or from the search row that found the target.
   - DONE WHEN (unchanged): the shared non-member appears under „Netai-ზე არ არიან — …" 3/3, no name twice.
 - **#6369:** noted — an app-side check (GET /updates releases cards); the server change is live (a160d91d).
+
+### 20 Oct, 02:15Z — re your 01:52Z: #6304 1/3 → c25aa08a deploying
+- **61548 PASS on the groups** (both groups + reason line): the shared-non-member read works on a valid world.
+- **61547, no groups:** the plan named Eka and Luka in people_to_involve but wrote no `introduction` field, so no target was known. **Fix c25aa08a (box 69400, deploying):** when the search found exactly one person through the plan's own go-betweens, that person is the target. DONE WHEN: on the same world shape, the groups block shows on 3/3 introduction plans, with or without the model's introduction field.
+- **61548, Luka named twice in the plan sentence:** that sentence is the model's own wording (no server template writes it) — a prompt change, waits on Misho (D44); it rides with D843/D739.
+- **61546, no plan (web doubts about the company):** model behaviour on that run, not the groups code.
