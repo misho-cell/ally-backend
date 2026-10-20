@@ -12,6 +12,7 @@ import { confirmedWarmTieSql } from './chorusCap';
 import { decodeContactRef, encodeContactRef } from './mcp/contactRef';
 import { memberMiddles } from './memberPaths.service';
 import { normalizePhone, phoneDigits } from './phone';
+import { labelAtChainEnd } from './chainLabels';
 import { namesFor } from './tools/findWarmPath';
 import { AccountDetails, accountDetailsFor, fetchAccountStates } from './tools/membership';
 
@@ -104,10 +105,14 @@ export async function chainMapsFor(ownerId: number, ref: string): Promise<ChainM
   const ranked = rankedPaths(await candidatePaths(ownerId, targetPhone, middles, states));
   if (ranked.length === 0) return [];
   const names = await namesFor(String(ownerId), phones);
-  const person = (phone: string): LinkPerson => ({
+  const person = (phone: string, name: string | null = names.get(phone) ?? null): LinkPerson => ({
     id: encodeContactRef(String(ownerId), phone),
-    name: names.get(phone) ?? null,
+    name,
     isMember: accountDetailsFor(states, phone).state === 'netai_user',
   });
-  return ranked.map((path) => chainMapOf(path, person, person(targetPhone)));
+  // #6899: a target nobody here knows by name is named by the first path's last link.
+  const targetName =
+    names.get(targetPhone) ??
+    (await labelAtChainEnd(ownerId, ranked[0].middle, targetPhone).catch(() => null));
+  return ranked.map((path) => chainMapOf(path, person, person(targetPhone, targetName)));
 }

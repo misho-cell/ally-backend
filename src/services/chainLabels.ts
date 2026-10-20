@@ -34,3 +34,17 @@ export async function labelsAlongChain(
   const byOrder = new Map(result.rows.map((row) => [Number(row.ord), row.label]));
   return phones.map((_, index) => byOrder.get(index + 1) ?? null);
 }
+
+/**
+ * #6899 (tester 21:24Z, privacy): somebody not on Netai at the end of a chain
+ * is named by the label the chain's last link saved — the one who holds them —
+ * never by a label some other account saved for the same number.
+ */
+export async function labelAtChainEnd(
+  ownerId: number,
+  bridges: readonly string[],
+  targetPhone: string,
+): Promise<string | null> {
+  const labels = await labelsAlongChain(ownerId, [...bridges, targetPhone]);
+  return labels[labels.length - 1] ?? null;
+}

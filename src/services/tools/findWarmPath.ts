@@ -5,7 +5,7 @@ import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone, phoneDigits } from '../phone';
 import { OwnerTie, OwnerTieReason, ownerTiesTo, tieToShow } from '../ownerTies';
-import { labelsAlongChain } from '../chainLabels';
+import { labelAtChainEnd, labelsAlongChain } from '../chainLabels';
 import { memberMiddles } from '../memberPaths.service';
 import {
   colourWhy,
@@ -197,9 +197,11 @@ async function pathsUpTo(userKey: string, targetKey: string, maxHops: number): P
 }
 
 /**
- * Names for the bridges: the user's own label for a direct contact, the
- * account name for a Netai user, any phonebook's label for a stranger — the
- * same three sources second-degree search names its "via" people from.
+ * Names for the bridges: the user's own label for a direct contact, else the
+ * account name for a Netai user. #6899 (privacy): a stranger was named by any
+ * phonebook's label — the alphabetically first one, from an account that may
+ * be on no chain at all. Never again: a stranger has no name here, and the
+ * chain names them by the label of the link who holds them (labelAtChainEnd).
  */
 export async function namesFor(
   userId: string,
@@ -210,8 +212,7 @@ export async function namesFor(
     `SELECT ua.phone,
             COALESCE(
               MAX(ua.alias) FILTER (WHERE ua."contactId" = $2::int),
-              MAX(u.name),
-              MIN(ua.alias)
+              MAX(u.name)
             ) AS name
      FROM "UserAlias" ua
      LEFT JOIN "UserPhone" up ON up.phone = ua.phone
@@ -283,6 +284,29 @@ async function namedAlongTheChain(ownerId: number, paths: WarmPath[]): Promise<W
     // eslint-disable-next-line no-console
     console.warn('findWarmPath chain labels:', (err as Error).message);
     return paths;
+  }
+}
+
+/** The target as the owner or a member knows them; else as the first path's last link saved them. */
+async function targetName(
+  ownerId: number,
+  names: ReadonlyMap<string, string | null>,
+  paths: readonly WarmPath[],
+  targetPhone: string,
+): Promise<string | null> {
+  const known = names.get(targetPhone) ?? null;
+  const first = paths[0];
+  if (known !== null || first === undefined) return known;
+  try {
+    return await labelAtChainEnd(
+      ownerId,
+      first.bridges.map((bridge) => bridge.phone),
+      targetPhone,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('findWarmPath target label:', (err as Error).message);
+    return null;
   }
 }
 
@@ -464,7 +488,10 @@ export async function findWarmPath(
 
   return {
     found: true,
-    target: { phone: targetPhone, name: names.get(targetPhone) ?? null },
+    target: {
+      phone: targetPhone,
+      name: await targetName(Number(userId), names, named, targetPhone),
+    },
     paths,
     ranked_every_route: rows.length < PATHS_TO_CONSIDER,
     note: rows.length < PATHS_TO_CONSIDER ? CONSENT_NOTE : `${CONSENT_NOTE} ${MANY_ROUTES_NOTE}`,
