@@ -112,7 +112,12 @@ export async function refreshCaseDescription(
     const facts = await caseFacts(threadId);
     if (facts === null) return false;
     const description = await describe(userId, threadId, facts);
-    if (description === null) return false;
+    if (description === null) {
+      // Ops, 20 Oct 21:22Z: a skipped write left no trace in the logs.
+      // eslint-disable-next-line no-console
+      console.warn(`[case-description] thread ${threadId}: no usable description written`);
+      return false;
+    }
     await query(
       `UPDATE threads SET case_description = $2, case_description_at = NOW(),
                           case_description_rule = $3
@@ -164,7 +169,16 @@ async function lacksDescription(threadId: number): Promise<boolean> {
   return result.rows[0]?.lacks === true;
 }
 
-/** Writes the description of a case that has none, at most once per half hour per case. */
+/**
+ * Writes the description of a case that has none, at most once per half hour per case.
+ *
+ * #5413, third FAIL (Giorgi, G-160, 20 Oct 21:16Z): a new case had none for 17
+ * minutes. The app opens a new conversation's messages before its first run,
+ * when it holds no goal yet, so it is not a case; that check stamped the half
+ * hour, and the write after the run that made the goal was skipped as „tried".
+ * Only a write attempt is stamped now — a conversation not yet a case is asked
+ * again the next time.
+ */
 export async function describeIfMissing(
   userId: string,
   threadId: number,
@@ -172,7 +186,6 @@ export async function describeIfMissing(
 ): Promise<boolean> {
   const tried = missingTriedAt.get(threadId);
   if (tried !== undefined && now - tried < MISSING_TRIED_FOR_MS) return false;
-  missingTriedAt.set(threadId, now);
   try {
     if (!(await lacksDescription(threadId))) return false;
   } catch (err) {
@@ -180,5 +193,6 @@ export async function describeIfMissing(
     console.warn(`[case-description] thread ${threadId} (missing check):`, (err as Error).message);
     return false;
   }
+  missingTriedAt.set(threadId, now);
   return refreshCaseDescription(userId, threadId);
 }

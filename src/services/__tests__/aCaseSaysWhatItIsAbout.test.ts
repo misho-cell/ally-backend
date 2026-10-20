@@ -126,6 +126,31 @@ describe('a case opened without a description', () => {
     await expect(describeIfMissing('7', 103, T0)).resolves.toBe(false);
     expect(mockCreate).not.toHaveBeenCalled();
   });
+
+  // #5413, third FAIL (G-160): the app opens a new conversation before its goal exists.
+  it('is written after the run that makes the goal, though the conversation was opened before it', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ lacks: true }] })
+      .mockResolvedValueOnce({ rows: [{ title: 'სახლის აშენება' }] })
+      .mockResolvedValueOnce({ rows: [{ role: 'user', content: 'სახლის აშენება მინდა' }] })
+      .mockResolvedValueOnce({ rows: [] });
+    answers(GOOD);
+    await expect(describeIfMissing('7', 104, T0)).resolves.toBe(false);
+    await expect(describeIfMissing('7', 104, T0 + 60_000)).resolves.toBe(true);
+    expect(mockEmit).toHaveBeenCalledWith('7', { id: 104, case_description: GOOD });
+  });
+
+  it('leaves a trace when no usable description came back', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ title: 'სახლის აშენება' }] })
+      .mockResolvedValueOnce({ rows: [] });
+    answers('');
+    await expect(refreshCaseDescription('7', 105, true)).resolves.toBe(false);
+    expect(console.warn).toHaveBeenCalledWith(
+      '[case-description] thread 105: no usable description written',
+    );
+  });
 });
 
 /** G-151 (Giorgi, 20 Oct evening): the description listed the assistant's actions. */
