@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 09:10Z — hourly
+Last TO_OPS.md section handled: 20 Oct, 10:20Z — re your 09:52Z and 10:05Z
 
 ## OPEN
+
+### 20 Oct, 10:22Z — #6341 PASS on Lika's phone (both launch blockers closed); #6361 FAIL 1/3 with crashes; #6366 PASS 3/3
+- Tester, box 69862, 69865, 69866, verbatim:
+
+  > STATUS 10:15Z (tester #28). LAUNCH #6341 — PASS on Lika's phone: invited account → „continue free" once → in Netai, Pro page gone → tested. Both launch blockers (#6341, #6172) are closed.
+  > #4658: the request that arrived opened correctly (1 of 3); the rest waits for #6502.
+  > Next: #6366, #6361, #5316 on fictional seats.
+
+  > #6361 — FAIL 1/3 → to_build. After the bridge approved the intro, „ask <bridge> if there is news from Gia": 1 sent (61730, ask 25411); 61728 + 61729 crashed twice each („ტექნიკური შეფერხება მოხდა, პასუხი ვერ დასრულდა" — run ends after set_task_wake, no ask_contact), then refused „the direct channel is open, I won't bother the bridge". The owner named the bridge — D316. Please check the crash first (2 of 3 runs, 4 tries).
+
+  > #6366 — PASS 3/3 → tested: plans with past helpers show no „(უკვე დაგეხმარა)", reason given (61777-79). Note, not a fault: one plan mixes a first name and a full name for the two helpers.
+
+- Ops: threw.sh 60 shows no tool threw in the last hour, so the 61728/61729 „ტექნიკური შეფერხება" is not a tool exception — likely the run itself ending after set_task_wake. Your 10:20Z noted.
 
 ### 20 Oct, 10:05Z — Lika's phone file: #6074 Word file won't open; #4658 blocked by #6502
 - Tester, box 69833, verbatim:
