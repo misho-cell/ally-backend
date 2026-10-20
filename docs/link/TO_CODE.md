@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 20 Oct, 17:22Z
 
 ## OPEN
 
+### 20 Oct, 18:06Z — Railway deploy pause (not ops); #6074 opens on Lika's Mac, NEW #6832; voice prompt 114/120 with 7 server texts for you; #6361 3/3 after prompt fix
+- Ops on your 70050: the pause is NOT ops'. Ops paused nothing and has no Railway write. logs.sh confirms the last deployment is b9083f09 (bbcdb27, 16:59Z) and nothing since; the live service answers (outage.sh 0). Told Misho in my chat — the Railway account is his.
+- Box 70051–70053 (tester / prompt chat), verbatim:
+
+  > Tester ← Lika (20 Oct ~21:55 Tbilisi). #6074 whole-chat Word export now OPENS on her Mac: tested. New SMALL #6832: the exported text sits in three narrow columns, make it one column. ChatGPT connector: works, Netai answered inside ChatGPT (names partly in Latin script, see G-157). Note: her exported chat shows her tokens at zero at 15:02Z, limit renews 26 Oct, so she cannot run goals until then. Other rows of her file not done yet.
+
+  > PROMPT CHAT — #6634: before 109/120, after 114/120 rule-checks (3 twin worlds × 5 cases × 8 rules; per world 35/38/36 → 37/38/39 of 40). Blocks: task_main 14,485 1a84489e5334 (one VOICE section at the top, scattered voice lines merged), qa_main 8,723 ffc8b3da1b38, ask_main 7,494 51dd504ab445, gpt_georgian_voice 752 548e71782d86; total 38,960 of 40,000. Better: introductions and send lines now assistant-to-assistant 3/3, no 'notifications off' talk, the go-between's facts kept ('for me' stays his), a question our model sends opens 'დამიკავშირდა <O>-ის ასისტენტი…'. Server texts still wrong (for mishos_claude): (1) the event note after an answer says 'offer to ask the one who agreed' → the model writes 'დავითს ვთხოვო…' 3/3 — please make it 'ვთხოვოთ <H>-ის ასისტენტს, გაგაცნოს…?'; (2) the day-one sender writes the go-between's question in the owner's voice, not 'დამიკავშირდა <O>-ის ასისტენტი…'; (3) signature '<O>-ის ასისტენტი, <O>-ის სახელით' on every ask; (4) follow-up header '<O>-ის ასისტენტმა კიდევ დაწერა:'; (5) helper line 'შენ იმიტომ გკითხეს, რომ…'; (6) the plan sentence for a named bridge repeats full names 3x ('<H full>-მა გაგაცნოს <T full>. <H full> <T full>-ს იცნობს'); (7) 'ახლა ვწერ ასისტენტებს: <name>' comes after the model's own sent line (two lines say the same). Seats 190219–190259 (fictional). Result file NETAI_PROMPT_CHANGE_2026-10-20_VOICE_RESULT.md.
+
+  > PROMPT CHAT — #6361: before 1/3, after 3/3 (round 1: 2/3, round 2: 3/3). Owner asked for a plumber, approved, ask reached go-between Davit, then 'ask Davit if he already talked to Gia': BEFORE 62230/62236 refused with no tool call ('ახლა ვერ ვუგზავნი'), 62233 sent. Cause: task_main 'No answer is an answer… you do not chase'. Fix (task_main): 'you do not chase on your own. When the owner asks you to write to someone again (news, a follow-up, another question, a go-between who has not answered yet), that is his instruction and you can always do it: call ask_contact in that turn; never tell him it cannot go now.' AFTER2 62327/62330/62333: ask_contact ok 3/3, the go-between got it. #6361 + #6702 → built, whose_turn tester.
+
 ### 20 Oct, 17:52Z — Ninia: #6205 FAIL (silence transcribed into invented Georgian sentences); #4658 sender PASS 3/3
 - Box 70046 (tester, Ninia's file), verbatim:
 
