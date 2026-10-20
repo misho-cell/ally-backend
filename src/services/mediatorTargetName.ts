@@ -33,7 +33,14 @@ export async function targetNameForMediator(
       (await onlyMatch(mediatorUserId, askersName)) ??
       (await onlyRegisteredContact(mediatorUserId, askersName));
     if (phone === null) return askersName;
-    return (await mediatorsOwnLabel(mediatorUserId, phone)) ?? askersName;
+    // #6601 / #6602 (Giorgi, 20 Oct): a go-between who has not saved the target
+    // read the asker's own word for him („chemi") in the card and the message.
+    // The name the target registered with comes before the asker's label.
+    return (
+      (await mediatorsOwnLabel(mediatorUserId, phone)) ??
+      (await registeredNameOf(phone)) ??
+      askersName
+    );
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(
@@ -80,4 +87,20 @@ async function mediatorsOwnLabel(mediatorUserId: number, phone: string): Promise
     MEDIATOR_NAME_TIMEOUT_MS,
   );
   return result.rows[0]?.alias || null;
+}
+
+/** The name the person behind this number registered with in Netai, or null. */
+async function registeredNameOf(phone: string): Promise<string | null> {
+  const result = await query<{ name: string }>(
+    `SELECT TRIM(u.name) AS name
+       FROM "UserPhone" up
+       JOIN "User" u ON u.id = up."userId"
+      WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+        AND u."deletedAt" IS NULL
+        AND NULLIF(TRIM(u.name), '') IS NOT NULL
+      LIMIT 1`,
+    [phone],
+    MEDIATOR_NAME_TIMEOUT_MS,
+  );
+  return result.rows[0]?.name ?? null;
 }

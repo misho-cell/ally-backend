@@ -63,10 +63,18 @@ describe('targetNameForMediator', () => {
     expect(await targetNameForMediator(551, 'სანდრო', null)).toBe('სანდრო');
   });
 
-  it('keeps the asker’s name when he has no label for the number', async () => {
-    mockQuery.mockResolvedValueOnce(rows());
+  it('keeps the asker’s name when he has no label and nobody registered the number', async () => {
+    mockQuery.mockResolvedValueOnce(rows()).mockResolvedValueOnce(rows());
 
     expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('სანდრო');
+  });
+
+  /** #6601 / #6602 (Giorgi, 20 Oct): „იცნობ თუ არა ჩემს" — the asker's word for the target. */
+  it('reads the registered name, not the asker’s label, when he has none of his own', async () => {
+    mockQuery.mockResolvedValueOnce(rows()).mockResolvedValueOnce(rows({ name: 'გია ახალაძე' }));
+
+    expect(await targetNameForMediator(551, 'chemi', '+995 599')).toBe('გია ახალაძე');
+    expect(String(mockQuery.mock.calls[1][0])).toContain('u.name');
   });
 
   it('keeps the asker’s name when the read fails', async () => {
