@@ -1665,6 +1665,21 @@ export function runOwnerMessage(run: OwnerRun): void {
   void takeRunSlot(run.runId).then(() => startOwnerRun(run).finally(releaseRunSlot));
 }
 
+const RUN_DRAINED = 'RUN_DRAINED';
+
+/**
+ * #6361 (the tester's 61728 / 61729, 20 Oct): a message that waited behind
+ * another run and reached its turn while the container was leaving (row 209)
+ * told its owner „ტექნიკური შეფერხება მოხდა … სცადე თავიდან" — a fault that
+ * was our deploy, and a retry the owner had to make by hand. It gets the
+ * cut-off line instead (`restartedMidRun`, Misho's word of 22 September),
+ * the one the next container looks for and runs again by itself.
+ */
+export function drainedLine(error: unknown, language: RunLanguage): string {
+  const drained = error instanceof Error && error.message === RUN_DRAINED;
+  return drained ? RUN_STRINGS[language].restartedMidRun : RUN_STRINGS[language].runDied;
+}
+
 function startOwnerRun(run: OwnerRun): Promise<void> {
   const {
     userId,
@@ -1713,7 +1728,7 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
        * still hands the conversation to whoever is next.
        */
       isDraining()
-        ? Promise.reject(new Error('RUN_DRAINED'))
+        ? Promise.reject(new Error(RUN_DRAINED))
         : processChat(userId, threadId, message, runId, undefined, {
             asGoal,
             // Row 212: written above the moment it arrived, so the run must
@@ -1949,7 +1964,7 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
           ? RUN_STRINGS[failLang].serviceUnavailable
           : timedOut
             ? RUN_STRINGS[failLang].tookTooLong
-            : RUN_STRINGS[failLang].runDied;
+            : drainedLine(error, failLang);
         emitRunError(userId, threadId, runId, userMessage);
         // Row 217: the badge follows the same verdict as the message.
         void markRunFailed(userId, threadId, failLang, { serviceUnavailable: refused });
