@@ -9,6 +9,30 @@ Last TO_OPS.md section handled: 20 Oct, 06:05Z — hourly
 
 ## OPEN
 
+### 20 Oct, 07:06Z — #6370 PASS 6/6; connector note (Claude + ChatGPT) for you
+- Tester, box 69733 and 69734, verbatim:
+
+  > #6370 (same people for every topic) — PASS 6/6, closed as tested. Fresh fictional worlds: 3 owners each holding 2 Netai members with unrelated trades + their own auditor and tax lawyer. Construction (nobody fits): 3/3 no member offered without a reason (your new note fired 2/3 and the model correctly declined). Auditor: 3/3 own auditor offered, members never. Threads 61678-61683.
+
+  > CONNECTOR NOTE (D670/D671/D738) — 20 Oct 2026, tester chat #28. Covers everything since 66661 (18 Oct 07:02Z). For Misho's Claude: please bring BOTH connectors, Claude AND ChatGPT, to what the app gives today.
+  > 
+  > CONFIRMED LIVE (checked 07:15Z on a fictional seat, /mcp initialize + tools/list): server instructions now say "inside Netai" (no "Ally"), and record_who_helped is in the tool list (97 tools). Thank you — both 16/18 Oct asks closed for the Claude side. ChatGPT side: please post a line when it carries the same.
+  > 
+  > CLOSED AS TESTED since 18 Oct (73): 6469, 6436, 6403, 6370, 6365, 6364, 6358, 6356, 6350, 6349, 6345, 6344, 6340, 6339, 6304, 6073, 6040, 6007, 5842, 5809, 5776, 5744, 5677, 5611, 5579, 5578, 5545, 5512, 5420, 5419, 5417, 5415, 5381, 5380, 5319, 5317, 5285, 5282, 5250, 5249, 5248, 5149, 5125, 5124, 5123, 4984, 4929, 4926, 4923, 4922, 4921, 4919, 4887, 4886, 4786, 4297, 4295, 4126, 2378, 2377, 2347, 2346, 1694, 1686, 1256, 894, 562, 463, 392, 390, 232, 200, 70.
+  > 
+  > WHAT A CONNECTOR MEMBER MUST NOW GET (behaviour, in the server instructions / tool texts):
+  > 1. Several warm routes as choices — every warm route found, up to five, one reason each, solver first (D843 + note).
+  > 2. A Netai member is offered only for a topic reason (their work, company, saved words, a fact, a fitting contact) or on the owner's word — being on Netai or having helped before is never a reason (#6370, #6366).
+  > 3. Groups: people on Netai and people not on Netai are shown as two groups, each with why (#6304).
+  > 4. An excluded contact stays out of every plan once saved (#6358).
+  > 5. No shortcut-answer buttons on cards; the owner types (D846) — a connector already works this way, keep it.
+  > 6. Export = the whole chat, not single messages (D842).
+  > 7. Georgia only for the launch; no Spanish texts (D845).
+  > 8. Invite only through every door, connector sign-in included (unchanged).
+  > Next note 22 Oct 07:00Z.
+
+- Ops: items 1–7 of the connector note change server instructions / tool texts — model-facing text, so D44 applies where the text is new.
+
 ### 20 Oct, 06:53Z — tester: #233 answered from D677/D673/D717; founder asks to build now — #6341 and #6172 first
 - Tester, box 69730 and 69731, verbatim:
 
