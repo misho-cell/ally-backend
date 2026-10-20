@@ -4,6 +4,7 @@ import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
 import { phoneDigits } from './phone';
 import { getOpenTaskByThread } from './taskStore.service';
 import { saveContactExclusion } from './tools/contactExclusions';
+import { georgianToLatin, hasGeorgian } from './tools/transliterate';
 
 /**
  * #6358 (the tester's 68966): the owner said „not Gigi, he's abroad" and „not
@@ -280,6 +281,14 @@ function holdsNever(clause: string): boolean {
     .some((word) => NEVER_WORDS.has(word));
 }
 
+/** A clause word that is one of the label's words, in either script („ლომთაძე" / „Lomtadze"). */
+function namesLabelWord(word: string, nameWords: ReadonlySet<string>): boolean {
+  const spellings = hasGeorgian(word) ? [word, georgianToLatin(word)] : [word];
+  return [...nameWords].some(
+    (n) => n.length >= MIN_NAME_WORD_CHARS && spellings.some((w) => w.startsWith(n)),
+  );
+}
+
 /** What the clause is about once the name, „never" and the verb are taken out. */
 export function neverScope(clause: string, label: string): string {
   const nameWords = new Set(label.toLowerCase().split(WORD_SPLIT_RE));
@@ -287,11 +296,22 @@ export function neverScope(clause: string, label: string): string {
     .toLowerCase()
     .split(WORD_SPLIT_RE)
     .filter((w) => w !== '' && !NEVER_WORDS.has(w))
-    .filter((w) => ![...nameWords].some((n) => n.length >= MIN_NAME_WORD_CHARS && w.startsWith(n)))
+    .filter((w) => !namesLabelWord(w, nameWords))
     .filter((w) => !INVOLVE_WORDS.some((v) => w.startsWith(v)));
   if (rest.length === 0) return EVERY_MATTER;
   const asScope = `ყველა ${rest.join(' ')}`;
   return scopeIsEverything(asScope) ? EVERY_MATTER : rest.join(' ');
+}
+
+/**
+ * The tester's 69301 (#6358, 61518): „გია ლომთაძე … არასდროს ჩართო" against the
+ * owner's „Gia Lomtadze" matched nothing — the read looked for Georgian letters
+ * in a Latin label, so the cross-script check below never saw the row. A
+ * Georgian word is looked for in Latin letters too.
+ */
+function namePatterns(words: readonly string[]): string[] {
+  const spellings = words.flatMap((w) => (hasGeorgian(w) ? [w, georgianToLatin(w)] : [w]));
+  return [...new Set(spellings.map((w) => `%${w.slice(0, MIN_NAME_WORD_CHARS + 1)}%`))];
 }
 
 async function ownersContactsNamedIn(
@@ -306,7 +326,7 @@ async function ownersContactsNamedIn(
     `SELECT phone, alias FROM "UserAlias"
       WHERE "contactId" = $1::int AND alias ILIKE ANY($2::text[])
       LIMIT $3`,
-    [userId, words.map((w) => `%${w.slice(0, MIN_NAME_WORD_CHARS + 1)}%`), MAX_NAMED_READ],
+    [userId, namePatterns(words), MAX_NAMED_READ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows

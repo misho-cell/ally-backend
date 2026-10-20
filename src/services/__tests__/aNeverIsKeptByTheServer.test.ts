@@ -29,6 +29,9 @@ describe('the scope of a „never"', () => {
       'ყველა საქმე',
     );
     expect(neverScope('გიას არასდროს ჰკითხო', 'გია')).toBe('ყველა საქმე');
+    expect(neverScope('გია ლომთაძე ჩემს საქმეებში არასდროს ჩართო', 'Gia Lomtadze')).toBe(
+      'ყველა საქმე',
+    );
   });
 
   it('keeps a subject the clause names', () => {
@@ -52,6 +55,18 @@ describe('keeping it', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('"contactId" = $1::int AND alias ILIKE ANY($2::text[])');
     expect(params?.[0]).toBe('189509');
+  });
+
+  it('finds the owner’s Latin „Gia Lomtadze" from the Georgian sentence (69301)', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ phone: '+995500000021', alias: 'Gia Lomtadze' }],
+    } as never);
+    const line = 'გია ლომთაძე ჩემს საქმეებში არასდროს ჩართო.';
+
+    await expect(keepNeverInvolved('189594', line)).resolves.toEqual(['995500000021']);
+
+    expect(mockQuery.mock.calls[0][1]?.[1]).toEqual(expect.arrayContaining(['%ლომთ%', '%lomt%']));
+    expect(mockSave).toHaveBeenCalledWith('189594', '995500000021', 'ყველა საქმე', line);
   });
 
   it('saves nothing without a „never", or when two contacts answer to the name', async () => {
