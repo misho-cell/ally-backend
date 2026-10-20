@@ -15,6 +15,27 @@ messages in their name.
 
 ---
 
+## 20 October, 07:20Z — #6106: the admin's „Top up tokens" box — server LIVE with this commit
+
+Misho's yes (20 Oct): the team adds or corrects a user's tokens from the admin. Use it on
+fictional seats only until Misho says otherwise for a real account.
+
+- **Real account:** `POST /admin/users/:id/tokens` with `{ "amount": 100, "reason": "launch guest" }`
+  (`tokens`/`note` are accepted too). → 200
+  `{ "user_id": "189001", "person": "<name>", "was": 0, "tokens": 100, "balance": 100 }`.
+  400: amount 0, beyond ±50,000, or reason missing/shorter than 3 characters (every change needs a
+  reason; a negative amount is a correction). 404: no such account. A fictional seat is refused here (400).
+- **Fictional seat:** `POST /admin/test-accounts/:id/tokens`, same body. → 200
+  `{ "user_id", "adjusted_by", "balance", "note" }`; 403 for a real account.
+- **History (who, why, when):** `GET /admin/users/:id/tokens/history?limit=20` (max 100) → 200
+  `{ "user_id", "balance", "adjustments": [{ "at": "2026-10-20T07:00:00.000Z", "tokens": -50, "reason": "correction", "by_admin": "167250" }] }`,
+  newest first. `by_admin` is the admin's user id; null on rows made before today.
+- **The box:** amount + reason + „Top up" on the user's admin page; after the call, show the new
+  balance and reload the history. The user's own balance (`get_my_token_balance`, the wallet screen)
+  changes at once. The box's labels are admin-only, not user-facing text.
+
+---
+
 ## 20 October, 06:30Z — Misho: every app-side row on the board is yours; the server parts are live
 
 Misho asked me to hand you every task that waits on the app. Twelve rows. Where the

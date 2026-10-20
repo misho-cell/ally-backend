@@ -45,7 +45,10 @@ import {
 } from '../../services/testSeatTokens';
 import {
   adjustTestAccountTokens,
+  adminAdjustmentHistory,
+  adminAdjustmentId,
   getBalance,
+  MAX_ADJUSTMENT_HISTORY,
   MAX_ADMIN_TOKEN_ADJUSTMENT,
   TokenAdjustmentOutOfRange,
 } from '../../services/tokenWallet.service';
@@ -68,7 +71,7 @@ import {
   restoreWithdrawnAsks,
   withdrawUnconfirmedPendingAsks,
 } from '../../services/unconfirmedChorusAsks.service';
-import { Router, Request, Response } from 'express';
+import { NextFunction, Router, Request, Response } from 'express';
 import { body, param, query as queryParam, validationResult } from 'express-validator';
 import {
   authenticateJwt,
@@ -3956,8 +3959,60 @@ adminRouter.post(
  * is signed: a reversal is a row beside the grant, never a deletion. `was`
  * comes back in the reply so the undo does not depend on reading a log.
  */
+/**
+ * #6106 (the board's words for the same two fields): `amount` and `reason` are
+ * accepted beside `tokens` and `note`, on both wallet routes.
+ */
+function tokenFieldAliases(req: Request, _res: Response, next: NextFunction): void {
+  const fields = (req.body ?? {}) as Record<string, unknown>;
+  if (fields['tokens'] === undefined && fields['amount'] !== undefined) {
+    fields['tokens'] = fields['amount'];
+  }
+  if (fields['note'] === undefined && fields['reason'] !== undefined) {
+    fields['note'] = fields['reason'];
+  }
+  next();
+}
+
+const DEFAULT_ADJUSTMENT_HISTORY = 20;
+
+/**
+ * #6106: who changed this wallet, by how much, why and when — newest first.
+ *
+ *   GET /admin/users/:id/tokens/history?limit=20
+ *   200 { user_id, balance, adjustments: [{ at, tokens, reason, by_admin }] }
+ */
+adminRouter.get(
+  '/users/:id/tokens/history',
+  param('id').isInt({ min: 1 }),
+  queryParam('limit').optional().isInt({ min: 1, max: MAX_ADJUSTMENT_HISTORY }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `id must be an account id; limit 1-${MAX_ADJUSTMENT_HISTORY}.`,
+      });
+      return;
+    }
+    const target = String(req.params.id);
+    const limit = Number(req.query['limit'] ?? DEFAULT_ADJUSTMENT_HISTORY);
+    try {
+      const [balance, adjustments] = await Promise.all([
+        getBalance(target),
+        adminAdjustmentHistory(target, limit),
+      ]);
+      res.status(200).json({ success: true, data: { user_id: target, balance, adjustments } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[user-tokens] history failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 adminRouter.post(
   '/users/:id/tokens',
+  tokenFieldAliases,
   param('id').isString().trim().notEmpty(),
   body('tokens').isInt({ min: -MAX_ADMIN_TOKEN_ADJUSTMENT, max: MAX_ADMIN_TOKEN_ADJUSTMENT }),
   body('note').isString().trim().isLength({ min: 3, max: 500 }),
@@ -4005,7 +4060,7 @@ adminRouter.post(
         target,
         Number(tokens),
         String(note).trim(),
-        `admin:${randomUUID()}`,
+        adminAdjustmentId(String(admin), randomUUID()),
       );
       // The person is NAMED and both balances are printed: a wallet that moved
       // must be traceable to a call and a reason without a database read.
@@ -4028,6 +4083,7 @@ adminRouter.post(
 
 adminRouter.post(
   '/test-accounts/:id/tokens',
+  tokenFieldAliases,
   param('id').isString().trim().notEmpty(),
   body('tokens').isInt({ min: -MAX_ADMIN_TOKEN_ADJUSTMENT, max: MAX_ADMIN_TOKEN_ADJUSTMENT }),
   body('note').isString().trim().isLength({ min: 3, max: 500 }),
@@ -4061,7 +4117,7 @@ adminRouter.post(
         target,
         tokens,
         String(note).trim(),
-        `admin:${randomUUID()}`,
+        adminAdjustmentId(String(admin), randomUUID()),
       );
       // eslint-disable-next-line no-console
       console.log(

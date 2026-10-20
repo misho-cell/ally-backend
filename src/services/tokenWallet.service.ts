@@ -589,6 +589,64 @@ export async function adjustTestAccountTokens(
 }
 
 /**
+ * #6106 (the founder's ask, Misho's yes 20 Oct): the team tops up or corrects a
+ * wallet from the admin, and the history says who, why and when. Who is kept
+ * in the row's external id („admin:<admin id>:<uuid>"), so no column is added
+ * and the older rows („admin:<uuid>") still read, with no admin named.
+ */
+const ADMIN_EXTERNAL_PREFIX = 'admin:';
+const HISTORY_TIMEOUT_MS = 4_000;
+export const MAX_ADJUSTMENT_HISTORY = 100;
+const UUID_LENGTH = 36;
+
+/** The external id of an admin's adjustment, naming the admin. */
+export function adminAdjustmentId(adminId: string, uuid: string): string {
+  return `${ADMIN_EXTERNAL_PREFIX}${adminId}:${uuid}`;
+}
+
+/** The admin an adjustment's external id names; null for the older unnamed rows. */
+export function adjustingAdmin(externalId: string | null): string | null {
+  if (externalId === null || !externalId.startsWith(ADMIN_EXTERNAL_PREFIX)) return null;
+  const rest = externalId.slice(ADMIN_EXTERNAL_PREFIX.length);
+  if (rest.length <= UUID_LENGTH) return null;
+  const admin = rest.slice(0, rest.length - UUID_LENGTH - 1);
+  return admin === '' ? null : admin;
+}
+
+export interface AdminAdjustment {
+  readonly at: string;
+  readonly tokens: number;
+  readonly reason: string | null;
+  readonly by_admin: string | null;
+}
+
+/** The admin adjustments of one wallet, newest first. */
+export async function adminAdjustmentHistory(
+  userId: string,
+  limit: number,
+): Promise<AdminAdjustment[]> {
+  const result = await query<{
+    created_at: Date;
+    amount: number;
+    note: string | null;
+    external_id: string | null;
+  }>(
+    `SELECT created_at, amount, note, external_id FROM token_transactions
+      WHERE user_id = $1 AND reason = $2
+      ORDER BY created_at DESC, id DESC
+      LIMIT $3`,
+    [userId, ADMIN_ADJUST_REASON, Math.min(Math.max(1, limit), MAX_ADJUSTMENT_HISTORY)],
+    HISTORY_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => ({
+    at: row.created_at.toISOString(),
+    tokens: row.amount,
+    reason: row.note,
+    by_admin: adjustingAdmin(row.external_id),
+  }));
+}
+
+/**
  * Row 221 — D348 item 2, and the ruling is precise about which message.
  *
  * The founder, 20 September: at zero the person's next message is still

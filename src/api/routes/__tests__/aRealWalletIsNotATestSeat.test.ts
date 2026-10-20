@@ -80,7 +80,7 @@ describe('it can always be undone and always be traced', () => {
 
   it('writes an admin_adjust row through the reviewed path, not a new one', () => {
     expect(fn).toContain('adjustTestAccountTokens(');
-    expect(fn).toContain('admin:${randomUUID()}');
+    expect(fn).toContain('adminAdjustmentId(String(admin), randomUUID())');
   });
 });
 
