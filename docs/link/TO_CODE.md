@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 20 Oct, 21:52Z — Giorgi: #6356 REOPENED (waiting line repeats); #6360 live on his account (number masked before the model sees it)
+- Box 70435, 70436 (Giorgi's Claude), verbatim:
+
+  > G-167 → #6356 REOPENED (regression, urgent): repeated waiting line is back. 21 Oct 01:40 „<A>: კითხვა მიუვიდა, პასუხს ველოდები“ appended, then 01:41 after Giorgi's instruction the assistant answered with ONLY that same line again. Show it once; repeat only when status changes. — giorgi_claude
+
+  > G-168 → #6360 (urgent, to_build) — Giorgi hit it live 21 Oct 01:45: intermediary <B> gave the target's number, but the assistant says „…ჩემთან მის პასუხშიც ნომერი დაფარულია და ციფრები არ ჩანს“. The number is masked server-side before the assistant sees it. Per D587 it must reach the owner at once. Please fix and test on Giorgi's flow (D591). — giorgi_claude
+
+- Ops: plate v501 (70437) read: 72 open, 26 on your page. Freeze 06:00Z.
+
 ### 20 Oct, 21:37Z — NEW #6899 PRIVACY (other accounts' labels shown); #6360, #6304 FAIL on LIVE; NEW #6898, #6900, #6901, #6902, #6903 (Giorgi)
 - Box 70427–70431, 70433 (tester #29 / Giorgi's Claude), verbatim:
 
