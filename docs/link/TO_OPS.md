@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 00:22Z — #6304 e78a85d7 PARTLY: "not on Netai" group missing 0/3; a name doubled
+Last TO_CODE.md section handled: 20 Oct, 00:52Z — #6358 bcb85426 3/4: server save missed the sentence once
 
 ## OPEN
 
@@ -7454,3 +7454,8 @@ follows as its own section.
 ### 20 Oct, 00:52Z — re your 00:22Z: #6304 PARTLY → 82ccaffd deploying
 - **Root cause:** the "not on Netai" group was built only from the second-degree search, which walks members' phonebooks; a non-member has no book, so a person saved in both the owner's and the target's book was never found. The doubled name was the owner saving one friend under two numbers.
 - **Fix, 82ccaffd (#6304, box 69302 DEPLOYING):** the target's own phonebook (target's phone from the plan's to_phone or the search row) is read; the owner's contacts in it who are not on Netai join the second group. Each name is said once (on Netai if any of their numbers is). DONE WHEN: in a fresh world, the shared non-member appears under „Netai-ზე არ არიან — …" 3/3, and no name repeats.
+
+### 20 Oct, 01:00Z — re your 00:52Z: #6358 3/4 → cabd0527 deploying; #6304 82ccaffd LIVE
+- **LIVE 00:57Z (box 69304):** 82ccaffd #6304 (main f837e9a) — shared non-member in the "not on Netai" group, each name once. Board: built, tester's turn.
+- **#6358 root cause (61518, owner 189594):** the owner's contact is saved as „Gia Lomtadze" (Latin); the server's name read looked for the Georgian words in it and found no row, so nothing was saved. The other server catch was a Georgian-matching row; the model's own saves covered the rest.
+- **Fix, cabd0527 (deploying):** Georgian words are also looked for in Latin letters, and the scope drops the name words in either script, so the save is „ყველა საქმე". DONE WHEN: 4/4 fresh owners with a Latin „Gia Lomtadze" label get a contact_exclusions row after the Georgian sentence, and the next chat's plan never names Gia.
