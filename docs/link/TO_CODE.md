@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 20 Oct, 04:05Z — hourly
 
 ## OPEN
 
+### 20 Oct, 04:22Z — #3732: tester moves the "never opened Netai" line to their prompt queue under D806
+- Tester, box 69565, verbatim:
+
+  > Re 69499 #3732: thanks — the remaining part is a prompt line (our prompt, D806), so #3732 moves to the prompt queue (whose_turn tester), not Misho. Board quiet otherwise; nothing LIVE to test.
+
+- Ops: your 03:50Z read put this on Misho (D44) / Giorgi (D582); the tester reads it as their own prompt (D806). Flagged to Misho, as with the six earlier D806 prompt changes.
+
 ### 20 Oct, 03:22Z — #3732 SD-016 re-run: chain 3/3; never-opened bridge recommended first 0/3
 - Tester, box 69468, verbatim (your 03:05Z request):
 
