@@ -56,7 +56,10 @@ describe('the answers are read once for the whole screen', () => {
       'utf8',
     );
     expect(route).toContain('answersForAsks(askIds)');
-    expect(route).toContain('updatePayload(u, titles, answers, language, followedIds, cases)');
+    expect(route).toContain(
+      'const context: CardContext = { titles, answers, language, followedIds, cases, dates };',
+    );
+    expect(route).toContain('seen: shown.map((u) => updatePayload(u, context))');
     expect(route).toContain('answered: answer !== undefined');
   });
 });

@@ -9,6 +9,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import {
   getPendingUpdates,
   listSeenUpdates,
+  SEEN_SCREEN_LIMIT,
   listHeldUpdates,
   bringUpdateBackNow,
   countHeldUpdates,
@@ -33,6 +34,7 @@ import {
   CaseRef,
   caseRefsFor,
   goalTitlesFor,
+  updateDatesFor,
 } from '../../services/pendingUpdates.service';
 import {
   answeredDetail,
@@ -111,6 +113,29 @@ interface UpdateRow {
   /** #6769: the case this belongs to — its conversation (tap opens it) and short title. */
   readonly thread_id: number | null;
   readonly case_title: string | null;
+  /** #6369: when the update was made (ISO) — the screen's order and the date it shows; null when it could not be read. */
+  readonly created_at: string | null;
+}
+
+/** What one screen's cards are written from, read once for all of them. */
+interface CardContext {
+  readonly titles: ReadonlyMap<number, string>;
+  readonly answers: ReadonlyMap<number, string>;
+  readonly language: RunLanguage;
+  readonly followedIds: ReadonlySet<number>;
+  readonly cases: ReadonlyMap<number, CaseRef>;
+  readonly dates: ReadonlyMap<number, string>;
+}
+
+/** #6369: when each card was made; best-effort — a card without its date is still a card. */
+async function datesOf(userId: string, updateIds: readonly number[]): Promise<Map<number, string>> {
+  try {
+    return await updateDatesFor(userId, updateIds);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[updates] dates read failed:', (err as Error).message);
+    return new Map();
+  }
 }
 
 /**
@@ -119,14 +144,8 @@ interface UpdateRow {
  * replacing it would break their screen to fix their screen. Nothing existing
  * moves; there is simply now a pair of fields that every card has.
  */
-function updatePayload(
-  u: PendingUpdate,
-  titles: ReadonlyMap<number, string>,
-  answers: ReadonlyMap<number, string>,
-  language: RunLanguage,
-  followedIds: ReadonlySet<number>,
-  cases: ReadonlyMap<number, CaseRef> = new Map(),
-): UpdateRow {
+function updatePayload(u: PendingUpdate, context: CardContext): UpdateRow {
+  const { titles, answers, language, followedIds, cases, dates } = context;
   const caseRef = u.task_id === null ? undefined : cases.get(u.task_id);
   const payload = normalisedPayload(u.kind, u.payload);
   const heading = cardHeading(
@@ -151,6 +170,7 @@ function updatePayload(
     followed: followedIds.has(u.id),
     thread_id: caseRef?.threadId ?? null,
     case_title: caseRef?.caseTitle ?? null,
+    created_at: dates.get(u.id) ?? null,
   };
 }
 
@@ -429,10 +449,21 @@ updatesRouter.get(
         pastWeeklySummaries(userId),
         chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
       ]);
-      const none = new Map<number, string>();
+      const dates = await datesOf(
+        userId,
+        rows.map((u) => u.id),
+      );
+      const context: CardContext = {
+        titles: new Map(),
+        answers: new Map(),
+        language,
+        followedIds: new Set(),
+        cases: new Map(),
+        dates,
+      };
       res.status(200).json({
         success: true,
-        data: { summaries: rows.map((u) => updatePayload(u, none, none, language, new Set())) },
+        data: { summaries: rows.map((u) => updatePayload(u, context)) },
       });
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -447,7 +478,7 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
   try {
     const due = await getPendingUpdates(userId);
     const [seen, held, flagged] = await Promise.all([
-      listSeenUpdates(userId),
+      listSeenUpdates(userId, SEEN_SCREEN_LIMIT),
       countHeldUpdates(userId),
       listFollowedUpdates(userId),
     ]);
@@ -481,10 +512,15 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
     const askIds = [...due, ...followedShown, ...shown]
       .map((u) => debriefAskId(u.kind, normalisedPayload(u.kind, u.payload)))
       .filter((id): id is number => id !== null);
-    const taskIds = [...due, ...followedShown, ...shown].map((u) => u.task_id);
-    const [titles, cases, answers, language] = await Promise.all([
+    const onScreen = [...due, ...followedShown, ...shown];
+    const taskIds = onScreen.map((u) => u.task_id);
+    const [titles, cases, dates, answers, language] = await Promise.all([
       goalTitlesFor(taskIds).catch(() => new Map<number, string>()),
       caseRefsFor(taskIds).catch(() => new Map<number, CaseRef>()),
+      datesOf(
+        userId,
+        onScreen.map((u) => u.id),
+      ),
       answersForAsks(askIds).catch((err: unknown) => {
         // eslint-disable-next-line no-console
         console.error('[updates] answers read failed:', (err as Error).message);
@@ -494,17 +530,14 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
         ? Promise.resolve(chosen)
         : userLanguage(userId).catch(() => 'ka' as RunLanguage),
     ]);
+    const context: CardContext = { titles, answers, language, followedIds, cases, dates };
     res.status(200).json({
       success: true,
       data: {
         // #6369: newest first, as the read list is; the due read picks the oldest few, oldest first.
-        due: [...due]
-          .reverse()
-          .map((u) => updatePayload(u, titles, answers, language, followedIds, cases)),
-        followed: followedShown.map((u) =>
-          updatePayload(u, titles, answers, language, followedIds, cases),
-        ),
-        seen: shown.map((u) => updatePayload(u, titles, answers, language, followedIds, cases)),
+        due: [...due].reverse().map((u) => updatePayload(u, context)),
+        followed: followedShown.map((u) => updatePayload(u, context)),
+        seen: shown.map((u) => updatePayload(u, context)),
         held,
       },
     });

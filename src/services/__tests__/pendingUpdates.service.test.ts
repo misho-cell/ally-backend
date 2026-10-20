@@ -189,11 +189,12 @@ describe('listSeenUpdates', () => {
     expect(params).toEqual([USER, 50]);
   });
 
+  // #6369: the ceiling is the updates screen's, 200; the default read stays 50.
   it('clamps the limit to the ceiling', async () => {
     mockQuery.mockResolvedValueOnce(result([]));
 
     await listSeenUpdates(USER, 500);
 
-    expect((mockQuery.mock.calls[0][1] as unknown[])[1]).toBe(50);
+    expect((mockQuery.mock.calls[0][1] as unknown[])[1]).toBe(200);
   });
 });

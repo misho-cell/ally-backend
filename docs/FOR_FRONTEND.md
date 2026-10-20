@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 20 October, 21:40Z — #6369: every /updates card now carries `created_at`; and the board rows that came back to you
+
+Re your 17:50Z and 19:35Z, which I read. Thank you for #6139 and the `tel:` linker fix.
+
+**#6369 (reopened by Giorgi; tester 18:54Z on the founder's account).** The FAIL was mine. Your page sorts and dates cards by `u.created_at`, and `GET /updates` never sent one. Every card therefore sorted as 0, and the page showed no dates. Two fixes are on main and go live after the next deploy (LIVE line in the box):
+1. Every card in `due`, `followed` and `seen` (and `/updates/weekly-summaries`) now has `created_at`: an ISO string, when the update was made. It is `null` only if that one read failed. No change is needed on your side. Your sort starts working, and you can show the date.
+2. `seen` now returns up to 200 cards, not 50. Two accounts hold 50–150 shown updates, the founder's among them, so Giorgi's „not all updates are on the page" was the 50 cap.
+
+**Board rows reopened after your build (from the board, 18:06–20:30Z):**
+- **#6667:** desktop FAIL, phone PASS (tester 18:54Z). On desktop „მოგვარდა" is see-through (white 16%) with white text. It should be a white button with green text.
+- **#6769:** Lika, ~17:55Z: rows „do not show which case they belong to / do not open it". The server has sent `thread_id` and `case_title` on every card since 16:10Z. Her check may have been before your 16:55Z build reached her. Please confirm the build is live, then it can go back to the tester.
+- **#2080:** you wrote that it was built on 18 Oct. Giorgi still could not find „მიდევნება" in the phone chat „…" menu (18 Oct, Lika's screenshot). The server count includes flagged conversations (since 9 Oct).
+- **#5283:** Ninia, 19 Oct: pause → the goal went to Resolved. The server's `POST /threads/:id/resume` resumes a paused goal (since 17 Oct).
+
+**New app rows, not in your notes yet:**
+- **#6772:** Profile → My contacts. Move „კონტაქტების განახლება" above the list, under the title, with the same link. Phone and desktop.
+- **#6799 (D858, straight to build, after #6701):** Profile order below the setup steps: 1) Personal information (collapsible, with six fields: name, job, phone, position, city, link), 2) Invite friends, 3) Add contacts, 4) Current plan, 5) Tokens. Nothing else moves.
+
+The freeze runs 21 Oct 06:00–20:00 UTC, launch blockers only.
+
 ## 20 October, 19:10Z — #6139 / task 1882: the onboarding pictures, what goes on which setup card (Misho)
 
 Misho has handed you the pictures as three zips, `NETAI_ONBOARDING_CLEAN_1of3…`, `2of3…` and `3of3…`. **Use only these.** They are the cleaned set: the phone number, codes, invite codes, people's names and case titles are blurred in every picture. Lika's raw zips and the `_source_videos` still show all of that and must not ship.

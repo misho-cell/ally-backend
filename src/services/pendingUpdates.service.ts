@@ -209,6 +209,29 @@ export async function caseRefsFor(
   return new Map(rows.rows.map((r) => [r.id, { threadId: r.thread_id, caseTitle: r.case_title }]));
 }
 
+/**
+ * #6369 (Giorgi, reopened 20 Oct; tester 18:54Z): /updates was not newest
+ * first and showed no dates — the screen sorts and dates its cards by
+ * `created_at`, and no card carried one. When each update was made, read once
+ * for the whole screen, the owner's own rows only. Read beside the card rows
+ * rather than added to them: the same rows feed the assistant's tools.
+ */
+export async function updateDatesFor(
+  userId: string,
+  updateIds: readonly number[],
+): Promise<Map<number, string>> {
+  const wanted = [...new Set(updateIds)];
+  if (wanted.length === 0) return new Map();
+  const rows = await query<{ id: number; created_at: Date }>(
+    `SELECT id, created_at FROM pending_updates
+      WHERE id = ANY($1::int[]) AND user_id = $2
+      LIMIT $3`,
+    [wanted, userId, wanted.length],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Map(rows.rows.map((r) => [r.id, new Date(r.created_at).toISOString()]));
+}
+
 /** The most debrief cards one screen reads answers for. */
 const MAX_ANSWER_LOOKUPS = 200;
 
@@ -344,6 +367,12 @@ export async function getPendingUpdates(userId: string): Promise<PendingUpdate[]
 }
 
 const SEEN_LIST_LIMIT = 50;
+/**
+ * #6369 (Giorgi, reopened 20 Oct): „not ALL updates are on the page" — the
+ * busiest accounts hold up to 150 shown updates and the screen got the newest
+ * fifty. The updates screen asks for this many; the assistant's tools keep 50.
+ */
+export const SEEN_SCREEN_LIMIT = 200;
 
 /**
  * Updates ALREADY shown once (status 'seen'), newest first — a read that
@@ -364,7 +393,7 @@ export async function listSeenUpdates(
      WHERE p.user_id = $1 AND p.status = 'seen'
      ORDER BY p.release_at DESC
      LIMIT $2`,
-    [userId, Math.max(1, Math.min(limit, SEEN_LIST_LIMIT))],
+    [userId, Math.max(1, Math.min(limit, SEEN_SCREEN_LIMIT))],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;

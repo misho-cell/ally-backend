@@ -69,7 +69,7 @@ describe('the list spends what it shows, like the assistant does', () => {
   });
 
   it('gives the screen the seen rows too, so a reload is not a blank page', () => {
-    expect(source).toContain('listSeenUpdates(userId)');
+    expect(source).toContain('listSeenUpdates(userId, SEEN_SCREEN_LIMIT)');
   });
 
   it('answers a ref that is not the caller’s with 404, never a false yes', () => {
@@ -111,7 +111,9 @@ describe('a card is due or it is history, not both in one reply', () => {
 
   /** `held` is still counted after the release, which is a different agreement. */
   it('leaves the held count where it was', () => {
-    expect(source).toMatch(/listSeenUpdates\(userId\),\s*countHeldUpdates\(userId\)/);
+    expect(source).toMatch(
+      /listSeenUpdates\(userId, SEEN_SCREEN_LIMIT\),\s*countHeldUpdates\(userId\)/,
+    );
   });
 });
 
