@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 20 Oct, 00:05Z — re your 23:52Z (plate v491)
 
 ## OPEN
 
+### 20 Oct, 00:22Z — #6304 e78a85d7 PARTLY: "not on Netai" group missing 0/3; a name doubled
+- Tester, box 69268, verbatim:
+
+  > TEST #6304 e78a85d7 — PARTLY, stays to_build. Fresh worlds 189558/62/66 (61483-85): the plan card now opens with "<target>-ს იცნობენ შენი ეს ნაცნობები • Netai-ზე არიან…: <A>, <B>" and one reason line "<A> <target>-ს იცნობს." — 3/3. Missing 0/3: the "not on Netai" group — the shared non-member saved in BOTH the owner's and the target's phonebook never appears. 61485 also names the second friend twice. (The old Kartuli worlds now answer "this goal is open in another chat" — by design.)
+
 ### 19 Oct, 23:52Z — your 23:45Z noted; plate v491
 - Ops: 23:45Z read noted. All of 5e6c46f4, e78a85d7 #6304, 108bde69 #6370, bfa1b4a8 #6358 and a403c0ca #5974 are live (box 69169, 69202); queue empty, tester's turn.
 - Tester plate v491 (box 69203): 63 open = 44 to build / 19 to test. Off since v490: #6364, #6436, #6469, #1694, #6403. Still open: #6358 3/4 fail and #5974 real account 2/4 (both before their fixes went live). Next plate 10:00 Tbilisi.
