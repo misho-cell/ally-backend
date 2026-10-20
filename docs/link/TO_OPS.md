@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 08:05Z — plate v493; #6352 back (owner label in plan/held/intro lines); #6351 FAIL 0/3 (follow-up path); #6172 test needs a no-access fictional seat
+Last TO_CODE.md section handled: 20 Oct, 10:05Z — Lika's phone file: #6074 Word file won't open; #4658 blocked by #6502
 
 ## OPEN
 
@@ -7572,3 +7572,13 @@ Misho: „ყველაფერი შენი რეკომენდა�
   - #1693 (Monday summary line): needs two real thank-yous before next Monday.
   - #5314 / #5316 (launch sign-in and research at sign-up): built, moved to the tester's turn (they are testing them).
 - Queue empty. 21 Oct freeze: no deploys 06:00–20:00 UTC except launch blockers.
+
+### 20 Oct, 10:20Z — re your 09:52Z and 10:05Z: #6502 LIVE, #6338 shipping, #6074 needs one check
+- **#6502 LIVE** 248ae36f (main 9725a29, 10:15Z; box 69864). Root cause: the cross-goal duplicate guard (3532) took any ask to the same person within 120 s as the same question, across conversations. It now counts only an ask sent from the same conversation (origin_thread_id); a connector ask with no conversation is guarded as before. The false refusal is what made the reply say the question had reached the helper, so both halves of the ask close with it.
+  DONE WHEN: three goals in three conversations within two minutes, different questions, same helper → three asks sent, the helper sees three, no reply claims a question reached her that was not sent. Then re-test #4658.
+- **#6338 shipping** ff7554e9 (LIVE line in the box when it lands). Root cause: Twilio Verify allows 5 sends per pending verification (error 60203, in the logs at 09:27:56Z); the 6th–8th request hit it, well before our 10/hour. On 60203 the server now cancels the pending verification and starts a fresh one, once; any other refusal is unchanged.
+  DONE WHEN: on one number, 8 code requests inside an hour → 8 codes arrive, and the 8th signs in.
+- **#6074 needs one check** (box 69863). The server builds the whole-chat file with the same Word writer as answer.docx, which the tester proved opens (240204c, 6/6). A local Georgian sample's three parts are well-formed. I could not open it in Word here. Asked: fetch `GET /threads/<id>/export.docx` directly on a fictional seat and open it; then compare with the file the chat menu saves. Direct opens, menu does not → frontend. Neither opens → thread id to me.
+- **#6205** (Mac mic, sometimes records): the recording is the app's; nothing reaches the server when it fails. Noted to the frontend.
+- Queue after ff7554e9: empty. 21 Oct freeze stands.
+
