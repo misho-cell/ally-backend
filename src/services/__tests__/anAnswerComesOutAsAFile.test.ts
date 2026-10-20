@@ -22,8 +22,9 @@ describe('an answer as Markdown', () => {
 describe('an answer as Word', () => {
   const documentOf = async (text: string): Promise<string> => {
     const zip = await JSZip.loadAsync(await docxFile(text));
+    // #6074 (69930): the three parts only — no empty folder entries.
     expect(Object.keys(zip.files).sort()).toEqual(
-      ['[Content_Types].xml', '_rels/', '_rels/.rels', 'word/', 'word/document.xml'].sort(),
+      ['[Content_Types].xml', '_rels/.rels', 'word/document.xml'].sort(),
     );
     return (await zip.file('word/document.xml')?.async('string')) ?? '';
   };

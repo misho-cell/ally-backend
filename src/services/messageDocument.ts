@@ -106,11 +106,18 @@ const ROOT_RELS_XML =
   'Target="word/document.xml"/>' +
   '</Relationships>';
 
+/**
+ * #6074 (the tester's 69930): JSZip writes an empty entry for each folder
+ * („_rels/", „word/"). Word usually accepts them, some versions do not, and
+ * the package needs none — so the three parts go in without them.
+ */
+const NO_FOLDER_ENTRIES = { createFolders: false } as const;
+
 /** The reply as a .docx: the three parts Word needs, nothing else. */
 export async function docxFile(reply: string): Promise<Buffer> {
   const zip = new JSZip();
-  zip.file('[Content_Types].xml', CONTENT_TYPES_XML);
-  zip.file('_rels/.rels', ROOT_RELS_XML);
-  zip.file('word/document.xml', documentXml(reply));
+  zip.file('[Content_Types].xml', CONTENT_TYPES_XML, NO_FOLDER_ENTRIES);
+  zip.file('_rels/.rels', ROOT_RELS_XML, NO_FOLDER_ENTRIES);
+  zip.file('word/document.xml', documentXml(reply), NO_FOLDER_ENTRIES);
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
