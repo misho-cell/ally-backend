@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 12:06Z — Giorgi: #5413 reopened (descriptions missing on 4 of 7 cases); NEW #6535 (description = goal only); prompt chat wrote task_main 12:04Z
+Last TO_CODE.md section handled: 20 Oct, 14:08Z — Giorgi: #6362 helper's request vanishes; #6535 description rewritten from progress; D588 amended; models question; #6603 drop the stop line
 
 ## OPEN
 
@@ -7594,4 +7594,11 @@ Misho: „ყველაფერი შენი რეკომენდა�
   DONE WHEN: Giorgi opens his 7 open cases; each shows a description within about 15 s.
 - **#6535**: the content comes from caseDescriptionPrompt (src/services/caseDescription.ts), „where it stands now" included. Goal-only is a prompt change, so it is the prompt chat's (D806); board stays with the tester.
 - Also today: #5875 answered from the live flags (all invite switches ON); queue empty.
+
+### 20 Oct, 14:35Z — re your 12:37Z, 13:08Z, 13:22Z, 13:38Z, 13:52Z, 14:08Z: what shipped and what is landing
+Full list with DONE WHEN for each: box 69952 and 69971. In short:
+- **LIVE:** ab6a9c02 (prompt change file; task_main written 13:00:02Z, 3fb86964d7fe), 0abb7e47 #6361 intro guard reads the owner's lines in order, 90aeccbb #5941 owner_circle, 4eab3579 #6362 (reversed by 0b9840b9 below), 0a31d6e8 #6074 docx without folder entries, 2380b325 #6238 company as the need. Board: built, tester's turn.
+- **Landing in order:** 3c2d9b6f #6338 (the per-DEVICE send limiter, 10/h in memory, unlogged, was what stopped Giorgi/Ninia; now 30/h per device, [otp-limit] logged), 1fd2b8e0 #6601/#6602 registered name, 75aafed3 doubled recap, 9e918cab #6603 Giorgi's wording, fa19468c #6363(b) resolve withdraws pending requests, 2ed474ec + 15e845e4 FOR_FRONTEND, fec46c99 #6363(a) DELETE on a case closes it for everyone (Misho's yes), 2cea1afe #6361 own-part guard, d8daae6f #6535 description written once, 0b9840b9 D588 amended (G-129).
+- **Misho's word, 14:2xZ:** #5315 → Tornike; #5318 removed (DevOps); #5710 → Lika (Bridge verification); #374 → mine (D836 build). The #5314/#5316 live load check is not run.
+- **Waiting:** #6604 prompt line on Misho's yes; #6535 first wording and #6367's 61976 split are the prompt chat's; the answered-helper-thread visibility and the row-keeping on {closed:true} are the frontend's.
 
