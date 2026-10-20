@@ -634,7 +634,7 @@ import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } f
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { withPlanDecisionAgain } from './planDecisionReoffer';
 import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
-import { ANSWER_SENT_LINE, withAnswerSentLine } from './similarAnswerRule';
+import { ANSWER_SENT_FORMS, ANSWER_SENT_LINE, withAnswerSentLineOnce } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, furtherOutCount, matchShapeOf } from './resultShape';
 import {
@@ -16510,6 +16510,28 @@ const OWNER_LINES_TIMEOUT_MS = 5_000;
  * one this run is in. A failed read gives the title and description alone,
  * which only makes the check more willing to let the question through.
  */
+const ANSWER_SENT_LOOKUP_TIMEOUT_MS = 3_000;
+
+/** #6766: whether this conversation already told its reader that an answer went. */
+async function answerSentAlreadySaid(threadId: number): Promise<boolean> {
+  try {
+    const result = await query<{ said: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM conversations c
+          WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.kind = 'message'
+            AND (c.content = ANY($2::text[]) OR c.content LIKE ANY($3::text[]))
+       ) AS said`,
+      [threadId, [...ANSWER_SENT_FORMS], ANSWER_SENT_FORMS.map((f) => `${f}%`)],
+      ANSWER_SENT_LOOKUP_TIMEOUT_MS,
+    );
+    return result.rows[0]?.said === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[answer-sent] thread ${threadId}: not read:`, (err as Error).message);
+    return false;
+  }
+}
+
 async function ownerLinesForGoal(
   task: { title: string; description?: string | null; thread_id: number | null },
   threadId: number | undefined,
@@ -17619,7 +17641,19 @@ export async function processChat(
     );
   }
   if (runAnswerSent.has(runId)) {
-    effectiveFinal = withAnswerSentLine(withoutQuotedCopy(effectiveFinal), language);
+    effectiveFinal = withAnswerSentLineOnce(
+      withoutQuotedCopy(effectiveFinal),
+      language,
+      await answerSentAlreadySaid(threadId),
+    );
+    // #6766: the line was said earlier and the reply was nothing else — a quiet end.
+    if (effectiveFinal.trim() === '') {
+      // eslint-disable-next-line no-console
+      console.log(`[chat] run ${runId} thread ${threadId}: answer sent, already thanked — quiet`);
+      await dropQuietRunTrail(userId, threadId, runId);
+      clearRunState(runId);
+      return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
+    }
   }
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && closeLineIsTheWholeAnswer(sentSide, userMessage)) {

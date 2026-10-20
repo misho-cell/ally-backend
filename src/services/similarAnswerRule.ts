@@ -52,3 +52,25 @@ export function withAnswerSentLine(reply: string, language: RunLanguage): string
   const line = ANSWER_SENT_LINE[language] ?? ANSWER_SENT_LINE.ka;
   return `${line} ${reply.trimStart()}`;
 }
+
+/** Every form the line takes, bare or with thanks, in our languages. */
+export const ANSWER_SENT_FORMS: readonly string[] = [
+  ...Object.values(ANSWER_SENT_LINE),
+  ...Object.values(THANKS_AND_SENT),
+];
+
+/**
+ * #6766 (Giorgi, helper's screen 20 Oct): „მადლობა, პასუხი გაიგზავნა." stood
+ * under every reply the helper wrote. It is said once in a conversation: when
+ * it was already said, the reply goes as it is — and a reply that would be
+ * nothing but the line becomes empty, so the run ends quietly.
+ */
+export function withAnswerSentLineOnce(
+  reply: string,
+  language: RunLanguage,
+  alreadySaid: boolean,
+): string {
+  if (!alreadySaid) return withAnswerSentLine(reply, language);
+  const trimmed = reply.trim();
+  return trimmed === '' || isOnlyTheBareLine(trimmed) ? '' : reply;
+}

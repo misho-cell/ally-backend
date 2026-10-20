@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { withAnswerSentLine } from '../similarAnswerRule';
+import { withAnswerSentLine, withAnswerSentLineOnce } from '../similarAnswerRule';
 import { answerSentNote } from '../chat.service';
 
 const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
@@ -49,10 +49,23 @@ describe('the reply after the send says the answer went', () => {
 
   it('is applied to the final reply of a run whose answer went', () => {
     expect(chat).toContain('if (sent.sent && runId) runAnswerSent.add(runId);');
-    expect(chat).toContain(
-      'effectiveFinal = withAnswerSentLine(withoutQuotedCopy(effectiveFinal), language);',
-    );
+    // #6766: once per conversation.
+    expect(chat).toContain('effectiveFinal = withAnswerSentLineOnce(');
+    expect(chat).toContain('await answerSentAlreadySaid(threadId),');
     const clear = chat.slice(chat.indexOf('function clearRunState'));
     expect(clear.slice(0, 1400)).toContain('runAnswerSent.delete(runId)');
+  });
+});
+
+/** #6766 (Giorgi, helper's screen 20 Oct): the line once per conversation. */
+describe('the answer-sent line, said once', () => {
+  it('is said the first time', () => {
+    expect(withAnswerSentLineOnce('', 'ka', false)).toBe('მადლობა, პასუხი გაიგზავნა.');
+  });
+
+  it('is not said again: a reply that was only the line goes quiet, any other reply stands', () => {
+    expect(withAnswerSentLineOnce('', 'ka', true)).toBe('');
+    expect(withAnswerSentLineOnce('პასუხი გაიგზავნა.', 'ka', true)).toBe('');
+    expect(withAnswerSentLineOnce('კარგი, გადავეცი.', 'ka', true)).toBe('კარგი, გადავეცი.');
   });
 });

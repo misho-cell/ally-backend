@@ -19,7 +19,8 @@ describe('a run that ends quietly', () => {
 
   /** #1750 (tester 40921): the third — the go-between's close line said it all. */
   // 1489 (Misho, გ): the fourth is the run after a helper's „no" that brought nothing.
-  it('does so on all four quiet endings', () => {
-    expect(chat.split('await dropQuietRunTrail(userId, threadId, runId);').length - 1).toBe(4);
+  // #6766 added the fifth: an answer already thanked for in this conversation.
+  it('does so on all five quiet endings', () => {
+    expect(chat.split('await dropQuietRunTrail(userId, threadId, runId);').length - 1).toBe(5);
   });
 });
