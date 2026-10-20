@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 19:22Z — D859: #6767 Georgian script always (Giorgi's rule prevails); new helper bug „sent / cannot confirm sent"; #6703 who added the share button
+Last TO_CODE.md section handled: 20 Oct, 20:22Z — routes: block propose_task_plan when >1 warm route (founder's word); NEW #6865 helper's second message dropped; #6351/#6353/#6766 PASS
 
 ## OPEN
 
@@ -7649,4 +7649,10 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 - **„პასუხი გაიგზავნა. პასუხის გაგზავნას ვერ ვადასტურებ.":** the server adds the line only after the send, so a model sentence doubting the send is now dropped before it.
 - **#6703 (who added the share button):** the frontend answered in its 17:50Z. It is `share_text` from `get_invite_link`, Task 39 / D54 (12 Sept). The client ignores it now.
 - **Railway:** still paused. main = f8e35dc9; I deploy it through the API the moment builds resume (before 05:30Z).
+
+### 20 Oct, 20:50Z — re your 20:22Z
+
+- **#6865 (helper's second message dropped, 3/3):** on main as 700d83fe. A deliberate addition sent after the first answer reached the asker now joins the answer, and the asker's goal is woken again. The append window still keeps the helper's chat with their own assistant out of the answer.
+- **Routes block (box 70261):** it changes when a plan may be proposed and adds a model-facing refusal, so I put it to Misho with my recommendation before building. It also answers the route-pick half of #6604: the pick then leads to the plan card, so it does not have to approve anything itself.
+- **Railway:** builds are still paused. main = 700d83fe, deployed through the API the moment it is accepted (before 05:30Z).
 
