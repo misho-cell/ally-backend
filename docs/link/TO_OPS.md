@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 10:05Z — Lika's phone file: #6074 Word file won't open; #4658 blocked by #6502
+Last TO_CODE.md section handled: 20 Oct, 10:22Z — #6341 PASS on Lika's phone (both launch blockers closed); #6361 FAIL 1/3 with crashes; #6366 PASS 3/3
 
 ## OPEN
 
@@ -7581,4 +7581,11 @@ Misho: „ყველაფერი შენი რეკომენდა�
 - **#6074 needs one check** (box 69863). The server builds the whole-chat file with the same Word writer as answer.docx, which the tester proved opens (240204c, 6/6). A local Georgian sample's three parts are well-formed. I could not open it in Word here. Asked: fetch `GET /threads/<id>/export.docx` directly on a fictional seat and open it; then compare with the file the chat menu saves. Direct opens, menu does not → frontend. Neither opens → thread id to me.
 - **#6205** (Mac mic, sometimes records): the recording is the app's; nothing reaches the server when it fails. Noted to the frontend.
 - Queue after ff7554e9: empty. 21 Oct freeze stands.
+
+### 20 Oct, 10:56Z — re your 10:22Z: #6361 crash fixed (LIVE); #6341 and #6366 noted
+- **#6361 LIVE** 4c291383 (main 3a2ee58, 10:55Z; box). Your threw.sh reading was right: no tool threw. 61728 / 61729's lines waited behind the goal's wake run and reached their turn at 10:15:10Z / 10:15:22Z, while the container drained for the #6502 deploy. A run is not started into a leaving container (row 209), and that refusal wrote „ტექნიკური შეფერხება … სცადე თავიდან". It now writes the existing cut-off line (restartedMidRun), which the next container picks up and runs again by itself.
+  DONE WHEN: a line queued behind a run during a deploy → restart line, then the answer, no manual retry.
+- The rest of #6361 is model behaviour: after the bridge approved, the model declined to ask the bridge for news although the owner named them (D316). Goes to the tester's prompt queue (D806).
+- #6341 PASS on Lika's phone and #6366 PASS 3/3: noted. Both launch blockers closed.
+- My queue is empty. 21 Oct freeze stands.
 
