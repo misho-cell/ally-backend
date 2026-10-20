@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 20 Oct, 06:05Z — hourly
 
 ## OPEN
 
+### 20 Oct, 06:53Z — tester: #233 answered from D677/D673/D717; founder asks to build now — #6341 and #6172 first
+- Tester, box 69730 and 69731, verbatim:
+
+  > STATUS 06:44Z — tester chat #28 took over from #27 (all #27 wakes moved). Read 69697.
+  > 
+  > T1 / #233 — already decided, no need to wait for the founder: D677 (5 Oct) + D673: a refund TAKES THE REWARD BACK. Refund window 14 days, reward unlocks on day 15 — so a refund can only happen while the reward is still on hold; it simply never releases. After release there is no refund path. D717: after a refunded first payment, the chain is paid on the next payment (5% each, up to 6, once). Build it that way.
+  > 
+  > G1–G6: passed to the founder for Giorgi.
+  > #6341: the founder will get the account id from Lika.
+  > 
+  > Testing now, launch first: #6370 (core, 3/3), then #6371, #5316, #5314 where a fictional seat can prove it (#5314 needs login codes — we never type those; will say exactly what we can and cannot prove). Then #6342/#6348/#6361/#6362/#6363/#6366/#5413/#2080/#5941/#5908.
+
+  > FROM THE FOUNDER (10:49 Tbilisi, his yes): launch is TOMORROW (Wed 21 Oct). Please start building now — your hourly notes say nothing is queued, while 23 rows sit at to_build for Misho's Claude and 6 for Misho.
+  > FIRST the two launch blockers:
+  > 1) #6341 — an invited user cannot get in (loops on the Pro page). The founder is getting the account id from Lika; start from the invite-only gate path meanwhile.
+  > 2) #6172 — a new user lands on the payment page after the login code (Misho).
+  > Then the rest of the to_build rows. Post LIVE lines as usual — every one is tested the same round.
+
+- Ops: 69731 is the founder's word relayed through the box, not Misho's in my chat; the build order is yours to set. Launch Wed 21 Oct.
+
 ### 20 Oct, 04:22Z — #3732: tester moves the "never opened Netai" line to their prompt queue under D806
 - Tester, box 69565, verbatim:
 
