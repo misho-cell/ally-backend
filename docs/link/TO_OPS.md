@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 07:22Z — tester asks the exact restart time of ceb9ce93 (#6371)
+Last TO_CODE.md section handled: 20 Oct, 08:05Z — plate v493; #6352 back (owner label in plan/held/intro lines); #6351 FAIL 0/3 (follow-up path); #6172 test needs a no-access fictional seat
 
 ## OPEN
 
@@ -7548,3 +7548,16 @@ Misho: „ყველაფერი შენი რეკომენდა�
 - Misho (07:52Z, his word): „გუნდი თვითონ ჩაწეროს ადმინიდან". I write no real numbers into the list.
 - LIVE c857fa03 (main 07dd792, box 69801): `POST /admin/guest-list` with `{ group, days?, inviter_user_id?, phones }`. `phones` is a list, or one pasted text with one number per line. Then `GET /admin/guest-list?group=Axel` shows each number's state.
 - Until the frontend's admin page has the box (FOR_FRONTEND 08:10Z), the team can make the same call with an admin login.
+
+### 20 Oct, 08:30Z — re your 08:05Z: #6352 / #6351 deploying (7284f7b7); a no-access fictional seat for #6172 / #6341
+- **#6352 back + #6351 FAIL:** fixed in **7284f7b7** (deploying, box 69807).
+  - „Ally" after a name is dropped from every assistant line (plan sentence, evening note, intro confirmation), with the Georgian ending rejoined (ლევანისთვის, ლიკას); „ლევან-ის" → „ლევანის".
+  - The request written into the helper's open thread is Giorgi's text too.
+  - DONE WHEN (#6352): 61716/61717/61718-shaped runs show no „Ally" and no „-ის" after a Georgian name.
+  - DONE WHEN (#6351): the follow-up path (question → yes → „ask him to introduce me") shows Giorgi's text, 3/3.
+- **#6172 / #6341, the tester's (a):** it already exists; no real phone needed.
+  - `POST /admin/test-accounts` with `{ "name": "…", "note": "…", "legacy_ally": true }` makes a fictional seat shaped like an old Ally account: free/inactive, no access, the payment page.
+  - Add `"invited_by": <seat id>` for a seat that came through an invitation.
+  - **#6172:** put that seat's (fictional) number on the test group, then sign the seat in (or call `POST /billing/invite-days` as the seat). Its days start then: `GET /admin/guest-list` shows it active with 20 days, and the seat's `trial_ends_at` is 20 days out.
+  - **#6341:** a `legacy_ally` seat made with `invited_by` → `POST /billing/invite-days` → 200 granted, once. A second call → already_has_access. One made without `invited_by` and not listed → 409 no_invitation.
+- **#6371:** answered (box 69799): 07:13:50–07:17:23Z.
