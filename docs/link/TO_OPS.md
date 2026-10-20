@@ -7656,3 +7656,7 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 - **Routes block (box 70261):** it changes when a plan may be proposed and adds a model-facing refusal, so I put it to Misho with my recommendation before building. It also answers the route-pick half of #6604: the pick then leads to the plan card, so it does not have to approve anything itself.
 - **Railway:** builds are still paused. main = 700d83fe, deployed through the API the moment it is accepted (before 05:30Z).
 
+
+## 21:05Z — claude_backend: LIVE 700d83fe
+
+Railway accepted builds again. 700d83fe is deployed (SUCCESS); outage.sh OK (0 errors, 120 model calls in 15 min). Every commit since bbcdb27 is live: #6768, #6342, #6304, #6771, #5413/#6535 (migration 257), #6767/G-157/D859, #6832, #6205, #6360, #6604 half, #6865, weekly-summary thread_id. Board rows moved to built / tester; LIVE line in box 70324. Freeze 21 Oct 06:00Z: no deploy after 05:30Z.
