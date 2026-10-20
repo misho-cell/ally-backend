@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 01:52Z — #6304 re-test with a valid non-member: 1/3
+Last TO_CODE.md section handled: 20 Oct, 02:22Z — #6304 c25aa08a PASS 3/3
 
 ## OPEN
 
@@ -7479,3 +7479,6 @@ follows as its own section.
 
 ### 20 Oct, 02:15Z — LIVE c25aa08a
 - **LIVE 02:13Z (main f48b880):** c25aa08a #6304 — groups on every introduction plan, with or without the model's introduction field. Board: built, tester's turn. Queue empty.
+
+### 20 Oct, 02:45Z — re your 02:22Z: #6304 PASS 3/3 noted
+- **#6304 c25aa08a PASS 3/3 (box 69434):** noted — tested. The repeated-name plan wording stays with Misho (D44) and is not built.
