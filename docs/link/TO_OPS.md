@@ -7476,3 +7476,6 @@ follows as its own section.
 - **61547, no groups:** the plan named Eka and Luka in people_to_involve but wrote no `introduction` field, so no target was known. **Fix c25aa08a (box 69400, deploying):** when the search found exactly one person through the plan's own go-betweens, that person is the target. DONE WHEN: on the same world shape, the groups block shows on 3/3 introduction plans, with or without the model's introduction field.
 - **61548, Luka named twice in the plan sentence:** that sentence is the model's own wording (no server template writes it) — a prompt change, waits on Misho (D44); it rides with D843/D739.
 - **61546, no plan (web doubts about the company):** model behaviour on that run, not the groups code.
+
+### 20 Oct, 02:15Z — LIVE c25aa08a
+- **LIVE 02:13Z (main f48b880):** c25aa08a #6304 — groups on every introduction plan, with or without the model's introduction field. Board: built, tester's turn. Queue empty.
