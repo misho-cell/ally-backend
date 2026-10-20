@@ -946,6 +946,18 @@ async function syncRequestThreads(
 }
 
 /**
+ * #6362 retest (the tester's 61731 / 61733): the same rule in an ask thread the
+ * request only shared — her yes keeps it open, at work; a question she still
+ * owes keeps it hers; anything else settles as the ask says.
+ */
+export function sharedThreadStatusAfter(
+  action: IntroductionAction,
+  askStatus: ThreadStatus,
+): ThreadStatus {
+  return action === 'accept' && askStatus === 'done' ? 'working' : askStatus;
+}
+
+/**
  * The status a mediator's thread is left in once the request in it is
  * answered or snoozed.
  *
@@ -963,8 +975,11 @@ async function mediatorThreadStatusAfter(
   ownerLanguage: RunLanguage,
 ): Promise<{ status: ThreadStatus; statusLine?: string | null }> {
   // The caption is the status's own default, in the owner's language.
-  if (isSharedRequestThread(thread))
-    return { status: await askThreadStatusAfterRequest(thread.id) };
+  if (isSharedRequestThread(thread)) {
+    return {
+      status: sharedThreadStatusAfter(action, await askThreadStatusAfterRequest(thread.id)),
+    };
+  }
   if (action === 'snooze')
     return { status: 'waiting', statusLine: introSnoozedLine(ownerLanguage) };
   // #6362 (Giorgi): a go-between who agreed keeps the request in her list — it
