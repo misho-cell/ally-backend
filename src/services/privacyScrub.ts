@@ -128,6 +128,48 @@ export function scrubText(text: string): string {
     }, '');
 }
 
+/** A number is the same number whatever its country code: its last nine digits. */
+const SAME_NUMBER_DIGITS = MIN_PHONE_DIGITS;
+
+function numberKey(candidate: string): string | null {
+  const digits = candidate.replace(/\D/g, '');
+  return digits.length >= MIN_PHONE_DIGITS ? digits.slice(-SAME_NUMBER_DIGITS) : null;
+}
+
+function numberKeysIn(texts: readonly string[]): Set<string> {
+  const keys = new Set<string>();
+  for (const text of texts) {
+    for (const match of text.matchAll(new RegExp(PHONE_LIKE_PATTERN, 'gu'))) {
+      const key = numberKey(match[0]);
+      if (key !== null) keys.add(key);
+    }
+  }
+  return keys;
+}
+
+/**
+ * #6360 (D587 point 3, Giorgi): a number the go-between typed with their own
+ * hand is handed over, and reaches the owner at once. Their assistant writes
+ * the answer, and that wording was scrubbed like any other text, so the owner
+ * read „he can call: " and nothing after it. Each number in `text` that the
+ * writer themselves typed (`typed`, their own messages) is marked as allowed;
+ * every other number is left for scrubText exactly as before.
+ */
+export function allowNumbersTheyTyped(text: string, typed: readonly string[]): string {
+  const theirs = numberKeysIn(typed);
+  if (theirs.size === 0) return text;
+  const spans = text.match(ALLOW_SPAN_RE) ?? [];
+  return text
+    .split(ALLOW_SPAN_RE)
+    .map((part) =>
+      part.replace(new RegExp(PHONE_LIKE_PATTERN, 'gu'), (match) => {
+        const key = numberKey(match);
+        return key !== null && theirs.has(key) ? `${ALLOW_OPEN}${match}${ALLOW_CLOSE}` : match;
+      }),
+    )
+    .reduce((acc, part, i) => acc + (i > 0 ? spans[i - 1] : '') + part, '');
+}
+
 /**
  * Georgian formal address, unmade at the display boundary.
  *

@@ -79,7 +79,13 @@ import {
 } from './runLanguage';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
-import { ALLOW_OPEN, allowedSpansForTheModel, scrubText } from './privacyScrub';
+import {
+  ALLOW_OPEN,
+  allowNumbersTheyTyped,
+  allowedSpansForTheModel,
+  containsPhoneLike,
+  scrubText,
+} from './privacyScrub';
 import { receivingCapsAreOff } from './askCapExemptions';
 import { geoName } from './georgianCase';
 import {
@@ -2151,11 +2157,39 @@ async function answerIsADecline(askThreadId: number, answer: string): Promise<bo
   }
 }
 
+/** The most of the helper's own lines read for numbers they typed. */
+const OWN_LINES_READ = 20;
+
+/**
+ * #6360 (D587 point 3): what the helper typed themselves on this thread since
+ * the question came — the numbers in it are theirs to hand over. A failed read
+ * hands nothing over: every number is then scrubbed, as before.
+ */
+async function helpersOwnLines(askThreadId: number): Promise<string[]> {
+  try {
+    const lines = await query<{ content: string }>(
+      `SELECT c.content FROM conversations c
+        WHERE c.thread_id = $1 AND c.role = 'user' AND c.kind = 'message' AND c.content <> ''
+          AND c.created_at > (SELECT MAX(a.created_at) FROM task_asks a WHERE a.ask_thread_id = $1)
+        ORDER BY c.created_at DESC LIMIT $2`,
+      [askThreadId, OWN_LINES_READ],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return lines.rows.map((l) => l.content);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ask] thread ${askThreadId}: own lines not read:`, (err as Error).message);
+    return [];
+  }
+}
+
 export async function recordAskAnswer(
   askThreadId: number,
   answerText: string,
 ): Promise<CapturedAnswer | null> {
-  const safe = scrubText(answerText.trim());
+  const trimmed = answerText.trim();
+  const typed = containsPhoneLike(trimmed) ? await helpersOwnLines(askThreadId) : [];
+  const safe = scrubText(allowNumbersTheyTyped(trimmed, typed));
   if (!safe) return null;
   // Append-window rule (ticket 6 protocol run, task 46): later messages join
   // the answer ONLY until the asker's wake is delivered. After that, whatever
