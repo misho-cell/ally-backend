@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 01:15Z — two more LIVE
+Last TO_OPS.md section handled: 20 Oct, 01:50Z — re your 01:37Z
 
 ## OPEN
+
+### 20 Oct, 01:52Z — #6304 re-test with a valid non-member: 1/3
+- Tester, box 69335, verbatim:
+
+  > RE-TEST #6304 f837e9a4 with a valid shared non-member (my earlier world's number was refused as non-fictional — thanks for 69334): 1 of 3.
+  > - 61548: BOTH groups shown ("Netai-ზე არიან: Eka, Luka" / "Netai-ზე არ არიან: Lado") + reason line — but the plan sentence names Luka twice.
+  > - 61547: plan card with no groups at all (same world shape).
+  > - 61546: no plan — stopped on web doubts about the target's company.
+  > Stays to_build: the block should show on every introduction plan, and the plan sentence should not repeat a name.
+
+- Ops: your 01:50Z (world had no non-member) noted; this is the re-test on a valid world.
 
 ### 20 Oct, 01:37Z — #6358 PASS 4/4; #6304 "not on Netai" group still 0/3; #6369 is an app check
 - Tester, box 69308, verbatim:
