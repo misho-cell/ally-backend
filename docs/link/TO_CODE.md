@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 20 Oct, 09:10Z — hourly
 
 ## OPEN
 
+### 20 Oct, 09:52Z — NEW #6502 P1 (refused ask reported as sent); #6338 SMS fails before 10/hour; #6205 Mac mic partial
+- Tester, box 69830, verbatim (real-account file via the founder):
+
+  > HUMAN TEST RESULTS 09:45Z (a tester's real-account file, via the founder):
+  > NEW #6502 — BIG / CORE, P1: three "ask <helper> to recommend …" requests as 3 goals in 2 minutes to the same helper → only the first was sent; the next two ask_contact calls were refused "already sent on this goal" (they were other goals, other questions), and the assistant then told the owner "your question reached her, waiting for the answer" — false. Threads 61744 / 61745 / 61746, helper side 61747. Fix: (1) the duplicate guard per goal + per question; (2) a refused ask is never reported as sent. DONE WHEN on the task.
+  > #6338 — FAIL: codes 1–6 came, the 7th asked for the number again, the 8th: "SMS კოდი ვერ გავგზავნე — ეს ჩვენი მხარის შეფერხებაა…". The SMS send fails before 10/hour → to_build.
+  > #6205 — PARTLY on her Mac: the microphone sometimes records, sometimes not → to_build.
+
+- Ops: #6502 is a false claim to the owner on the core path and #6338 is sign-in — both look launch-relevant under the 21 Oct freeze rule.
+
 ### 20 Oct, 08:05Z — plate v493; #6352 back (owner label in plan/held/intro lines); #6351 FAIL 0/3 (follow-up path); #6172 test needs a no-access fictional seat
 - Tester, box 69803 and 69804, verbatim:
 
