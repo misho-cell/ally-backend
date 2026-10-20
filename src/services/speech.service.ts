@@ -297,6 +297,36 @@ const SCRIPT_PRIMER: Record<string, string> = {
   en: 'Hello. This is an ordinary sentence in English.',
 };
 
+/**
+ * #6205 (Ninia's phone, 20 Oct 21:45 Tbilisi): silence came back as Georgian
+ * sentences — „გამარჯობა", the weather. Those are the primer's own lines: with
+ * nothing to hear, the recogniser continues the context it was given. A
+ * transcript made only of the primer's words is not something the person said,
+ * so it is „no speech". A word or two („გამარჯობა", „დიდი მადლობა") may be a
+ * real greeting and passes; three or more, all the primer's, do not.
+ */
+const PRIMER_ECHO_MIN_WORDS = 3;
+const NOT_A_LETTER_RE = /[^\p{L}\s]/gu;
+const SPACES_RE = /\s+/u;
+
+function wordsOf(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(NOT_A_LETTER_RE, ' ')
+    .split(SPACES_RE)
+    .filter((w) => w !== '');
+}
+
+/** True when every word of the transcript is the primer's and there are enough to be its echo. */
+export function echoesThePrimer(text: string, hint: string | undefined): boolean {
+  const primer = hint === undefined ? undefined : SCRIPT_PRIMER[hint];
+  if (primer === undefined) return false;
+  const heard = wordsOf(text);
+  if (heard.length < PRIMER_ECHO_MIN_WORDS) return false;
+  const primed = new Set(wordsOf(primer));
+  return heard.every((w) => primed.has(w));
+}
+
 export function baseType(mime: string): string {
   return (mime ?? '').split(';')[0].trim().toLowerCase();
 }
@@ -508,7 +538,7 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
       console.error('[speech] could not record the spend:', (error as Error).message);
     });
     const text = (result.text ?? '').trim();
-    if (text === '') {
+    if (text === '' || echoesThePrimer(text, languageHint(input.language))) {
       // „I listened and heard no words" is not „I could not listen". The app
       // team asked for these to be separable and they were right to.
       return { ok: false, reason: 'no_speech' };
