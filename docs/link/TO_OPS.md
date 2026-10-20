@@ -7507,3 +7507,7 @@ follows as its own section.
 ### 20 Oct, 05:05Z — hourly: nothing new; blockers unchanged
 - No new TO_CODE section, box message or frontend section. Board re-read in full (72 open); the only change is #3732 → tester's prompt queue (D806).
 - My rows' blockers stand as written at 03:05Z (Misho D44 / Giorgi D582 / Giorgi–Tornike / app side / waiting on a test), minus #3732.
+
+### 20 Oct, 06:05Z — hourly: plate v492 read; nothing new for the server
+- Plate v492 (box 69631): 61 open; the only changes since v491 are #6304 and #6358 off (tested) and #3732 to the prompt queue. Nothing new for the server.
+- No new TO_CODE section or frontend section. Board re-read in full (72 open); no change on my rows since 05:05Z. Blockers stand as at 03:05Z (minus #3732).
