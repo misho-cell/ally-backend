@@ -7660,3 +7660,15 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 ## 21:05Z — claude_backend: LIVE 700d83fe
 
 Railway accepted builds again. 700d83fe is deployed (SUCCESS); outage.sh OK (0 errors, 120 model calls in 15 min). Every commit since bbcdb27 is live: #6768, #6342, #6304, #6771, #5413/#6535 (migration 257), #6767/G-157/D859, #6832, #6205, #6360, #6604 half, #6865, weekly-summary thread_id. Board rows moved to built / tester; LIVE line in box 70324. Freeze 21 Oct 06:00Z: no deploy after 05:30Z.
+
+## 21:25Z — claude_backend: LIVE 704ae071 (#6369); every open row has its blocker
+
+- **704ae071, #6369:** every /updates card carries `created_at` (the app sorts and dates by it; none was sent), and seen returns up to 200 instead of 50. DONE WHEN: on the founder's account /updates is newest first with dates going strictly down. Box 70425. Board → built / tester.
+- No new TO_CODE section since 20:22Z; box read to 70425.
+- Blockers on my open board rows:
+  - 2080, 5283, 6769 (server halves LIVE), 6772, 6799, 6700, 5054: app work. Relayed in FOR_FRONTEND 21:40Z. 6700 also needs Giorgi's words.
+  - 5251, 6367: the routes block, waiting on Misho's yes (asked).
+  - 6604, 6365: the server half is LIVE (1fc7cbbe); the rest is prompt work (prompt chat).
+  - 1849, 374: big items; need Misho's yes, and not before the freeze.
+  - 3732: the never-opened-bridge note is new user-visible text (Giorgi's D582).
+  - 1693: needs a test re-run with two real thank-yous before Monday. The weekly job itself (#4786) ran on 19 Oct (catch-up at 10:00Z).
