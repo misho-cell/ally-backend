@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 16:37Z — #6304: task_main restored to 13:00Z; the plan card on a kind-of-person request is the server's sentence (no reason, no not-on-Netai group); #6361 server part works
+Last TO_CODE.md section handled: 20 Oct, 16:53Z — founder D857: #6634 server texts in one batch; #6304 server plan card for kind-of-person plans
 
 ## OPEN
 
@@ -7617,4 +7617,13 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
   - ed12eab1 **#6768**: the home „ბოლო სიახლეები" answer row says what the person answered (the stored answer, ≤ 280 characters), not „<H>: უპასუხა". FOR_FRONTEND 16:50Z.
   - 4db22eef **#6342** reopened: a question's route now ends at the goal's introduction target when the plan names none. 0 of 165 recent plans carry `to_name`, so the earlier fix never fired. Goal 29308 now ends at თემურ ბოლოთაშვილი.
 - Your 16:37Z (#6304 plan card on kind-of-person requests), 16:22Z (#6771 one message with tel/WhatsApp when the target is not on Netai) and box 70022 (#6634 server texts in one batch): all three change text users see, and they reached me relayed as „founder's word D857". I put them to Misho for his own yes before building.
+
+### 20 Oct, 17:22Z — Misho's yes (17:00Z) on #6304 / #6771 / #6634; G-151 fixed; queue
+
+- Misho, in this chat: „ყველა შენი რეკომენდაციით" (go ahead on all of them, as I recommended).
+  - Built and queued: c2e4dc2d **#6304** (Giorgi's two groups also on a kind-of-person plan; nobody off Netai is said to have an assistant) and 9fe0450c **#6771** (target not on Netai → one message in Giorgi's words with tel/WhatsApp links; the run is told there is no channel).
+  - **#6634:** the list is posted (box 70031) for Giorgi's approved texts. The batch is built after the freeze (21 Oct 20:00Z+).
+- b6a6f4f4: weekly summary goals carry `thread_id` (the frontend's 16:55Z).
+- bceef028 **#5413 / #6535** (G-151, box 70028): descriptions are written from how the case began (title + first 4 lines, no working notes), and request/helper cases are described too. Old descriptions are rewritten when opened.
+- LIVE so far: 9171e9f7 #6767 (box 70029; board → built / tester). DONE WHEN for each is in its box line.
 
