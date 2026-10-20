@@ -11,7 +11,8 @@ describe('a request that continues the conversation', () => {
     const first = incomingRequestOpening(language, 'Giorgi', 'Nino', 'need a lawyer', false);
     const follow = incomingRequestFollowUp(language, 'Giorgi', 'Nino', false);
 
-    expect(first).toMatch(/^(გამარჯობა|Hello|Привет|¡Hola)/);
+    // #6351: the Georgian first request opens with „დამიკავშირდა" (Giorgi's wording).
+    expect(first).toMatch(/^(გამარჯობა|დამიკავშირდა|Hello|Привет|¡Hola)/);
     expect(follow).not.toMatch(/გამარჯობა|Hello|Привет|Hola/);
   });
 

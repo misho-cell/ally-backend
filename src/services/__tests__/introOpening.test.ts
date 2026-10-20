@@ -80,8 +80,10 @@ describe('the introduction arrives in the reader’s own language', () => {
       expect(outgoingRequestOpening('ka', 'ნინო', 'დათო', false)).toContain('ნინოსთვის');
     });
 
-    it('keeps the wording every Georgian reader has had all along', () => {
-      expect(incomingRequestOpening('ka', 'ნინო', 'დათო', null, false)).toContain('დაეხმარები?');
+    it('keeps the Georgian reader’s wording — Giorgi’s since #6351 (20 Oct)', () => {
+      expect(incomingRequestOpening('ka', 'ნინო', 'დათო', null, false)).toContain(
+        'მითხარი შენი პოზიცია და მე გადავცემ.',
+      );
       expect(incomingRequestTitle('ka', 'ნინო', 'დათო', true)).toBe('ნინო → შენ');
       expect(outgoingRequestTitle('ka', 'ნინო', 'დათო', true)).toBe('გაცნობა: დათო');
     });

@@ -1,3 +1,4 @@
+import { georgianFirstName, georgianScriptName } from './georgianScriptName';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
 
@@ -45,6 +46,22 @@ export function incomingRequestTitle(
     default:
       return `${requesterName} → შენ`;
   }
+}
+
+/**
+ * #6351 (Giorgi's wording, Misho's yes 20 Oct): the helper's OWN assistant
+ * speaks — it tells the helper who reached it and asks for their answer, with
+ * the names in Georgian script.
+ */
+function georgianIntroductionAsk(requesterName: string, targetName: string): string {
+  const requester = georgianScriptName(requesterName);
+  const first = georgianFirstName(requesterName);
+  const target = georgianScriptName(targetName);
+  return (
+    `დამიკავშირდა ${geoName(requester, 'gen')} ასისტენტი, ${geoName(first, 'dat')} აინტერესებს, ` +
+    `იცნობ თუ არა ${geoName(target, 'dat')} და შეძლებ თუ არა დააკავშირო. ` +
+    'მითხარი შენი პოზიცია და მე გადავცემ.'
+  );
 }
 
 /**
@@ -98,9 +115,7 @@ export function incomingRequestOpening(
         ? `გამარჯობა! **${geoName(requesterName, 'gen')} ასისტენტი** გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა.` +
             about('რაზეა საქმე:') +
             `\n\nდათანხმდები?`
-        : `გამარჯობა! **${geoName(requesterName, 'gen')} ასისტენტი** გთხოვს, ${requesterName} გააცნო **${geoName(targetName, 'dat')}**.` +
-            about('რაზეა საქმე:') +
-            `\n\nდაეხმარები? 🤝`;
+        : georgianIntroductionAsk(requesterName, targetName) + about('რაზეა საქმე:');
   }
 }
 

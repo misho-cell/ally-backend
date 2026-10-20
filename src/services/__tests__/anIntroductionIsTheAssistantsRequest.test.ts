@@ -8,10 +8,27 @@ import { incomingRequestOpening } from '../introOpening';
 describe('an introduction request is the assistant’s', () => {
   it('names the asker’s assistant and quotes nothing (ka)', () => {
     const text = incomingRequestOpening('ka', 'გიორგი', 'ნინო', 'დიზაინერია', false);
-    expect(text).toContain('**გიორგის ასისტენტი** გთხოვს, გიორგი გააცნო **ნინოს**.');
+    // #6351 (Giorgi's wording, Misho's yes 20 Oct): the helper's own assistant speaks.
+    expect(text).toContain(
+      'დამიკავშირდა გიორგის ასისტენტი, გიორგის აინტერესებს, იცნობ თუ არა ნინოს და შეძლებ ' +
+        'თუ არა დააკავშირო. მითხარი შენი პოზიცია და მე გადავცემ.',
+    );
     expect(text).toContain('რაზეა საქმე: დიზაინერია');
     expect(text).not.toContain('"');
     expect(text).not.toContain('მისი შეტყობინება');
+  });
+
+  it('writes Latin names in Georgian script, without „Ally" (#6351)', () => {
+    const text = incomingRequestOpening(
+      'ka',
+      'Giorgi Kapanadze',
+      'Nino Japaridze Ally',
+      null,
+      false,
+    );
+    expect(text).toContain('დამიკავშირდა გიორგი კაპანაძის ასისტენტი, გიორგის აინტერესებს');
+    expect(text).toContain('იცნობ თუ არა ნინო ჯაპარიძეს');
+    expect(text).not.toMatch(/Ally|[A-Za-z]/);
   });
 
   it('does the same in English, and in the direct case', () => {
