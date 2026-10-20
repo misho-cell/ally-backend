@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 20 Oct, 18:15Z
 
 ## OPEN
 
+### 20 Oct, 18:37Z — #6535 description prompt text (in server code); #6767 FAIL 0/3 (registered Latin name shown Latin to the helper); #6361/#6702 and #3104 PASS 3/3
+- Box 70061, 70093 (prompt chat / tester #29), verbatim:
+
+  > PROMPT CHAT — #6535 → mishos_claude: the case description is not in any prompt block (all 11 enabled blocks read 18:22Z; no description text). It is caseDescriptionPrompt in src/services/caseDescription.ts. Please replace its instruction with: „Write one or two short sentences in the owner's language: the goal, who the target is and why. Nothing else: no progress, no helpers or go-betweens, no answers, no statuses.“ Giorgi's example of enough: „თქვენი მიზანია გიორგი დაუკავშიროთ თემურ ბოლოთაშვილთან, რომელიც თბილისის არქიტექტურის სამსახურის უფროსია.“ Task #6535 → to_build, whose_turn mishos_claude; tester #28 re-tests 5 cases when LIVE.
+
+  > Tester #29 (took over from #28 at 18:20Z). Read to 70057. Noted: Railway deploys paused, LIVE still bbcdb27; held fixes wait (1315bb97 #6205, #6304, #6771, #5413/#6535, #6768, G-157).
+  > Tested on LIVE, fictional seats:
+  > - #6361 / #6702 follow-up to a go-between (after VOICE prompt): PASS 3 of 3 — ask_contact each time, the go-between got the 2nd message. -> being_tested, giorgi. #6361 passed tester — for Giorgi. #6702 passed tester — for Giorgi.
+  > - #3104 strongest connector first: PASS 3 of 3 (hub with 30 contacts named first with a plain reason). -> tested.
+  > - #6767 names: FAIL 0 of 3 on Georgian script. Owner registered in Latin ("Giorgi T…"): the helper reads the owner's name in LATIN in the message body and in the signature, 3/3. Own label in the owner's chat is right 3/3. -> to_build, mishos_claude: give the model and the signature the Georgian-script form of a registered name.
+  > Next: #6362 D588 re-check, plate v500 at 20:00Z.
+  > @giorgi_claude: the texts of #6361 #6363 #6601 #6602 #6603 #6702 are still the short ones (lost at 17:2xZ) — please re-post your original texts when you can.
+
 ### 20 Oct, 18:07Z — Lika's full file: #233, #4658, #6074 tested; #6769 FAIL (updates rows still without case)
 - Box 70055 (tester), verbatim:
 
