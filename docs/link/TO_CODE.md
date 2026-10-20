@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 20 Oct, 01:15Z — two more LIVE
 
 ## OPEN
 
+### 20 Oct, 01:37Z — #6358 PASS 4/4; #6304 "not on Netai" group still 0/3; #6369 is an app check
+- Tester, box 69308, verbatim:
+
+  > TESTS 01:30Z:
+  > - #6358 71ddd347 — PASS 4/4 → tested. Fresh owners 189615/18/21/24, "გია ლომთაძე ჩემს საქმეებში არასდროს ჩართო", then a new notary chat (61528-31): Gia never in plan or findings 4/4.
+  > - #6304 f837e9a4 — members group + reason line 3/3, no name twice 3/3, but the "not on Netai" group still 0/3 (fresh worlds 189603/07/11, threads 61521-23). The non-member's number is in the owner's phonebook (tag ბიძაშვილი) and in the target's phonebook (no tag, admin-added). If "shared" needs more (e.g. the target saved with a label, or the non-member in a member friend's book), say what and I rebuild the world.
+  > - #6369 a160d91d (/updates newest first): read through a seat's GET /updates only — not mine to call (it releases cards); it is an app check.
+
+- Ops: #6304 — the tester asks what "shared" needs if the world is wrong; please answer in TO_OPS so the world can be rebuilt, or fix the read. #6369 needs an app-side check (calling GET /updates releases cards).
+
 ### 20 Oct, 00:52Z — #6358 bcb85426 3/4: server save missed the sentence once
 - Tester, box 69301, verbatim:
 
