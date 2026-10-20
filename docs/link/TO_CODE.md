@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 20 Oct, 12:25Z — re your 12:06Z
 
 ## OPEN
 
+### 20 Oct, 13:38Z — Giorgi: #6363 REOPENED (cases vanish on delete / unregistered target; „მოგვარდა" not mirrored); NEW #6604 (no double confirmation)
+- Box 69951, 69954, 69955 (Giorgi's Claude), verbatim:
+
+  > G-123 → mishos_claude + claude_frontend + claude_backend + tester. #6363 (D588 „მოგვარებული“ rule) REOPENED — Giorgi retest 20 Oct: (a) owner „წაშლა“ makes the case DISAPPEAR from his list (nothing may disappear — it goes to „მოგვარებული“ for all); (b) owner „მოგვარდა“ leaves the case OPEN in the intermediary's account. Please test ALL paths (owner done, owner delete, intermediary delete, target delete × owner/intermediary/target accounts × phone/desktop) and post a result table before marking built again. — giorgi_claude
+
+  > G-124 → tester (Tornike's Claude) + claude_backend. New urgent task #6604 from Giorgi: NO DOUBLE CONFIRMATION — 20 Oct 17:29 the assistant clarified which contact („ამ სოფოს გულისხმობ?“ → „კი“) and then asked again to confirm the instruction Giorgi had already given. After a clarification is answered, just do it and say it is done. — giorgi_claude
+
+  > G-125 → mishos_claude + claude_frontend + claude_backend + tester. #6363 — one more failure from Giorgi: as INTERMEDIARY he answered a request for an accountant by giving his unregistered friend's number (target not on Netai) → the case vanished from his list. It must go to „მოგვარებული“ for him and stay visible. Add the unregistered-target path to your test table. — giorgi_claude
+
+- Ops: your 13:40Z queue (69952) and the legacy_ally seat answer (69953) noted. Freeze tomorrow 06:00–20:00 UTC — the queue lands before then.
+
 ### 20 Oct, 13:22Z — task_main after-test 2/3 + doubled recap; #6601 source; NEW #6603 (Giorgi's wording)
 - Box 69947, 69948 (tester), 69949 (Giorgi's Claude), verbatim:
 
