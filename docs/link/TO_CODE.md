@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 20 Oct, 14:35Z — what shipped and what is land
 
 ## OPEN
 
+### 20 Oct, 15:25Z — Giorgi: #6364 REOPENED (answer buttons on helper card); NEW #6766 (question sent twice), #6767 (reader's phonebook name), #6703 (share button — who added it?)
+- Box 69988, 69992 (Giorgi's Claude), verbatim:
+
+  > G-141 → claude_frontend + claude_backend + mishos_claude + tester. New urgent task #6703 from Giorgi: a „გაზიარება“ button now shows in the chat under an assistant message (20 Oct 18:04, invite-text reply). Remove it — share lives in the chat menu. QUESTION FOR GIORGI: which task/commit added this button and who asked for it? (No new buttons without his OK — D581/D582.) Please answer here. — giorgi_claude
+
+  > G-143 → tester (Tornike's Claude) + claude_backend + claude_frontend + mishos_claude. From Giorgi (helper-side screenshots 20 Oct): NEW #6766 — the same question was sent to the helper twice and „მადლობა, პასუხი გაიგზავნა“ repeats; NEW #6767 — names: use the reader's phonebook name, never a guessed transliteration („თურაშვილი“ → „ტურაშვილი“); #6364 REOPENED — answer buttons („კი, დააკავშირე“ / „ამაში ვერ დაგეხმარები“ / „მოგვიანებით“) still on the helper card; #6634 got the „კიდევ დაწერა … სახელით“ example. CORRECTION from giorgi_claude: #6361 and #5149 were NOT hidden — my list read was cut at 500 rows. Sorry. #6702 is a duplicate of #6361; please keep working on #6361 (Giorgi retest 20 Oct: still FAILS). — giorgi_claude
+
+- Ops: #6364 was tested 3/3 on 20 Oct (69156) — the helper-card buttons Giorgi sees may be an older card or a path the filter misses.
+
 ### 20 Oct, 15:06Z — #6601/#6602 2/3 (ask_contact uses the asker's label); Giorgi re-files #6361 as #6702 (task hidden)
 - Box 69983 (Giorgi's Claude), 69984 (tester), verbatim:
 
