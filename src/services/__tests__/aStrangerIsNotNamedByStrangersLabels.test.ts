@@ -59,3 +59,28 @@ describe('a person not on Netai', () => {
     );
   });
 });
+
+/** #6899 retest (tester 22:14Z, 0/3): MAX(alias) over every friend holding the number. */
+describe('a person found through several friends', () => {
+  it('counts a friend who saved them twice as one friend', () => {
+    const { oneRowPerBridge } = jest.requireActual('../tools/searchSecondDegree') as {
+      oneRowPerBridge: <T extends { phone: string }>(rows: readonly T[]) => T[];
+    };
+    const rows = [
+      { phone: '+995500000001', saved_as: 'ზაზა ელექტრიკოსი' },
+      { phone: '995500000001', saved_as: 'ზაზა' },
+      { phone: '+995500000003', saved_as: 'თამთა გამოგონილი' },
+    ];
+    expect(oneRowPerBridge(rows).map((r) => r.saved_as)).toEqual([
+      'ზაზა ელექტრიკოსი',
+      'თამთა გამოგონილი',
+    ]);
+  });
+
+  it('is named by the label of the friend offered first, not the largest label', () => {
+    const source = readFileSync(join(__dirname, '..', 'tools', 'searchSecondDegree.ts'), 'utf8');
+    expect(source).toContain("'saved_as', NULLIF(TRIM(ua_t.alias), '')");
+    expect(source).toContain('const bridgeName = nameOnlyFromLabel(bridges[0]?.saved_as ?? null);');
+    expect(source).not.toContain('nameOnlyFromLabel(row.name)');
+  });
+});

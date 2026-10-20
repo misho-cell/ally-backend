@@ -64,6 +64,6 @@ describe('the owner’s tie to a go-between', () => {
     expect(walk).toContain('A first bridge with owner_tie is someone the owner is close to');
     const second = readFileSync(join(__dirname, '..', 'tools', 'searchSecondDegree.ts'), 'utf8');
     expect(second).toContain('owner_tie: tie');
-    expect(second).toContain('warmestFirst(row.via_contacts ?? [], viaTies)');
+    expect(second).toContain('warmestFirst(oneRowPerBridge(row.via_contacts ?? []), viaTies)');
   });
 });

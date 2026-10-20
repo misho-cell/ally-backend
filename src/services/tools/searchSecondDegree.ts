@@ -558,6 +558,23 @@ export function fewestSources(...counts: readonly (string | number | null)[]): n
 }
 
 /** #5479: the go-betweens the owner is closest to first; equal ties keep their order. */
+/**
+ * #6899 (tester 22:14Z, privacy, 0/3 after 65c53126): a person not on Netai
+ * was named by the label ANOTHER of the owner's friends saved („თამთა
+ * გამოგონილი"), not by the friend the plan goes through („ზაზა ელექტრიკოსი") —
+ * MAX(alias) over every bridge picked the alphabetically last. Each bridge now
+ * carries its own label; a bridge who saved the person twice is one bridge.
+ */
+export function oneRowPerBridge<T extends { readonly phone: string }>(bridges: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return bridges.filter((bridge) => {
+    const key = phoneDigits(bridge.phone);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function warmestFirst<T extends { readonly phone: string }>(
   bridges: readonly T[],
   ties: ReadonlyMap<string, OwnerTie>,
@@ -1056,7 +1073,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       own_name: string | null;
       saved_label: string | null;
       via_names: string[] | null;
-      via_contacts: { name: string | null; phone: string }[] | null;
+      via_contacts: { name: string | null; phone: string; saved_as: string | null }[] | null;
       employer: string | null;
       jobPosition: string | null;
       employer_sources: string | number | null;
@@ -1288,9 +1305,11 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               -- Ticket 14 [30]: the bridge as an askable person, not just a name.
               -- The founder's plan named the bridges, the model asked the
               -- targets' phones, and five asks bounced as „not a member".
+              -- #6899: each bridge's own label for this person, never another's.
               jsonb_agg(DISTINCT jsonb_build_object(
                 'name', COALESCE(ua_via.alias, u_via.name),
-                'phone', fu.via_phone))                                        AS via_contacts,
+                'phone', fu.via_phone,
+                'saved_as', NULLIF(TRIM(ua_t.alias), '')))                    AS via_contacts,
               COALESCE(MAX(NULLIF(TRIM(u_t.employer), '')),       MAX(fe.val)) AS employer,
               COALESCE(MAX(NULLIF(TRIM(u_t."jobPosition"), '')),  MAX(fj.val)) AS "jobPosition",
               -- Row 255: how many DISTINCT members said this, so the caller can
@@ -1553,18 +1572,19 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       const sources = fewestSources(row.jobPositionSources, row.employer_sources);
       // #5974: heaviest colour link first; #5479's warmest-first is the tie-break.
       const bridges = heaviestLinkFirst(
-        warmestFirst(row.via_contacts ?? [], viaTies),
+        warmestFirst(oneRowPerBridge(row.via_contacts ?? []), viaTies),
         row.phone,
         viaLinks,
       );
+      // #6899: a person not on Netai by the label of the bridge offered first.
+      const bridgeName = nameOnlyFromLabel(bridges[0]?.saved_as ?? null);
+      const shownName = row.own_name ?? bridgeName;
       return {
         phone: row.phone,
         // Row 296: a member's own name as they gave it; for anybody else only
         // the name words of a bridge's label, never the label itself.
-        name: row.own_name ?? nameOnlyFromLabel(row.name),
-        ...(row.own_name === null && nameOnlyFromLabel(row.name) === null
-          ? { name_note: NAME_WITHHELD_NOTE }
-          : {}),
+        name: shownName,
+        ...(shownName === null ? { name_note: NAME_WITHHELD_NOTE } : {}),
         employer,
         jobPosition,
         // The model must not read a label word as a confirmed fact: it is what

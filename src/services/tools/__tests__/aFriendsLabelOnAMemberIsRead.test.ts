@@ -24,6 +24,6 @@ describe('a friend’s label on a member is read for his role', () => {
   });
 
   it('still says the name a member gave, never the label', () => {
-    expect(source).toContain('name: row.own_name ?? nameOnlyFromLabel(row.name),');
+    expect(source).toContain('const shownName = row.own_name ?? bridgeName;');
   });
 });
