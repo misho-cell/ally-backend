@@ -66,3 +66,22 @@ export function otherBrandSpellings(word: string): string[] {
     return single.filter((member) => !namesBrand(key, member)).map((member) => member.name);
   });
 }
+
+const WORD_RE = /[\p{L}\p{N}]+/gu;
+
+/**
+ * #6238 (the tester's 61942–44): „ვის იცნობ TBC-ში, ვინც სესხს მოაგვარებს" names
+ * a company, not a trade, and the helper's own TBC people were not offered. The
+ * one-word company the text names, as the text spells it; null when it names none.
+ */
+export function brandNamedIn(text: string): string | null {
+  for (const word of text.match(WORD_RE) ?? []) {
+    const key = normalizeSearchToken(word);
+    if (key === '') continue;
+    const named = NORMALIZED_GROUPS.some((group) =>
+      group.some((member) => !SPACE_RE.test(member.name) && namesBrand(key, member)),
+    );
+    if (named) return word;
+  }
+  return null;
+}

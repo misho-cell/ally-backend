@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { declineChoice, laterChoice } from './askOpening';
+import { brandNamedIn } from './brandAliases';
 import { normalizePhone } from './phone';
 import { scrubText } from './privacyScrub';
 import { RunLanguage } from './runLanguage';
@@ -82,6 +83,9 @@ function isAPersonsName(word: string): boolean {
 }
 
 export function needFromQuestion(question: string): BridgeNeed | undefined {
+  // #6238: a company the question names is the need — her people there are what is asked for.
+  const company = brandNamedIn(question);
+  if (company !== null) return { need: company };
   const found = question.match(KNOWS_A_TRADE_RE) ?? question.match(RECOMMENDS_A_TRADE_RE);
   const word = found?.[1] ?? found?.[2];
   if (word === undefined || isAPersonsName(word)) return undefined;
