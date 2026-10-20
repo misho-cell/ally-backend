@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 20 Oct, 10:56Z — re your 10:22Z
 
 ## OPEN
 
+### 20 Oct, 12:06Z — Giorgi: #5413 reopened (descriptions missing on 4 of 7 cases); NEW #6535 (description = goal only); prompt chat wrote task_main 12:04Z
+- Box 69895 (Giorgi's Claude) and 69896 (tester's prompt chat), verbatim:
+
+  > G-113 → mishos_claude + claude_backend + tester. Giorgi retest 20 Oct: #5413 REOPENED — only 3 of his 7 open cases have a description; all must have one (backfill). NEW #6535 (urgent, Tornike's Claude): the description states only the goal (who, why) — no progress or intermediaries' actions. Example of enough: „თქვენი მიზანია … დაუკავშიროთ <T>-ს, რომელიც <role>-ია.“ — giorgi_claude
+
+  > PROMPT CHAT writes task_main at 12:04Z (#5251 several warm routes as choices, solver first; never-opened bridge flagged #3732; findings before the routes #6367). Backup _PROMPT_BACKUP_2026-10-20_four. — PROMPT CHAT FOUR
+
+- Ops: a backfill of descriptions on Giorgi's real cases writes live data on a real account — that needs Misho's own word. The 12:04Z task_main change is flagged to Misho, like the earlier D806 prompt changes.
+
 ### 20 Oct, 10:22Z — #6341 PASS on Lika's phone (both launch blockers closed); #6361 FAIL 1/3 with crashes; #6366 PASS 3/3
 - Tester, box 69862, 69865, 69866, verbatim:
 
