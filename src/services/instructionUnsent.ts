@@ -78,6 +78,39 @@ export async function instructionLeftUnsent(
 }
 
 /**
+ * #6361 (Giorgi, G-169, 21 Oct 01:50 Tbilisi): the owner asked to send a
+ * follow-up to a go-between already asked on this case, and the reply said
+ * „ამ დაზუსტებას ახლა ვერ ვაგზავნი… ეს ჩემი შეზღუდვაა" without trying to
+ * send at all; it went only after two „რატო?". The guard above reads only a
+ * conversation that has sent nothing, so a follow-up was never its case.
+ */
+const CANNOT_SEND_NOW_RE =
+  /ვერ\s+(?:ვაგზავნი|გავაგზავნი|გავუგზავნი|ვუგზავნი|მივწერ|ვწერ)|can(?:not|'t|’t)\s+(?:send|write)|unable\s+to\s+send/iu;
+
+/** The reply says a message cannot go now. */
+export function saysItCannotSendNow(reply: string): boolean {
+  return CANNOT_SEND_NOW_RE.test(reply);
+}
+
+/** True when a goal on this conversation has asked somebody. Fails towards false. */
+export async function threadAskedSomebody(threadId: number): Promise<boolean> {
+  try {
+    const result = await query<{ asked: boolean }>(
+      `SELECT EXISTS (
+                SELECT 1 FROM tasks k JOIN task_asks a ON a.task_id = k.id WHERE k.thread_id = $1)
+              AS asked`,
+      [threadId],
+      QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.asked === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[instruction-unsent] thread ${threadId} (asked):`, (err as Error).message);
+    return false;
+  }
+}
+
+/**
  * The tester's 44367 (wish 3): when the turn that was given one more chance
  * still sent nothing, it may not say „I will ask". The owner is told plainly
  * that the question did not go.

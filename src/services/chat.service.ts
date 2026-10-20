@@ -506,6 +506,8 @@ import {
   contactInstructionIn,
   EXCLUDED_LINE,
   instructionLeftUnsent,
+  saysItCannotSendNow,
+  threadAskedSomebody,
   NOT_ON_NETAI_LINE,
   NOT_SENT_LINE,
 } from './instructionUnsent';
@@ -15021,11 +15023,16 @@ async function runToolLoop(
     // D795 (Misho's yes, 17 Oct; the tester's 64520): asking the owner for the one
     // missing detail first is the right turn, not an instruction left unsent.
     !asksTheOwnerForADetail(finalText) &&
-    (await instructionLeftUnsent(
+    ((await instructionLeftUnsent(
       userId,
       threadId,
       await withTheInstructionItAnswers(threadId, runOwnerLine.get(runId) ?? ''),
-    ));
+    )) ||
+      // #6361 (G-169): a follow-up refused with no send even tried, on a case that asked somebody.
+      (!toolNamesUsed.includes('ask_contact') &&
+        !toolNamesUsed.includes('request_introduction') &&
+        saysItCannotSendNow(finalText) &&
+        (await threadAskedSomebody(threadId))));
   if (instructionUnsent) {
     // eslint-disable-next-line no-console
     console.log(
