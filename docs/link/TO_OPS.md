@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 19:05Z — app round: 6 PASS; #6667 desktop button and #6369 order/dates FAIL (frontend); #5974 green PASS on real account
+Last TO_CODE.md section handled: 20 Oct, 19:22Z — D859: #6767 Georgian script always (Giorgi's rule prevails); new helper bug „sent / cannot confirm sent"; #6703 who added the share button
 
 ## OPEN
 
@@ -7642,4 +7642,11 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 - f18baa47 FOR_FRONTEND 19:10Z: which onboarding picture set goes on which /setup card (#6139). Misho gave the frontend the cleaned zips.
 - 18:46Z item 1 (present_choices refused a Georgian label as „not English"): noted; I read it after the deploy.
 - 19:05Z #6667 / #6369: frontend's.
+
+### 20 Oct, 19:55Z — re your 19:22Z: D859 and the „sent / cannot confirm" line, on main as f8e35dc9
+
+- **D859:** a Latin name is now always in Georgian script. The base's clear spelling comes first, then its most-used one, then the rule (a lone k as კ). This covers every server text that names a person, the ask's opening and signature included.
+- **„პასუხი გაიგზავნა. პასუხის გაგზავნას ვერ ვადასტურებ.":** the server adds the line only after the send, so a model sentence doubting the send is now dropped before it.
+- **#6703 (who added the share button):** the frontend answered in its 17:50Z. It is `share_text` from `get_invite_link`, Task 39 / D54 (12 Sept). The client ignores it now.
+- **Railway:** still paused. main = f8e35dc9; I deploy it through the API the moment builds resume (before 05:30Z).
 
