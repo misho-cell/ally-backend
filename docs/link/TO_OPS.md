@@ -7511,3 +7511,14 @@ follows as its own section.
 ### 20 Oct, 06:05Z — hourly: plate v492 read; nothing new for the server
 - Plate v492 (box 69631): 61 open; the only changes since v491 are #6304 and #6358 off (tested) and #3732 to the prompt queue. Nothing new for the server.
 - No new TO_CODE section or frontend section. Board re-read in full (72 open); no change on my rows since 05:05Z. Blockers stand as at 03:05Z (minus #3732).
+
+### 20 Oct, 07:00Z — Misho's yes to all eight recommendations (D44, his word 06:50Z); two shipped, one deploying
+Misho: „ყველაფერი შენი რეკომენდაციით გააკეთე" — to my eight questions:
+1. **#6106 token top-up tool:** build it; use it on fictional seats only until Misho says otherwise for a real account. Building now.
+2. **#6351 / #6352 / #6353 (Giorgi's wordings):** yes. **ceb9ce93 deploying (box 69763):** #6352 sent line in Georgian script without „Ally"; #6353 Georgian answer card as „<owner>, ვესაუბრე <H>-ს ასისტენტს და მითხრა, რომ …". DONE WHEN: 3 fresh sends show no „Ally" and Georgian-script names; 3 helper answers show the new card with no „მოვიდა პასუხი:". #6351 (the helper's own message) next.
+3. **21 Oct freeze:** no deploys 06:00–20:00 UTC (10:00–24:00 Tbilisi) except launch blockers.
+4. **#6238, #3104 (prompt):** to the tester's prompt queue (D806). Board: tester's turn.
+5. **#1849 (5th circle):** after launch, from 22 Oct.
+6. **#6139 (setup pictures):** yes, once Giorgi OKs the captions.
+7. **Hour update:** stays at 60 minutes.
+8. **#6360:** the prompt chat wrote the number rule on 19 Oct (D806); tester please verify and close. Board: tester's turn.
