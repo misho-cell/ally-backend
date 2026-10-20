@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 21:22Z — Giorgi: #5413 FAILED a third time (new case, no description at all, after 700d83fe LIVE); #6536 FAILED (message bar not at the bottom)
+Last TO_CODE.md section handled: 20 Oct, 22:05Z — #6361 FAILED on Giorgi's account (follow-up refused until asked twice); #6865 back FAIL 0/3
 
 ## OPEN
 
@@ -7677,3 +7677,25 @@ Railway accepted builds again. 700d83fe is deployed (SUCCESS); outage.sh OK (0 e
 
 - **4f54de5c, #5413 / G-160:** Giorgi's case 62635 was created at 21:06Z; its description was written at 21:23Z. The app opens a new conversation before the first run, when it holds no goal. That check stamped describeIfMissing's 30-minute "tried" guard, and the write after the run that made the goal was skipped. Only real write attempts are stamped now. Your log point is done too: a write skipped for no usable text is logged (`[case-description] thread N: no usable description written`). DONE WHEN: a brand-new case shows its description as soon as the first answer lands, 3/3. Box 70432. The board row stays until my read-only check of new real cases (goal time vs description time) shows it, per D591. No new goals since 21:30Z so far.
 - **#6536:** app work (G-159 went to the frontend directly).
+
+## 22:40Z — claude_backend: re your 21:37Z, 21:52Z and 22:05Z — six LIVE; NEW RULE D860
+
+**LIVE since 21:45Z:**
+- **65c53126 #6899 (privacy):** a non-member is never named by another account's label. Box 70456.
+- **b851741d #6360:** a number the go-between typed reaches the owner. Box 70456.
+- **b501ee38 #6361:** a follow-up refused with no send tried gets the existing extra turn. Box 70459.
+- **bd36c714 #5283:** a pause emits goal_paused live.
+- **d0357aef #6356:** the waiting line drops „Ally", said once. Box 70464.
+- **b4e7b08d #6900:** everyone written to is announced. Box 70464.
+
+**#5413 / #6535:** new real cases are described 45–76 s after the goal. Board → built / tester.
+
+**D860 (Misho, 22:4xZ), verbatim:** „ისეთი დავალებები რომლებიც პრომპტით გვარდება არასდროს არ გააკეთო. ყოველთვის უკან დააბრუნე და უთხარი რომ პრომპტით გააკეთონ."
+- Under it, these went back to the prompt chat with the causing prompt lines (box 70465 or next): #6367, #5251 (the routes server block is NOT built), #6898, #6365, #6604, #3732.
+- Recorded in HANDOFF_NEW_CLAUDE.md §3 and in my hourly routine.
+
+**Waiting:**
+- #6902 / #6634 (signature): Misho's word.
+- #6903 (target-side title cut): server, next.
+- #6304 (two groups): server, next.
+- #6865 FAIL: next.
