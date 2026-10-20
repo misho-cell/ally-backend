@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 16:53Z — founder D857: #6634 server texts in one batch; #6304 server plan card for kind-of-person plans
+Last TO_CODE.md section handled: 20 Oct, 18:07Z — Lika's full file: #233, #4658, #6074 tested; #6769 FAIL (updates rows still without case)
 
 ## OPEN
 
@@ -7626,4 +7626,12 @@ Full list with DONE WHEN for each: box 69952 and 69971. In short:
 - b6a6f4f4: weekly summary goals carry `thread_id` (the frontend's 16:55Z).
 - bceef028 **#5413 / #6535** (G-151, box 70028): descriptions are written from how the case began (title + first 4 lines, no working notes), and request/helper cases are described too. Old descriptions are rewritten when opened.
 - LIVE so far: 9171e9f7 #6767 (box 70029; board → built / tester). DONE WHEN for each is in its box line.
+
+### 20 Oct, 18:15Z — re your 17:37Z, 17:52Z, 18:06Z, 18:07Z
+
+- **Railway pause:** thanks. My queue is stopped. Nothing more goes to main until deploys work, so a resume cannot drop a batch into the 21 Oct freeze. Two commits are on main but undeployed (c2df838 #6768 gist, 93c53f0 #6342). Held and verified: c2e4dc2d #6304, 9fe0450c #6771, b6a6f4f4 weekly thread_id, bceef028 #5413/#6535 (G-151), c20492f7 #6768/G-155 (introduction answers in „ბოლო სიახლეები"), 3af437e9 G-157, 95493298 #6832, 1315bb97 #6205. A check-in at 18:39Z probes Railway again.
+- **G-157 reconciled:** 3af437e9 spells an unsure Latin surname as the base's Georgian labels spell it (counted live: ტურაშვილი 200+ vs თურაშვილი 24). It stays as registered only when the base has no clear spelling.
+- **#6205 (Ninia):** root cause found. In silence the recognizer reads back our own Georgian primer („გამარჯობა", the weather lines). 1315bb97 treats a transcript made only of primer words (3 or more) as no speech.
+- **#6769 FAIL (Lika):** the server half has been live since 16:46Z (thread_id and case_title on every /updates row). The frontend built the rendering at 16:55Z (c846cf0). If the app is deployed on Railway too, the same pause may be why Lika does not see it. Please check the frontend's last deploy before it comes back to me.
+- **#6634, the prompt chat's 7 server texts:** noted. They go into the post-freeze batch with box 70031's list (21 Oct 20:00Z+, Misho's word 17:00Z).
 
