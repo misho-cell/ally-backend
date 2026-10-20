@@ -186,6 +186,43 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
+  // Box 70023 (Misho's yes 17:00Z): a KIND of person, several found, none the one target.
+  it('draws the groups for a kind of person the search found several of', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        { digits: '995500000001', alias: 'ბესო' },
+        { digits: '995500000002', alias: 'ნინო' },
+      ],
+    } as never);
+    (fetchAccountStates as jest.Mock).mockResolvedValue(new Map([['995500000001', 'netai_user']]));
+    const plan = {
+      people_to_involve: [
+        { name: 'ბესო', phone: '+995500000001' },
+        { name: 'ნინო', phone: '+995500000002' },
+      ],
+    };
+    const found = [
+      { name: 'გია', viaPhones: ['+995500000001'], sought: 'არქიტექტორი' },
+      { name: 'ზურა', viaPhones: ['+995500000002'], sought: 'არქიტექტორი' },
+    ];
+    const text = await mutualGroupsFor('171', plan, found, 'ka', true);
+    expect(text).toBe(
+      'არქიტექტორს იცნობენ შენი ეს ნაცნობები:\n' +
+        '• Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ: ბესო\n' +
+        '• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: ნინო\n' +
+        'ბესო არქიტექტორს იცნობს.',
+    );
+  });
+
+  it('draws nothing when the people found were found by different searches', async () => {
+    const plan = { people_to_involve: [{ name: 'ბესო', phone: '+995500000001' }] };
+    const found = [
+      { name: 'გია', viaPhones: ['+995500000001'], sought: 'არქიტექტორი' },
+      { name: 'ზურა', viaPhones: ['+995500000001'], sought: 'ნოტარიუსი' },
+    ];
+    expect(await mutualGroupsFor('171', plan, found, 'ka')).toBeNull();
+  });
+
   it('is put above the introduction plan’s sentence', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('`${plan.mutualGroups}\\n\\n${sentence}`');

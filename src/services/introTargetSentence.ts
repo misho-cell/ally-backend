@@ -98,6 +98,8 @@ export interface FoundThroughBridge {
   readonly role?: string;
   /** The found person's own phone, when the search returned it (#6304, 69268). */
   readonly phone?: string;
+  /** #6304 (70023): the words the search was run with — the kind of person sought. */
+  readonly sought?: string;
 }
 
 /** Corroborating members a saved role needs before it is told as a fact (D449). */

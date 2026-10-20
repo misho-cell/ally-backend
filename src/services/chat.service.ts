@@ -313,6 +313,7 @@ import {
   proposeTaskPlan,
   renderPlan,
   planInSentences,
+  withAskablePeopleOnly,
   PLAN_CLOSING_QUESTION,
   EARLIER_PLAN_CLOSING_QUESTIONS,
   nobodyCanBeWrittenTo,
@@ -5957,10 +5958,13 @@ const runFoundPeople = new Map<string, FoundPerson[]>();
 /** 4297: who this run's searches found one step away, with the contacts who know them. */
 const runFoundThroughBridges = new Map<string, FoundThroughBridge[]>();
 
-function notePeopleFound(runId: string, result: unknown): void {
+function notePeopleFound(runId: string, result: unknown, sought?: string): void {
   const found = peopleFoundIn(result);
   if (found.length > 0) runFoundPeople.set(runId, [...(runFoundPeople.get(runId) ?? []), ...found]);
-  const throughBridges = foundThroughBridges(result);
+  const words = sought?.trim() ?? '';
+  const throughBridges = foundThroughBridges(result).map((person) =>
+    words === '' ? person : { ...person, sought: words },
+  );
   if (throughBridges.length > 0) {
     runFoundThroughBridges.set(runId, [
       ...(runFoundThroughBridges.get(runId) ?? []),
@@ -6038,7 +6042,7 @@ async function runLoggedSearch(
     },
   );
   if (searchId !== null && runId) noteSearchResults(runId, searchId, result, threadId);
-  if (runId) notePeopleFound(runId, result);
+  if (runId) notePeopleFound(runId, result, searchQuery);
   return searchId === null ? result : { ...result, search_id: searchId };
 }
 
@@ -11423,9 +11427,10 @@ async function executeToolCall(
               // #6304 (69134): the reason line rides the groups when the plan sentence has none.
               introSentence === null,
             );
+            const shownPlan = mutualGroups === null ? stored : withAskablePeopleOnly(stored);
             notePlanForReply(runId, {
-              text: plainPlan,
-              names: stored.people_to_involve.map((p) => p.name),
+              text: shownPlan === stored ? plainPlan : planInSentences(shownPlan, runLang(runId)),
+              names: shownPlan.people_to_involve.map((p) => p.name),
               ...(introSentence !== null && { introSentence }),
               ...(mutualGroups !== null && { mutualGroups }),
             });

@@ -85,6 +85,8 @@ function involvedDigits(planInput: unknown): string[] {
 interface PlanReach {
   readonly target: string;
   readonly planned: readonly string[];
+  /** A kind of person: everyone of that kind found, rather than the ones named like the target. */
+  readonly ofKind?: readonly FoundThroughBridge[];
 }
 
 /**
@@ -107,10 +109,33 @@ function goBetweensTarget(
   return names.size === 1 ? { target: [...names][0], planned: involved } : null;
 }
 
+/**
+ * #6304 (box 70023, Misho's yes 20 Oct 17:00Z): an owner asking for a KIND of
+ * person — an architect, a tutor — got „<A>-ის და <B>-ის ასისტენტებს
+ * დაველაპარაკები", with nobody's who-they-know and no not-on-Netai group,
+ * because the search found several people and none is the one target. When
+ * every person found through the plan's go-betweens was found by the same
+ * search words, those words are what the groups are about.
+ */
+function kindReach(planInput: unknown, found: readonly FoundThroughBridge[]): PlanReach | null {
+  const involved = involvedDigits(planInput);
+  const ofKind = found.filter(
+    (person) =>
+      person.far !== true &&
+      person.sought !== undefined &&
+      person.viaPhones.some((phone) => involved.includes(phoneDigits(phone))),
+  );
+  const words = new Set(ofKind.map((person) => (person.sought ?? '').toLowerCase()));
+  const sought = ofKind[0]?.sought;
+  return words.size === 1 && sought !== undefined
+    ? { target: sought, planned: involved, ofKind }
+    : null;
+}
+
 /** Whom the plan leads to, and its go-betweens: from its introductions, else from the search. */
 function planReach(planInput: unknown, found: readonly FoundThroughBridge[]): PlanReach | null {
   const target = planTarget(planInput);
-  if (target === null) return goBetweensTarget(planInput, found);
+  if (target === null) return goBetweensTarget(planInput, found) ?? kindReach(planInput, found);
   const planned = routeIntroductions(planInput).map((intro) => phoneDigits(intro.viaPhone));
   return { target, planned };
 }
@@ -282,7 +307,7 @@ export async function mutualGroupsFor(
   const reach = planReach(planInput, found);
   if (reach === null || WORDS[language] === undefined) return null;
   const { target, planned } = reach;
-  const foundTargets = foundTarget(found, target);
+  const foundTargets = reach.ofKind ?? foundTarget(found, target);
   try {
     const known = knownDigits(planned, foundTargets);
     const shared = await sharedNonMembers(userId, targetDigits(planInput, foundTargets), known);

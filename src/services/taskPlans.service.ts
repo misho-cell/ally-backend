@@ -1224,6 +1224,20 @@ const PLAN_MORE_PEOPLE: Readonly<Record<RunLanguage, (n: number) => string>> = {
   es: (n) => `${n} más`,
 };
 
+/**
+ * #6304 (box 70023): beside the two groups, the sentence „<A>-ის და <B>-ის
+ * ასისტენტებს დაველაპარაკები" named a person not on Netai as having an
+ * assistant to talk to. The groups already say who is not on Netai, so with
+ * them the sentence names only the people who can be asked; when nobody can,
+ * the plan stays as it is and says so its own way.
+ */
+export function withAskablePeopleOnly(plan: TaskPlan): TaskPlan {
+  const askable = plan.people_to_involve.filter((p) => p.reach === undefined || p.reach === 'ok');
+  return askable.length === 0 || askable.length === plan.people_to_involve.length
+    ? plan
+    : { ...plan, people_to_involve: askable };
+}
+
 export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
   const words = PLAN_SENTENCES[language];
   const people: PlanPersonLine[] = plan.people_to_involve.slice(0, MAX_PEOPLE_SHOWN).map((p) => ({
