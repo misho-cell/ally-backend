@@ -1,7 +1,7 @@
 jest.mock('../../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../../db/postgres/client';
-import { AllyColour } from '../../oldAllyColours.service';
+import { AllyColour, OwnerCircle } from '../../oldAllyColours.service';
 import { LinkColours, linkKey } from '../../colourLinks';
 import { COLOUR_NOTE, OLD_ALLY_COLOUR_TOOLS, withOldAllyColours } from '../withOldAllyColours';
 import { heaviestLinkFirst } from '../searchSecondDegree';
@@ -51,11 +51,12 @@ describe('#5974 every person-finding tool carries the colours and the bubble', (
   });
 
   it.each(SHAPES)(
-    '%s: owner_colour and bubble on the person, the note beside it',
+    '%s: owner_circle and bubble on the person, the note beside it',
     async (tool, make, person) => {
       const out = (await withOldAllyColours(OWNER, tool, make())) as Row;
 
-      expect(person(out).owner_colour).toBe(AllyColour.Green);
+      expect(person(out).owner_circle).toBe(OwnerCircle.Closest);
+      expect(person(out)).not.toHaveProperty('owner_colour');
       expect(person(out).bubble).toEqual({ count: 2, closest: ['Nika', 'Ana'] });
       expect(out.colour_note).toBe(COLOUR_NOTE);
       expect(JSON.stringify(person(out).bubble)).not.toMatch(/\d{5,}/);
@@ -126,7 +127,7 @@ describe('#5974 find_warm_path: colour after hops, with a reason', () => {
 
   it("names the first bridge's reason by the owner's colour, never the bridge's", () => {
     const out = withColourWhy(path([ANA], 'Ana'), TARGET, links);
-    expect(out.bridges[0].colour_why).toBe('your green contact Ana holds them close');
+    expect(out.bridges[0].colour_why).toBe('Ana (one of your closest people) holds them close');
     expect(
       withColourWhy(path([NIKA], 'Nika'), TARGET, links).bridges[0].colour_why,
     ).toBeUndefined();

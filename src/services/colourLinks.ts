@@ -1,7 +1,14 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
 import { labelTie, LabelTie } from './labelCloseness';
-import { AllyColour, CLOSE_COLOURS, MAX_PHONES_PER_CALL, toColour } from './oldAllyColours.service';
+import {
+  AllyColour,
+  circleOf,
+  CLOSE_COLOURS,
+  MAX_PHONES_PER_CALL,
+  OwnerCircle,
+  toColour,
+} from './oldAllyColours.service';
 
 /**
  * #5974 (3): a go-between ranked by the old Ally colours along the link — the
@@ -161,16 +168,25 @@ export async function linkColours(
   return out;
 }
 
+/** #5941 retest: the owner's circle said as a phrase, never as the colour behind it. */
+const CIRCLE_PHRASE: Readonly<Record<OwnerCircle, string>> = {
+  [OwnerCircle.Closest]: 'one of your closest people',
+  [OwnerCircle.Close]: 'close to you',
+  [OwnerCircle.Acquaintance]: 'an acquaintance of yours',
+  [OwnerCircle.Contact]: 'one of your contacts',
+};
+
 /**
- * The short reason a bridge comes first, in the owner's terms: "your green
- * contact Nika holds them close". Null when neither side gives a reason.
+ * The short reason a bridge comes first, in the owner's terms: "Nika (one of
+ * your closest people) holds them close". Null when neither side gives a reason.
  */
 export function colourWhy(link: LinkColours, bridgeName: string | null): string | null {
   const who = bridgeName ?? UNNAMED_BRIDGE;
-  if (link.ownerColour !== null && link.bridgeHoldsClose) {
-    return `your ${link.ownerColour} contact ${who} holds them close`;
+  const circle = circleOf(link.ownerColour);
+  if (circle !== null && link.bridgeHoldsClose) {
+    return `${who} (${CIRCLE_PHRASE[circle]}) holds them close`;
   }
-  if (link.ownerColour !== null) return `${who} is your ${link.ownerColour} contact`;
+  if (circle !== null) return `${who} is ${CIRCLE_PHRASE[circle]}`;
   if (link.bridgeHoldsClose) return `${who} holds them close`;
   return null;
 }

@@ -1,4 +1,4 @@
-import { coloursAndBubbles, PersonColours } from '../oldAllyColours.service';
+import { circleOf, coloursAndBubbles, PersonColours } from '../oldAllyColours.service';
 import { phoneDigits } from '../phone';
 
 /**
@@ -19,13 +19,14 @@ const PROFILE_TOOL = 'get_contact_full_profile';
 
 /** Served beside the rows whenever one of them has a colour or a bubble to say. */
 export const COLOUR_NOTE =
-  "owner_colour is the OWNER's own old-Ally colour for this person — green is the closest, then " +
-  'blue, yellow, red; absent means the owner never coloured them. bubble.count is how many of the ' +
-  "owner's OWN green and blue people hold this person green or blue too: when it is above zero, " +
-  'say it plainly, e.g. „3 of your closest people hold him close", and name bubble.closest — the ' +
-  "owner's own names for them. Never say what colour any other member gave anybody, and never a " +
-  'colour for a named bridge: they "hold him close", nothing finer. A colour_why on a bridge is ' +
-  'the reason it comes first; say it in those words.';
+  'owner_circle is how close the OWNER placed this person in the old app: closest, close, ' +
+  'acquaintance or contact; absent means they never placed them. Say it in those words, e.g. ' +
+  '„one of your closest people"; never name a colour, and never call it a mark or a note. ' +
+  "bubble.count is how many of the owner's OWN closest and close people hold this person close " +
+  'too: when it is above zero, say it plainly, e.g. „3 of your closest people hold him close", ' +
+  "and name bubble.closest — the owner's own names for them. Never say how any other member " +
+  'placed anybody: a named bridge "holds him close", nothing finer. A colour_why on a bridge ' +
+  'is the reason it comes first; say it in those words.';
 
 type Row = Record<string, unknown>;
 
@@ -49,7 +50,7 @@ function decorated(row: Row, colours: ReadonlyMap<string, PersonColours>): Row {
   const found = phone === null ? undefined : colours.get(phoneDigits(phone));
   return found === undefined
     ? row
-    : { ...row, owner_colour: found.owner_colour, bubble: found.bubble };
+    : { ...row, owner_circle: circleOf(found.owner_colour), bubble: found.bubble };
 }
 
 function hasSomethingToSay(colours: ReadonlyMap<string, PersonColours>): boolean {

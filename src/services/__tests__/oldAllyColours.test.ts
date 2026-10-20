@@ -3,9 +3,11 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 import { query } from '../../db/postgres/client';
 import {
   AllyColour,
+  circleOf,
   coloursAndBubbles,
   isSayableLabel,
   MAX_CLOSEST,
+  OwnerCircle,
   pagePhones,
   toColour,
 } from '../oldAllyColours.service';
@@ -179,18 +181,18 @@ describe('#5974 the colours along a link', () => {
     expect(Object.values(strong ?? {})).not.toContain('blue');
   });
 
-  it("says the owner's colour and never the bridge's", () => {
+  it("says how close the owner placed the bridge, never a colour, and never the bridge's", () => {
     const why = colourWhy(
       { ownerColour: AllyColour.Green, bridgeHoldsClose: true, weight: 8 },
       'Nika',
     );
-    expect(why).toBe('your green contact Nika holds them close');
+    expect(why).toBe('Nika (one of your closest people) holds them close');
     expect(colourWhy({ ownerColour: null, bridgeHoldsClose: true, weight: 4 }, 'Nika')).toBe(
       'Nika holds them close',
     );
     expect(
       colourWhy({ ownerColour: AllyColour.Blue, bridgeHoldsClose: false, weight: 4 }, 'Ana'),
-    ).toBe('Ana is your blue contact');
+    ).toBe('Ana is close to you');
     expect(colourWhy({ ownerColour: null, bridgeHoldsClose: false, weight: 2 }, 'Ana')).toBeNull();
   });
 
@@ -202,5 +204,16 @@ describe('#5974 the colours along a link', () => {
       { n: 'd', w: 5 },
     ];
     expect(byLinkWeight(items, (i) => i.w).map((i) => i.n)).toEqual(['b', 'd', 'a', 'c']);
+  });
+});
+
+/** #5941 retest (the tester's 69933): what a colour means, never the colour. */
+describe('the owner circle', () => {
+  it('names what each old-Ally colour meant', () => {
+    expect(circleOf(AllyColour.Green)).toBe(OwnerCircle.Closest);
+    expect(circleOf(AllyColour.Blue)).toBe(OwnerCircle.Close);
+    expect(circleOf(AllyColour.Yellow)).toBe(OwnerCircle.Acquaintance);
+    expect(circleOf(AllyColour.Red)).toBe(OwnerCircle.Contact);
+    expect(circleOf(null)).toBeNull();
   });
 });

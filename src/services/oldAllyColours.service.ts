@@ -49,6 +49,31 @@ export const COLOURS_BY_STRENGTH: readonly AllyColour[] = [
   AllyColour.Red,
 ];
 
+/**
+ * #5941 retest (the tester's 69933, threads 61876–78): the colour reached the
+ * owner as a bare word („მხოლოდ „მწვანე" აღნიშვნა მაქვს"). What leaves for the
+ * model is what the colour MEANS in old Ally (allies, loyal, connections,
+ * contacts), never the colour, so there is no colour word to repeat.
+ */
+export enum OwnerCircle {
+  Closest = 'closest',
+  Close = 'close',
+  Acquaintance = 'acquaintance',
+  Contact = 'contact',
+}
+
+const CIRCLE_OF: Readonly<Record<AllyColour, OwnerCircle>> = {
+  [AllyColour.Green]: OwnerCircle.Closest,
+  [AllyColour.Blue]: OwnerCircle.Close,
+  [AllyColour.Yellow]: OwnerCircle.Acquaintance,
+  [AllyColour.Red]: OwnerCircle.Contact,
+};
+
+/** How close the owner placed a person in old Ally, in words; null when they never placed them. */
+export function circleOf(colour: AllyColour | null): OwnerCircle | null {
+  return colour === null ? null : CIRCLE_OF[colour];
+}
+
 /** The two colours that mean "close" — the only ones a bubble is made of. */
 export const CLOSE_COLOURS: readonly AllyColour[] = [AllyColour.Green, AllyColour.Blue];
 
