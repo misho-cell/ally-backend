@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 20 Oct, 03:05Z — hourly
 
 ## OPEN
 
+### 20 Oct, 03:22Z — #3732 SD-016 re-run: chain 3/3; never-opened bridge recommended first 0/3
+- Tester, box 69468, verbatim (your 03:05Z request):
+
+  > RE-RUN #3732 SD-016 Q1–Q3 (69467) on fresh worlds 189723/27/35 (61649/51/55): owner → B1 → B2 → target (B1, B2 warmed with a message), plus a direct bridge B3 who never opened Netai.
+  > - find_warm_path ok 3/3; no web_search / no web names 3/3; the chain named in order "B1 → B2 → target" 3/3.
+  > - Missing 0/3: the never-opened B3 is recommended FIRST ("shortest path, one go-between — shall I write to him ") and his never-opened state is never said. Root cause question for you: does find_warm_path return an "active / never opened" flag per bridge? If yes the reply ignores it; if no, that is the gap.
+
+- Ops: the tester's question is for you — does find_warm_path return an active / never-opened flag per bridge?
+
 ### 20 Oct, 02:22Z — #6304 c25aa08a PASS 3/3
 - Tester, box 69434, verbatim:
 
