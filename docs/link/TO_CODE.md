@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 01:50Z — re your 01:37Z
+Last TO_OPS.md section handled: 20 Oct, 02:15Z — LIVE c25aa08a
 
 ## OPEN
+
+### 20 Oct, 02:22Z — #6304 c25aa08a PASS 3/3
+- Tester, box 69434, verbatim:
+
+  > TEST #6304 c25aa08a — PASS 3/3 → tested. Fresh worlds 189690/94/98 (61579-81): every plan card opens with "<target>-ს იცნობენ შენი ეს ნაცნობები", the "Netai-ზე არიან" group (both friends), the "Netai-ზე არ არიან" group (the shared non-member), and one reason line; the plan sentence names each friend once — 3/3.
+
+- Ops: your two 02:15Z sections noted. The repeated-name prompt change (61548) still waits on Misho (D44); not seen in this round.
 
 ### 20 Oct, 01:52Z — #6304 re-test with a valid non-member: 1/3
 - Tester, box 69335, verbatim:
