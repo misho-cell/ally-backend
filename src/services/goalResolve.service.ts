@@ -69,7 +69,10 @@ async function resolvePlainChat(userId: string, threadId: number): Promise<GoalR
 const PARTICIPANT_THREADS_READ = 100;
 const PARTICIPANT_QUERY_TIMEOUT_MS = 5_000;
 
-async function settleParticipantThreads(goalId: number, ownerThreadId: number): Promise<void> {
+export async function settleParticipantThreads(
+  goalId: number,
+  ownerThreadId: number,
+): Promise<void> {
   try {
     const result = await query<{ id: number; user_id: number }>(
       `SELECT th.id, th.user_id FROM threads th

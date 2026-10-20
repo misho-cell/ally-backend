@@ -1,4 +1,5 @@
 import { runLatencyLine } from '../../services/runLatency';
+import { CaseCloseOutcome, closeCaseInsteadOfDeleting } from '../../services/caseClose.service';
 import {
   describeIfMissing,
   refreshCaseDescription,
@@ -1546,6 +1547,12 @@ threadsRouter.delete(
       const thread = await getThread(threadId, userId);
       if (thread === null) {
         res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
+        return;
+      }
+      // #6363 (a), D588: a case is closed for everyone, never erased; the body
+      // says so, and the client keeps the row (it now reads „მოგვარებული").
+      if ((await closeCaseInsteadOfDeleting(userId, thread)) === CaseCloseOutcome.Closed) {
+        res.status(200).json({ success: true, data: { deleted: false, closed: true } });
         return;
       }
       // tasks.user_id is TEXT — uncast parameter (the ::int cast was one of the
