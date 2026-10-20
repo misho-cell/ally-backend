@@ -218,9 +218,8 @@ describe('resolveIntroductionRequest', () => {
      *
      * The caption still says what happened; only the state changes.
      */
-    // #6362 (Giorgi): the go-between's yes keeps the request in her list, at work;
-    // it moves to „მოგვარებული" on her no or on the owner's „მოგვარდა" (D588).
-    expect(mockSetStatus).toHaveBeenCalledWith('7', 11, 'working', {
+    // D588 amended (Giorgi, G-129): her yes is her part done — „მოგვარებული" for her.
+    expect(mockSetStatus).toHaveBeenCalledWith('7', 11, 'done', {
       requestRef: REQUEST_ROW.request_ref,
     });
     expect(mockSetStatus).toHaveBeenCalledWith('9', 12, 'done', {

@@ -946,18 +946,6 @@ async function syncRequestThreads(
 }
 
 /**
- * #6362 retest (the tester's 61731 / 61733): the same rule in an ask thread the
- * request only shared — her yes keeps it open, at work; a question she still
- * owes keeps it hers; anything else settles as the ask says.
- */
-export function sharedThreadStatusAfter(
-  action: IntroductionAction,
-  askStatus: ThreadStatus,
-): ThreadStatus {
-  return action === 'accept' && askStatus === 'done' ? 'working' : askStatus;
-}
-
-/**
  * The status a mediator's thread is left in once the request in it is
  * answered or snoozed.
  *
@@ -976,16 +964,13 @@ async function mediatorThreadStatusAfter(
 ): Promise<{ status: ThreadStatus; statusLine?: string | null }> {
   // The caption is the status's own default, in the owner's language.
   if (isSharedRequestThread(thread)) {
-    return {
-      status: sharedThreadStatusAfter(action, await askThreadStatusAfterRequest(thread.id)),
-    };
+    return { status: await askThreadStatusAfterRequest(thread.id) };
   }
   if (action === 'snooze')
     return { status: 'waiting', statusLine: introSnoozedLine(ownerLanguage) };
-  // #6362 (Giorgi): a go-between who agreed keeps the request in her list — it
-  // moves to „მოგვარებული" when she declines, or when the owner resolves the
-  // case (D588), never on her yes.
-  if (action === 'accept') return { status: 'working' };
+  // D588 amended (Giorgi, G-129, 20 Oct 13:59Z): a go-between who has done her
+  // part — said yes, handed the number over — has the case in „მოგვარებული",
+  // for her only, still visible with its whole conversation. Her no too.
   return { status: 'done' };
 }
 
