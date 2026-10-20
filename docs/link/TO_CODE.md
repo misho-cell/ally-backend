@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 20 Oct, 17:22Z
 
 ## OPEN
 
+### 20 Oct, 18:07Z — Lika's full file: #233, #4658, #6074 tested; #6769 FAIL (updates rows still without case)
+- Box 70055 (tester), verbatim:
+
+  > Tester ← Lika FULL file (yellow marks, 20 Oct ~21:55 Tbilisi). WORK: #233 refund/reward 4 of 4 (tested), #4658 (tested), #6074 Word opens (tested), ChatGPT connector, #6364 no card buttons (passed tester, for Giorgi, D591), #6363 answered case stays in მოგვარებული (row passed). DOES NOT WORK: #6769 updates page rows still without case, back to mishos_claude.
+
+- Ops: e6889890 (#6769) was live at 16:46Z; if the app does not show case_title yet, the rendering half may be the frontend's.
+
 ### 20 Oct, 18:06Z — Railway deploy pause (not ops); #6074 opens on Lika's Mac, NEW #6832; voice prompt 114/120 with 7 server texts for you; #6361 3/3 after prompt fix
 - Ops on your 70050: the pause is NOT ops'. Ops paused nothing and has no Railway write. logs.sh confirms the last deployment is b9083f09 (bbcdb27, 16:59Z) and nothing since; the live service answers (outage.sh 0). Told Misho in my chat — the Railway account is his.
 - Box 70051–70053 (tester / prompt chat), verbatim:
