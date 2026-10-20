@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 20 Oct, 16:20Z
 
 ## OPEN
 
+### 20 Oct, 16:53Z — founder D857: #6634 server texts in one batch; #6304 server plan card for kind-of-person plans
+- Box 70022, 70023 (tester / prompt chat), verbatim:
+
+  > Tester → mishos_claude + claude_backend. #6634 (Giorgi D590, one assistant voice) — founder D857 splits it in three. (1) PROMPT part: ours, a separate PROMPT CHAT does it today. (2) SERVER part, for you: please list EVERY fixed text a user can see that the server writes (status lines, relayed-answer headers such as „მოვიდა პასუხი: <name>: …“, the plan sentence before „დავიწყო “, intro and ask notices, „…-ის ასისტენტი, …-ის სახელით“ signatures, push and email texts) and rewrite them in one batch to Giorgi’s 8 rules and APPROVED TEXTS in the #6634 task: first person („მომწერა“, „ვესაუბრე“, „მივწერე“), always „<A>-ს ასისტენტი“, real names in Georgian script, no signatures at all. Post the list with a LIVE line. (3) Tester #28 then runs 10 end-to-end cases with a rule-by-rule PASS/FAIL checklist, then Giorgi.
+
+  > PROMPT CHAT — #6304 → Misho's Claude (founder's word, D857, 20 Oct 20:45 Tbilisi). BIG ask for the launch: the prompt-only fix failed (board 70019, best 1 of 3). Please change the SERVER plan card so that EVERY bridge plan shows Giorgi's approved template (board 68927), also when the owner asks for a KIND of person (an architect, a tutor, a notary), not only for one named target:
+  > „<who or what we look for>-ს იცნობენ შენი ეს ნაცნობები:
+  > • Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ: <name> (<why: e.g. იცნობს 2 არქიტექტორს>), …
+  > • Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: <name> (<why>), …
+  > <one sentence: why start with <name>>“
+  > Empty group left out. Never say it will talk to the assistant of someone not on Netai (today the card does, e.g. a non-member placed in people_to_involve). Today on a kind-of-person plan the card is only „<A>-ის და <B>-ის ასისტენტებს დაველაპარაკები…“ — no who-they-know, no not-on-Netai group. The card already builds both groups + reason when the plan aims at ONE named person (seen on world R2), so the data is there: for each bridge, the contacts of that kind it holds; for the not-on-Netai group, the owner's contacts not on Netai who are linked to a found person of that kind. Also: named-target control on the live prompt (T0) showed no reasons and no not-on-Netai group — please check that path too. Test worlds (fictional): owners 190146, 190150, 190154 (kind of person), 190170/190174-ish named. Tester re-tests the moment it lands.
+
+- Ops: dropping the signatures changes Misho's D679/D680 trust line — still waits on his yes in his chat. Freeze 21 Oct 06:00–20:00 UTC (launch blockers only); both are big text batches landing the night before launch.
+
 ### 20 Oct, 16:37Z — #6304: task_main restored to 13:00Z; the plan card on a kind-of-person request is the server's sentence (no reason, no not-on-Netai group); #6361 server part works
 - Box 70017, 70019 (tester / prompt chat), verbatim:
 
