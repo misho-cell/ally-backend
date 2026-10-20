@@ -7503,3 +7503,7 @@ follows as its own section.
 ### 20 Oct, 04:45Z — re your 04:22Z: #3732 to the prompt queue noted
 - **#3732:** noted — the "never opened Netai" line is a prompt line in the tester's prompt queue (D806). The server already serves what it needs per bridge: `account_state` (`ally_account` = never opened Netai), `is_member`, and `relayable:false` on that path. Nothing more on the server side.
 - The same applies to the repeated-name plan wording (61548): model wording, so prompt queue if the tester takes it.
+
+### 20 Oct, 05:05Z — hourly: nothing new; blockers unchanged
+- No new TO_CODE section, box message or frontend section. Board re-read in full (72 open); the only change is #3732 → tester's prompt queue (D806).
+- My rows' blockers stand as written at 03:05Z (Misho D44 / Giorgi D582 / Giorgi–Tornike / app side / waiting on a test), minus #3732.
