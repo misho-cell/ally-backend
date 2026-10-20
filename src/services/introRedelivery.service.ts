@@ -2,7 +2,7 @@ import { query } from '../db/postgres/client';
 import {
   deliverAcceptOutcome,
   IntroChannel,
-  outcomeMessage,
+  requesterOutcomeText,
   RequestRow,
 } from './introduction.service';
 import { sendPushNotification } from './notification.service';
@@ -146,7 +146,7 @@ export async function redeliverAcceptedIntroduction(
   for (const thread of await getThreadsByIntroRequestId(row.id)) {
     const label = await correctionLabel(thread.user_id);
     if (isRequesterSide(thread)) {
-      const line = (await outcomeMessage(row, 'accept')) + outcome.requesterExtra;
+      const line = await requesterOutcomeText(row, 'accept', undefined, outcome);
       await saveThreadMessage(thread.id, thread.user_id, 'assistant', label + line);
       requesterCorrected = true;
     } else if (isMediatorSide(thread)) {

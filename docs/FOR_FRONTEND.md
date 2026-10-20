@@ -15,6 +15,10 @@ messages in their name.
 
 ---
 
+## 20 October, 17:10Z — #6771 (Giorgi, G-150): a number as a call link and a WhatsApp link
+
+When an introduction is agreed and the person sought is not on Netai, the owner now gets one assistant message in Giorgi's words. It ends: `ეს არის მისი ნომერი: [+995…](tel:+995…) [WhatsApp](https://wa.me/995…).` These are two Markdown links in the message text. Please render `tel:` and `https://wa.me/` links as tappable: a tap on the first should start a call, a tap on the second should open WhatsApp. If the chat already renders Markdown links, there is nothing to do.
+
 ## 20 October, 16:50Z — #6768 (Giorgi): „ბოლო სიახლეები" says what the person answered
 
 `GET /updates/latest`: a row of `kind: "answer"` used to carry `detail` / `line` „<H>: უპასუხა". It now carries what they answered: „ლიკა: თანახმაა. რა გჭირდება მისგან კონკრეტულად?". This is the answer as the goal already stored it, so no new app text is involved. It is one line of up to 280 characters, cut on a word with „…". Rows with nothing stored keep „<H>: უპასუხა". No field was added or renamed. Your „მეტი" (#5382) and grouping by `case_title` (#5215) stay as they are; please just let the line wrap instead of cutting it at the old short length.

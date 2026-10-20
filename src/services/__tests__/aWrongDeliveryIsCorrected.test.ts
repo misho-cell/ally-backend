@@ -2,7 +2,7 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 jest.mock('../introduction.service', () => ({
   __esModule: true,
   deliverAcceptOutcome: jest.fn(),
-  outcomeMessage: jest.fn(),
+  requesterOutcomeText: jest.fn(),
 }));
 jest.mock('../notification.service', () => ({
   __esModule: true,
@@ -17,14 +17,14 @@ jest.mock('../threads.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { deliverAcceptOutcome, outcomeMessage } from '../introduction.service';
+import { deliverAcceptOutcome, requesterOutcomeText } from '../introduction.service';
 import { sendPushNotification } from '../notification.service';
 import { getThreadsByIntroRequestId, saveThreadMessage } from '../threads.service';
 import { previewRedelivery, redeliverAcceptedIntroduction } from '../introRedelivery.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockDeliver = deliverAcceptOutcome as jest.MockedFunction<typeof deliverAcceptOutcome>;
-const mockOutcome = outcomeMessage as jest.MockedFunction<typeof outcomeMessage>;
+const mockOutcome = requesterOutcomeText as jest.MockedFunction<typeof requesterOutcomeText>;
 const mockThreads = getThreadsByIntroRequestId as jest.MockedFunction<
   typeof getThreadsByIntroRequestId
 >;
@@ -69,7 +69,10 @@ describe('a wrong delivery is corrected', () => {
       mediatorFollowUp: 'მადლობა! გადავეცი კონტაქტი.',
       contactOutcome: 'handed_over',
     });
-    mockOutcome.mockResolvedValue('ილიასთან გაცნობის მოთხოვნა მიღებულია.');
+    mockOutcome.mockImplementation(
+      async (_row, _action, _response, outcome) =>
+        `ილიასთან გაცნობის მოთხოვნა მიღებულია.${outcome?.requesterExtra ?? ''}`,
+    );
   });
 
   it('previews without writing anything and without the number', async () => {

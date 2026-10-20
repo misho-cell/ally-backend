@@ -287,6 +287,39 @@ function mediatorSuggestedSomeoneElse(
 }
 
 /** The outcome event, opened with who answered when a mediator did (F2). */
+/**
+ * #6771 (Giorgi, G-150, Misho's yes 20 Oct): the target is not on Netai, and the
+ * owner has already been sent ONE message with the number. The run used to be
+ * told a Netai channel was open, and wrote a second message saying so.
+ */
+const OFF_NETAI_BODY: Readonly<Record<RunLanguage, (target: string) => string>> = {
+  ka: (t) =>
+    ` ${t} Netai-ზე არ არის — Netai-ით მასთან არხი არ არსებობს. მფლობელმა მისი ნომერი უკვე ` +
+    'მიიღო ერთ შეტყობინებაში. მფლობელს ამ გაცნობაზე ახლა არაფერი მისწერო და ნუ შესთავაზებ, ' +
+    'რომ მას რამეს გადასცემ.',
+  en: (t) =>
+    ` ${t} is not on Netai — there is no Netai channel to them. The owner has already been ` +
+    'given their number in one message. Write nothing more to the owner about this ' +
+    'introduction now, and do not offer to pass anything on to them.',
+  ru: (t) =>
+    ` ${t} нет в Netai — канала через Netai к нему нет. Владелец уже получил его номер одним ` +
+    'сообщением. Сейчас ничего больше не пиши владельцу об этом знакомстве и не предлагай ' +
+    'ничего ему передать.',
+  es: (t) =>
+    ` ${t} no está en Netai: no hay canal de Netai hacia esa persona. El dueño ya recibió su ` +
+    'número en un mensaje. No escribas nada más al dueño sobre esta presentación ahora ni ' +
+    'ofrezcas transmitirle nada.',
+};
+
+function offNetaiBody(targetName: string): Readonly<Record<RunLanguage, string>> {
+  return {
+    ka: OFF_NETAI_BODY.ka(targetName),
+    en: OFF_NETAI_BODY.en(targetName),
+    ru: OFF_NETAI_BODY.ru(targetName),
+    es: OFF_NETAI_BODY.es(targetName),
+  };
+}
+
 export function introOutcomeEvent(
   targetName: string,
   accepted: boolean,
@@ -296,9 +329,14 @@ export function introOutcomeEvent(
   said: { readonly answer: string | null; readonly suggestsSomeoneElse?: boolean } = {
     answer: null,
   },
+  targetOffNetai = false,
 ): Readonly<Record<RunLanguage, string>> {
   const suggestion = !accepted && mediatorName !== null && said.suggestsSomeoneElse === true;
-  const body = suggestion ? NOTHING_BY_LANGUAGE : introOutcomeBody(targetName, accepted, contact);
+  const body = suggestion
+    ? NOTHING_BY_LANGUAGE
+    : accepted && targetOffNetai
+      ? offNetaiBody(targetName)
+      : introOutcomeBody(targetName, accepted, contact);
   const who =
     mediatorName === null
       ? NOTHING_BY_LANGUAGE

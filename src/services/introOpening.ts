@@ -1,6 +1,7 @@
 import { georgianFirstName, georgianScriptName } from './georgianScriptName';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
+import { phoneDigits } from './phone';
 
 /**
  * The two threads an introduction creates, in the language of the person who
@@ -557,6 +558,40 @@ function declineLine(
           ? `${geoName(targetName, 'gen')} გაცნობა ამჯერად ვერ მოხერხდა.`
           : `${geoName(who, 'erg')} ამჯერად ვერ შეძლო ${geoName(targetName, 'gen')} გაცნობა.`;
   }
+}
+
+/**
+ * #6771 (Giorgi, G-150, Misho's yes 20 Oct): the go-between agreed and the
+ * target is NOT on Netai. The owner got two messages, both saying they were
+ * „connected here" — there is no Netai channel to a non-member. One message,
+ * Giorgi's words, with the number as a call link and a WhatsApp link.
+ * Georgian only: the other languages have no approved words yet.
+ */
+const WITH_SUFFIX = 'თან';
+const DATIVE_S = 'ს';
+const NOMINATIVE_I = 'ი';
+
+/** „თემურ ბოლოთაშვილი" → „თემურ ბოლოთაშვილთან", „ლიკა" → „ლიკასთან". */
+function withName(name: string): string {
+  const dative = geoName(name, 'dat');
+  const dropsS = name.trim().endsWith(NOMINATIVE_I) && dative.endsWith(DATIVE_S);
+  return `${dropsS ? dative.slice(0, -DATIVE_S.length) : dative}${WITH_SUFFIX}`;
+}
+
+export function introAcceptedOffNetai(
+  language: RunLanguage,
+  mediatorName: string,
+  targetName: string,
+  targetPhone: string,
+): string | null {
+  if (language !== 'ka') return null;
+  const digits = phoneDigits(targetPhone);
+  return (
+    `${geoName(georgianScriptName(mediatorName), 'erg')} თანხმობა გამოთქვა ` +
+    `${withName(georgianScriptName(targetName))} გაცნობაზე დახმარებისთვის. ` +
+    'ახლა შეგიძლია მას პირდაპირ დაუკავშირდე. ' +
+    `ეს არის მისი ნომერი: [+${digits}](tel:+${digits}) [WhatsApp](https://wa.me/${digits}).`
+  );
 }
 
 /** What the REQUESTER is told after a mediated accept, per channel. */

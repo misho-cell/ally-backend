@@ -29,6 +29,7 @@ import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
 import {
+  introAcceptedOffNetai,
   introAcceptedOpening,
   introAcceptedPush,
   introAcceptedTitle,
@@ -726,6 +727,19 @@ export interface AcceptOutcome {
    * lookup failing. See `IntroContactOutcome`.
    */
   contactOutcome: IntroContactOutcome;
+  /** #6771: requesterExtra is the whole message, not a tail to the outcome line. */
+  readonly replacesOutcomeLine?: boolean;
+}
+
+/** The requester's message on this answer: the outcome line and its tail, or the tail alone when it is whole. */
+export async function requesterOutcomeText(
+  req: RequestRow,
+  action: IntroductionAction,
+  response: string | undefined,
+  outcome: AcceptOutcome | undefined,
+): Promise<string> {
+  if (outcome?.replacesOutcomeLine === true) return outcome.requesterExtra;
+  return (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? '');
 }
 
 /**
@@ -890,15 +904,22 @@ export async function deliverAcceptOutcome(
   }
 
   const targetWasTold = targetUserId !== null;
+  const offNetai =
+    targetWasTold || targetPhone === null
+      ? null
+      : introAcceptedOffNetai(requesterLanguage, mediatorName, req.target_name, targetPhone);
   return {
-    requesterExtra: introRequesterExtra(
-      requesterLanguage,
-      mediatorName,
-      req.target_name,
-      targetPhone,
-      false,
-      targetWasTold,
-    ),
+    ...(offNetai !== null && { replacesOutcomeLine: true }),
+    requesterExtra:
+      offNetai ??
+      introRequesterExtra(
+        requesterLanguage,
+        mediatorName,
+        req.target_name,
+        targetPhone,
+        false,
+        targetWasTold,
+      ),
     mediatorFollowUp: introMediatorFollowUp(
       mediatorLanguage,
       requester,
@@ -1025,7 +1046,7 @@ async function settleRequesterThread(
     thread.id,
     thread.user_id,
     'assistant',
-    (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? ''),
+    await requesterOutcomeText(req, action, response, outcome),
   ).catch(() => undefined);
   /**
    * ROW 305 (b): a GOAL thread the request only shared keeps its own status.
@@ -1111,7 +1132,7 @@ async function tellTheChatItWasAskedIn(
     // own outgoing thread there is nothing to add.
     const ownThreads = await getThreadsByIntroRequestId(req.id);
     if (ownThreads.some((t) => t.id === req.origin_thread_id)) return;
-    const text = (await outcomeMessage(req, action, response)) + (outcome?.requesterExtra ?? '');
+    const text = await requesterOutcomeText(req, action, response, outcome);
     await saveThreadMessage(req.origin_thread_id, req.requester_user_id, 'assistant', text);
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -1138,6 +1159,7 @@ async function wakeRequestersGoal(
   contactOutcome: IntroContactOutcome,
   shownInGoalThread: boolean,
   response: string | undefined,
+  targetOffNetai = false,
 ): Promise<void> {
   if (req.requester_task_id === null) return;
   try {
@@ -1160,6 +1182,7 @@ async function wakeRequestersGoal(
           answer: answer === '' ? null : scrubText(answer),
           suggestsSomeoneElse: !accepted && answer !== '' && refersSomebody(answer),
         },
+        targetOffNetai,
       ),
     );
   } catch (err) {
@@ -1503,6 +1526,7 @@ export async function resolveIntroductionRequest(
     outcome?.contactOutcome ?? 'kept_by_mediator',
     shownInGoalThread,
     opts.response,
+    outcome?.replacesOutcomeLine === true,
   );
   // ...and when there is no goal to wake, the chat it was asked in is told.
   await tellTheChatItWasAskedIn(req, action, opts.response, outcome);
