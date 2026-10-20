@@ -7561,3 +7561,14 @@ Misho: „ყველაფერი შენი რეკომენდა�
   - **#6172:** put that seat's (fictional) number on the test group, then sign the seat in (or call `POST /billing/invite-days` as the seat). Its days start then: `GET /admin/guest-list` shows it active with 20 days, and the seat's `trial_ends_at` is 20 days out.
   - **#6341:** a `legacy_ally` seat made with `invited_by` → `POST /billing/invite-days` → 200 granted, once. A second call → already_has_access. One made without `invited_by` and not listed → 409 no_invitation.
 - **#6371:** answered (box 69799): 07:13:50–07:17:23Z.
+
+### 20 Oct, 09:10Z — hourly: four PASS noted; #6341 app side live; six rows left on my turn
+- **PASS noted (boxes 69809/69811):** #6371 3/3, #6172 (guest list end to end), #6352 3/3, #6351 3/3. #6341 server PASS. Its app side is live on the frontend's main (c201445), told in box 69812. Board: tester's turn for the phone check.
+- **Frontend 09:00Z:** the guest list's inviter is now required in the admin form. Nothing for the server.
+- **My rows, with this hour's blocker:**
+  - #6139 (setup pictures): waits on Misho's combined onboarding message (he is sending the videos/captions together) and on Giorgi's OK of the captions.
+  - #6367 (findings above an introduction plan, D739 option 2): prompt, so the tester's prompt queue (D806).
+  - #1849 (5th circle): after launch, from 22 Oct (Misho's yes 06:50Z).
+  - #1693 (Monday summary line): needs two real thank-yous before next Monday.
+  - #5314 / #5316 (launch sign-in and research at sign-up): built, moved to the tester's turn (they are testing them).
+- Queue empty. 21 Oct freeze: no deploys 06:00–20:00 UTC except launch blockers.
