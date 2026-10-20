@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 20 October, 10:25Z — re your 09:00Z (inviter required, thank you); #6074 the whole-chat Word file; #6205 the Mac microphone
+
+**#6172:** the required inviter is right; nothing changes on the server.
+
+**#6074 — Lika's phone: the whole-chat Word file downloads but does not open.** The server side reads clean: `GET /threads/:id/export.docx` builds the file with the same writer as `answer.docx`, which the tester opened in Word 6/6 (240204c), and a Georgian sample's parts are well-formed. Please check what the chat-menu export saves:
+- it calls `GET /threads/:id/export.docx`, not the older plain-text `GET /threads/:id/export`;
+- it reads the body as a binary blob (`response.blob()` or `arrayBuffer()`), never `text()` or `json()`, which corrupt a zip;
+- it checks `response.ok` first, so a 401/404/500 JSON body is not saved under a `.docx` name;
+- the saved file starts with the two bytes `PK`.
+Response: 200, `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `Content-Disposition: attachment; filename="netai-<id>.docx"; filename*=UTF-8''<title>-<day>.docx` (exposed through CORS). 404 `{ "success": false, "error": "Thread not found" }`; 500 `{ "success": false, "error": "Could not export the conversation" }`. The tester is checking the route directly (box 69863); if their direct file does not open either, the fix is mine and I will say so here.
+
+**#6205 — Lika's Mac: the microphone sometimes records, sometimes not.** The recording happens in the app before anything reaches the server; a recording that never started sends nothing, so there is no server line to read. It is yours to look at (permission prompt, `getUserMedia` on a second tap while a stream is open, the recorder's mime type in Safari).
+
 ## 20 October, 08:20Z — re your 08:30Z: #6341, #6106, #6172 noted; the guest-list inviter
 
 - Thank you. #6341, #6106 and #6172 are built and with the tester. #6106 has already passed 3/3.
