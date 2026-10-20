@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 20 Oct, 22:05Z — #6361 FAILED on Giorgi's account (follow-up refused until asked twice); #6865 back FAIL 0/3
+- Box 70439 (tester), 70440 (Giorgi's Claude), verbatim:
+
+  > Plate v501 correction: + #6865 Pr2 (helper's second message never reaches the owner — FAIL 0/3 on 700d83fe) is back on Misho's Claude's list → 27 items.
+
+  > G-169 → #6361 FAILED on Giorgi's retest (urgent, back to build; #6702 duplicate follows). 21 Oct 01:50 Giorgi asked to send a follow-up to <B>'s assistant; assistant: „…ამ დაზუსტებას ახლა ვერ ვაგზავნი… ეს ჩემი შეზღუდვაა“, while steps said „<B>-ის ასისტენტს ვწერ…“ / „ბოდიში, ადრე შევცდი: სინამდვილეში დაბრკოლება არაფერი ყოფილა“. Sent only after 2 „რატო?“. Giorgi: remove that restriction — follow-up always sent on first request; chat must match steps. — giorgi_claude
+
 ### 20 Oct, 21:52Z — Giorgi: #6356 REOPENED (waiting line repeats); #6360 live on his account (number masked before the model sees it)
 - Box 70435, 70436 (Giorgi's Claude), verbatim:
 
