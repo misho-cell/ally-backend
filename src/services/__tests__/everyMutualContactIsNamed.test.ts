@@ -149,6 +149,43 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     expect(text).not.toContain('მოიწვევ');
   });
 
+  it('draws the groups when the plan names its go-betweens but no introduction (61547)', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        { digits: '995500000001', alias: 'Eka Sharashidze' },
+        { digits: '995500000002', alias: 'Luka Gelovani' },
+      ],
+    } as never);
+    (fetchAccountStates as jest.Mock).mockResolvedValue(
+      new Map([
+        ['995500000001', 'netai_user'],
+        ['995500000002', 'netai_user'],
+      ]),
+    );
+    const plan = {
+      routes: [{ name: 'ეკას გავლით' }, { name: 'ლუკას გავლით' }],
+      people_to_involve: [
+        { name: 'ეკა შარაშიძე', phone: '+995500000001' },
+        { name: 'ლუკა გელოვანი', phone: '+995500000002' },
+      ],
+    };
+    const found = [{ name: 'მერაბ ჩიქოვანი', viaPhones: ['+995500000001', '+995500000002'] }];
+    const text = await mutualGroupsFor('171', plan, found, 'ka', true);
+    expect(text).toContain('მერაბ ჩიქოვანს იცნობენ შენი ეს ნაცნობები:');
+    expect(text).toContain('ვკითხავ: Eka Sharashidze, Luka Gelovani');
+    expect(text).toContain('Eka Sharashidze მერაბ ჩიქოვანს იცნობს.');
+  });
+
+  it('draws nothing when the go-betweens lead to two different people', async () => {
+    const plan = { people_to_involve: [{ name: 'ეკა', phone: '+995500000001' }] };
+    const found = [
+      { name: 'მერაბ ჩიქოვანი', viaPhones: ['+995500000001'] },
+      { name: 'ნიკა ბერიძე', viaPhones: ['+995500000001'] },
+    ];
+    expect(await mutualGroupsFor('171', plan, found, 'ka')).toBeNull();
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it('is put above the introduction plan’s sentence', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('`${plan.mutualGroups}\\n\\n${sentence}`');

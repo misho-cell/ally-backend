@@ -71,6 +71,50 @@ function planTarget(planInput: unknown): string | null {
   return targets.size === 1 ? [...targets][0] : null;
 }
 
+/** The phones of the people the plan involves, read defensively from the model's input. */
+function involvedDigits(planInput: unknown): string[] {
+  const people = (planInput as { people_to_involve?: unknown } | null)?.people_to_involve;
+  if (!Array.isArray(people)) return [];
+  return people
+    .map((person: unknown) => (person as { phone?: unknown } | null)?.phone)
+    .filter((phone): phone is string => typeof phone === 'string')
+    .map(phoneDigits)
+    .filter((d) => d !== '');
+}
+
+interface PlanReach {
+  readonly target: string;
+  readonly planned: readonly string[];
+}
+
+/**
+ * The tester's 69335 (#6304, 61547): the plan named Eka and Luka as go-betweens
+ * but wrote no introduction field, so no target was known and no groups were
+ * drawn. When the search found exactly one person through the plan's own
+ * go-betweens, that person is whom they lead to.
+ */
+function goBetweensTarget(
+  planInput: unknown,
+  found: readonly FoundThroughBridge[],
+): PlanReach | null {
+  const involved = involvedDigits(planInput);
+  const through = found.filter(
+    (person) =>
+      person.far !== true &&
+      person.viaPhones.some((phone) => involved.includes(phoneDigits(phone))),
+  );
+  const names = new Set(through.map((person) => person.name.trim()));
+  return names.size === 1 ? { target: [...names][0], planned: involved } : null;
+}
+
+/** Whom the plan leads to, and its go-betweens: from its introductions, else from the search. */
+function planReach(planInput: unknown, found: readonly FoundThroughBridge[]): PlanReach | null {
+  const target = planTarget(planInput);
+  if (target === null) return goBetweensTarget(planInput, found);
+  const planned = routeIntroductions(planInput).map((intro) => phoneDigits(intro.viaPhone));
+  return { target, planned };
+}
+
 async function ownersNames(
   userId: string,
   digits: readonly string[],
@@ -235,9 +279,9 @@ export async function mutualGroupsFor(
   language: RunLanguage,
   withReason = false,
 ): Promise<string | null> {
-  const target = planTarget(planInput);
-  if (target === null || WORDS[language] === undefined) return null;
-  const planned = routeIntroductions(planInput).map((intro) => phoneDigits(intro.viaPhone));
+  const reach = planReach(planInput, found);
+  if (reach === null || WORDS[language] === undefined) return null;
+  const { target, planned } = reach;
   const foundTargets = foundTarget(found, target);
   try {
     const known = knownDigits(planned, foundTargets);
