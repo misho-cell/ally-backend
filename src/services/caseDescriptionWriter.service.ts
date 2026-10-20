@@ -126,3 +126,47 @@ export async function refreshCaseDescription(
     return false;
   }
 }
+
+/**
+ * 5413 retest (Giorgi, 20 Oct): only 3 of his 7 open cases had a description.
+ * The description is written after an owner's run on the case, and a case that
+ * has moved since 16 Oct only through answers, cards and wakes never had one:
+ * 2,130 of 2,793 open cases with a reply since 17 Oct were empty. So opening a
+ * case without one writes it, once per container per case, in the background;
+ * the panel gets it through `thread_updated` as after a run.
+ */
+const MISSING_TRIED_FOR_MS = 30 * 60_000;
+const missingTriedAt = new Map<number, number>();
+
+/** True when the thread carries an open goal and no description yet. */
+async function lacksDescription(threadId: number): Promise<boolean> {
+  const result = await query<{ lacks: boolean }>(
+    `SELECT (t.case_description IS NULL OR trim(t.case_description) = '') AS lacks
+       FROM threads t
+      WHERE t.id = $1
+        AND EXISTS (SELECT 1 FROM tasks g WHERE g.thread_id = t.id AND g.status = 'open')
+      LIMIT 1`,
+    [threadId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.lacks === true;
+}
+
+/** Writes the description of a case that has none, at most once per half hour per case. */
+export async function describeIfMissing(
+  userId: string,
+  threadId: number,
+  now: number = Date.now(),
+): Promise<boolean> {
+  const tried = missingTriedAt.get(threadId);
+  if (tried !== undefined && now - tried < MISSING_TRIED_FOR_MS) return false;
+  missingTriedAt.set(threadId, now);
+  try {
+    if (!(await lacksDescription(threadId))) return false;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[case-description] thread ${threadId} (missing check):`, (err as Error).message);
+    return false;
+  }
+  return refreshCaseDescription(userId, threadId);
+}

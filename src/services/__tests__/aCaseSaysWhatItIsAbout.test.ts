@@ -18,7 +18,7 @@ import {
   caseFactsText,
   cleanCaseDescription,
 } from '../caseDescription';
-import { refreshCaseDescription } from '../caseDescriptionWriter.service';
+import { describeIfMissing, refreshCaseDescription } from '../caseDescriptionWriter.service';
 
 const GOOD = 'შენ ბუღალტერს ეძებ შენი მცირე ფირმისთვის. ლაშას ასისტენტს მივწერე. პასუხს ველოდებით.';
 
@@ -98,5 +98,32 @@ describe('a case says what it is about', () => {
     answers('- a\n- b');
     await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(false);
     expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+});
+
+/** 5413 retest (Giorgi, 20 Oct): 4 of his 7 open cases had no description. */
+describe('a case opened without a description', () => {
+  const T0 = 1_000_000;
+
+  it('gets one written, and is not asked again within half an hour', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ lacks: true }] })
+      .mockResolvedValueOnce({ rows: [{ title: 'ბუღალტერი', brief: 'notes' }] })
+      .mockResolvedValueOnce({ rows: [{ role: 'user', content: 'ბუღალტერი მჭირდება' }] })
+      .mockResolvedValueOnce({ rows: [] });
+    answers(GOOD);
+    await expect(describeIfMissing('7', 101, T0)).resolves.toBe(true);
+    expect(mockEmit).toHaveBeenCalledWith('7', { id: 101, case_description: GOOD });
+    await expect(describeIfMissing('7', 101, T0 + 60_000)).resolves.toBe(false);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a case that has one, or no open goal, alone', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ lacks: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+    await expect(describeIfMissing('7', 102, T0)).resolves.toBe(false);
+    await expect(describeIfMissing('7', 103, T0)).resolves.toBe(false);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

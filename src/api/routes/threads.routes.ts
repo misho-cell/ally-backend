@@ -1,5 +1,8 @@
 import { runLatencyLine } from '../../services/runLatency';
-import { refreshCaseDescription } from '../../services/caseDescriptionWriter.service';
+import {
+  describeIfMissing,
+  refreshCaseDescription,
+} from '../../services/caseDescriptionWriter.service';
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import {
@@ -1014,6 +1017,9 @@ threadsRouter.get(
         res.status(404).json({ success: false, error: 'Thread not found' });
         return;
       }
+      // 5413 retest: a case opened without a description gets one written. Not gated on
+      // is_task — a goal older than that flag is a case too; the check reads the goal itself.
+      if (thread.type !== 'incoming_ask') void describeIfMissing(userId, threadId);
       // #1684: the reader opening an ask's conversation is what „seen" means.
       if (thread.type === 'incoming_ask') {
         markAsksSeen(threadId, userId).catch((err: unknown) => {
