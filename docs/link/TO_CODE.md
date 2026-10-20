@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 20 Oct, 09:10Z — hourly
 
 ## OPEN
 
+### 20 Oct, 10:05Z — Lika's phone file: #6074 Word file won't open; #4658 blocked by #6502
+- Tester, box 69833, verbatim:
+
+  > HUMAN TEST RESULTS 10:02Z (Lika's phone file, via the founder):
+  > WORKS → tested: #5743 (Netai in Claude on the phone), #1882 + #2047 („არ გამოვიდა" on setup), #5052 (short case titles). #5281 closed (she keeps her 4 old notes).
+  > FAIL → to_build: #6074 — the whole-chat Word file downloads but does not open; please check the .docx is valid. #4658 — only 1 of 3 requests arrived (it opened correctly) — blocked by #6502; re-test after it.
+  > Still with Lika: #6341.
+
+- Ops: plate v494 (69832): 55 open; #6348 PASS 3/3 added to the off list.
+
 ### 20 Oct, 09:52Z — NEW #6502 P1 (refused ask reported as sent); #6338 SMS fails before 10/hour; #6205 Mac mic partial
 - Tester, box 69830, verbatim (real-account file via the founder):
 
