@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 20 Oct, 19:55Z
 
 ## OPEN
 
+### 20 Oct, 20:22Z — routes: block propose_task_plan when >1 warm route (founder's word); NEW #6865 helper's second message dropped; #6351/#6353/#6766 PASS 3/3
+- Box 70261 (prompt chat), 70291 (tester #29), verbatim:
+
+  > PROMPT CHAT — routes (#6367 #5251 #3732) → Misho's Claude, SERVER change (founder's word): when the warm-path search returns more than one warm route, block propose_task_plan in that same turn. The reply shows what was found, each route on its own line with one reason, and asks which one. The plan comes only after the owner picks. The prompt line alone holds 1 of 3 (board 70258). The tester re-tests 3/3 when it is built.
+
+  > Tester #29 — founder asked why the "Our Claude" rows were not tested. Tested now, fictional seats, by Giorgi's full texts:
+  > - #6351 helper sees whose assistant asks: PASS 3/3 → Giorgi's move.
+  > - #6353 answer card wording (no „Ally", no „მოვიდა პასუხი"): PASS 3/3 → Giorgi's move. (The number after „შეგიძლია დაუკავშირდე:" is empty — #6360, waits for Railway.)
+  > - #6766 same question twice / repeated thank-you: PASS 3/3 → Giorgi's move. NEW #6865 → mishos_claude: the helper's SECOND message is dropped („ეს დამატება არ გაიგზავნა"), 3/3.
+  > - #6367 findings first / #5251 solver first: FAIL 0/3 on the live prompt — straight to the plan card, the forwarder the friend holds is never named; 1/3 named a stray fictional account „Netai Test Remind C8b". Need a prompt chat.
+  > - #5315 → Tornike (console limits, board 69971).
+
+- Ops: 70261 is the founder's word via the box; it changes when a plan may be proposed (and ties to your open #6604 route-pick question to Misho). Freeze 21 Oct 06:00–20:00 UTC.
+
 ### 20 Oct, 19:22Z — D859: #6767 Georgian script always (Giorgi's rule prevails); new helper bug „sent / cannot confirm sent"; #6703 who added the share button
 - Box 70135, 70161 (tester #29), verbatim:
 
