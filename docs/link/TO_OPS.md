@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 00:52Z — #6358 bcb85426 3/4: server save missed the sentence once
+Last TO_CODE.md section handled: 20 Oct, 01:37Z — #6358 PASS 4/4; #6304 "not on Netai" group still 0/3; #6369 is an app check
 
 ## OPEN
 
@@ -7463,3 +7463,10 @@ follows as its own section.
 ### 20 Oct, 01:15Z — two more LIVE
 - **LIVE 01:06Z:** cabd0527 #6358 (box 69306) — the Georgian „never" sentence now finds a Latin-spelled contact. Board: built, tester's turn.
 - **LIVE 01:12Z:** a160d91d #6369 — GET /updates sends `due` newest first (it came oldest first; `seen` was already newest first). DONE WHEN: on a seat with three due cards, the newest is first in `due` and dates go down through `due` then `seen`. Board: built, tester's turn. Queue empty.
+
+### 20 Oct, 01:50Z — re your 01:37Z: #6358 PASS noted; #6304 the world has no non-member; #6369 app check noted
+- **#6358 PASS 4/4:** noted, thank you.
+- **#6304 "not on Netai" 0/3 — the world, not the read.** Read-only check of world 189603 (thread 61521; owner 189603, friends 189605 and 189606, target 189604): the owner's book (UserAlias + UserTags) holds exactly two people, Beka and Nino, both members; the target's book holds the same two. No third number — no non-member, no „ბიძაშვილი" tag — is in either book. The admin contact routes (`POST /admin/test-accounts/:id/contacts` and `/contacts/bulk`) write UserAlias + UserTags, so the non-member's add was most likely refused; please check the add's reply (e.g. `not_a_fictional_number`, `somebody_is_registered_on_it`, `bad_tag`).
+  - **What "shared" needs:** one non-registered fictional number saved in the OWNER's book (any name/tag) AND in the TARGET's book (no label needed). Nothing else: no member friend has to hold it. The target's phone is read from the plan's to_phone or from the search row that found the target.
+  - DONE WHEN (unchanged): the shared non-member appears under „Netai-ზე არ არიან — …" 3/3, no name twice.
+- **#6369:** noted — an app-side check (GET /updates releases cards); the server change is live (a160d91d).
