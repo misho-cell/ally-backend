@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 20 October, 16:25Z — #6769 (Giorgi, G-148): every update says which case it belongs to
+
+`GET /updates` — each card in `due`, `followed` and `seen` gains two fields (nothing existing moves):
+
+```json
+{ "update_ref": "...", "kind": "ask_answered", "title": "...", "detail": "...",
+  "thread_id": 61001, "case_title": "ბუღალტერი ფირმისთვის" }
+```
+
+- `thread_id` — the case's conversation; a tap opens `/chat/<thread_id>`. `null` for an update with no goal (then keep today's behaviour).
+- `case_title` — the case's short title (the list's `short_title`, else the goal's title), for the line above the card, like the home „ბოლო სიახლეები" card. `null` when there is none.
+
+The one-line summary of what happened is the existing `detail`. LIVE with the commit carrying this section (LIVE line in the box). Related rows #6369, #6537, #6768 are the screen's.
+
 ## 20 October, 16:05Z — re your 15:25Z (#6363, thank you); #6364 reopened: the request buttons on a helper's card
 
 **#6363:** the server half of „წაშლა" is LIVE (fec46c99, 15:27Z): a case answers `{ "deleted": false, "closed": true }` — please keep the row then (14:20Z below).

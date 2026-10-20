@@ -28,7 +28,12 @@ import {
   MAX_SNOOZE_DAYS,
   DEFAULT_SNOOZE_DAYS,
 } from '../../services/pendingUpdates.service';
-import { answersForAsks, goalTitlesFor } from '../../services/pendingUpdates.service';
+import {
+  answersForAsks,
+  CaseRef,
+  caseRefsFor,
+  goalTitlesFor,
+} from '../../services/pendingUpdates.service';
 import {
   answeredDetail,
   cardHeading,
@@ -98,6 +103,9 @@ interface UpdateRow {
   readonly answered: boolean;
   /** #2080: the person flagged it to come back to; it stays on top until cleared. */
   readonly followed: boolean;
+  /** #6769: the case this belongs to — its conversation (tap opens it) and short title. */
+  readonly thread_id: number | null;
+  readonly case_title: string | null;
 }
 
 /**
@@ -112,7 +120,9 @@ function updatePayload(
   answers: ReadonlyMap<number, string>,
   language: RunLanguage,
   followedIds: ReadonlySet<number>,
+  cases: ReadonlyMap<number, CaseRef> = new Map(),
 ): UpdateRow {
+  const caseRef = u.task_id === null ? undefined : cases.get(u.task_id);
   const payload = normalisedPayload(u.kind, u.payload);
   const heading = cardHeading(
     u.kind,
@@ -134,6 +144,8 @@ function updatePayload(
       answer !== undefined && who !== '' ? answeredDetail(who, answer, language) : heading.detail,
     answered: answer !== undefined,
     followed: followedIds.has(u.id),
+    thread_id: caseRef?.threadId ?? null,
+    case_title: caseRef?.caseTitle ?? null,
   };
 }
 
@@ -434,10 +446,10 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
     const askIds = [...due, ...followedShown, ...shown]
       .map((u) => debriefAskId(u.kind, normalisedPayload(u.kind, u.payload)))
       .filter((id): id is number => id !== null);
-    const [titles, answers, language] = await Promise.all([
-      goalTitlesFor([...due, ...followedShown, ...shown].map((u) => u.task_id)).catch(
-        () => new Map<number, string>(),
-      ),
+    const taskIds = [...due, ...followedShown, ...shown].map((u) => u.task_id);
+    const [titles, cases, answers, language] = await Promise.all([
+      goalTitlesFor(taskIds).catch(() => new Map<number, string>()),
+      caseRefsFor(taskIds).catch(() => new Map<number, CaseRef>()),
       answersForAsks(askIds).catch((err: unknown) => {
         // eslint-disable-next-line no-console
         console.error('[updates] answers read failed:', (err as Error).message);
@@ -453,11 +465,11 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
         // #6369: newest first, as the read list is; the due read picks the oldest few, oldest first.
         due: [...due]
           .reverse()
-          .map((u) => updatePayload(u, titles, answers, language, followedIds)),
+          .map((u) => updatePayload(u, titles, answers, language, followedIds, cases)),
         followed: followedShown.map((u) =>
-          updatePayload(u, titles, answers, language, followedIds),
+          updatePayload(u, titles, answers, language, followedIds, cases),
         ),
-        seen: shown.map((u) => updatePayload(u, titles, answers, language, followedIds)),
+        seen: shown.map((u) => updatePayload(u, titles, answers, language, followedIds, cases)),
         held,
       },
     });

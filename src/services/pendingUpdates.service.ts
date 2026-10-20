@@ -183,6 +183,32 @@ export async function goalTitlesFor(
   return titles;
 }
 
+/** #6769: which case an update belongs to — the conversation to open and its short title. */
+export interface CaseRef {
+  readonly threadId: number;
+  readonly caseTitle: string | null;
+}
+
+/**
+ * #6769 (Giorgi, G-148): on /updates he could not tell which case an item
+ * belonged to. Each goal's conversation and its short title (the list's own
+ * „short_title", else the goal's title), read once for the whole screen.
+ */
+export async function caseRefsFor(
+  taskIds: readonly (number | null)[],
+): Promise<Map<number, CaseRef>> {
+  const wanted = [...new Set(taskIds.filter((id): id is number => typeof id === 'number'))];
+  if (wanted.length === 0) return new Map();
+  const rows = await query<{ id: number; thread_id: number; case_title: string | null }>(
+    `SELECT g.id, g.thread_id, NULLIF(TRIM(COALESCE(t.short_title, g.title)), '') AS case_title
+       FROM tasks g JOIN threads t ON t.id = g.thread_id
+      WHERE g.id = ANY($1::int[])`,
+    [wanted],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Map(rows.rows.map((r) => [r.id, { threadId: r.thread_id, caseTitle: r.case_title }]));
+}
+
 /** The most debrief cards one screen reads answers for. */
 const MAX_ANSWER_LOOKUPS = 200;
 
