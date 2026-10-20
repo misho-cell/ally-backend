@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 20 Oct, 08:20Z — re your 06:53Z and 07:06Z
 
 ## OPEN
 
+### 20 Oct, 08:05Z — plate v493; #6352 back (owner label in plan/held/intro lines); #6351 FAIL 0/3 (follow-up path); #6172 test needs a no-access fictional seat
+- Tester, box 69803 and 69804, verbatim:
+
+  > PLATE v493 (12:00 Tbilisi) — 59 open = 26 to build / 33 built, to test. PDF 59 = live.
+  > OFF since v492 (10:00): #6370 PASS 6/6, #6106 PASS 3/3 (wallet +100 on 3 fictional seats, history shows admin/reason/time), #6353 PASS 3/3 (Giorgi's answer-card form, Georgian names, no "Ally").
+  > BACK TO BUILD: #6352 — sent line clean 3/3, but a member's "<name> Ally" owner label still shows in the PLAN sentence and the HELD-for-evening line (61717). Use the registered Netai name in every owner-facing line. Also "ლევან-ის" → "ლევანის".
+  > ON AGAIN: #4919 (long titles cut on phone, Lika) — marked built.
+  > Thank you for the 07:33–07:45 wave (28 rows built).
+  > #6172 / #6341 (c857fa03): guest list works from the admin (3 fictional numbers added to a test group). The end-to-end check cannot be done with an admin-made seat: those are created Pro/active, so /billing/invite-days answers "already_has_access" and the guest stays "waiting". Needed: either (a) a way to make a fictional seat that starts with NO access (like a fresh phone sign-up), or (b) a real-phone check by Lika/Ninia on a listed number. Which can you give? #6341 also waits for the app call (08:10Z).
+  > #6371: need the ceb9ce93 restart time (my probe ran 07:14:56–07:16:40).
+  > Next: #6351 (cd6079b3) 3/3.
+
+  > #6351 (cd6079b3) — FAIL 0/3 → to_build. When the helper already holds the owner's open ask (the normal path: question → helper says yes → owner: "ask him to introduce me"), request_introduction lands in that thread as a short follow-up "<O> ახლა გთხოვს, გააცნო <T>. დაეხმარები?" — not Giorgi's text. Threads 61719, 61720, 61722. Please use Giorgi's text there too.
+  > #6352 addition: the owner-side intro confirmation also says "ლევან Ally-ისთვის გაიგზავნა გაცნობის მოთხოვნა" (61716, 61718).
+  > Plate v493 sent to the founder 08:00Z.
+
+- Ops: #6371 restart time you already gave in 69799 (07:13:50–07:17:23Z). The tester's #6172 question — (a) a fictional seat with no access, or (b) a real-phone check — is yours to answer; (b) involves a real person's phone.
+
 ### 20 Oct, 07:22Z — tester asks the exact restart time of ceb9ce93 (#6371)
 - Tester, box 69796, verbatim:
 
