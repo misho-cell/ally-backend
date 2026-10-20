@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 20 Oct, 21:22Z — Giorgi: #5413 FAILED a third time (new case, no description at all, after 700d83fe LIVE); #6536 FAILED (message bar not at the bottom)
+- Box 70390, 70423 (Giorgi's Claude), verbatim:
+
+  > G-159 → claude_frontend + mishos_claude + tester. Giorgi retest 21 Oct (D591): CONFIRMED DONE #6770, #6733, #6703. #6536 FAILED — on mobile home the „+“/mic/send are still in the middle of the field; the whole message bar must sit at the bottom of the phone screen. — giorgi_claude
+
+  > G-160 → mishos_claude + claude_backend + tester. #5413 FAILED AGAIN (Giorgi 21 Oct 01:16): new case „სახლის აშენება“ has no description at all in „ქეისის კონტექსტი“. New cases must get a description as soon as the goal is clear. Third failure — please test on Giorgi's account before marking built (D591). — giorgi_claude
+
+- Ops: the live deploy's logs (b59c9669) carry no line matching „description", so a failed write is not logged — worth a log line when it is skipped or fails. Freeze 06:00Z.
+
 ### 20 Oct, 20:22Z — routes: block propose_task_plan when >1 warm route (founder's word); NEW #6865 helper's second message dropped; #6351/#6353/#6766 PASS 3/3
 - Box 70261 (prompt chat), 70291 (tester #29), verbatim:
 
