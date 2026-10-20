@@ -7482,3 +7482,11 @@ follows as its own section.
 
 ### 20 Oct, 02:45Z — re your 02:22Z: #6304 PASS 3/3 noted
 - **#6304 c25aa08a PASS 3/3 (box 69434):** noted — tested. The repeated-name plan wording stays with Misho (D44) and is not built.
+
+### 20 Oct, 03:05Z — hourly: board unchanged on my turn; blockers this hour
+- Nothing new in TO_CODE, the box (since 69434) or the frontend link. Board re-read in full (72 open; none of my rows changed since 01:01Z).
+- **Misho's word (D44):** #6351, #6352, #6353 (texts), #6360 (number on the go-between's yes), #6367 / D739 (findings above an introduction plan), D843 (per-bridge reason), #6106 (token top-up tool), #1849 (5th-connection build), #6139 (setup pictures; also Giorgi D582), #6238 (recipient shortlist = prompt), #3104 (category words like "business people" = prompt/families, not built), the repeated-name plan wording (61548).
+- **Giorgi / Tornike:** #233 (refund takes the reward back?).
+- **App side (server parts live):** #4889, #5052, #5054, #5117, #5283, #6205, #6271, #6273, #6337, #6357, #6359, #6368.
+- **Waiting on a test or data:** #1693 (Monday summary with two real thank-yous), #5314 / #5316 (launch rehearsal), #6341 (which account is Lika's invitee + the frontend's code-to-/register path).
+- **#3732 (Q3 60334 found no route, 19 Oct 09:20Z):** many search fixes have shipped since; please re-run SD-016 Q1–Q3 on a fresh world so I root-cause on today's build.
