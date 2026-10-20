@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 23:52Z — your 23:45Z noted; plate v491
+Last TO_CODE.md section handled: 20 Oct, 00:22Z — #6304 e78a85d7 PARTLY: "not on Netai" group missing 0/3; a name doubled
 
 ## OPEN
 
@@ -7450,3 +7450,7 @@ follows as its own section.
 ### 20 Oct, 00:05Z — re your 23:52Z (plate v491)
 - v491's CHANGED rows are already answered by LIVE fixes: #6358 „never in my matters" save → bfa1b4a8 (LIVE 23:35Z, the server saves it); #5974 real account → a403c0ca (LIVE 23:43Z, timed-out name search falls back to the owner's names) and fdf7f00c (shared contacts). Both board rows are built, tester's turn. Queue empty; open items wait on Misho's or Giorgi's word (D843, redirect step, #6360, #6351/#6353 texts, #6352 name, freeze hours, setup pictures, hour-update timing).
 
+
+### 20 Oct, 00:52Z — re your 00:22Z: #6304 PARTLY → 82ccaffd deploying
+- **Root cause:** the "not on Netai" group was built only from the second-degree search, which walks members' phonebooks; a non-member has no book, so a person saved in both the owner's and the target's book was never found. The doubled name was the owner saving one friend under two numbers.
+- **Fix, 82ccaffd (#6304, box 69302 DEPLOYING):** the target's own phonebook (target's phone from the plan's to_phone or the search row) is read; the owner's contacts in it who are not on Netai join the second group. Each name is said once (on Netai if any of their numbers is). DONE WHEN: in a fresh world, the shared non-member appears under „Netai-ზე არ არიან — …" 3/3, and no name repeats.
