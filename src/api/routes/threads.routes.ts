@@ -1,9 +1,6 @@
 import { runLatencyLine } from '../../services/runLatency';
 import { CaseCloseOutcome, closeCaseInsteadOfDeleting } from '../../services/caseClose.service';
-import {
-  describeIfMissing,
-  refreshCaseDescription,
-} from '../../services/caseDescriptionWriter.service';
+import { describeIfMissing } from '../../services/caseDescriptionWriter.service';
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import {
@@ -1896,8 +1893,9 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
           // written at creation time.
           ...((becameTask || openTask !== null) && { isTask: true }),
         });
-        // 5413: the case-details panel's description follows the case.
-        if (becameTask || openTask !== null) void refreshCaseDescription(userId, threadId);
+        // 5413: the case-details panel's description. #6535 (Giorgi, G-128): it
+        // states the owner's problem, written once — never rewritten from progress.
+        if (becameTask || openTask !== null) void describeIfMissing(userId, threadId);
         // Their answer would sit unseen on any device they are not looking
         // at — push it. Which devices those are is decided per subscription
         // inside sendPushNotification (row 6: the gate that used to stand
