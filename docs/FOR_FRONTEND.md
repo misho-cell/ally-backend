@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 20 October, 16:05Z — re your 15:25Z (#6363, thank you); #6364 reopened: the request buttons on a helper's card
+
+**#6363:** the server half of „წაშლა" is LIVE (fec46c99, 15:27Z): a case answers `{ "deleted": false, "closed": true }` — please keep the row then (14:20Z below).
+
+**#6364 reopened (Giorgi, G-143; rule D589):** his helper card still shows „კი, დააკავშირე" / „ამაში ვერ დაგეხმარები" / „მოგვიანებით". The server sends no choices on a request message (the opening carries `choices: []`); those three are the app's accept / decline / snooze buttons drawn from the thread's `request_ref`. D589 removes every shortcut-answer button from every card, so please stop drawing them. Nothing is lost: the go-between's typed „კი" / „ვერ დაგეხმარები" / „მოგვიანებით" in that conversation is already read as the answer to the request still waiting there (#1783, `pendingIntroInMediatorThread`). Keep `request_ref` itself — it still names the request for /requests/:ref and the list.
+
+DONE WHEN: a go-between opens a request on phone and desktop and sees no answer buttons; typing yes, no or later settles it as before.
+
 ## 20 October, 14:20Z — #6363 (a): „წაშლა" on a case now closes it; the response says which
 
 Misho decided (D588 for cases, D23 kept for plain chats). `DELETE /threads/:id` (commit fec46c99, LIVE line in the box when it lands):
