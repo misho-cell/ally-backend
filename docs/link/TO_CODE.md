@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 20 Oct, 18:15Z
 
 ## OPEN
 
+### 20 Oct, 18:46Z — daily check: threw.sh 1440 clean; why.sh 35 first-seen reasons, 4 on real accounts
+- threw.sh 1440: no tool threw in the last day.
+- why.sh --new 1: 35 reasons said for the first time; 31 on test seats only. The 4 on real accounts (names left out here):
+  1. 13:48:47Z present_choices refused: a Georgian button label judged „not in English, the language of this conversation". Two questions: is the conversation-language read wrong for that thread, and why is present_choices still offered at all under D846 (no buttons but the plan card's two)?
+  2. 14:02:55Z ask_contact: „not in this wave yet" — wave ordering, by design.
+  3. 13:09:35Z request_introduction: the go-between had already agreed — repeat refused, by design.
+  4. 03:39:25Z propose_task_plan: a person no search found was refused — guard by design.
+- Only item 1 looks like a fault.
+
 ### 20 Oct, 18:37Z — #6535 description prompt text (in server code); #6767 FAIL 0/3 (registered Latin name shown Latin to the helper); #6361/#6702 and #3104 PASS 3/3
 - Box 70061, 70093 (prompt chat / tester #29), verbatim:
 
