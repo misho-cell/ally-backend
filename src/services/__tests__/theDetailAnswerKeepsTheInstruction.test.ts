@@ -44,6 +44,44 @@ describe('an instruction that waited for its day', () => {
   });
 });
 
+/** #6604 / #6365 (prompt chat box 70133): „ჰკითხე დავითს…" → „which Davit?" → „გამოგონილს". */
+describe('an instruction whose person was asked about', () => {
+  const lines = (...said: string[]) =>
+    said.map((content, i) => ({ at: `2026-10-20T19:0${i}:00Z`, content }));
+
+  it('is the yes once the owner answers which one', () => {
+    const screen = readPlanConsentScreen(
+      [],
+      lines('ჰკითხე დავითს, ხომ არ იცნობს კარგ ბუღალტერს', 'გამოგონილს'),
+    );
+    expect(instructionAwaitingItsDetail(screen)).toEqual([
+      'ჰკითხე დავითს, ხომ არ იცნობს კარგ ბუღალტერს',
+    ]);
+    expect(grantPermissionRefusal(true, screen)).toBeNull();
+  });
+
+  it('is not when the answer takes it back, holds it up, or asks something', () => {
+    for (const answer of ['არა, ჯერ არ მისწერო', 'მოიცადე', 'რომელი დავითი?']) {
+      const screen = readPlanConsentScreen(
+        [],
+        lines('ჰკითხე დავითს, ხომ არ იცნობს კარგ ბუღალტერს', answer),
+      );
+      expect(instructionAwaitingItsDetail(screen)).toEqual([]);
+    }
+  });
+
+  it('is not when the answer is a long new message', () => {
+    const screen = readPlanConsentScreen(
+      [],
+      lines(
+        'ჰკითხე დავითს, ხომ არ იცნობს კარგ ბუღალტერს',
+        'სხვათა შორის ხვალ ქალაქში ვიქნები და შეიძლება შევხვდე',
+      ),
+    );
+    expect(instructionAwaitingItsDetail(screen)).toEqual([]);
+  });
+});
+
 describe('the line the server sends from (65285, #1688)', () => {
   const lines = (...said: string[]) =>
     said.map((content, i) => ({ at: `2026-10-17T18:3${i}:00Z`, content }));

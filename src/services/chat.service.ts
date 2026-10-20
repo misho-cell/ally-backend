@@ -4939,10 +4939,32 @@ async function getOwnContactNumber(userId: string, phoneRaw: string): Promise<ob
   return {
     name: ownRow.rows[0].alias,
     number: `${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`,
-    instruction:
-      'Copy the number value into your reply EXACTLY as given, including the ⟦own⟧ markers — ' +
-      'the app reveals it to the user.',
+    instruction: OWN_NUMBER_COPY_INSTRUCTION,
   };
+}
+
+const OWN_NUMBER_COPY_INSTRUCTION =
+  'Copy the number value into your reply EXACTLY as given, including the ⟦own⟧ markers — ' +
+  'the app reveals it to the user.';
+
+/**
+ * #6360 (the prompt chat's REST round, box 70133): the model read
+ * get_intro_status, saw contact_handed_over and target_phone, and wrote „here
+ * is the number" — and the owner saw „…ნომერია:" with nothing after it. The
+ * number is a third person's, so the scrub took it out of the reply. Handed
+ * over by the go-between, it is the owner's to have: it goes to the model as
+ * an allowed span, the same way the owner's own saved numbers do.
+ */
+export function withHandedOverNumbersAllowed<
+  T extends { contact_handed_over?: boolean | null; target_phone?: string | null },
+>(rows: readonly T[]): T[] {
+  return rows.map((row) =>
+    row.contact_handed_over === true &&
+    typeof row.target_phone === 'string' &&
+    row.target_phone !== ''
+      ? { ...row, target_phone: `${ALLOW_OPEN}${row.target_phone}${ALLOW_CLOSE}` }
+      : row,
+  );
 }
 
 function buildProfileSection(profile: Record<string, unknown>): string {
@@ -7226,7 +7248,38 @@ export interface PlanConsentScreen {
  */
 export function instructionAwaitingItsDetail(screen: PlanConsentScreen): string[] {
   const before = screen.previousOwnerMessage ?? '';
-  return bookingWithoutAWhen(before) && looksLikeContactInstruction(before) ? [before] : [];
+  if (!looksLikeContactInstruction(before)) return [];
+  return bookingWithoutAWhen(before) || answersAClarifyingQuestion(screen.lastOwnerMessage ?? '')
+    ? [before]
+    : [];
+}
+
+/**
+ * #6604 / #6365 (the prompt chat's REST round, box 70133): „ჰკითხე დავითს…",
+ * then the run's „which Davit?", then „გამოგონილს" — and the permission check
+ * read only the answer, found no yes in one surname, and refused the send the
+ * owner had instructed. A short answer that takes nothing back and holds
+ * nothing up is the detail of the instruction before it, as a booking's day is.
+ */
+const DETAIL_ANSWER_MAX_WORDS = 4;
+const HOLDS_IT_UP_RE =
+  /(?:მოიცადე|მოითმინე|დაიცადე|გაჩერდი|შეჩერდი|ჯერ\s+არა|\bwait\b|\bstop\b|\bhold\s+on\b)/iu;
+
+export function answersAClarifyingQuestion(line: string): boolean {
+  const text = line.trim();
+  if (text === '' || text.includes('?') || TAKES_IT_BACK.test(text) || HOLDS_IT_UP_RE.test(text)) {
+    return false;
+  }
+  // A plain yes is a yes on its own, not a detail to append to the instruction.
+  if (
+    isApproveLabel(text) ||
+    APPROVE_LIKE_RE.test(text) ||
+    PLAN_YES.test(text) ||
+    saysGoAhead(text)
+  ) {
+    return false;
+  }
+  return text.split(/\s+/u).length <= DETAIL_ANSWER_MAX_WORDS;
 }
 
 /**
@@ -10279,8 +10332,11 @@ async function executeToolCall(
         getIntroStatusForTarget(userId),
       ]);
       const found = requested.length + asMediator.length + passedOn.length + aboutMe.length;
+      const introductions = withHandedOverNumbersAllowed(requested);
+      const anyNumber = introductions.some((row, i) => row !== requested[i]);
       return {
-        introductions: requested,
+        introductions,
+        ...(anyNumber && { instruction: OWN_NUMBER_COPY_INSTRUCTION }),
         asked_of_me: asMediator,
         passed_on: passedOn,
         about_me: aboutMe,
