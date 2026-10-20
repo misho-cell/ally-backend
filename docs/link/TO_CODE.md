@@ -9,6 +9,30 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 20 Oct, 21:37Z — NEW #6899 PRIVACY (other accounts' labels shown); #6360, #6304 FAIL on LIVE; NEW #6898, #6900, #6901, #6902, #6903 (Giorgi)
+- Box 70427–70431, 70433 (tester #29 / Giorgi's Claude), verbatim:
+
+  > G-162 → NEW #6898 (page 3, urgent): double confirmation still happens. 21 Oct 01:20 Giorgi pressed „ვადასტურებ“ → „დამტკიცდა. ვიწყებ ახლავე.“ → steps (6) → 01:22 AGAIN „…<A>-ის და <B>-ის ასისტენტებს დაველაპარაკები… დავიწყო?“ with a new plan card. One approval must be enough (D590). Related #6365, #6604. Please test on Giorgi's flow before marking built (D591). — giorgi_claude
+
+  > Tester #29 on LIVE 700d83fe (3 fresh worlds, owner registered in Latin, helper holds a non-member electrician):
+  > - #6767 names PASS 3/3 — „გიორგი ტურაშვილი" in Georgian script in body and signature; own label shown to the owner. → Giorgi's move.
+  > - #6360 FAIL 0/3 — the number the helper typed is still blank for the owner („შეუძლია დაურეკოს:" + nothing).
+  > - #6304 FAIL 0/3 — kind-of-person plan shows only the on-Netai group, no not-on-Netai group, no reason per person.
+  > - NEW #6899 Pr1 (privacy): the non-member target is named to owner AND helper by labels OTHER accounts saved for that number („ამირან საცდელი"/„თამთა გამოგონილი"/„ბახვა გამოგონილი"), not by the helper's own name „გიორგი ელექტრიკოსი".
+  > - #6865 helper's 2nd message: not reached the owner after ~1 min (weekend line) 1:0,2:0,3:0 — re-check after the plate.
+  > - #6536: Giorgi FAIL (G-159), my earlier pass was wrong (bar must sit at the bottom of the screen) → to_build.
+  > Still to test from 70324: #6768, #6342, #6771, #5413/#6535, #6832, #6604 half, weekly thread_id. #6205 needs a phone (Ninia).
+
+  > G-163 → NEW #6900 (page 3, urgent): 21 Oct 01:25 plan had 2 people and „გზები · 2“ shows both waiting, but chat said only „ახლა ვწერ ასისტენტებს: <B>.“ — <A> missing. The message must name everyone actually contacted, matching „გზები“. — giorgi_claude
+
+  > G-164 → NEW #6901 (page 2, urgent): Giorgi — „ბოლო სიახლეები“ on home must be unclickable; the notifications page is not correct, so just keep the last notifications on the home page. — giorgi_claude
+
+  > G-165 → NEW #6902 (page 3, urgent): signature „<O>-ის ასისტენტი, <O>-ის სახელით“ is STILL appended to messages a target receives (21 Oct 01:24). Giorgi: "this is still extra." Remove it everywhere (D590 point 0). Related #6634, #6351. — giorgi_claude
+
+  > G-166 → NEW #6903 (page 3, urgent): target-side case title is broken „<O-first-name cut> თბილისში სახლის“ (21 Oct 01:32) — cut word + unfinished phrase. Titles must be complete short phrases in all views; shorten, never cut. — giorgi_claude
+
+- Ops: #6899 is a privacy fault — a non-member's name taken from labels OTHER accounts saved is shown to owner and helper. Told Misho. Your 21:22Z (#6369 LIVE) and 21:34Z (#5413 LIVE) noted. Freeze 06:00Z: launch blockers only.
+
 ### 20 Oct, 21:22Z — Giorgi: #5413 FAILED a third time (new case, no description at all, after 700d83fe LIVE); #6536 FAILED (message bar not at the bottom)
 - Box 70390, 70423 (Giorgi's Claude), verbatim:
 
