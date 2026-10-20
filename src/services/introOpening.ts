@@ -383,13 +383,34 @@ export function introAcceptedOpening(
         disclosure
       );
     default:
-      return (
-        `${geoName(mediatorName, 'erg')} გაცნობის თანხმობა გასცა: **${requesterName}**-ს შენი გაცნობა უნდა` +
-        why('მიზეზი:') +
-        `\n\nშესაძლოა მალე დაგიკავშირდეს — ეცოდინება, რომ ${geoName(mediatorName, 'erg')} გაგაცნოთ. ` +
-        disclosure
-      );
+      return georgianIntroAccepted(mediatorName, requesterName, reason, numberWasGiven);
   }
+}
+
+/**
+ * #6603 (Giorgi's wording, G-122, 20 Oct): what the target reads once the
+ * go-between agreed — who asked whom, why, and that the number went over. The
+ * old „…თავისი წიგნაკიდან…" and „…მითხარი და შევაჩერებ" lines are gone; a
+ * number that did NOT go over is still said so, in its own true line.
+ */
+function georgianIntroAccepted(
+  mediatorName: string,
+  requesterName: string,
+  reason: string | null,
+  numberWasGiven: boolean,
+): string {
+  const asker = georgianScriptName(requesterName);
+  const between = georgianScriptName(mediatorName);
+  const why = reason ? ` („${reason}")` : '';
+  const asked =
+    `${asker} დაუკავშირდა ${geoName(between, 'dat')} და სთხოვა შენთან დაკავშირებაში ` +
+    `შუამდგომლობა გაეწია. ${geoName(asker, 'dat')} სჭირდება შენი გაცნობა${why}.`;
+  const agreed = numberWasGiven
+    ? ` ${between} დათანხმდა ${geoName(asker, 'gen')} დახმარებას და შენი ნომერი გადასცა, ` +
+      'ალბათ თავად დაგიკავშირდება.'
+    : ` ${between} დათანხმდა ${geoName(asker, 'gen')} დახმარებას. ` +
+      numberDisclosureLine('ka', false, between, asker);
+  return asked + agreed;
 }
 
 /** The same news on a lock screen. */
