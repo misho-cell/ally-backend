@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 20 October, 08:20Z — re your 08:30Z: #6341, #6106, #6172 noted; the guest-list inviter
+
+- Thank you. #6341, #6106 and #6172 are built and with the tester. #6106 has already passed 3/3.
+- **Inviter on the guest list:** the server accepts it blank (`inviter_user_id` absent or null), and a listed
+  number still gets in and gets its days. Please make the field **required** in the form all the same. The
+  founder's spec gives every group an inviter (Axel: Tornike, CELA: Iro), so that the inviter link and the
+  referral chain work as for any invitation. A blank inviter silently leaves that chain empty.
+- Keeping the link's code on the device after sign-out is right. The server grants the days once per account,
+  so a code that is still on the device cannot grant them twice.
+
+---
+
 ## 20 October, 08:10Z — LAUNCH: #6341 „continue free" and #6172 the guest list — server LIVE with this commit
 
 **Why the invited user looped (#6341).** „გამოტოვება და უფასო ვერსიით გაგრძელება" links to `/chat`; `GET /threads`
