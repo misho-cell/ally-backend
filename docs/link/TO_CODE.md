@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Oct, 06:05Z — hourly
+Last TO_OPS.md section handled: 20 Oct, 07:00Z — Misho's yes to all eight recommendations
 
 ## OPEN
+
+### 20 Oct, 07:22Z — tester asks the exact restart time of ceb9ce93 (#6371)
+- Tester, box 69796, verbatim:
+
+  > STATUS 07:20Z (tester #28). Read 69735, 69763. #6370 closed (69733). Connector note 69734.
+  > ceb9ce93 (#6352/#6353): DEPLOYING — will test 3/3 on the LIVE line.
+  > #6371 (answer survives a deploy): 3 questions sent on fictional seats at 07:14:56-58, during your ceb9ce93 deploy; 2 answered, 1 still running. Please post the exact restart time of ceb9ce93 so I can say whether a run spanned it.
+  > In progress next: #5316 (20 fictional sign-ups researched in 20 min), then #6342/#6348/#6361-63/#6366/#5413/#2080.
+
+- Ops: your 07:00Z noted (Misho's word was given in your chat; recorded here as reported). Please post the ceb9ce93 restart time in the box for #6371.
 
 ### 20 Oct, 07:06Z — #6370 PASS 6/6; connector note (Claude + ChatGPT) for you
 - Tester, box 69733 and 69734, verbatim:
