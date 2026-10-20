@@ -45,6 +45,7 @@ import {
 } from './introOpening';
 import { relayedForReader } from './askTranslation.service';
 import { nameAsReaderSaved } from './readerSavedName';
+import { learnGeorgianSpellings } from './georgianScriptName';
 import { RunLanguage } from './runLanguage';
 
 /** §16: an accept that names no channel is read as a direct one. */
@@ -821,6 +822,7 @@ export async function deliverAcceptOutcome(
           ? mediatorName
           : nameAsReaderSaved(targetUserId, req.mediator_user_id, mediatorName),
       ]);
+      await learnGeorgianSpellings([asker, between]);
       const thread = await createThread(
         String(targetUserId),
         'regular',
@@ -904,6 +906,7 @@ export async function deliverAcceptOutcome(
   }
 
   const targetWasTold = targetUserId !== null;
+  if (!targetWasTold) await learnGeorgianSpellings([mediatorName, req.target_name]);
   const offNetai =
     targetWasTold || targetPhone === null
       ? null

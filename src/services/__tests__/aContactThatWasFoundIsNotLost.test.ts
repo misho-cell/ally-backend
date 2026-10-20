@@ -181,6 +181,8 @@ describe('every place that still lowercases a stored label without folding is na
         'services/newMemberForGoal.service.ts',
         'services/officeholderGate.ts',
         'services/roster.service.ts',
+        // G-157: counts Georgian spellings only — Georgian script has no case to fold.
+        'services/surnameSpelling.ts',
         'services/taskAsks.service.ts',
       ].sort(),
     );

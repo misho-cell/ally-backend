@@ -5,6 +5,7 @@ import { reasonAboutAsker } from '../askEditor.service';
 import { geoName } from '../georgianCase';
 import { targetNameForMediator } from '../mediatorTargetName';
 import { nameAsReaderSaved } from '../readerSavedName';
+import { learnGeorgianSpellings } from '../georgianScriptName';
 import { forwardedRequestPush } from '../introOpening';
 import { query } from '../../db/postgres/client';
 import { foldedLower } from './georgianCase';
@@ -632,6 +633,13 @@ async function requestIntroductionInner(
     forwarderName,
   };
   const requestId = stored.requestId;
+  // G-157: the names this request writes in Georgian are spelled as the base spells them.
+  await learnGeorgianSpellings([
+    stored.requesterName,
+    stored.mediatorTargetName,
+    stored.targetName,
+    stored.mediatorDisplayName,
+  ]);
 
   const pushUrl =
     conversation === null

@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { georgianFirstNameOf } from './ownerNameGeorgian';
+import { learnSurnameSpellings, learnedSurnameSpelling } from './surnameSpelling';
 import { hasGeorgian, latinToGeorgian, nameKey } from './tools/transliterate';
 
 /**
@@ -15,8 +16,9 @@ import { hasGeorgian, latinToGeorgian, nameKey } from './tools/transliterate';
  * #6767 (Giorgi, 20 Oct): „Giorgi Turashvili" came out „გიორგი თურაშვილი" — the
  * rule reads every „t" as თ, and he is ტურაშვილი. Latin t, k, p, c (and so ts,
  * ch) each stand for two Georgian letters; the same rule made Osepashvili
- * „ოსეპაშვილი" for ოსეფაშვილი. A guessed spelling is never written: a name
- * with such a letter the list does not hold stays exactly as registered.
+ * „ოსეპაშვილი" for ოსეფაშვილი. A guessed spelling is never written: such a
+ * word takes the spelling the base's Georgian labels use (G-157, surnameSpelling),
+ * and when the base has no clear one the name stays exactly as registered.
  * An acronym („TBC") or a word with digits is left as written.
  */
 const ALLY_WORD_RE = /^ally$/iu;
@@ -41,12 +43,32 @@ function ruleIsSure(word: string): boolean {
   return !TWO_WAY_LETTER_RE.test(word.toLowerCase().replace(SURE_DIGRAPHS_RE, ''));
 }
 
-/** The word in Georgian script; null when only a guess could write it. */
+/** A Latin name word only the base can spell: not an acronym, not listed, not sure by rule. */
+function needsTheBase(word: string, isFirst: boolean): boolean {
+  if (!LATIN_NAME_WORD_RE.test(word) || ACRONYM_RE.test(word)) return false;
+  if (isFirst && georgianFirstNameOf(word) !== null) return false;
+  return !ruleIsSure(word);
+}
+
+/**
+ * The word in Georgian script; null when only a guess could write it. G-157: a
+ * word the rule cannot be sure of takes the spelling the base uses for it
+ * (surnameSpelling), once learned.
+ */
 function wordInGeorgian(word: string, isFirst: boolean): string | null {
   if (!LATIN_NAME_WORD_RE.test(word) || ACRONYM_RE.test(word)) return word;
   const listed = isFirst ? georgianFirstNameOf(word) : null;
   if (listed !== null) return listed;
-  return ruleIsSure(word) ? latinToGeorgian(word) : null;
+  return ruleIsSure(word) ? latinToGeorgian(word) : learnedSurnameSpelling(word);
+}
+
+/** Learns, from the base, the spelling of every word in these names the rule cannot be sure of. */
+export async function learnGeorgianSpellings(names: readonly string[]): Promise<void> {
+  const words = names
+    .map(withoutAllyWord)
+    .filter((name) => name !== '' && !hasGeorgian(name))
+    .flatMap((name) => name.split(WORD_SPLIT_RE).filter((w, i) => needsTheBase(w, i === 0)));
+  if (words.length > 0) await learnSurnameSpellings(words);
 }
 
 /** The name as a Georgian line writes it: no „Ally"; Georgian script when it is sure, else as registered. */
@@ -128,15 +150,22 @@ export async function georgianNamesFor(
   const named = new Map(labels.map((label) => [label, georgianScriptName(label)]));
   const latin = labels.filter((label) => !hasGeorgian(withoutAllyWord(label)));
   if (latin.length === 0) return named;
+  const spelledByPeople = new Set<string>();
   try {
     for (const row of await spellingsInTheBase(ownerId, latin)) {
+      if (spelledByPeople.has(row.label)) continue;
       const spelled = withoutAllyWord(row.georgian);
-      if (named.get(row.label) !== georgianScriptName(row.label)) continue;
-      if (sameNameBySound(spelled, withoutAllyWord(row.label))) named.set(row.label, spelled);
+      if (!sameNameBySound(spelled, withoutAllyWord(row.label))) continue;
+      named.set(row.label, spelled);
+      spelledByPeople.add(row.label);
     }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[georgian-name] base spellings not read:', (err as Error).message);
   }
+  // G-157: what nobody saved in Georgian for this very number is spelled as the base spells the word.
+  const left = latin.filter((label) => !spelledByPeople.has(label));
+  await learnGeorgianSpellings(left);
+  for (const label of left) named.set(label, georgianScriptName(label));
   return named;
 }
