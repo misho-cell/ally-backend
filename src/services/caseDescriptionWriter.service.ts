@@ -4,6 +4,7 @@ import { detectRunLanguage, RunLanguage } from './runLanguage';
 import { emitThreadUpdated } from './sse.service';
 import {
   CASE_DESCRIPTION_ON,
+  CASE_DESCRIPTION_RULE,
   CaseFacts,
   caseDescriptionPrompt,
   caseFactsText,
@@ -113,8 +114,10 @@ export async function refreshCaseDescription(
     const description = await describe(userId, threadId, facts);
     if (description === null) return false;
     await query(
-      `UPDATE threads SET case_description = $2, case_description_at = NOW() WHERE id = $1`,
-      [threadId, description],
+      `UPDATE threads SET case_description = $2, case_description_at = NOW(),
+                          case_description_rule = $3
+        WHERE id = $1`,
+      [threadId, description, CASE_DESCRIPTION_RULE],
       QUERY_TIMEOUT_MS,
     );
     emitThreadUpdated(userId, { id: threadId, case_description: description });
@@ -140,24 +143,22 @@ const missingTriedAt = new Map<number, number>();
 /**
  * G-151: a go-between's case and an introduction request are cases too, and had
  * none — only a conversation holding an open goal was described. A description
- * written before the rule above was progress, so it counts as missing and is
- * written again from the case's beginning. The cut-off is after this change is
- * live (it ships before 20:00Z), so no description written the old way stays.
+ * written under an earlier rule (case_description_rule, migration 257) told the
+ * progress, so it counts as missing and is written again under this one.
  */
-const FROM_THE_BEGINNING_SINCE = '2026-10-20T20:00:00Z';
 const CASE_TYPES_WITHOUT_A_GOAL = ['incoming_ask', 'outgoing_request'];
 
 /** True when the thread is a case with no description, or one written from progress. */
 async function lacksDescription(threadId: number): Promise<boolean> {
   const result = await query<{ lacks: boolean }>(
     `SELECT (t.case_description IS NULL OR trim(t.case_description) = ''
-             OR t.case_description_at IS NULL OR t.case_description_at < $2::timestamptz) AS lacks
+             OR t.case_description_rule IS DISTINCT FROM $2::smallint) AS lacks
        FROM threads t
       WHERE t.id = $1
         AND (t.type = ANY($3::text[])
              OR EXISTS (SELECT 1 FROM tasks g WHERE g.thread_id = t.id AND g.status = 'open'))
       LIMIT 1`,
-    [threadId, FROM_THE_BEGINNING_SINCE, CASE_TYPES_WITHOUT_A_GOAL],
+    [threadId, CASE_DESCRIPTION_RULE, CASE_TYPES_WITHOUT_A_GOAL],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0]?.lacks === true;

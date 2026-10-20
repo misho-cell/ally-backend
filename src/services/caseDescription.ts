@@ -13,17 +13,23 @@ export const CASE_DESCRIPTION_ON = true;
 
 export const CASE_DESCRIPTION_MAX_CHARS = 420;
 const MIN_CHARS = 20;
-const MAX_SENTENCES = 3;
+const MAX_SENTENCES = 2;
+
+/**
+ * #6535 (Giorgi, via the prompt chat, box 70061; Misho's yes 20 Oct): the
+ * description is the goal only — „თქვენი მიზანია გიორგი დაუკავშიროთ თემურ
+ * ბოლოთაშვილთან, რომელიც თბილისის არქიტექტურის სამსახურის უფროსია." Never the
+ * progress, the helpers or their answers.
+ */
+export const CASE_DESCRIPTION_RULE = 2;
 
 export function caseDescriptionPrompt(language: string): string {
   return (
-    'Below is one case the owner is working on with their assistant: its title, the ' +
-    "assistant's working notes and the latest messages. Write 2 or 3 short plain sentences " +
-    `for the owner, in ${language} only: what they want, who it is for, and where it stands ` +
-    'now. Use only facts written below. Speak to the owner as "you". Other people are reached ' +
-    'through their assistants: when you name who was written to, say "<name>\'s assistant". ' +
-    'No tool names, no internal notes, no phone numbers, no dates or hours, no quotes, no ' +
-    'lists. Answer with the sentences only.'
+    'Below is one case the owner is working on with their assistant: its title and how it began. ' +
+    `Write one or two short sentences in ${language} only: the goal, who the target is and why. ` +
+    'Nothing else: no progress, no helpers or go-betweens, no answers, no statuses. ' +
+    'Use only facts written below. Speak to the owner as "you". No tool names, no phone ' +
+    'numbers, no dates or hours, no quotes, no lists. Answer with the sentences only.'
   );
 }
 

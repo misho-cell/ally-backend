@@ -20,7 +20,8 @@ import {
 } from '../caseDescription';
 import { describeIfMissing, refreshCaseDescription } from '../caseDescriptionWriter.service';
 
-const GOOD = 'შენ ბუღალტერს ეძებ შენი მცირე ფირმისთვის. ლაშას ასისტენტს მივწერე. პასუხს ველოდებით.';
+const GOOD =
+  'შენ ბუღალტერს ეძებ შენი მცირე ფირმისთვის. გინდა, რომ საგადასახადო ანგარიშები მან აწარმოოს.';
 
 function answers(text: string): void {
   mockCreate.mockResolvedValue({ content: [{ type: 'text', text }], usage: {} });
@@ -34,11 +35,12 @@ beforeEach(() => {
 
 /** 5413 (Giorgi): the case-details panel says in two or three sentences what the case is. */
 describe('a case says what it is about', () => {
-  it('asks for two or three sentences in the owner’s language, assistants named', () => {
+  // #6535 (Giorgi; Misho's yes 20 Oct): the goal only — never the progress.
+  it('asks for one or two sentences on the goal only, in the owner’s language', () => {
     const prompt = caseDescriptionPrompt('Georgian');
-    expect(prompt).toContain('2 or 3 short plain sentences');
-    expect(prompt).toContain('in Georgian only');
-    expect(prompt).toContain("<name>'s assistant");
+    expect(prompt).toContain('one or two short sentences in Georgian only');
+    expect(prompt).toContain('the goal, who the target is and why');
+    expect(prompt).toContain('no progress, no helpers or go-betweens, no answers, no statuses');
   });
 
   it('gives the model the title, the notes and the latest lines, each bounded', () => {
@@ -60,9 +62,7 @@ describe('a case says what it is about', () => {
       cleanCaseDescription('დავურეკე ნომერზე +995 599 12 34 56 და ველოდები პასუხს.'),
     ).toBeNull();
     expect(cleanCaseDescription('გავუგზავნე request_introduction ლაშას ასისტენტს.')).toBeNull();
-    expect(
-      cleanCaseDescription('ერთი. ორი წინადადება. სამი წინადადება. ოთხი წინადადება.'),
-    ).toBeNull();
+    expect(cleanCaseDescription('ერთი წინადადება. ორი წინადადება. სამი წინადადება.')).toBeNull();
   });
 
   it('writes nothing while the switch is off', async () => {
@@ -81,7 +81,7 @@ describe('a case says what it is about', () => {
     await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(true);
     const update = mockQuery.mock.calls[2] as [string, unknown[], number];
     expect(update[0]).toContain('SET case_description = $2');
-    expect(update[1]).toEqual([9, GOOD]);
+    expect(update[1]).toEqual([9, GOOD, 2]);
     expect(mockEmit).toHaveBeenCalledWith('7', { id: 9, case_description: GOOD });
   });
 
@@ -150,7 +150,7 @@ describe('a description is the owner’s problem, from how the case began', () =
     mockQuery.mockResolvedValueOnce({ rows: [{ lacks: false }] });
     await describeIfMissing('7', 201, 5_000_000);
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain('case_description_at < $2::timestamptz');
-    expect(params).toEqual([201, '2026-10-20T20:00:00Z', ['incoming_ask', 'outgoing_request']]);
+    expect(sql).toContain('case_description_rule IS DISTINCT FROM $2::smallint');
+    expect(params).toEqual([201, 2, ['incoming_ask', 'outgoing_request']]);
   });
 });
