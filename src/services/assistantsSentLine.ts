@@ -73,6 +73,28 @@ export function withAssistantsSentLine(
     .replace(/\n{3,}/gu, '\n\n')
     .trim();
   if (placed) return text;
-  if (NAMES_AN_ASSISTANT_RE.test(reply)) return reply;
+  if (saysItWroteToTheirAssistants(reply, stems, verb)) return reply;
   return text === '' ? sentLine : `${text}\n\n${sentLine}`;
+}
+
+/**
+ * The reply already tells, in its own approved form, that their assistants were
+ * written to. #6900 (Giorgi, G-163, 21 Oct 01:22 Tbilisi): a reply that only
+ * proposed the next plan („…ასისტენტებს დაველაპარაკები… დავიწყო?") also named
+ * assistants, so Beso, written to in that run, was never announced. A plan is
+ * not that sentence: it must say it wrote, to someone asked.
+ */
+function saysItWroteToTheirAssistants(
+  reply: string,
+  stems: readonly string[],
+  verb: RegExp,
+): boolean {
+  return (reply.match(SENTENCE_RE) ?? [reply]).some((sentence) => {
+    const lower = sentence.toLowerCase();
+    return (
+      NAMES_AN_ASSISTANT_RE.test(sentence) &&
+      verb.test(sentence) &&
+      stems.some((stem) => stem !== '' && lower.includes(stem))
+    );
+  });
 }

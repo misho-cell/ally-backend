@@ -46,4 +46,14 @@ describe('#5149: after a send the owner reads the agreed line (tester 58910, 589
       'ნიკას მზარეული სჭირდება. ახლა ვწერ ასისტენტებს: გიორგი.',
     );
   });
+
+  // #6900 (Giorgi, G-163): Beso was written to; the reply only proposed the next plan.
+  it('announces who was written to when the reply only proposes the next plan', () => {
+    const plan =
+      'ბესო ორთოიძის და ლიკა ოსეპაშვილის ასისტენტებს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.\n\nდავიწყო?';
+
+    expect(withAssistantsSentLine(plan, ['ბესო ორთოიძე'], 'ka')).toBe(
+      `${plan}\n\nახლა ვწერ ასისტენტებს: ბესო ორთოიძე.`,
+    );
+  });
 });
