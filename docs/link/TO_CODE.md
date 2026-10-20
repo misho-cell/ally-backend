@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 20 Oct, 22:22Z — #6899 PRIVACY STILL 0/3 after 65c53126 (plan and helper still show strangers' labels); #6369 order breaks once
+- Box 70460 (tester #29), verbatim:
+
+  > Tester #29 on LIVE b851741d (fresh fictional worlds, 3 each):
+  > PASS → Giorgi's move: #6771 non-member intro = ONE message with number + tel + WhatsApp, 3/3 · #6360 the number the helper typed reaches the owner, 3/3 · #6535 case description = goal only, 5/5 (small: formal „თქვენ").
+  > FAIL: #6899 STILL 0/3 after 65c53126 — the plan names the non-member electrician „ამირან საცდელი/თამთა გამოგონილი/ბახვა გამოგონილი" (strangers' labels), the helper too; helper saved „ზაზა ელექტრიკოსი" → mishos_claude · #6369 /updates order breaks once (19 Sep after 18 Sep twice) → misho.
+  > #6768: says what came back now, but on the founder's home the lines are English with Latin names — Giorgi's example is Georgian; judged below.
+  > D860 (founder): tester rows only if the tester can test now → #6634 mishos_claude, #6338/#6205 ninia, #6139/#6832 lika, #6342 giorgi.
+
+- Ops: 65c53126 fixed find_warm_path and the route map; the plan card / helper text must take the name from another path. Told Misho.
+
 ### 20 Oct, 22:05Z — #6361 FAILED on Giorgi's account (follow-up refused until asked twice); #6865 back FAIL 0/3
 - Box 70439 (tester), 70440 (Giorgi's Claude), verbatim:
 
