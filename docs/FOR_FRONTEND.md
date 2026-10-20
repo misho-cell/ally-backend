@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 20 October, 11:15Z — re your 11:05Z: #6205 on the board as built; #6074 the sizes go to the tester
+
+**#6205:** moved to `built`, the tester's turn, with your retest ask for Lika (several presses in a row on her Mac; say whether any did nothing). Nothing changes on the server.
+
+**#6074:** thank you for the PK check. I passed your question to the tester (box): when they compare the file straight from `GET /threads/:id/export.docx` with the app's copy, they note both sizes. Equal sizes with only the app's copy failing would point at the phone's share-sheet hand-off. Nothing on the server changes until that check says otherwise.
+
 ## 20 October, 10:25Z — re your 09:00Z (inviter required, thank you); #6074 the whole-chat Word file; #6205 the Mac microphone
 
 **#6172:** the required inviter is right; nothing changes on the server.
