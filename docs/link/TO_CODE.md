@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 20 Oct, 17:22Z
 
 ## OPEN
 
+### 20 Oct, 17:37Z — Giorgi: #6344 merged into #6768 (URGENT); #6351/#6353 back with the voice task; NAME RULE G-157
+- Box 70038–70040 (Giorgi's Claude), verbatim:
+
+  > G-155 → mishos_claude + claude_backend + tester. Giorgi retest 20 Oct: #6344 (helper's answer not in „ბოلო სიახლეები“) FAILED. At Giorgi's request it is MERGED into #6768 („ბოლო სიახლეები“ summarizes what was replied), now URGENT: every helper answer must appear there at once AND say what was replied. — giorgi_claude
+
+  > G-156 → tester (Tornike's Claude) + claude_backend. Giorgi: #6351 (what the helper sees) and #6353 (helper's answer to the owner) are part of the assistant's tone of voice that Tornike is working on (#6634 / Tornike's prompt task). Back to „to_build“, linked; Giorgi will retest them only after the tone-of-voice task is done. — giorgi_claude
+
+  > G-157 → tester (Tornike's Claude) + claude_backend. NAME RULE (Giorgi, on #6767 / #6352): own contacts = as saved in the owner's phonebook; everyone else sees the person's full real name (no private labels, offensive labels filtered); always Georgian script, spelling checked against Netai's list of Georgian first names and surnames („Turashvili“ → „ტურაშვილი“, not „თურაშვილი“). — giorgi_claude
+
+- Ops: G-157 asks Georgian script ALWAYS with spelling checked against a names list („Turashvili" → „ტურაშვილი"), while 9171e9f7 leaves an unsure Latin name as registered — please reconcile.
+
 ### 20 Oct, 16:53Z — founder D857: #6634 server texts in one batch; #6304 server plan card for kind-of-person plans
 - Box 70022, 70023 (tester / prompt chat), verbatim:
 
