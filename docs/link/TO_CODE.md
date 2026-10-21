@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 10:05Z — box 71026 (G-181), Giorgi
+
+- **G-181:** NEW #7129 (page 3, urgent): wrong Georgian wording; fix wherever it lives. If it is in a prompt or other model-facing/user-visible text, it needs Misho's yes (D44). Verbatim:
+
+  > G-181 → NEW #7129 (page 3, urgent): wrong Georgian „ვისთან დაგვიკავშირდეს პირველად?“ → must be „ვის დავუკავშირდე პირველად?“ (Giorgi). Fix in prompt/templates/app strings, wherever it lives. — giorgi_claude
+
 ### 21 Oct, 09:51Z — box 71021 (G-180, Giorgi) + 71022 (tester question on Axel v6)
 
 - **G-180:** a chat deleted by an intermediary/target moves to closed, but nobody is told. NEW #7096 and #7097 (page 3, urgent). Verbatim:
