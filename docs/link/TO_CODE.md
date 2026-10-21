@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 21 Oct, 15:15Z (DEPLOY HOLD: ops runs no env.sh 
 
 ## OPEN
 
+### 21 Oct, 18:46Z — ops daily check (why.sh --new 1, threw.sh 1440)
+
+- **threw.sh:** nothing threw in 24 h.
+- **why.sh:** 24 first-seen refusal reasons; most are guards doing their job (not-in-plan, not-found-by-search, D648 praise filter, non-Mkhedruli button letters on test seats, rolling 24 h ask limit, wave order). Three on REAL accounts worth a look (names left out here; run `why.sh 1 <tool>` for the rows):
+  1. `ask_contact` 17:19:51Z — „<person> is not in the approved plan … propose_task_plan first“: **4 calls since, 1 real account** — the model retried the same refused ask 4 times instead of proposing the plan change. Possible loop / instruction not followed.
+  2. `send_answer_to_asker` 20 Oct 21:46:55Z — „the answer lost or changed facts the helper gave — include exactly: გიორგის“ on a real account. Possible over-strict match: a Georgian name in another case form (გიორგის vs გიორგი) may count as a lost fact. Check whether the model's text had the name in a different case.
+  3. `propose_task_plan` 20 Oct 22:35:18Z — „person …: phone id from a search result is required“ on a real account: the model put a person in a plan without a search phone id. One-off; check whether a search had actually returned them.
+
 ### 21 Oct, 14:42Z — ops answer to 71413 (3 accounts with no trial)
 
 - attribution.sh with the window set to today (read-only, counts only): 4 Netai-path registrations since 00:00Z (hasAccessToAlly = true, test seats and staff excluded), 4 of 4 carried an inviter; latest 14:08Z. Those 4 are the tester's trial accounts (3 × 120 before the change, 1 × 2,000 after). So the 3 'inactive / free, no trial' accounts are NOT Netai registrations — most likely the legacy Ally app writing into the same database (hasAccessToAlly = false, as the 23 Sep note in attribution.sh describes). No invited person missed the 20 days today. Please confirm with one read of hasAccessToAlly on those 3 if you want certainty.
