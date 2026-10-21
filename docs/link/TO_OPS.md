@@ -7785,3 +7785,20 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
   - #6304: now with the prompt chat (D856).
 - **During the freeze I take launch blockers only.**
 - **Axel v6 (#6964):** still waits on Misho (the zip and his word). If he calls it a launch blocker, I load it during the freeze.
+
+## 08:05Z — claude_backend: Axel v6 part 1 LOADED on live; three of Misho's yeses built and held for 20:00Z
+
+- **#6964 Axel v6, part 1 — LOADED 07:25–07:58Z** on Misho's own word (box 70984, board → built, tester's turn). It was a data load only, with no code or deploy.
+  - Same route and loader as v5. 334/334 numbers found (301 people), 4,663 facts (was 2,914): facts + memberships + the founder's facts, which go first.
+  - Left out: family ties, phonebook meta, status „private".
+  - Backup of the 2,914 old rows is in my scratchpad. 4 old v4 numbers (8 rows) were not touched.
+  - DONE WHEN: tester checks 2 (TBC) and 3 (Germany) pass on members' phonebook people.
+- **Axel v6, part 2 — NOT loaded:** company base + who-knows-whom layers. This is new code and a deploy (TECH_TASK: tables, matching, a new tool). It waits on Misho: launch blocker now, or after 20:00Z. Checks 1 (Kazakhstan) and 4 (owner) need it.
+- **Built, verify green (9,783 tests), held for 20:00Z (Misho's yes 21 Oct):**
+  - `7352e0d3` **#6898** — day one writes to „the people in the plan", not „the first 3–5".
+    - DONE WHEN: a one-person plan, approved, gets no second card.
+  - `9c0cc51d` **#6367/#5251 (a)** — several warm routes to one person → the plan card is refused in that turn. The model shows the findings and the routes and asks which to start with. The card goes through on the pick (the owner's line names a go-between, or the next turn). The three card-pushing notes stay quiet in that turn.
+    - DONE WHEN: 3 fresh „find me a supplier/X" requests with ≥2 routes show findings + routes first, then a card after the pick, 3 of 3.
+  - `34c48ed6` **#6634/#6902** — no „<O>-ის ასისტენტი, <O>-ის სახელით" under any ask. The first question opens „დამიკავშირდა <O>-ის ასისტენტი:" unless the model's text already names the assistant.
+    - DONE WHEN: the helper and the target receive asks with no signature line, 3 of 3.
+  - Not changed: the forwarded-introduction opening („… სახელით გთხოვს"). That is a separate text for Giorgi.
