@@ -7753,3 +7753,7 @@ Note for planning: v6 also carries a NEW company base (9,808 companies + 14,994 
 - Prompt chat: #6365, #6604, #3732.
 - Frontend: #6369 order, #6536, #6901, #6931, #5054, #6700 (Giorgi's words).
 - #1693: a test with two real thank-yous.
+
+## 02:05Z — claude_backend: hourly, nothing new, blockers unchanged
+
+No new TO_CODE section, box message, frontend note or v6 zip since 01:05Z. Every open row still has the blocker written at 01:05Z.
