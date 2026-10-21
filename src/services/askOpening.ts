@@ -105,9 +105,10 @@ export function askOpeningParts(
       };
     default:
       return {
-        first: `${who} გეკითხება:`,
-        followUp: `${geoName(senderName, 'gen')} ასისტენტმა კიდევ დაწერა:`,
-        added: `${geoName(senderName, 'gen')} ასისტენტმა დაამატა:`,
+        // #6634 (D590 point 0, Misho's yes 21 Oct): the reader's own assistant speaks, in the first person.
+        first: `დამიკავშირდა ${who}:`,
+        followUp: `${geoName(senderName, 'gen')} ასისტენტმა კიდევ მომწერა:`,
+        added: `${geoName(senderName, 'gen')} ასისტენტმა დამატებით მომწერა:`,
       };
   }
 }
@@ -140,12 +141,23 @@ export function withoutFramesOwnWords(question: string): string {
 }
 
 /**
+ * #6634 (D590, Misho's yes 21 Oct): the question already says whose assistant
+ * wrote — task_main opens it „დამიკავშირდა <O>-ის ასისტენტი, …" — so the frame
+ * would say it twice.
+ */
+const SAYS_WHO_WROTE_RE = /^[^\n]{0,80}(?:ასისტენტ|assistant|ассистент|asistente)/iu;
+
+/**
  * The whole opening message: who is asking, and the question.
  *
  * D707 (the founder, 7 Oct, his own account): the line under the question —
  * „უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ." — is gone in every
  * language. Nobody reading a question needs to be told to answer it, and
  * „thread" is not a word a person reads.
+ *
+ * #6634 / #6902 (D590 point 0): no signature closes the ask any more, so a
+ * first question carries the frame unless it already names the assistant —
+ * and keeps it when the frame says the two share a network, which is news.
  */
 export function buildAskOpening(
   language: RunLanguage,
@@ -153,44 +165,14 @@ export function buildAskOpening(
   roster: string | null,
   question: string,
   shape: 'first' | 'followUp' | 'added',
-  namedBelow = false,
 ): string {
-  // AU (the founder's note, 48086; Misho's yes 9 Oct, §110.8): the 1687 closing line already
-  // says whose assistant wrote, so a first question opens with the question alone — unless the
-  // opening also says the two share a network („Axel-ის წევრი, როგორც შენ"), which is news.
-  if (shape === 'first' && namedBelow && roster === null) return withoutFramesOwnWords(question);
+  const asked = withoutFramesOwnWords(question);
+  if (shape === 'first' && roster === null && SAYS_WHO_WROTE_RE.test(asked)) return asked;
   const parts = askOpeningParts(language, senderName, roster);
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3). D648: no quotation marks either — the question is
   // the asker's assistant's wording, not anybody's quoted words.
-  return `${parts[shape]}\n\n${withoutFramesOwnWords(question)}`;
-}
-
-/**
- * 1687 (A4, the intelligence research of 6 October, D679/D680): trust falls
- * when it is unclear which messages a machine wrote. Every outgoing ask ends
- * with the identical line, the asker's name as the profile shows it, never the
- * model's choice of words: „ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით".
- *
- * No leading dash: every stored assistant text goes through the mechanical
- * scrub, which reads „\n\n— " as a dash in prose and turns it into „, " — the
- * first version arrived glued to the question (D710 revert, 9 Oct 02:11Z).
- * The line stands as its own paragraph instead.
- */
-export function disclosureLine(language: RunLanguage, profileName: string): string {
-  const name = profileName.trim();
-  switch (language) {
-    case 'en':
-      return `${name}'s assistant, for ${name}`;
-    case 'ru':
-      return `Ассистент ${name}, от имени ${name}`;
-    case 'es':
-      return `Asistente de ${name}, en nombre de ${name}`;
-    default: {
-      const of = geoName(name, 'gen');
-      return `${of} ასისტენტი, ${of} სახელით`;
-    }
-  }
+  return `${parts[shape]}\n\n${asked}`;
 }
 
 /** Above this many characters an ask gets about a fifth fewer replies (A4). */

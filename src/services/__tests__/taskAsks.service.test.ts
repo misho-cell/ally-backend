@@ -468,9 +468,11 @@ describe('createAsk', () => {
     const opening = mockSaveMessage.mock.calls[0][3] as string;
     expect(opening).not.toContain('**');
     // Item 27: declined properly, never the hyphenated „მიშო-ის".
-    // AU (§110.8): the question opens alone; the closing line names whose assistant wrote.
-    expect(opening.startsWith('BMW-ს კარგი ხელოსანი ხომ არ იცი?')).toBe(true);
-    expect(opening).toContain('მიშოს ასისტენტი, მიშოს სახელით');
+    // #6634 (D590 point 0): the reader's assistant names whose assistant wrote, first; no signature.
+    expect(
+      opening.startsWith('დამიკავშირდა მიშოს ასისტენტი:\n\nBMW-ს კარგი ხელოსანი ხომ არ იცი?'),
+    ).toBe(true);
+    expect(opening).not.toContain('სახელით');
     // D49: reaching 'sent' arms the ASKER's 3-day debrief for this ask.
     expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია', false);
   });
@@ -1771,8 +1773,8 @@ describe('a second message to somebody who has not replied', () => {
     await createAsk('42', 3, '+995599111222', 'one more thing');
 
     const opening = String(mockSaveMessage.mock.calls[0][3]);
-    expect(opening).not.toContain('კიდევ დაწერა');
-    expect(opening).toContain('დაამატა');
+    expect(opening).not.toContain('კიდევ მომწერა');
+    expect(opening).toContain('დამატებით მომწერა');
   });
 
   it('says „wrote again" only when they really did reply', async () => {
@@ -1784,7 +1786,7 @@ describe('a second message to somebody who has not replied', () => {
 
     await createAsk('42', 3, '+995599111222', '12:00');
 
-    expect(String(mockSaveMessage.mock.calls[0][3])).toContain('კიდევ დაწერა');
+    expect(String(mockSaveMessage.mock.calls[0][3])).toContain('კიდევ მომწერა');
   });
 
   it('spends their patience, not a fresh outreach slot', async () => {

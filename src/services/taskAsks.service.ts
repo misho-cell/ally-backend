@@ -90,7 +90,6 @@ import { receivingCapsAreOff } from './askCapExemptions';
 import { geoName } from './georgianCase';
 import {
   ASK_BODY_MAX_CHARS,
-  disclosureLine,
   answeredByYourRule,
   askCancelledNote,
   bridgeThanks,
@@ -1864,15 +1863,12 @@ async function createAskNow(
       ),
     ),
   );
-  // AU: the closing line names the asker whenever the profile has a name.
-  const namedBelow = (fromName.rows[0]?.name?.trim() ?? '') !== '';
   const opening = buildAskOpening(
     said,
     senderName,
     roster,
     edited.question,
     isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
-    namedBelow,
   );
   if (relayed.original !== undefined) {
     // eslint-disable-next-line no-console
@@ -1927,8 +1923,8 @@ async function createAskNow(
   if (prepared !== null && yesChoice !== undefined) {
     lines.push(preparedAnswerLine(said, yesChoice.label, prepared));
   }
-  // 1687 (A4): the body is measured — over 400 characters the question is shortened once (§106) —
-  // and the identical disclosure line closes every ask.
+  // 1687 (A4): the body is measured — over 400 characters the question is shortened once (§106).
+  // #6634 / #6902 (D590 point 0, Misho's yes 21 Oct): no signature line closes it any more.
   if (lines.join('\n\n').length > ASK_BODY_MAX_CHARS) {
     const shorter = await shortenedQuestion(edited.question);
     if (shorter !== null) {
@@ -1938,7 +1934,6 @@ async function createAskNow(
         roster,
         shorter,
         isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
-        namedBelow,
       );
     }
   }
@@ -1949,8 +1944,6 @@ async function createAskNow(
       `[ask-length] ask thread ${askThreadId}: ${body.length} characters (over ${ASK_BODY_MAX_CHARS}), sent as written`,
     );
   }
-  const profileName = fromName.rows[0]?.name?.trim() ? senderName : '';
-  if (profileName !== '') lines.push(disclosureLine(said, profileName));
   // 48089: and once more right before the message reaches the reader — shortening is a model call too.
   if (parentAskId === undefined && !(await goalStillOpen(taskId))) {
     return goalStoppedMidSend(taskId);

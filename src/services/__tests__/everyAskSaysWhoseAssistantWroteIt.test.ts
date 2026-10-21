@@ -1,56 +1,38 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ASK_BODY_MAX_CHARS, buildAskOpening, disclosureLine } from '../askOpening';
-import { scrubMechanicalForStorage } from '../privacyScrub';
+import { ASK_BODY_MAX_CHARS, buildAskOpening } from '../askOpening';
 
-/** 1687 (A4): every outgoing ask ends with the identical line, never the model's words. */
-describe('the disclosure line', () => {
-  it('is the same line every time, in the reader’s language', () => {
-    expect(disclosureLine('ka', 'ნინო ბერიძე')).toBe(
-      'ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით',
-    );
-    expect(disclosureLine('en', 'Nino Beridze')).toBe("Nino Beridze's assistant, for Nino Beridze");
-    expect(disclosureLine('ru', 'Nino Beridze')).toBe(
-      'Ассистент Nino Beridze, от имени Nino Beridze',
-    );
-    expect(disclosureLine('es', 'Nino Beridze')).toBe(
-      'Asistente de Nino Beridze, en nombre de Nino Beridze',
-    );
-  });
-
-  it('is stored as its own paragraph, not glued to the question (D710 revert, 9 Oct 02:11Z)', () => {
-    const question = 'შეგეძლება პირადად დაეხმარო, თუ მხოლოდ რჩევას გაუწევ?';
-    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
-      const line = disclosureLine(language, 'ნინო ბერიძე');
-      const stored = scrubMechanicalForStorage(`${question}\n\n${line}`);
-      expect(stored).toBe(`${question}\n\n${line}`);
-    }
-  });
-
-  it('closes every ask, after the body, with the profile name; a long body is logged', () => {
+/**
+ * #6634 / #6902 (D590 point 0, Misho's yes 21 Oct): no „<O>-ის ასისტენტი,
+ * <O>-ის სახელით" line closes an ask. The reader's own assistant says, in the
+ * first person, whose assistant wrote — once, at the top.
+ */
+describe('an ask says once, at the top, whose assistant wrote it', () => {
+  it('closes with no signature line; a long body is still logged', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(asks).not.toContain('disclosureLine');
     const at = asks.indexOf('1687 (A4): the body is measured');
-    const block = asks.slice(at, at + 1200);
-    expect(block).toContain('if (body.length > ASK_BODY_MAX_CHARS)');
-    expect(block).toContain(
-      "if (profileName !== '') lines.push(disclosureLine(said, profileName));",
-    );
+    expect(asks.slice(at, at + 1200)).toContain('if (body.length > ASK_BODY_MAX_CHARS)');
     expect(ASK_BODY_MAX_CHARS).toBe(400);
   });
-});
 
-describe('AU: the asker is named once (the founder, 48086; §110.8)', () => {
-  it('a first question opens with the question alone when the closing line names the asker', () => {
-    expect(buildAskOpening('ka', 'მიშო', null, 'კარგ ხელოსანს ხომ არ იცნობ?', 'first', true)).toBe(
-      'კარგ ხელოსანს ხომ არ იცნობ?',
+  it('opens a first question in the first person: „დამიკავშირდა <O>-ის ასისტენტი"', () => {
+    expect(buildAskOpening('ka', 'მიშო', null, 'კარგ ხელოსანს ხომ არ იცნობ?', 'first')).toBe(
+      'დამიკავშირდა მიშოს ასისტენტი:\n\nკარგ ხელოსანს ხომ არ იცნობ?',
     );
   });
 
-  it('keeps the opening when nothing names the asker below, or it carries a shared network', () => {
-    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'first', false)).toContain('გეკითხება');
-    expect(buildAskOpening('ka', 'მიშო', 'Axel', 'კითხვა?', 'first', true)).toContain('Axel');
-    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'followUp', true)).toContain(
-      'კიდევ დაწერა',
-    );
+  it('keeps a question that already names the assistant as it is', () => {
+    const own = 'დამიკავშირდა მიშოს ასისტენტი, მიშოს აინტერესებს, იცნობ თუ არა კარგ ხელოსანს?';
+    expect(buildAskOpening('ka', 'მიშო', null, own, 'first')).toBe(own);
+  });
+
+  it('keeps the frame when it carries a shared network, which is news', () => {
+    expect(buildAskOpening('ka', 'მიშო', 'Axel', 'კითხვა?', 'first')).toContain('Axel');
+  });
+
+  it('says a second message as the reader’s assistant receiving it', () => {
+    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'followUp')).toContain('კიდევ მომწერა');
+    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'added')).toContain('დამატებით მომწერა');
   });
 });

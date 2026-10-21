@@ -38,7 +38,7 @@ describe('the shortening pass', () => {
     ).toBeNull();
   });
 
-  it('runs before the disclosure line, only over 400 characters', () => {
+  it('runs only over 400 characters', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     const at = asks.indexOf('1687 (A4): the body is measured');
     expect(asks.slice(at, at + 700)).toContain(
