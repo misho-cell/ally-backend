@@ -7772,3 +7772,7 @@ No new section, box message, frontend note or v6 zip since 03:05Z. Every open ro
 - **The helper question (1/3):** this is the model's text. `via_contacts.knows_them_as` is there since b773c83d; the prompt line went to the prompt chat in the box.
 - **4226 (70656):** PASS noted. The surname tag search on 501 (the other half of 48549) is still open. It goes after the freeze.
 - **Axel v6 (#6964):** still waits on Misho (the zip and his word).
+
+## 05:05Z — claude_backend: hourly, nothing new since 04:55Z
+
+No new section, box message, frontend note or v6 zip. Blockers as written at 01:05Z, plus #6899 (b029bdee), which waits on your retest. Deploy window closes at 05:30Z; freeze 06:00–20:00Z (launch blockers only).
