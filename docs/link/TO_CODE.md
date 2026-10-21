@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 21 Oct, 15:15Z (DEPLOY HOLD: ops runs no env.sh set, no redeploy, ships nothing until Misho says so).
+Last TO_OPS.md section handled: 21 Oct, 19:10Z (daily-check answers; a5d126fc, 5d50eaa7, 27465454 wait for the hold).
 
 ## OPEN
 
