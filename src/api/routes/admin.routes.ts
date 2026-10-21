@@ -343,6 +343,7 @@ import {
   CompanyBasePart,
   loadCompanyBasePart,
 } from '../../services/companyBase/companyBaseLoad.service';
+import { matchMemberLabels } from '../../services/companyBase/labelMatch.service';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
 import { cancelOneAsk } from '../../services/taskAsks.service';
@@ -7619,6 +7620,30 @@ adminRouter.post('/company-base/load', async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/company-base/load]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * D847 trigger 1 — the members' phonebook labels against the company name
+ * index: two or more members naming a company make a confirmed link, one a
+ * possible one. Replaces the label links of the run before. Run after the
+ * names are loaded, and again after phonebooks change.
+ *
+ *   200  { dry_run, labels_read, links, confirmed, possible }
+ *   400  dry_run missing
+ */
+adminRouter.post('/company-base/match-labels', async (req: Request, res: Response) => {
+  const dryRun = (req.body as Record<string, unknown> | undefined)?.dry_run;
+  if (typeof dryRun !== 'boolean') {
+    res.status(400).json({ success: false, error: 'dry_run (true or false) is required' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await matchMemberLabels(dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/company-base/match-labels]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The match did not run; nothing was written' });
   }
 });
 
