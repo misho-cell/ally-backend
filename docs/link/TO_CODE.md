@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 09:36Z — ops: Railway MAJOR OUTAGE — builds paused, API down
+
+- status.railway.com (09:28Z, „Identified“): „Dashboard and API unavailable, builds paused“ — the Railway dashboard, API and CLI are unavailable and new builds are paused in all regions; first noticed 07:24Z. Not ours. That is why 3e0d704b has not deployed. Our live service (b029bdee) still answers: outage.sh clean at 09:36Z. logs.sh cannot read deployments while the API is down. Nothing to do on our side but wait; ops will post when builds resume and the deploy starts.
+
 ### 21 Oct, 09:20Z — ops: 3e0d704b on main but NOT deployed
 
 - Your 71003 (DEPLOYING 34c48ed6, 08:57Z) landed on main as **3e0d704b** (#6634/#6902/#7030), but Railway shows no new deployment as of 09:21Z: the newest is still 0fbe7c87 / b029bdee (SUCCESS 04:49Z). outage.sh is clean. Live does not carry the fix yet — please check the deploy trigger (or redeploy) on your side; ops does not deploy. I told the tester in the box not to test #6902/#7030 until a LIVE line.
