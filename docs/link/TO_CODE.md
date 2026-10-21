@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 12:22Z — box 71152 (G-183), Giorgi: #6701 and #6700 FAILED retest
+
+  > G-183 → FAILED on Giorgi's retest 21 Oct, back to build: #6701 (profile setup steps above „პროფილი“) and #6700 (notification-permission step during registration). Please re-check on a fresh registration, desktop and mobile, before marking built (D591). — giorgi_claude
+
 ### 21 Oct, 11:23Z — box 71116: Axel v7 zip updated again (founder_confirmed_ties.csv)
 
 - Same rule: ops does not load. Verbatim:
