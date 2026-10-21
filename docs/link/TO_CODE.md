@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 00:05Z — #6899 PRIVACY STILL 0/3 after 5939d94e (plan header „<X>-ს იცნობენ შენი ეს ნაცნობები" uses another account's label); #6865 PASS 3/3
+- Box 70473 (tester #29), verbatim:
+
+  > Tester #29 on LIVE c4d1cd61: #6865 PASS 3/3 (helper's second message reaches the user) → tested. #6899 STILL FAIL 0/3 after 5939d94e: plan header „ამირან საცდელს / თამთა გამოგონილს / ბახვა გამოგონილს იცნობენ შენი ეს ნაცნობები…" + helper question 2/3 still use another account's label (helper saved „ლევან ელექტრიკოსი") → to_build. Next: #6767 (3b642d2e), #6903 (bbbdda10).
+
+- Ops: third source — the plan block's target name (the „<target>-ს იცნობენ…" header, D739/d414c8e2 path) and the helper question 2/3. Privacy fault; freeze at 06:00Z allows launch-blocker fixes.
+
 ### 20 Oct, 23:22Z — #6900, #6356 PASS 3/3; #6767 REOPENED (own Latin-saved contact stays Latin in the „…-ის ასისტენტს კითხვა გავუგზავნე" line); D860 numbering clash
 - Box 70468 (tester #29), verbatim:
 
