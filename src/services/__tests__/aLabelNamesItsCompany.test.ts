@@ -16,7 +16,12 @@ import {
   labelLinkStatus,
   normaliseLabel,
 } from '../companyBase/labelCompanyMatch';
-import { LABEL_EVIDENCE, matchMemberLabels } from '../companyBase/labelMatch.service';
+import {
+  LABEL_EVIDENCE,
+  MATCH_AFTER_IMPORT_MS,
+  matchMemberLabels,
+  scheduleLabelMatchAfterImport,
+} from '../companyBase/labelMatch.service';
 
 const TBC = '204854595';
 const BOG = '204378869';
@@ -87,5 +92,27 @@ describe('a phonebook label names its company', () => {
     expect(params[1]).toEqual([TBC]);
     expect(params[2]).toEqual([2]);
     expect(params[5]).toEqual(['confirmed']);
+  });
+
+  it('with no names loaded, replaces nothing', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    mockRoster.mockResolvedValue([{ user_id: 1 }]);
+    const report = await matchMemberLabels(false);
+    expect(report.links).toBe(0);
+    expect(mockPhonebooks).not.toHaveBeenCalled();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs once after a burst of imports (trigger 1)', async () => {
+    jest.useFakeTimers();
+    mockQuery.mockResolvedValue({ rows: [] });
+    mockRoster.mockResolvedValue([]);
+    scheduleLabelMatchAfterImport();
+    scheduleLabelMatchAfterImport();
+    expect(mockQuery).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(MATCH_AFTER_IMPORT_MS);
+    await Promise.resolve();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
   });
 });
