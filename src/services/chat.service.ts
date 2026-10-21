@@ -117,6 +117,15 @@ import {
   foundThroughFirstLinks,
   introTargetSentence,
 } from './introTargetSentence';
+import {
+  ownerNamedAGoBetween,
+  personWithSeveralRoutes,
+  RouteToPerson,
+  routesFromFound,
+  routesFromWarmPath,
+  routesWereOffered,
+  SEVERAL_ROUTES_LINE,
+} from './severalRoutes';
 import { withQuestionFromSteps } from './questionWithButtons';
 import { withOwnersNetwork } from './planVoice';
 import { withoutInternalText } from './internalText';
@@ -6005,6 +6014,60 @@ function notePeopleFound(runId: string, result: unknown, sought?: string): void 
   }
 }
 
+/** #6367: the routes find_warm_path returned in this run. */
+const runWarmPathRoutes = new Map<string, RouteToPerson[]>();
+/** #6367: the runs whose plan card waited for the owner to pick one of several routes. */
+const runRoutesToChoose = new Set<string>();
+/** #6367: when each conversation was last asked which route to start with. */
+const routesOfferedAt = new Map<number, number>();
+
+/**
+ * #6367 / #5251 (Misho's (a), 21 Oct): a plan to someone this run reached by
+ * several routes waits for the owner's pick. The pick is a line naming one of
+ * the plan's go-betweens, or the turn after the routes were put to them.
+ */
+function planWaitsForRoutePick(
+  runId: string | undefined,
+  threadId: number | undefined,
+  plan: unknown,
+): boolean {
+  if (runId === undefined || threadId === undefined) return false;
+  const people = planGoBetweens(plan);
+  const routes = [
+    ...routesFromFound(runFoundThroughBridges.get(runId) ?? []),
+    ...(runWarmPathRoutes.get(runId) ?? []),
+  ];
+  const person = personWithSeveralRoutes(
+    people.map((p) => p.phone),
+    routes,
+  );
+  if (person === null) return false;
+  if (
+    routesWereOffered(routesOfferedAt.get(threadId), Date.now()) ||
+    ownerNamedAGoBetween(
+      runOwnerLine.get(runId) ?? '',
+      people.map((p) => p.name),
+    )
+  ) {
+    return false;
+  }
+  routesOfferedAt.set(threadId, Date.now());
+  runRoutesToChoose.add(runId);
+  return true;
+}
+
+/** The people a proposed plan would ask, as the model passed them. */
+function planGoBetweens(plan: unknown): { name: string; phone: string }[] {
+  const people = (plan as { people_to_involve?: unknown } | null)?.people_to_involve;
+  if (!Array.isArray(people)) return [];
+  return people.flatMap((person: unknown) => {
+    const p = (person ?? {}) as { name?: unknown; phone?: unknown };
+    return typeof p.phone === 'string' && p.phone !== ''
+      ? [{ name: typeof p.name === 'string' ? p.name : '', phone: p.phone }]
+      : [];
+  });
+}
+
 /** 5347 (63930): who this run found past the second circle, by name. */
 const runFoundFurtherOut = new Map<string, string[]>();
 /**
@@ -9750,6 +9813,8 @@ function clearRunState(runId: string): void {
   clearRunEvidence(runId);
   takeSavedFact(runId);
   runFoundThroughBridges.delete(runId);
+  runWarmPathRoutes.delete(runId);
+  runRoutesToChoose.delete(runId);
   runFoundFurtherOut.delete(runId);
   runRedirectAnswers.delete(runId);
   runListedContacts.delete(runId);
@@ -11397,6 +11462,9 @@ async function executeToolCall(
       if (excludedInPlan.length > 0) {
         return { proposed: false, error: planNamesExcluded(excludedInPlan) };
       }
+      if (planWaitsForRoutePick(runId, threadId, input['plan'])) {
+        return { proposed: false, reason: 'several_routes', error: SEVERAL_ROUTES_LINE };
+      }
       const unfound =
         runId === undefined || threadId === undefined
           ? []
@@ -12149,8 +12217,8 @@ async function executeToolCall(
       );
     case 'search_roster':
       return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
-    case 'find_warm_path':
-      return findWarmPath(
+    case 'find_warm_path': {
+      const warm = await findWarmPath(
         userId,
         walkTargetPhone(
           String(input['target_phone'] ?? ''),
@@ -12162,6 +12230,14 @@ async function executeToolCall(
           ? null
           : ((await getOpenTaskByThread(threadId).catch(() => null))?.title ?? null),
       );
+      if (runId !== undefined) {
+        runWarmPathRoutes.set(runId, [
+          ...(runWarmPathRoutes.get(runId) ?? []),
+          ...routesFromWarmPath(warm),
+        ]);
+      }
+      return warm;
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -15068,10 +15144,13 @@ async function runToolLoop(
     );
     return !noteOutOfPlace;
   };
+  // #6367: a turn that put several routes to the owner is not pushed to a card.
+  const routesToChoose = runRoutesToChoose.has(runId);
   const membersSkipped =
     !ownerAbsent &&
     !repeatsAnOpenGoal &&
     skippedTheMembersFound(runId, finalText, toolNamesUsed) &&
+    !routesToChoose &&
     (await membersNoteFits());
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
   // A clarifying question back („which city?") is a correct first answer.
@@ -15091,6 +15170,7 @@ async function runToolLoop(
   // The tester's 1149 (38116): a quick answer that saved the goal is a goal run too.
   const bookMembersSkipped =
     !ownerAbsent &&
+    !routesToChoose &&
     !promoted &&
     !answeringALaterTap &&
     !repeatsAnOpenGoal &&
@@ -15117,6 +15197,7 @@ async function runToolLoop(
   const farFindAsked = !farFindHasNoGoal || wantsSomethingDone(runOwnerLine.get(runId) ?? '');
   const farFindUnplanned =
     !ownerAbsent &&
+    !routesToChoose &&
     !promoted &&
     !answeringALaterTap &&
     !promisedWithoutActing &&
