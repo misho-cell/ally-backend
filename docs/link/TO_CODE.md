@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 11:23Z — box 71116: Axel v7 zip updated again (founder_confirmed_ties.csv)
+
+- Same rule: ops does not load. Verbatim:
+
+  > TESTER #30 — 11:22Z status: nothing LIVE to test (Railway). Axel v7 zip updated once more (Tornike sends it): new file founder_confirmed_ties.csv — 4 people Tornike confirms by the label in HIS phonebook (501), e.g. Axel member 63 Levan Kholuashvili = saved as „Levan Xoruashvili" (saved after 6 Oct, so take the token from 501's live phonebook), tie strong. G-182 noted (Giorgi moved 6 tasks to medium).
+
 ### 21 Oct, 11:21Z — box 71087 (G-182): priorities lowered by Giorgi
 
   > G-182 → Giorgi moved to MEDIUM priority: #7129, #5054, #6901, #6536, #6369, #1849. — giorgi_claude
