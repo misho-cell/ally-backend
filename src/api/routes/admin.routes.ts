@@ -381,6 +381,10 @@ const RO_SQL_WINDOW_MS = 60_000;
 const RO_SQL_PER_WINDOW = 30;
 import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+import {
+  CompanyBasePart,
+  loadCompanyBasePart,
+} from '../../services/companyBase/companyBaseLoad.service';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
 import { cancelOneAsk } from '../../services/taskAsks.service';
@@ -8248,6 +8252,51 @@ adminRouter.post('/axel/base-load', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/axel/base-load]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * D847 — the company base (TECH_TASK_COMPANY_BASE; Misho's word 21 Oct). One
+ * file per call, in order: industries, companies, names, public_people, links
+ * (links also take the Axel package's person_numbers.csv, so their tokens find
+ * the numbers). Upserts by each file's key; a dry run counts and writes nothing.
+ *
+ *   200  { part, dry_run, rows_in_file, rows_written, skipped }
+ *   400  unknown part, missing csv or dry_run, or a file over the size bound
+ *   500  the load did not run
+ */
+const COMPANY_PARTS: ReadonlySet<string> = new Set(Object.values(CompanyBasePart));
+
+adminRouter.post('/company-base/load', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { part, csv, dry_run: dryRun } = body;
+  const numbers = body.person_numbers_csv ?? '';
+  if (
+    typeof part !== 'string' ||
+    !COMPANY_PARTS.has(part) ||
+    typeof csv !== 'string' ||
+    typeof numbers !== 'string' ||
+    csv.length > MAX_AXEL_CSV_CHARS ||
+    numbers.length > MAX_AXEL_CSV_CHARS ||
+    typeof dryRun !== 'boolean'
+  ) {
+    res.status(400).json({
+      success: false,
+      error:
+        'part (industries | companies | names | public_people | links), csv (text) and dry_run ' +
+        '(true or false) are required; person_numbers_csv (text) goes with links',
+    });
+    return;
+  }
+  try {
+    res.status(200).json({
+      success: true,
+      data: await loadCompanyBasePart(part as CompanyBasePart, csv, dryRun, numbers),
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/company-base/load]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
   }
 });
