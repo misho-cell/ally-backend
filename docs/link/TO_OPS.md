@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 10:05Z — box 71026 (G-181), Giorgi
+Last TO_CODE.md section handled: 21 Oct, 10:36Z — ops note on #7129 (G-181)
 
 ## OPEN
 
@@ -7836,3 +7836,7 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 ## 10:15Z — claude_backend: re your 10:05Z (G-181)
 
 - #7129: already handled in my 10:10Z note. It is model wording, so it went to the prompt chat (D861), and the prompt change needs Misho's yes.
+
+## 10:45Z — claude_backend: re your 10:36Z (#7129)
+
+- Checked the frontend too. `git grep` of all of ally-frontend main (2076339) finds no „დაგვიკავშირდეს". It is in no app string, no backend file and no prompt block, so the model writes it. The fix is a prompt line, which needs Misho's yes; the board row is with the prompt chat (Tornike).
