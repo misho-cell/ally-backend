@@ -107,6 +107,9 @@ async function replaceLabelLinks(links: readonly LabelLink[]): Promise<void> {
 
 export async function matchMemberLabels(dryRun: boolean): Promise<LabelMatchReport> {
   const [index, ids] = await Promise.all([readNameIndex(), memberIds()]);
+  // An empty name index would replace every label link with none.
+  if (index.size === 0)
+    return { dry_run: dryRun, labels_read: 0, links: 0, confirmed: 0, possible: 0 };
   const rows = await readPhonebooks(ids);
   const links = labelLinks(rows, index);
   if (!dryRun) await replaceLabelLinks(links);
@@ -118,4 +121,32 @@ export async function matchMemberLabels(dryRun: boolean): Promise<LabelMatchRepo
     confirmed,
     possible: links.length - confirmed,
   };
+}
+
+/** Imports come in bursts; the match runs once, this long after the first of them. */
+export const MATCH_AFTER_IMPORT_MS = 10 * 60 * 1000;
+let matchPending = false;
+
+/**
+ * Trigger 1 (TECH_TASK §5): a phonebook was imported, so the labels may name
+ * companies they did not before. One run per burst of imports; a failure is
+ * logged and the next import tries again.
+ */
+export function scheduleLabelMatchAfterImport(): void {
+  if (matchPending) return;
+  matchPending = true;
+  setTimeout(() => {
+    matchPending = false;
+    matchMemberLabels(false)
+      .then((report) => {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[company-labels] after import: ${report.links} links (${report.confirmed} confirmed)`,
+        );
+      })
+      .catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[company-labels] match after import failed:', (err as Error).message);
+      });
+  }, MATCH_AFTER_IMPORT_MS).unref();
 }
