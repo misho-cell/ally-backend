@@ -202,6 +202,11 @@ import {
   writeSetting,
 } from '../../services/inviteReward.service';
 import {
+  backfillReverseTies,
+  BackfillReport,
+  REVERSE_TIES_FLAG,
+} from '../../services/reverseTies.service';
+import {
   MAX_TRIAL_GRANT,
   readTrialGrant,
   TrialGrant,
@@ -429,6 +434,8 @@ const MANAGED_APP_FLAGS = [
   FOLLOW_UP_IN_CONVERSATION_FLAG,
   // #5611 (D812): an invitation counts only when the inviter has the number saved.
   MUTUAL_CONTACTS_FLAG,
+  // #7162 (D868): a member's ties include everyone who has their number saved.
+  REVERSE_TIES_FLAG,
   // #5677 (D818): the connector takes the app's tools it has no copy of.
   SHARED_TOOLS_FLAG,
   // #5875 (D831): no WhatsApp code to a number with no invitation. Off until
@@ -561,6 +568,37 @@ adminRouter.put(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin trial grant write]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #7162: reverse ties for the members who joined before them. dry_run counts;
+ * a real run writes, and only while `reverse_ties` is on. Writes live data —
+ * run it only on Misho's word.
+ */
+adminRouter.post(
+  '/reverse-ties/backfill',
+  body('dry_run').isBoolean().withMessage('dry_run must be true or false'),
+  async (req: Request, res: Response<ApiResponse<BackfillReport>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: String(errors.array()[0]?.msg) });
+      return;
+    }
+    try {
+      const dryRun = (req.body as { dry_run: boolean }).dry_run;
+      const report = await backfillReverseTies(dryRun);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[reverse-ties] backfill by admin ${(req as AuthenticatedRequest).user.userId}`,
+        report,
+      );
+      res.status(200).json({ success: true, data: report });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin reverse-ties backfill]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

@@ -5,6 +5,7 @@ import { query } from '../db/postgres/client';
 import { sendWhatsAppMessage } from './whatsapp.service';
 import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
+import { tieMemberToHolders } from './reverseTies.service';
 import { runWelcomeStudy } from './welcomeStudy.service';
 import { queueRegistrationResearch } from './registrationResearch/registrationResearch.service';
 import {
@@ -760,6 +761,11 @@ export async function registerUser(
     await grantWhateverFreePeriodIsOwed(userId, cleanPhone, gate);
 
     await createUserPhoneNode(cleanPhone);
+    // #7162: everyone who has the new member saved — the inviter first — is a tie from day one.
+    void tieMemberToHolders(Number(userId)).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[reverse-ties] user ${userId} at join:`, (err as Error).message),
+    );
 
     // Engine T13: fire-and-forget, never blocks the registration response.
     void runWelcomeStudy(String(userId), name, cleanPhone).catch((err: unknown) =>
