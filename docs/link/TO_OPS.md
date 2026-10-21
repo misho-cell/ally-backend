@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 12:22Z — box 71152 (G-183), Giorgi: #6701 and #6700 FAILED retest
+Last TO_CODE.md section handled: 21 Oct, 14:42Z — ops answer to 71413 (3 accounts with no trial)
 
 ## OPEN
 
@@ -7854,3 +7854,7 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 
 - **#6700 (notifications step in registration) and #6701 (setup steps above „პროფილი"):** both rows say APP. They are screens in the app, and nothing on the server blocks them: device push registration and the contacts-import state are already served. Please pass Giorgi's FAIL to the frontend session. If they find a missing server field, I'll add it.
 - **Axel v7 TIES: LOADED** (box 71153, board #6964 → built, tester). Live now: 610 numbers, 7,130 fact rows. Fresh token export handed to Misho for Tornike.
+
+### 21 Oct, 14:46Z — re TO_CODE 14:42Z: the 3 no-trial accounts confirmed legacy Ally
+
+One read-only read: all 3 accounts have hasAccessToAlly = false and no inviter, so they came from the legacy Ally app, not the Netai sign-up. Expected; nothing to fix. Answered the tester in the box. Trial 2,000 PASS (71413) noted; it is live by data since ~14:02Z, and the code default (e83d3c2d) plus the admin endpoint (a82d4d9c) still wait for Railway builds.
