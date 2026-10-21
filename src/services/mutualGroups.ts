@@ -1,3 +1,4 @@
+import { withoutAllyWord } from './georgianScriptName';
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
 import { FoundThroughBridge, knowsLine } from './introTargetSentence';
@@ -247,6 +248,35 @@ function targetDigits(planInput: unknown, foundTargets: readonly FoundThroughBri
   return [...new Set(phones.map(phoneDigits))].filter((d) => d !== '');
 }
 
+/**
+ * #6899, third pass (tester 00:00Z, 0/3 after 5939d94e): the heading named the
+ * electrician by the label of the owner's WARMEST friend who holds him
+ * („ამირან საცდელს იცნობენ…"), while the plan goes through Maka, who saved him
+ * as „ლევან ელექტრიკოსი". One person sought and a planned go-between: the
+ * heading names them as that go-between saved them. Null otherwise.
+ */
+async function goBetweensLabelFor(
+  planned: readonly string[],
+  target: readonly string[],
+): Promise<string | null> {
+  const [goBetween] = planned;
+  if (goBetween === undefined || target.length !== 1) return null;
+  const result = await query<{ alias: string }>(
+    `SELECT TRIM(ua.alias) AS alias
+       FROM "UserAlias" ua
+       JOIN "UserPhone" up ON up."userId" = ua."contactId"
+      WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1
+        AND regexp_replace(ua.phone, '\\D', '', 'g') = $2
+        AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+      ORDER BY ua.id DESC
+      LIMIT 1`,
+    [goBetween, target[0]],
+    QUERY_TIMEOUT_MS,
+  );
+  const label = withoutAllyWord(result.rows[0]?.alias ?? '');
+  return label === '' ? null : label;
+}
+
 /** The shared contacts not on Netai, after the ones already listed. */
 async function sharedNonMembers(
   userId: string,
@@ -317,7 +347,9 @@ export async function mutualGroupsFor(
       ownersNames(userId, digits),
       fetchAccountStates(digits),
     ]);
-    const groups = mutualGroupsText(target, contactsOnce(digits, names, states), language);
+    const heading =
+      (await goBetweensLabelFor(planned, targetDigits(planInput, foundTargets))) ?? target;
+    const groups = mutualGroupsText(heading, contactsOnce(digits, names, states), language);
     const first = names.get(planned.find((d) => names.has(d)) ?? '');
     const reason =
       withReason && language === 'ka' && first !== undefined

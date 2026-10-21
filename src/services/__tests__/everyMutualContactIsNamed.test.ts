@@ -115,7 +115,8 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
           { digits: '995500000001', alias: 'ლიკა' },
           { digits: '995500000003', alias: 'ლადო' },
         ],
-      } as never);
+      } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
     (fetchAccountStates as jest.Mock)
       .mockResolvedValueOnce(new Map([['995500000002', 'netai_user']]))
       .mockResolvedValueOnce(new Map([['995500000001', 'netai_user']]));
@@ -126,6 +127,23 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
       'ვკითხავ: ლიკა\n• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: ლადო',
     );
     expect(mockQuery.mock.calls[0][1]).toEqual(['171', ['995500000009'], 12]);
+  });
+
+  // #6899 third pass (tester 00:00Z): the heading named the target by the warmest friend's label.
+  it('names the person sought as the planned go-between saved them', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ digits: '995500000001', alias: 'მაკა' }] } as never)
+      .mockResolvedValueOnce({ rows: [{ alias: 'ლევან ელექტრიკოსი Ally' }] } as never);
+    (fetchAccountStates as jest.Mock).mockResolvedValueOnce(
+      new Map([['995500000001', 'netai_user']]),
+    );
+    const plan = { routes: [{ introduction: { via_phone: '+995500000001', to_name: 'ამირან' } }] };
+    const found = [{ name: 'ამირან', viaPhones: ['+995500000001'], phone: '+995500000009' }];
+    const text = await mutualGroupsFor('171', plan, found, 'ka');
+    expect(text).toContain('ლევან ელექტრიკოსს იცნობენ');
+    expect(text).not.toContain('ამირან');
+    expect(mockQuery.mock.calls[2][1]).toEqual(['995500000001', '995500000009']);
   });
 
   it('says a name once when the owner saved that friend under two numbers (69268)', async () => {

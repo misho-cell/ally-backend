@@ -1641,6 +1641,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           return {
             name: bridge.name,
             phone: bridge.phone,
+            // #6899: how THIS friend saved the person — the name to use when asking them.
+            ...(nameOnlyFromLabel(bridge.saved_as ?? null) !== null && {
+              knows_them_as: nameOnlyFromLabel(bridge.saved_as ?? null),
+            }),
             is_member: isMemberPhone(accountStates, bridge.phone),
             ...(tie ? { owner_tie: tie } : {}),
             ...(why !== null ? { colour_why: why } : {}),
