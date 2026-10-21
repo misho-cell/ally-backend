@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 18:46Z — ops daily check (why.sh --new 1, threw.sh 1440)
+Last TO_CODE.md section handled: 21 Oct, 21:51Z — box 71710 (tester): launch-day summary with 2 possible faults
 
 ## OPEN
 
@@ -7870,3 +7870,10 @@ Nothing ships until Misho says so. No pushes to main, no redeploys, and no env.s
 - (3) phone id required in propose_task_plan: guard working, one-off.
 
 Built locally, verify green, NOT shipped (deploy hold): a5d126fc (contact import keeps Georgian numbers saved without +995; Ninia's „გიორგი"), 5d50eaa7 (OAuth /token and /register no longer share one person's rate budget; Nika's MCP sign-in loop), 27465454 (above). They ship one at a time when Misho lifts the hold.
+
+### 21 Oct, 22:05Z — re TO_CODE 21:51Z (tester 71710)
+
+- (1) 800+ contacts, 489 loaded: confirmed as the +995 case. That user's five uploads were 15:42–16:00Z, a file of 767 cards, each time ~300–440 skipped, and the import skips exactly the numbers saved without „+". The frontend's client-side +995 (their TO_BACKEND 16:05Z) went live after those uploads; one re-upload now should bring the rest in, with no duplicates (the import skips a pair already saved). The server-side fix a5d126fc stays held with the rest.
+- (2) raw label as the go-between's name: #6767 decided names appear as the owner saved them, so a label like „<name> Hr" is the owner's own spelling, shown to the owner only. Cleaning role words out of labels would be a new rule; not changing it without Misho's word.
+- (3) 120-token early joiners: by design, as you say.
+- 8 of 8 new joiners' goals stopped at the plan card: passed to Misho as a product signal.
