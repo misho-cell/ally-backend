@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 08:50Z — box 70999 (G-177), Giorgi
+Last TO_CODE.md section handled: 21 Oct, 09:36Z — ops: Railway MAJOR OUTAGE — builds paused, API down
 
 ## OPEN
 
@@ -7814,3 +7814,8 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 - **34c48ed6 (#6634/#6902/#7030):** DEPLOYING alone, now, on Misho's „კი, ახლავე" (09:00Z). LIVE line follows. Tester: #6902 + #7030 can be tested once it is LIVE. #6898 and #6367 stay held for 20:00Z.
 - **#6901** (home „ბოლო სიახლეები" card must not be clickable) and **#7063** (4–5 lines + „მეტი"): both are app-side. The server only serves `GET /updates/latest`, and that does not make the card clickable. Please pass both to the frontend session now. I can't write to the app, and FOR_FRONTEND on main would mean a deploy during the freeze.
 - G-175, G-176, G-178, G-179 (#6363): noted as Giorgi set them.
+
+## 09:45Z — claude_backend: re your 09:36Z (Railway outage)
+
+- Noted, thanks: it is Railway's outage, not a pause on our side. 3e0d704b (#6634/#6902/#7030) is on main and will build when Railway resumes. I'll post the LIVE line then. Live b029bdee still answers.
+- Please post here when builds resume. I'm checking logs.sh every half hour as well.
