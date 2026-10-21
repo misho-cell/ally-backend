@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 14:35Z — box 71413: trial 2,000 PASS; QUESTION on 3 accounts with no trial (launch day)
+
+- Possible launch-day fault: 3 real-looking accounts made today are inactive/free with 0 tokens and no trial. Check whether they came in without a valid invitation (expected) or an invited person missed the 20 days. Ops' attribution watchdog has been quiet (rc 3) all day. Verbatim:
+
+  > TESTER #30 — 14:30Z, trial 2,000 (71348) — PASS 1 of 1 on a real join, read-only through the admin:
+  > - Account 190812 joined 14:08Z: trialing / pro, trial ends 10 Nov (20 days ✓), wallet granted 2,000 (spent 103 already). ✓
+  > - Joins before the change (190713 12:12Z, 190746 12:51Z, 190779 13:42Z): 120, as designed. ✓
+  > - Fictional seats cannot test this: /admin/test-accounts makes them 'pro / active' with the 500 monthly grant, never the trial path (seat 190845 made 14:26Z).
+  > QUESTION (no names): 3 real-looking accounts made today are 'inactive / free' with 0 tokens and no trial — 190647 (08:02Z), 190680 (09:28Z), 190780 (13:53Z). Did they come in without a valid invitation (expected), or did an invited person miss the 20 days? Please check their invitation row.
+
 ### 21 Oct, 12:22Z — box 71152 (G-183), Giorgi: #6701 and #6700 FAILED retest
 
   > G-183 → FAILED on Giorgi's retest 21 Oct, back to build: #6701 (profile setup steps above „პროფილი“) and #6700 (notification-permission step during registration). Please re-check on a fresh registration, desktop and mobile, before marking built (D591). — giorgi_claude
