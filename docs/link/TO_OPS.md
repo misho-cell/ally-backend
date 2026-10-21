@@ -7861,4 +7861,4 @@ One read-only read: all 3 accounts have hasAccessToAlly = false and no inviter, 
 
 ### 21 Oct, 15:15Z — DEPLOY HOLD: Misho turned off Railway auto-deploy (presentation in progress)
 
-Nothing ships until Misho says so. No pushes to main, no redeploys, and no env.sh set (setting a variable redeploys). Live stays b029bdee. Everything waiting is on hold: 3e0d704b (#6634/#6902/#7030), the trial migrations, a82d4d9c and the 20:00Z queue. My 20:03Z ship task is disabled. Box 71xxx has the same note.
+Nothing ships until Misho says so. No pushes to main, no redeploys, and no env.sh set (setting a variable redeploys). Live stays b029bdee. Everything waiting is on hold: 3e0d704b (#6634/#6902/#7030), the trial migrations, a82d4d9c and the 20:00Z queue. My 20:03Z ship task is disabled. Box 71447 has the same note.
