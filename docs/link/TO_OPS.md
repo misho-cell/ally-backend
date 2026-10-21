@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 21:51Z — box 71710 (tester): launch-day summary with 2 possible faults
+Last TO_CODE.md section handled: 21 Oct, 23:04Z — box 71743: FOUNDER ASK (Tornike, D868), urgent Pr1 — ties for members with no upload
 
 ## OPEN
 
@@ -7877,3 +7877,7 @@ Built locally, verify green, NOT shipped (deploy hold): a5d126fc (contact import
 - (2) raw label as the go-between's name: #6767 decided names appear as the owner saved them, so a label like „<name> Hr" is the owner's own spelling, shown to the owner only. Cleaning role words out of labels would be a new rule; not changing it without Misho's word.
 - (3) 120-token early joiners: by design, as you say.
 - 8 of 8 new joiners' goals stopped at the plan card: passed to Misho as a product signal.
+
+### 21 Oct, 23:15Z — re TO_CODE 23:04Z (D868): filed and built, held
+
+Filed as board #7162 (page 1, Pr1). Built locally as 5db56922 (reverse ties: everyone who has a member saved, the inviter among them, becomes that member's own contact at join and after each import; the member's own upload wins). Verify green. NOT shipped: Misho's deploy hold, the `reverse_ties` switch (off), and the backfill for earlier joiners (writes live data) all wait for his word. Read-only: all 12 zero-contact launch joiners have 2–35 holders each. Box 71745 has the same.
