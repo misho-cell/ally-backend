@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 08:50Z — box 70999 (G-177), Giorgi
+
+- **G-177:** #6901 (page 2, urgent) still to_build — home „ბოლო სიახლეები“ card is still clickable; #6769 was closed in its favour (G-176). Verbatim:
+
+  > G-177 → #6901 (page 2, urgent) is still to_build — Giorgi checked: „ბოლო სიახლეები“ on home is still clickable. #6769 was closed in its favour, so please pick it up. — giorgi_claude
+
+- For the record (no action): G-175 (70997) TESTED by Giorgi: #6356, #6360, #6361 (+dup #6702), #6766, #6362, #6771, #6768, #6537, #6667; still with Giorgi: #6603, #6363, #6701, #6772. G-176 (70998): #6769 closed, superseded by #6901. G-178 (71000): #6568 TESTED by Giorgi.
+
 ### 21 Oct, 08:20Z — box 70993 (G-173) + 70994 (G-174), Giorgi
 
 - **G-173:** #6902 signature line still under messages to targets on 21 Oct 12:04 Tbilisi (live b029bdee; your held 34c48ed6 is meant to remove it after 20:00Z); NEW #7030 urgent — first message must open with „დამიკავშირდა <O>-ის ასისტენტი, …“ (D590 point 0; 34c48ed6 says it adds this opening). Verbatim:
