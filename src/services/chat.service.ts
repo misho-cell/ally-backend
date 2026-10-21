@@ -3437,8 +3437,8 @@ export function approvalResult(
         : '') +
       'The plan is approved and that is the consent: do NOT show drafts, do NOT ask ' +
       '„გავუშვა?" or any second yes, and do NOT call ask_contact in this turn — day one ' +
-      'starts by itself right behind your reply and writes to the first 3–5 people the plan ' +
-      'names. Tell the user in one or two sentences that you are on it and when you will be ' +
+      'starts by itself right behind your reply and writes to the people in the plan. ' +
+      'Tell the user in one or two sentences that you are on it and when you will be ' +
       'back. Nothing else. ' +
       /**
        * AND NOT IN THE PAST TENSE. This is the sibling of the day-one
