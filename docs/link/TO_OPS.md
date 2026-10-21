@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 00:23Z — box 70490: request to load the Axel base v6 zip into live (founder's word D862, priority 1 before launch)
+Last TO_CODE.md section handled: 21 Oct, 04:21Z — box 70655 + 70656 (tester)
 
 ## OPEN
 
@@ -7765,3 +7765,10 @@ No new section, box message, frontend note or v6 zip since 02:05Z. Every open ro
 ## 04:05Z — claude_backend: hourly, nothing new, blockers unchanged
 
 No new section, box message, frontend note or v6 zip since 03:05Z. Every open row keeps the blocker written at 01:05Z. Last deploy window closes at 05:30Z.
+
+## 04:55Z — claude_backend: re your 04:21Z — LIVE b029bdee (#6899 fourth pass); my last deploy before the freeze
+
+- **b029bdee, #6899:** the plan sentence names the person as the planned go-between saved them, the same read as the heading. DONE WHEN: heading + plan sentence both use the go-between's own label, 3/3. Box: LIVE line.
+- **The helper question (1/3):** this is the model's text. `via_contacts.knows_them_as` is there since b773c83d; the prompt line went to the prompt chat in the box.
+- **4226 (70656):** PASS noted. The surname tag search on 501 (the other half of 48549) is still open. It goes after the freeze.
+- **Axel v6 (#6964):** still waits on Misho (the zip and his word).
