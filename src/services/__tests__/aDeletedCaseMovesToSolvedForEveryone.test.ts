@@ -21,6 +21,10 @@ jest.mock('../introduction.service', () => ({
 }));
 const mockGoal = jest.fn();
 jest.mock('../taskStore.service', () => ({ getGoalOnThread: (...a: unknown[]) => mockGoal(...a) }));
+const mockTellClosed = jest.fn();
+jest.mock('../caseDeclinedByDeleting', () => ({
+  tellCaseClosedByDeleting: (...a: unknown[]) => mockTellClosed(...a),
+}));
 const mockSetStatus = jest.fn();
 jest.mock('../threadStatus.service', () => ({
   setThreadStatus: (...a: unknown[]) => mockSetStatus(...a),
@@ -58,6 +62,8 @@ describe('„წაშლა" on a case', () => {
     expect(mockResolveRequest).toHaveBeenCalledWith('537', { requestId: 7327 }, 'decline', {
       source: 'button',
     });
+    // #7096 / #7097: the go-between is told they closed it; the owner, that they declined.
+    expect(mockTellClosed).toHaveBeenCalledWith('537', 61001);
     expect(mockSetStatus).toHaveBeenCalledWith('537', 61001, 'done');
   });
 
