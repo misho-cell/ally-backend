@@ -15,9 +15,9 @@ messages in their name.
 
 ---
 
-## 21 October, 12:40Z — the trial now carries 700 tokens: please stop reading „120" as „trial"
+## 21 October, 12:40Z (14:00Z: 2,000, not 700) — the trial now carries 2,000 tokens: please stop reading „120" as „trial"
 
-Misho, 21 Oct: a free trial carries **700** tokens, not 120. Migration `258_trial_grant_700`
+Misho, 21 Oct: a free trial carries **2,000** tokens, not 120 (first 700, migration `258_trial_grant_700`; then 2,000, `260_trial_grant_2000`). It
 ships in the next deploy (Railway builds are paused right now; this goes out with the first
 deploy after they resume).
 
@@ -26,10 +26,10 @@ decides trial-or-not by the number:
 
     const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
 
-With 700 that is false for every trial, so a trial user who runs out reads „monthlyUsedUp"
+With 2,000 that is false for every trial, so a trial user who runs out reads „monthlyUsedUp"
 and is offered packages instead of the trial text. The wallet already says what the credit was:
 
-    GET /billing/tokens  →  200  { …, "lastTopUp": { "amount": 700, "at": "…", "kind": "trial" }, "allowancePerPeriod": 0 }
+    GET /billing/tokens  →  200  { …, "lastTopUp": { "amount": 2000, "at": "…", "kind": "trial" }, "allowancePerPeriod": 0 }
 
 `kind` is one of `grant` | `topup` | `trial`. Please read it instead:
 
