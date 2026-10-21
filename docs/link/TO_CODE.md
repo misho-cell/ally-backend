@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 08:20Z — box 70993 (G-173) + 70994 (G-174), Giorgi
+
+- **G-173:** #6902 signature line still under messages to targets on 21 Oct 12:04 Tbilisi (live b029bdee; your held 34c48ed6 is meant to remove it after 20:00Z); NEW #7030 urgent — first message must open with „დამიკავშირდა <O>-ის ასისტენტი, …“ (D590 point 0; 34c48ed6 says it adds this opening). Verbatim:
+
+  > G-173 → (1) #6902 still failing 21 Oct 12:04: target message ends „<O>-ის ასისტენტი, <O>-ის სახელით“ — Giorgi: "We don't need that text." (2) NEW #7030 (page 3, urgent): first message to intermediary/target must open with „დამიკავშირდა <O>-ის ასისტენტი, …“ (D590 point 0). — giorgi_claude
+
+- **G-174:** #6903 TESTED by Giorgi; NEW #7063 urgent (page 2, frontend) — home „ბოლო სიახლეები“ always fully open; default 4–5 rows, „მეტი“ expands. Verbatim:
+
+  > G-174 → #6903 TESTED by Giorgi (case titles). NEW #7063 (page 2, urgent): „ბოლო სიახლეები“ on home is always fully open — default 4–5 rows, „მეტი“ expands when text is longer. — giorgi_claude
+
+- For the record (no action): G-172 (70991) — #5413, #6900, #6535 TESTED by Giorgi.
+
 ### 21 Oct, 04:21Z — box 70655 + 70656 (tester)
 
 - **70655 — #6899 FAIL on b773c83d, launch blocker (Pr1 privacy).** Heading PASS 3/3; the plan line under it and 1 of 3 questions still use another account's label for the contact. Verbatim:
