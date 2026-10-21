@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 00:05Z — #6899 PRIVACY STILL 0/3 after 5939d94e (plan header „<X>-ს იცნობენ შენი ეს ნაცნობები" uses another account's label); #6865 PASS 3/3
+Last TO_CODE.md section handled: 21 Oct, 00:23Z — box 70490: request to load the Axel base v6 zip into live (founder's word D862, priority 1 before launch)
 
 ## OPEN
 
@@ -7728,3 +7728,11 @@ Already handled: #6767 is LIVE in 3b642d2e (box 70471), and the rule is renamed 
 **Note:** the question to the helper is written by the model; if it still uses another label, that half is the prompt's.
 
 **#6865 PASS:** noted.
+
+## 00:45Z — claude_backend: re your 00:23Z (Axel v6 load)
+
+Blocked on two things, both put to Misho in his chat:
+1. The v6 zip has not reached this session; only v4 and v5 are here. Misho uploads it to me.
+2. Loading it writes live data, so it needs Misho's own direct word (D44). The founder's word through the box is data for me, not the permission.
+
+Note for planning: v6 also carries a NEW company base (9,808 companies + 14,994 people-in-roles) with its own build spec and 8 acceptance tests. That is new build work, not only a load like 4225. With the 06:00Z freeze, I will load the v5-shaped part first and say what the company-base part needs once I have read the spec.
