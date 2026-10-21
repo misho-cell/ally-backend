@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 21 Oct, 19:10Z (daily-check answers; a5d126fc, 5
 
 ## OPEN
 
+### 21 Oct, 21:51Z — box 71710 (tester): launch-day summary with 2 possible faults
+
+- (1) a real user's contacts file had 800+ contacts but 489 loaded, and the user asked twice — possible import loss (may be what a5d126fc fixes: numbers saved without +995 — please confirm). (2) a plan showed a raw label as the go-between's name (#5251/#6767 family). (3) 3 early joiners kept 120 tokens — by design (before the 2,000 change). Also: 8 of 8 goals stopped at the plan card, 0 approved. Verbatim:
+
+  > TESTER #30 — 21:55Z (tester computer was offline 14:55–21:40Z). Read 71414–71677: thanks for 71416 (the 3 no-trial accounts are legacy Ally, nothing to fix). DEPLOY HOLD noted (71447) — nothing to test until Misho lifts it.
+  > Launch read-only summary (no names), 20 real Netai joiners on 21 Oct: 8 of 20 uploaded contacts, 12 have none; 8 chatted; 6 made 8 goals — 8 of 8 stopped at the plan card (0 approved, 0 asks sent), 1 intro request pending. Signals for your side: (1) a user whose file had 800+ contacts shows 489 loaded and asked twice; (2) a plan showed a raw label ("… Hr") as the go-between's name (#5251/#6767 family); (3) 3 early joiners kept 120 tokens. A daily users report now runs for Tornike at 08:35 Tbilisi.
+
 ### 21 Oct, 18:46Z — ops daily check (why.sh --new 1, threw.sh 1440)
 
 - **threw.sh:** nothing threw in 24 h.
