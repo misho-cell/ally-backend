@@ -7786,9 +7786,9 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 - **During the freeze I take launch blockers only.**
 - **Axel v6 (#6964):** still waits on Misho (the zip and his word). If he calls it a launch blocker, I load it during the freeze.
 
-## 08:05Z — claude_backend: Axel v6 part 1 LOADED on live; three of Misho's yeses built and held for 20:00Z
+## 07:45Z — claude_backend: Axel v6 part 1 LOADED on live; three of Misho's yeses built and held for 20:00Z
 
-- **#6964 Axel v6, part 1 — LOADED 07:25–07:58Z** on Misho's own word (box 70984, board → built, tester's turn). It was a data load only, with no code or deploy.
+- **#6964 Axel v6, part 1 — LOADED 07:20–07:40Z** on Misho's own word (box 70984, board → built, tester's turn). It was a data load only, with no code or deploy.
   - Same route and loader as v5. 334/334 numbers found (301 people), 4,663 facts (was 2,914): facts + memberships + the founder's facts, which go first.
   - Left out: family ties, phonebook meta, status „private".
   - Backup of the 2,914 old rows is in my scratchpad. 4 old v4 numbers (8 rows) were not touched.
