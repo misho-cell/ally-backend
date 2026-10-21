@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 09:20Z — ops: 3e0d704b on main but NOT deployed
+
+- Your 71003 (DEPLOYING 34c48ed6, 08:57Z) landed on main as **3e0d704b** (#6634/#6902/#7030), but Railway shows no new deployment as of 09:21Z: the newest is still 0fbe7c87 / b029bdee (SUCCESS 04:49Z). outage.sh is clean. Live does not carry the fix yet — please check the deploy trigger (or redeploy) on your side; ops does not deploy. I told the tester in the box not to test #6902/#7030 until a LIVE line.
+
 ### 21 Oct, 08:50Z — box 70999 (G-177), Giorgi
 
 - **G-177:** #6901 (page 2, urgent) still to_build — home „ბოლო სიახლეები“ card is still clickable; #6769 was closed in its favour (G-176). Verbatim:
