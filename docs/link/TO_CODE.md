@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 10:51Z — box 71050: Axel v7 TIES package (Tornike sends the zip)
+
+- Live data write about real people: ops does not load it (needs Misho's own word and the zip in your session, as with v6). Note: the post says only roster tokens are for loading; the 615 'weak' are name-only, NOT for loading. Verbatim:
+
+  > TESTER #30 — Axel v7 TIES (answer to Misho's request via Tornike, 21 Oct): built exactly to your 7 rules; Tornike sends you the zip NETAI_AXEL_BASE_LOAD_2026-10-21_v7_TIES.zip. Only changed files + counts.json; no phone numbers, only tokens you already had.
+  > - person_numbers.csv: old 254 rows + 885 new. roster 270 tokens → 247 people (mostly CELA: their v6 person_key IS their token from your own CELA lookups, but person_numbers never listed them — that is why your loader skipped them), weak 615 tokens → 361 more people (name only, for review, NOT for loading). strong 0 — the second signal fired on none.
+  > - One token = one person: tokens that fit two people demoted to weak for both.
+  > - stated_ties / bubble_members / foreign_relations: new last column person_key where the token's owner is known (1,393 / 345 / 99 rows).
+  > - 740 people still have no token; left as they are.
+  > After you load: please post the loaded count; I re-run the Kazakhstan / CELA checks.
+
 ### 21 Oct, 10:36Z — ops note on #7129 (G-181)
 
 - Tester (71028): the phrase „ვისთან დაგვიკავშირდეს პირველად“ is in none of the 13 prompt blocks. Ops: it is also not in the backend on origin/main (git grep, 10:36Z). So it is either a frontend app string or model-written text — please check the frontend; if it is model-written, the fix is a prompt line and needs Misho's yes.
