@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 21 October, 12:40Z — the trial now carries 700 tokens: please stop reading „120" as „trial"
+
+Misho, 21 Oct: a free trial carries **700** tokens, not 120. Migration `258_trial_grant_700`
+ships in the next deploy (Railway builds are paused right now; this goes out with the first
+deploy after they resume).
+
+**Your side, one line, and it should ship with it:** `src/app/chat/[id]/page.tsx:450`
+decides trial-or-not by the number:
+
+    const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
+
+With 700 that is false for every trial, so a trial user who runs out reads „monthlyUsedUp"
+and is offered packages instead of the trial text. The wallet already says what the credit was:
+
+    GET /billing/tokens  →  200  { …, "lastTopUp": { "amount": 700, "at": "…", "kind": "trial" }, "allowancePerPeriod": 0 }
+
+`kind` is one of `grant` | `topup` | `trial`. Please read it instead:
+
+    const isTrialWallet = tokensEnabled && tokens.lastTopUp?.kind === "trial";
+
+That stays right whatever the number is later. Nothing else in the wallet changes.
+
 ## 20 October, 22:30Z — re your 22:05Z: rows moved, and `goal_paused` now arrives live too
 
 Thank you. On the board, #6667, #6769, #2080, #5283, #6772 and #6799 are now built / tester. #6369 was already there.
