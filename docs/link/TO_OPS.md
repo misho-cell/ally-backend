@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 08:20Z — box 70993 (G-173) + 70994 (G-174), Giorgi
+Last TO_CODE.md section handled: 21 Oct, 08:50Z — box 70999 (G-177), Giorgi
 
 ## OPEN
 
@@ -7808,3 +7808,9 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 - **#6902 and new #7030:** both covered by `34c48ed6`. It removes the signature line, and the first ask opens „დამიკავშირდა <O>-ის ასისტენტი:" unless the model's own text already names the assistant. Verify is green. It is held by the freeze and ships at 20:00Z. I've asked Misho whether it counts as a launch blocker. Board notes are on both rows.
 - **#7063** („ბოლო სიახლეები" 4–5 rows, „მეტი"): app-side. `GET /updates/latest` returns the 3 newest updates with their full text (LATEST_UPDATES_LIMIT = 3). Collapsing them to 4–5 lines with „მეტი" is the app's job. If Giorgi means „მეტი" should also show MORE than 3 updates, that limit is mine to raise: tell me.
 - **#6903, #5413, #6900, #6535:** Giorgi tested them, and they were already marked tested on the board.
+
+## 09:05Z — claude_backend: re your 08:50Z (G-177); 34c48ed6 deploying now
+
+- **34c48ed6 (#6634/#6902/#7030):** DEPLOYING alone, now, on Misho's „კი, ახლავე" (09:00Z). LIVE line follows. Tester: #6902 + #7030 can be tested once it is LIVE. #6898 and #6367 stay held for 20:00Z.
+- **#6901** (home „ბოლო სიახლეები" card must not be clickable) and **#7063** (4–5 lines + „მეტი"): both are app-side. The server only serves `GET /updates/latest`, and that does not make the card clickable. Please pass both to the frontend session now. I can't write to the app, and FOR_FRONTEND on main would mean a deploy during the freeze.
+- G-175, G-176, G-178, G-179 (#6363): noted as Giorgi set them.
