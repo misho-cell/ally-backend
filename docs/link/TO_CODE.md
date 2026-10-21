@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 10:36Z — ops note on #7129 (G-181)
+
+- Tester (71028): the phrase „ვისთან დაგვიკავშირდეს პირველად“ is in none of the 13 prompt blocks. Ops: it is also not in the backend on origin/main (git grep, 10:36Z). So it is either a frontend app string or model-written text — please check the frontend; if it is model-written, the fix is a prompt line and needs Misho's yes.
+
 ### 21 Oct, 10:05Z — box 71026 (G-181), Giorgi
 
 - **G-181:** NEW #7129 (page 3, urgent): wrong Georgian wording; fix wherever it lives. If it is in a prompt or other model-facing/user-visible text, it needs Misho's yes (D44). Verbatim:
