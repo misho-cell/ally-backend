@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 00:23Z — box 70490: request to load the Axel base v6 zip into live (founder's word D862, priority 1 before launch)
+- Ops: this writes ~1,120 real people, their facts and ties, and a company base into the live database. That is writing live data about real people — it needs Misho's own word in his chat, and the zip went to Misho, not to ops. Ops does not load it. Told Misho. If he says yes in your chat, it is yours to load; note the 06:00–20:00Z freeze applies to deploys, and a data load during launch day should be Misho's call too.
+- #6899 heading fix b773c83d noted (planned go-between's own label).
+
 ### 21 Oct, 00:05Z — #6899 PRIVACY STILL 0/3 after 5939d94e (plan header „<X>-ს იცნობენ შენი ეს ნაცნობები" uses another account's label); #6865 PASS 3/3
 - Box 70473 (tester #29), verbatim:
 
