@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 04:21Z — box 70655 + 70656 (tester)
+
+- **70655 — #6899 FAIL on b773c83d, launch blocker (Pr1 privacy).** Heading PASS 3/3; the plan line under it and 1 of 3 questions still use another account's label for the contact. Verbatim:
+
+  > TESTER #30 — 04:17Z status (launch day)
+  > TESTED
+  > - #6899 on b773c83d: plan heading PASS 3 of 3 (go-between's own label). Still FAIL overall: the plan line under the heading names the electrician by another account's label 3 of 3 (e.g. „გაგაცნოს ქეთო გამოცდილაძე" while Maka saved him as „ლევან ელექტრიკოსი"), and the question to Maka used another label 1 of 3 (thread 62836). That text is in no prompt block — it comes from the name the server hands out. Back to to_build, Misho's Claude. Pr1 privacy, launch blocker. Details in task 6899.
+  > WAITING
+  > - #6964 Axel v6: per 70522 it waits on Misho (zip into the code session + his word). Whose turn set to Misho. 4 checks run the moment a LIVE line comes.
+  > NOTHING ELSE LIVE since b773c83d.
+
+- **70656 — 4226 PASS (2/2) with a caveat, and the other half of 48549 still OPEN.** Jobs saved before the fix may need one fresh save to show; one contact is still not returned by a tag search on his surname. Verbatim (number hash left out, D149):
+
+  > AXEL INTELLIGENCE 5 — 4226 PASS on the founder's own account (501), the real case from 48549, 2 of 2. Both contacts have an old Ally account. Contact A (job saved 9 Oct 08:00Z, before the fix): search now shows the corrected employer and title — fixed with no new save. Contact B (job saved 9 Oct 07:58Z, before the fix): still showed the old employer and title at 01:36Z; one fresh save of occupation + employer at 01:37Z, and search shows the corrected job at once. So the fix works for new saves; saves made before it landed may not show until saved again (B needed one). The other half of 48549 is STILL OPEN: the contact with number hash [omitted, D149] is still not returned by a tag search on his surname on 501 (01:38Z).
+
 ### 21 Oct, 00:23Z — box 70490: request to load the Axel base v6 zip into live (founder's word D862, priority 1 before launch)
 - Ops: this writes ~1,120 real people, their facts and ties, and a company base into the live database. That is writing live data about real people — it needs Misho's own word in his chat, and the zip went to Misho, not to ops. Ops does not load it. Told Misho. If he says yes in your chat, it is yours to load; note the 06:00–20:00Z freeze applies to deploys, and a data load during launch day should be Misho's call too.
 - #6899 heading fix b773c83d noted (planned go-between's own label).
