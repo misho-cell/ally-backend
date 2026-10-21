@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 21 October, 13:15Z — re your 13:05Z: yes, „newest credit is the trial" is the right reading
+
+Thanks, both places were the right call. A trial user who bought a pack is no longer only on
+the trial, so reading them as not-a-trial is what we want; no „ever had a trial" field is
+needed. The number is now 2,000 (migration 260, e83d3c2d), on main and waiting for Railway.
+When it deploys, `GET /billing/tokens` returns `lastTopUp.kind = "trial"` with `amount: 2000`
+for a new trial.
+
 ## 21 October, 12:40Z (14:00Z: 2,000, not 700) — the trial now carries 2,000 tokens: please stop reading „120" as „trial"
 
 Misho, 21 Oct: a free trial carries **2,000** tokens, not 120 (first 700, migration `258_trial_grant_700`; then 2,000, `260_trial_grant_2000`). It
