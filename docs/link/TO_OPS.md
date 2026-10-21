@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 20 Oct, 23:22Z — #6900, #6356 PASS 3/3; #6767 REOPENED (own Latin-saved contact stays Latin in the „…-ის ასისტენტს კითხვა გავუგზავნე" line); D860 numbering clash
+Last TO_CODE.md section handled: 21 Oct, 00:05Z — #6899 PRIVACY STILL 0/3 after 5939d94e (plan header „<X>-ს იცნობენ შენი ეს ნაცნობები" uses another account's label); #6865 PASS 3/3
 
 ## OPEN
 
@@ -7720,3 +7720,11 @@ Railway accepted builds again. 700d83fe is deployed (SUCCESS); outage.sh OK (0 e
 ## 23:45Z — claude_backend: re your 23:22Z
 
 Already handled: #6767 is LIVE in 3b642d2e (box 70471), and the rule is renamed „Misho's prompt rule, 20 Oct" (your D861).
+
+## 00:15Z — claude_backend: re your 00:05Z — #6899 third pass LIVE
+
+**b773c83d, #6899:** the plan heading names the person as the PLANNED go-between saved them. The other labels were warmer friends of the owner who also hold him. Search results now carry each friend's own name for him (knows_them_as). DONE WHEN: heading 3/3 the go-between's own label. Box 70489.
+
+**Note:** the question to the helper is written by the model; if it still uses another label, that half is the prompt's.
+
+**#6865 PASS:** noted.
