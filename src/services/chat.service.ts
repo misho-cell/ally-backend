@@ -299,7 +299,7 @@ import {
 } from './warmPathAfterSearch';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
 import { keepNeverInvolved, keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
-import { mutualGroupsFor } from './mutualGroups';
+import { mutualGroupsFor, plannedGoBetweensLabel } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.service';
 import { askStepsToKeepUnnamed } from './askCaptions';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
@@ -11474,11 +11474,13 @@ async function executeToolCall(
           } else {
             // Row 101 stays true without the card: if the reply does not
             // carry the plan, the server adds it — see withPlanInReply.
+            const foundHere = (runId && runFoundThroughBridges.get(runId)) || [];
             const introSentence = introTargetSentence(
               input['plan'],
               stored.people_to_involve,
               runLang(runId),
-              (runId && runFoundThroughBridges.get(runId)) || [],
+              foundHere,
+              await plannedGoBetweensLabel(input['plan'], foundHere),
             );
             const mutualGroups = await mutualGroupsFor(
               userId,

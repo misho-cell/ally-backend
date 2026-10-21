@@ -277,6 +277,28 @@ async function goBetweensLabelFor(
   return label === '' ? null : label;
 }
 
+/**
+ * #6899, fourth pass (tester 04:11Z): the plan sentence under the heading
+ * („გაგაცნოს ქეთო გამოცდილაძე") still used another account's label. The
+ * person the plan leads to, as its planned go-between saved them; null when
+ * the plan has no single person or go-between, or the read fails.
+ */
+export async function plannedGoBetweensLabel(
+  planInput: unknown,
+  found: readonly FoundThroughBridge[],
+): Promise<string | null> {
+  const reach = planReach(planInput, found);
+  if (reach === null) return null;
+  const foundTargets = reach.ofKind ?? foundTarget(found, reach.target);
+  try {
+    return await goBetweensLabelFor(reach.planned, targetDigits(planInput, foundTargets));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[mutual-groups] go-between label not read:', (err as Error).message);
+    return null;
+  }
+}
+
 /** The shared contacts not on Netai, after the ones already listed. */
 async function sharedNonMembers(
   userId: string,

@@ -16,6 +16,16 @@ describe('a plan through the first link of a far chain', () => {
     );
   });
 
+  // #6899 fourth pass (tester 04:11Z): the sentence named the person by another account's label.
+  it('names the person as the planned go-between saved them', () => {
+    expect(
+      introTargetSentence({}, [levan], 'ka', foundThroughFirstLinks([zurab]), 'ზურა მეგობარი'),
+    ).toBe(
+      'ლევან ჯაფარიძის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, ' +
+        'რომ ლევან ჯაფარიძემ გაგაცნოს ზურა მეგობარი.',
+    );
+  });
+
   it('keeps the plain sentence when the chain starts at somebody else', () => {
     const elsewhere = { ...zurab, firstLinkPhone: '995599000999' };
     expect(introTargetSentence({}, [levan], 'ka', foundThroughFirstLinks([elsewhere]))).toBeNull();

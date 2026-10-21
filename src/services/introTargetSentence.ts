@@ -212,10 +212,13 @@ export function introTargetSentence(
   people: readonly GoBetween[],
   language: RunLanguage,
   found: readonly FoundThroughBridge[] = [],
+  // #6899: the person as the planned go-between saved them, when known.
+  goBetweensLabel: string | null = null,
 ): string | null {
   if (!INTRO_TARGET_SENTENCE_ON || language !== 'ka') return null;
-  const intro = plannedIntroduction(planInput, people) ?? introductionFromFound(people, found);
-  if (intro === null) return null;
+  const planned = plannedIntroduction(planInput, people) ?? introductionFromFound(people, found);
+  if (planned === null) return null;
+  const intro = goBetweensLabel === null ? planned : { ...planned, to: goBetweensLabel };
   // #5479 (the tester's 65642): the one-bridge sentence said no reason either.
   const tie = people[0]?.tie;
   const sentence = georgianSentence(intro, tie === undefined ? '' : TIE_NOTE.ka[tie]);
