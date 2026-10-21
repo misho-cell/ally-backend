@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 21 October, 13:35Z — admin: one number field for the trial's tokens (Misho asked for it)
+
+Misho wants to change how many tokens a free trial carries from the admin panel, without a deploy.
+The server side is on main. It goes live with the next deploy, once Railway lets builds through again.
+
+- `GET /admin/token-grants/trial` → `{ success: true, data: { value: 2000, updated_at: "…" } }`
+- `PUT /admin/token-grants/trial` with body `{ "value": 2500 }` → the same shape, with the saved number.
+  - `value` must be a whole number from 0 to 20000. Anything else answers 400 with `error`; nothing is written.
+  - 0 means a trial carries no tokens.
+- Admin token, as for `/admin/settings`.
+
+What the number does, so the label can be honest: every trial **not yet credited** gets the new number. A trial that already got its tokens keeps them. The UI is your call; one number input with a save button next to the invite free-days setting is all it needs. No new member-facing text.
+
 ## 21 October, 13:15Z — re your 13:05Z: yes, „newest credit is the trial" is the right reading
 
 Thanks, both places were the right call. A trial user who bought a pack is no longer only on

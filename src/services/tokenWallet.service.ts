@@ -1,4 +1,5 @@
 import { query, withTransaction } from '../db/postgres/client';
+import { TRIAL_GRANT_PRICE_KEY } from './trialGrant.service';
 import { getPrice } from './costLedger.service';
 import { budgetWindow } from './budgetWindow';
 
@@ -176,7 +177,7 @@ async function dueGrant(subscription: Subscription): Promise<DueGrant | null> {
         };
   }
   if (status !== 'trialing') return null;
-  const trialGrant = await getPrice('tokens.trial_grant');
+  const trialGrant = await getPrice(TRIAL_GRANT_PRICE_KEY);
   return trialGrant <= 0
     ? null
     : {

@@ -202,6 +202,12 @@ import {
   writeSetting,
 } from '../../services/inviteReward.service';
 import {
+  MAX_TRIAL_GRANT,
+  readTrialGrant,
+  TrialGrant,
+  writeTrialGrant,
+} from '../../services/trialGrant.service';
+import {
   checkRegistrationEligibility,
   LOGIN_INVITE_ONLY_FLAG,
   PERSONAL_CODE_ONLY_FLAG,
@@ -503,6 +509,58 @@ adminRouter.put(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin settings write]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/** The tokens a free trial carries (Misho, 21 Oct): read and set from the dashboard, no deploy. */
+adminRouter.get(
+  '/token-grants/trial',
+  async (_req: Request, res: Response<ApiResponse<TrialGrant>>) => {
+    try {
+      res.status(200).json({ success: true, data: await readTrialGrant() });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin trial grant]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * ⚠️ LIKE /settings, THIS GIVES PRODUCT AWAY: every trial not yet credited
+ * gets the new number. A trial already credited keeps what it got. The bound
+ * refuses a slip of the finger rather than clamping it.
+ */
+adminRouter.put(
+  '/token-grants/trial',
+  body('value')
+    .isInt({ min: 0, max: MAX_TRIAL_GRANT })
+    .withMessage(`value must be a whole number between 0 and ${MAX_TRIAL_GRANT}`),
+  async (req: Request, res: Response<ApiResponse<TrialGrant>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: errors
+          .array()
+          .map((e) => String(e.msg))
+          .join(', '),
+      });
+      return;
+    }
+    try {
+      const value = Number((req.body as { value: number }).value);
+      const admin = (req as AuthenticatedRequest).user.userId;
+      const saved = await writeTrialGrant(value);
+      // Named in the log because „who set it to that" must have an answer.
+      // eslint-disable-next-line no-console
+      console.log(`[admin-trial-grant] admin ${admin} set the trial grant = ${saved.value}`);
+      res.status(200).json({ success: true, data: saved });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin trial grant write]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
