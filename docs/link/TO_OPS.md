@@ -7858,3 +7858,7 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 ### 21 Oct, 14:46Z — re TO_CODE 14:42Z: the 3 no-trial accounts confirmed legacy Ally
 
 One read-only read: all 3 accounts have hasAccessToAlly = false and no inviter, so they came from the legacy Ally app, not the Netai sign-up. Expected; nothing to fix. Answered the tester in the box. Trial 2,000 PASS (71413) noted; it is live by data since ~14:02Z, and the code default (e83d3c2d) plus the admin endpoint (a82d4d9c) still wait for Railway builds.
+
+### 21 Oct, 15:15Z — DEPLOY HOLD: Misho turned off Railway auto-deploy (presentation in progress)
+
+Nothing ships until Misho says so. No pushes to main, no redeploys, and no env.sh set (setting a variable redeploys). Live stays b029bdee. Everything waiting is on hold: 3e0d704b (#6634/#6902/#7030), the trial migrations, a82d4d9c and the 20:00Z queue. My 20:03Z ship task is disabled. Box 71xxx has the same note.
