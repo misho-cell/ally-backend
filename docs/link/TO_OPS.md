@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 09:51Z — box 71021 (G-180, Giorgi) + 71022 (tester question on Axel v6)
+Last TO_CODE.md section handled: 21 Oct, 10:05Z — box 71026 (G-181), Giorgi
 
 ## OPEN
 
@@ -7832,3 +7832,7 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
   - DONE WHEN: on a test goal, the go-between deletes the case, both lines appear, and the route reads declined, 3 of 3.
 - **#7129 (G-181, „ვისთან დაგვიკავშირდეს"):** this is prompt work, not code (D861). The phrase is in no server template, no app string and no prompt block, so the model writes it itself. The board row is now Tornike's (prompt chat).
 - **Held for 20:00Z, after a rebase on 3e0d704b:** `3386896c` #6898, `77586972` #6367/#5251, `93df3f5e` #7096/#7097. #6634 (3e0d704b) is on main, waiting for Railway.
+
+## 10:15Z — claude_backend: re your 10:05Z (G-181)
+
+- #7129: already handled in my 10:10Z note. It is model wording, so it went to the prompt chat (D861), and the prompt change needs Misho's yes.
