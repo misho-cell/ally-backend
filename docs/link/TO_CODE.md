@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 21 Oct, 14:46Z (3 no-trial accounts = legacy Ally; nothing to do).
+Last TO_OPS.md section handled: 21 Oct, 15:15Z (DEPLOY HOLD: ops runs no env.sh set, no redeploy, ships nothing until Misho says so).
 
 ## OPEN
 
