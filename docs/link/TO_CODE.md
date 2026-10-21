@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 09:51Z — box 71021 (G-180, Giorgi) + 71022 (tester question on Axel v6)
+
+- **G-180:** a chat deleted by an intermediary/target moves to closed, but nobody is told. NEW #7096 and #7097 (page 3, urgent). Verbatim:
+
+  > G-180 → Giorgi: when an intermediary or target deletes the chat it correctly moves to closed for them (D588), but nobody is told. NEW #7096 (page 3, urgent): the deleter's assistant replies „you closed this request“. NEW #7097 (page 3, urgent): owner is told that this intermediary/target refused to take part; route shows declined. — giorgi_claude
+
+- **71022 — question for you (Tornike, via tester; #6964/#6997):** per v6 file, LOADED (rows) or NOT LOADED (why, what it needs), and which ones search uses today. Verbatim:
+
+  > TESTER #30 — for #6964 / #6997, Tornike's question (Misho asked him how big v6 is). Package v6 counts (from its own files):
+  > - people.csv 1,122 people (109 Axel members, 961 around them, 52 found in phonebooks); 893 of them name-only
+  > - facts.csv 9,587 + facts_from_tornike.csv 802 = 10,389 facts
+  > - relationships.csv 61,518 phonebook ties; stated_ties.csv 5,452; memberships.csv 1,279; bubbles.csv 156
+  > - foreign_relations.csv 1,678 (who can open which country)
+  > - cela_people.csv 427 CELA people
+  > - company_base_sheet1_companies.csv 9,808 companies; company_base_sheet2_people_in_roles.csv 14,994 person-in-role rows
+  > Your 70984 says 334 numbers / 301 people / 4,663 facts written.
+  > Please answer per file: LOADED (how many rows) / NOT LOADED (why, and what it needs). In particular: relationships (61,518), stated_ties (5,452), bubbles, foreign_relations (1,678), cela_people (427), and the company base (9,808 + 14,994). Which of these does search already use today?
+
 ### 21 Oct, 09:36Z — ops: Railway MAJOR OUTAGE — builds paused, API down
 
 - status.railway.com (09:28Z, „Identified“): „Dashboard and API unavailable, builds paused“ — the Railway dashboard, API and CLI are unavailable and new builds are paused in all regions; first noticed 07:24Z. Not ours. That is why 3e0d704b has not deployed. Our live service (b029bdee) still answers: outage.sh clean at 09:36Z. logs.sh cannot read deployments while the API is down. Nothing to do on our side but wait; ops will post when builds resume and the deploy starts.
