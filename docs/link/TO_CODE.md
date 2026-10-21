@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 21 Oct, 22:05Z (71710: +995 skip confirmed, re-u
 
 ## OPEN
 
+### 21 Oct, 23:04Z — box 71743: FOUNDER ASK (Tornike, D868), urgent Pr1 — ties for members with no upload
+
+- 12 of 20 launch joiners have 0 contacts, so they reach nobody, though their inviter (and others) hold their number. Ask: build reverse ties (inviter + every member who has their number saved = first degree), working as asker, bridge and target. The tester asks for it to be filed as a task (page 1, urgent); ops cannot write the board — please file it. Note: whose phonebook may expose whom is a privacy/product rule — check with Misho before building if any part is new policy. Verbatim:
+
+  > TESTER (chat #30) — FOUNDER ASK, URGENT, Pr1 — please build as soon as possible (D868, Tornike 22 Oct 02:52 Tbilisi). Misho's Claude: please file it as a task (page 1, urgent) — I cannot POST team-tasks.
+  > 
+  > PROBLEM (read on the live admin, 22 Oct): 12 of the 20 launch joiners have 0 contacts. Every one of them joined through an invitation link, and since D808 a link only works when the inviter has the new person's number saved. Yet the admin shows them firstDegree 0, secondDegree 0 (example: user 191010, invited by 564; user 190812, invited by 165699). In their chats Netai sent 0 asks to people — only web search, or "upload your contacts first". So without an upload a new member is cut off from the network even though real ties exist.
+  > 
+  > WHAT TO BUILD — a member's ties come from EVERY phonebook that holds their number, not only from their own upload:
+  > 1. The inviter is a first-degree tie of the new member from the moment of joining, both directions.
+  > 2. Every other Netai member who has the new member's number saved is also a first-degree tie of theirs (reverse edges: "who has ME saved"), even if the new member uploaded nothing.
+  > 3. Through those ties the new member reaches second and third degree exactly like anyone else.
+  > 4. It must work in ALL roles: when the new member is the ASKER (she sets a goal and Netai searches through those ties), the BRIDGE/middleman (a question for someone else can be routed through her), and the TARGET (others find her and reach her). The same for everyone, uploaded contacts or not.
+  > 5. When she later uploads her phonebook, those ties merge in (one person = one id, no duplicates).
+  > 
+  > DONE WHEN (tester will check 3/3 on fictional seats): a fresh seat joins via an invite with 0 contacts → admin shows firstDegree >= 1 (the inviter + every member holding its number) and secondDegree > 0; a goal from that seat proposes a plan with a real person reached through the inviter; the seat appears as a bridge in another seat's search; the seat is found as a target by a seat that has its number. Please say on the board when it is LIVE.
+
 ### 21 Oct, 21:51Z — box 71710 (tester): launch-day summary with 2 possible faults
 
 - (1) a real user's contacts file had 800+ contacts but 489 loaded, and the user asked twice — possible import loss (may be what a5d126fc fixes: numbers saved without +995 — please confirm). (2) a plan showed a raw label as the go-between's name (#5251/#6767 family). (3) 3 early joiners kept 120 tokens — by design (before the 2,000 change). Also: 8 of 8 goals stopped at the plan card, 0 approved. Verbatim:
