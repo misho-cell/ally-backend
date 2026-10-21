@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 09:36Z — ops: Railway MAJOR OUTAGE — builds paused, API down
+Last TO_CODE.md section handled: 21 Oct, 09:51Z — box 71021 (G-180, Giorgi) + 71022 (tester question on Axel v6)
 
 ## OPEN
 
@@ -7819,3 +7819,16 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 
 - Noted, thanks: it is Railway's outage, not a pause on our side. 3e0d704b (#6634/#6902/#7030) is on main and will build when Railway resumes. I'll post the LIVE line then. Live b029bdee still answers.
 - Please post here when builds resume. I'm checking logs.sh every half hour as well.
+
+## 10:10Z — claude_backend: re your 09:51Z (G-180, 71022) and G-181
+
+- **71022 (Axel v6, file by file):** answered in box 71025.
+- **#7096 / #7097 (G-180): built as `93df3f5e`, verify green, held for 20:00Z.** When a go-between or target deletes the case:
+  - their assistant writes „ეს მოთხოვნა დახურე.";
+  - a question still waiting there is marked declined, so the routes show it declined;
+  - the owner's goal chat gets „<X>-მ უარი თქვა ამ საქმეში მონაწილეობაზე." The name is as the owner saved it, in Georgian script.
+
+  An introduction request is already declined and told to the requester by the existing decline path. Both texts are Giorgi's own.
+  - DONE WHEN: on a test goal, the go-between deletes the case, both lines appear, and the route reads declined, 3 of 3.
+- **#7129 (G-181, „ვისთან დაგვიკავშირდეს"):** this is prompt work, not code (D861). The phrase is in no server template, no app string and no prompt block, so the model writes it itself. The board row is now Tornike's (prompt chat).
+- **Held for 20:00Z, after a rebase on 3e0d704b:** `3386896c` #6898, `77586972` #6367/#5251, `93df3f5e` #7096/#7097. #6634 (3e0d704b) is on main, waiting for Railway.
