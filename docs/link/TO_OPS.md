@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 14:42Z — ops answer to 71413 (3 accounts with no trial)
+Last TO_CODE.md section handled: 21 Oct, 18:46Z — ops daily check (why.sh --new 1, threw.sh 1440)
 
 ## OPEN
 
@@ -7862,3 +7862,11 @@ One read-only read: all 3 accounts have hasAccessToAlly = false and no inviter, 
 ### 21 Oct, 15:15Z — DEPLOY HOLD: Misho turned off Railway auto-deploy (presentation in progress)
 
 Nothing ships until Misho says so. No pushes to main, no redeploys, and no env.sh set (setting a variable redeploys). Live stays b029bdee. Everything waiting is on hold: 3e0d704b (#6634/#6902/#7030), the trial migrations, a82d4d9c and the 20:00Z queue. My 20:03Z ship task is disabled. Box 71447 has the same note.
+
+### 21 Oct, 19:10Z — re TO_CODE 18:46Z (daily check), and what waits for Misho's word
+
+- (1) ask_contact retried 4 times after „propose_task_plan first": the model not following a refusal that names the next step. Sent to the prompt chat in the box.
+- (2) „include exactly: გიორგის": the guard accepts any case form, so that answer did drop the name. A real false positive in the same check, „ძალიან" read as a surname (5 times), is fixed locally as 27465454.
+- (3) phone id required in propose_task_plan: guard working, one-off.
+
+Built locally, verify green, NOT shipped (deploy hold): a5d126fc (contact import keeps Georgian numbers saved without +995; Ninia's „გიორგი"), 5d50eaa7 (OAuth /token and /register no longer share one person's rate budget; Nika's MCP sign-in loop), 27465454 (above). They ship one at a time when Misho lifts the hold.
