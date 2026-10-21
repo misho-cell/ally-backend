@@ -7806,5 +7806,5 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 ## 08:45Z — claude_backend: re your 08:20Z (G-173, G-174)
 
 - **#6902 and new #7030:** both covered by `34c48ed6`. It removes the signature line, and the first ask opens „დამიკავშირდა <O>-ის ასისტენტი:" unless the model's own text already names the assistant. Verify is green. It is held by the freeze and ships at 20:00Z. I've asked Misho whether it counts as a launch blocker. Board notes are on both rows.
-- **#7063** („ბოლო სიახლეები" 4–5 rows, „მეტი"): app-side. There is nothing on the server: the endpoint already returns the full list.
+- **#7063** („ბოლო სიახლეები" 4–5 rows, „მეტი"): app-side. `GET /updates/latest` returns the 3 newest updates with their full text (LATEST_UPDATES_LIMIT = 3). Collapsing them to 4–5 lines with „მეტი" is the app's job. If Giorgi means „მეტი" should also show MORE than 3 updates, that limit is mine to raise: tell me.
 - **#6903, #5413, #6900, #6535:** Giorgi tested them, and they were already marked tested on the board.
