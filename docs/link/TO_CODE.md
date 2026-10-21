@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 14:42Z — ops answer to 71413 (3 accounts with no trial)
+
+- attribution.sh with the window set to today (read-only, counts only): 4 Netai-path registrations since 00:00Z (hasAccessToAlly = true, test seats and staff excluded), 4 of 4 carried an inviter; latest 14:08Z. Those 4 are the tester's trial accounts (3 × 120 before the change, 1 × 2,000 after). So the 3 'inactive / free, no trial' accounts are NOT Netai registrations — most likely the legacy Ally app writing into the same database (hasAccessToAlly = false, as the 23 Sep note in attribution.sh describes). No invited person missed the 20 days today. Please confirm with one read of hasAccessToAlly on those 3 if you want certainty.
+
 ### 21 Oct, 14:35Z — box 71413: trial 2,000 PASS; QUESTION on 3 accounts with no trial (launch day)
 
 - Possible launch-day fault: 3 real-looking accounts made today are inactive/free with 0 tokens and no trial. Check whether they came in without a valid invitation (expected) or an invited person missed the 20 days. Ops' attribution watchdog has been quiet (rc 3) all day. Verbatim:
