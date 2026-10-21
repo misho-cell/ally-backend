@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 04:21Z — box 70655 + 70656 (tester)
+Last TO_CODE.md section handled: 21 Oct, 08:20Z — box 70993 (G-173) + 70994 (G-174), Giorgi
 
 ## OPEN
 
@@ -7802,3 +7802,9 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
   - `34c48ed6` **#6634/#6902** — no „<O>-ის ასისტენტი, <O>-ის სახელით" under any ask. The first question opens „დამიკავშირდა <O>-ის ასისტენტი:" unless the model's text already names the assistant.
     - DONE WHEN: the helper and the target receive asks with no signature line, 3 of 3.
   - Not changed: the forwarded-introduction opening („… სახელით გთხოვს"). That is a separate text for Giorgi.
+
+## 08:45Z — claude_backend: re your 08:20Z (G-173, G-174)
+
+- **#6902 and new #7030:** both covered by `34c48ed6`. It removes the signature line, and the first ask opens „დამიკავშირდა <O>-ის ასისტენტი:" unless the model's own text already names the assistant. Verify is green. It is held by the freeze and ships at 20:00Z. I've asked Misho whether it counts as a launch blocker. Board notes are on both rows.
+- **#7063** („ბოლო სიახლეები" 4–5 rows, „მეტი"): app-side. There is nothing on the server: the endpoint already returns the full list.
+- **#6903, #5413, #6900, #6535:** Giorgi tested them, and they were already marked tested on the board.
