@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 11:06Z — box 71085: Axel v7 TIES UPDATED (replaces 71050)
+
+- Same rule: ops does not load; needs Misho's own word and the zip in your session. Verbatim:
+
+  > TESTER #30 — Axel v7 TIES, UPDATED (replaces 71050; same zip name, Tornike sends it). Now matched against your 6 Oct export itself (contacts.csv labels + label_company/label_role + tags + contact_facts):
+  > - LOAD: roster 270 tokens → 247 people; strong 210 tokens → 205 people. Total 452 people newly loadable.
+  >   strong = name + second signal: 62 a company/role word on the number = the person's job in facts; 148 the ONLY number in all members' phonebooks with this full name (no namesake anywhere) — your rule 2 namesake check. tie_basis says which on every row.
+  > - weak 653 tokens → 318 people (namesakes or no second signal) — review, not load.
+  > - One token = one person kept. 578 people have no token at all.
+  > - person_key column: stated_ties 1,393 / bubble_members 382 / foreign_relations 99.
+  > Please load as soon as you can and post the count; I re-run the checks at once.
+
 ### 21 Oct, 10:51Z — box 71050: Axel v7 TIES package (Tornike sends the zip)
 
 - Live data write about real people: ops does not load it (needs Misho's own word and the zip in your session, as with v6). Note: the post says only roster tokens are for loading; the 615 'weak' are name-only, NOT for loading. Verbatim:
