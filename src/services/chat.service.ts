@@ -333,6 +333,7 @@ import {
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath } from './tools/findWarmPath';
+import { findCompaniesForNeed } from './tools/findCompaniesForNeed';
 import { withOldAllyColours } from './tools/withOldAllyColours';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
@@ -4078,6 +4079,33 @@ const SEARCH_ROSTER_TOOL: AnthropicTool = {
       name: { type: 'string', description: 'Optional: words of the name to look for.' },
     },
     required: ['group'],
+  },
+};
+
+/**
+ * D847 — the company base's search (TECH_TASK_COMPANY_BASE §6). OFF until the
+ * base is loaded on live and the tool is tried there; the prompt line that
+ * tells the model when to reach for it is the prompt chat's (TECH_TASK §8).
+ */
+export const COMPANY_SEARCH_TOOL_ON = false;
+
+const FIND_COMPANIES_FOR_NEED_TOOL: AnthropicTool = {
+  name: 'find_companies_for_need',
+  description:
+    'Companies that do what the user needs, from the company base, with the people of the ' +
+    "user's network tied to each. Use when the need is a kind of work or service, not a person " +
+    '("transport in Kazakhstan", "who builds apartments in Tbilisi", "insurance"). Returns each ' +
+    'company with what it does, the people confirmed to work or have worked there (name, role, ' +
+    'phone id) and its public directors. For the warm way to a person, call find_warm_path with ' +
+    'their phone id. A company with no people has no warm path yet.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      need: { type: 'string', description: "The need in the user's words, any language." },
+      country: { type: 'string', description: 'Optional: the country, in English.' },
+      city: { type: 'string', description: 'Optional: the city, in English.' },
+    },
+    required: ['need'],
   },
 };
 
@@ -12217,6 +12245,13 @@ async function executeToolCall(
       );
     case 'search_roster':
       return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
+    case 'find_companies_for_need':
+      return findCompaniesForNeed(
+        userId,
+        String(input['need'] ?? ''),
+        String(input['country'] ?? ''),
+        String(input['city'] ?? ''),
+      );
     case 'find_warm_path': {
       const warm = await findWarmPath(
         userId,
@@ -12257,6 +12292,7 @@ const SANITIZED_RESULT_TOOLS: ReadonlySet<string> = new Set([
   'search_second_degree',
   'search_contacts_by_country',
   'find_warm_path',
+  'find_companies_for_need',
   'web_search',
   'fetch_page',
 ]);
@@ -15989,6 +16025,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_GROUP_CONNECTORS_TOOL,
   SEARCH_ROSTER_TOOL,
   FIND_WARM_PATH_TOOL,
+  ...(COMPANY_SEARCH_TOOL_ON ? [FIND_COMPANIES_FOR_NEED_TOOL] : []),
   GET_COUNTRY_CHANNELS_TOOL,
   GET_NETAI_INFO_TOOL,
   GET_MY_TOKEN_BALANCE_TOOL,

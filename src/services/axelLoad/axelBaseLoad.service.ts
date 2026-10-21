@@ -39,7 +39,7 @@ export interface BaseLoadReport {
 }
 
 /** export hash → the number as contact_facts keys it, over the export's own population. */
-async function numbersByHash(): Promise<Map<string, string>> {
+export async function numbersByHash(): Promise<Map<string, string>> {
   const roster = await readRoster();
   const ids = roster.map((m) => m.user_id).filter((id): id is number => id !== null);
   const phonebooks = await readPhonebooks(ids);
