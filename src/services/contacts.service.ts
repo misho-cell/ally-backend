@@ -10,7 +10,7 @@ import { parsePhonebookLabelsForUser } from './labelParser.service';
 import { batchesWithoutSharedPhones, IMPORT_BATCH_SIZE } from './importBatches';
 import { EnrichmentJob, queueEnrichmentJob, takeEnrichmentAllowance } from './enrichmentQueue';
 // Aliased: this file already has its own, stricter local normalizePhone()
-// (import-path only, rejects anything not already "+..."). UserPhone is
+// (import-path only, rejects a bare foreign number without "+"). UserPhone is
 // written exclusively through registration's normalizePhone (services/phone,
 // Georgian-local-aware) — matching against it needs that same function.
 import { normalizePhone as normalizeForRegisteredPhoneMatch } from './phone';
@@ -304,11 +304,28 @@ async function importSingleContact(
   return { imported, skipped };
 }
 
+/**
+ * A Georgian number as phones save it with no country code: „597 12 34 56",
+ * „0597 12 34 56", „995 597 12 34 56". Ninia's „გიორგი" (21 Oct) was saved
+ * like this and was skipped on every send, so search never found him.
+ */
+const GEORGIAN_WITHOUT_PLUS = /^(0?\d{9}|995\d{9})$/;
+const INTERNATIONAL_PREFIX = /^00/;
+
+/**
+ * The number as "+…": already international, or a Georgian number written
+ * without its „+995". Anything else without a „+" is refused — a bare foreign
+ * number cannot be told apart from a wrong one.
+ */
 function normalizePhone(raw: string): string | null {
-  const cleaned = raw.replace(/[\s()-]/g, '');
-  if (!cleaned.startsWith('+')) return null;
-  if (cleaned.length < 8 || cleaned.length > 16) return null;
-  return cleaned;
+  const cleaned = raw.replace(/[\s()-]/g, '').replace(INTERNATIONAL_PREFIX, '+');
+  const phone = cleaned.startsWith('+')
+    ? cleaned
+    : GEORGIAN_WITHOUT_PLUS.test(cleaned)
+      ? normalizeForRegisteredPhoneMatch(cleaned)
+      : null;
+  if (phone === null || phone.length < 8 || phone.length > 16) return null;
+  return phone;
 }
 
 function triggerEnrichmentAsync(
