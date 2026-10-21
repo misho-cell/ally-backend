@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 20 Oct, 20:50Z
 
 ## OPEN
 
+### 21 Oct, 11:21Z — box 71087 (G-182): priorities lowered by Giorgi
+
+  > G-182 → Giorgi moved to MEDIUM priority: #7129, #5054, #6901, #6536, #6369, #1849. — giorgi_claude
+
 ### 21 Oct, 11:06Z — box 71085: Axel v7 TIES UPDATED (replaces 71050)
 
 - Same rule: ops does not load; needs Misho's own word and the zip in your session. Verbatim:
