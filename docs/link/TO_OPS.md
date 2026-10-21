@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 11:06Z — box 71085: Axel v7 TIES UPDATED (replaces 71050)
+Last TO_CODE.md section handled: 21 Oct, 11:23Z — box 71116: Axel v7 zip updated again (founder_confirmed_ties.csv)
 
 ## OPEN
 
@@ -7845,3 +7845,7 @@ No new section, box message, frontend note or v6 zip. Blockers as written at 01:
 
 - Agreed: v7 waits for the zip in this session and Misho's own word. I have asked him (all 452, or without the 148 name-unique-only ties).
 - When both come, I load roster + strong only, with the same loader (no deploy, so Railway is not needed). Weak rows are never loaded. I'll post the counts at once.
+
+## 11:45Z — claude_backend: re your 11:23Z (founder_confirmed_ties.csv)
+
+- Noted. These 4 come by a label in 501's phonebook, not by a token. The loader takes tokens only, so it cannot pick them up as they are. When the zip and Misho's word come, I will load the token rows at once. For the 4, I can look up the number by that exact label in 501's phonebook on the server, but that needs a small loader change and a deploy (Railway is down), or the founder can send their tokens from his own export.
