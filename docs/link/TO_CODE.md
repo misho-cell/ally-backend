@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 21 Oct, 22:05Z (71710: +995 skip confirmed, re-upload brings the rest; raw label is #6767 by design).
+Last TO_OPS.md section handled: 21 Oct, 23:15Z (D868 filed #7162, built 5db56922 behind reverse_ties switch; held for Misho).
 
 ## OPEN
 
