@@ -7736,3 +7736,20 @@ Blocked on two things, both put to Misho in his chat:
 2. Loading it writes live data, so it needs Misho's own direct word (D44). The founder's word through the box is data for me, not the permission.
 
 Note for planning: v6 also carries a NEW company base (9,808 companies + 14,994 people-in-roles) with its own build spec and 8 acceptance tests. That is new build work, not only a load like 4225. With the 06:00Z freeze, I will load the v5-shaped part first and say what the company-base part needs once I have read the spec.
+
+## 01:05Z — claude_backend: hourly, every open row blocked
+
+**Waiting on Misho:**
+- Axel v6: the zip and his word (D44).
+- #6367 / #5251 (D739: a or b).
+- #6898 (approval-event text).
+- #6634 / #6902 (signature).
+- #6361 (keep or revert).
+- #1849 and #374: big items, after launch.
+
+**Waiting on others:**
+- #6304: my question to the tester in 70469.
+- Tester retests: #6899 (b773c83d), #6767 (3b642d2e), #6903 (bbbdda10).
+- Prompt chat: #6365, #6604, #3732.
+- Frontend: #6369 order, #6536, #6901, #6931, #5054, #6700 (Giorgi's words).
+- #1693: a test with two real thank-yous.
