@@ -818,6 +818,33 @@ async function assistantQuestionBefore(person: NamedPerson): Promise<string | nu
   return /[?？]$/u.test(line) ? line : null;
 }
 
+/**
+ * Misho's yes (22 Oct, after Lasha's 63823: „ყველას მიწერე ვისაც ნეტაი აქვს"
+ * — four of his people held by the 3-per-wave rule). The owner's own line
+ * asking to write to everyone opens the wave for this ask. The 24-hour limit
+ * per person stays, so nobody is flooded.
+ */
+const ASKS_FOR_EVERYONE_RE =
+  /(?:(?:^|[^\p{L}])ყველა(?:ს|ნი)?(?=[^\p{L}]|$)|\b(?:everyone|everybody|all of them)\b)/iu;
+const SEND_VERB_RE = /(?:მიწერ|მისწერ|გაუგზავნ|გააგზავნ|ჰკითხ|\b(?:write|send|ask|message)\b)/iu;
+
+export function asksToWriteToEveryone(line: string): boolean {
+  return ASKS_FOR_EVERYONE_RE.test(line) && SEND_VERB_RE.test(line);
+}
+
+async function ownerAskedForEveryone(person: NamedPerson): Promise<boolean> {
+  if (person.threadId === undefined) return false;
+  try {
+    const line = await latestOwnerLine(person);
+    return line !== null && asksToWriteToEveryone(line);
+  } catch (error) {
+    // Fails towards the wave, which is the direction this rule had before.
+    // eslint-disable-next-line no-console
+    console.error(`[ask] task ${person.taskId}: could not read the owner's line:`, error);
+    return false;
+  }
+}
+
 /** The owner's newest line on this goal, a tapped button included. */
 async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
   const result = await query<{ content: string }>(
@@ -1262,7 +1289,16 @@ async function createAskNow(
     const room = await waveRoomFor(
       task,
       contactPhone,
-      async () => introAccepted || (await ownerJustNamedThisPerson()),
+      async () =>
+        introAccepted ||
+        (await ownerJustNamedThisPerson()) ||
+        (await ownerAskedForEveryone({
+          threadId,
+          taskId,
+          taskCreatedAt: task.created_at,
+          fromUserId,
+          contactPhone,
+        })),
     );
     if (!room.allowed) {
       // eslint-disable-next-line no-console
