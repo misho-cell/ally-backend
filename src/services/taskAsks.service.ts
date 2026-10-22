@@ -762,6 +762,14 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     // back to the typed line, as 279 run 2 needs.
     const tapped = await latestOwnerLine(person);
     if (tapped !== null && (await lineNamesThisPerson(tapped, person))) return true;
+    // #7228 (the tester's audit, 63374): the assistant asked „ვაგზავნი ომიკოსთან?",
+    // the owner answered „კი", and both walls refused Omiko — the yes named nobody.
+    // A bare yes to the assistant's own question that names exactly this person is
+    // the owner's word for this one ask.
+    if (tapped !== null && BARE_YES_RE.test(tapped)) {
+      const asked = await assistantQuestionBefore(person);
+      if (asked !== null && (await lineNamesThisPerson(asked, person))) return true;
+    }
     const said = await query<{ content: string }>(
       `SELECT c.content FROM conversations c
           WHERE c.thread_id = $1 AND c.role = 'user'
@@ -784,6 +792,30 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     console.error(`[ask] task ${person.taskId}: could not read who the owner named:`, error);
     return false;
   }
+}
+
+/** A whole line that only says yes — „კი", „დიახ", „ვადასტურებ". */
+const BARE_YES_RE = /^\s*(?:კი|დიახ|ხო|ვადასტურებ|yes|yeah|ok|okay|да|sí)[\s!.]*$/iu;
+
+/**
+ * The assistant's last line before the owner's newest one, when it is a
+ * question; null otherwise.
+ */
+async function assistantQuestionBefore(person: NamedPerson): Promise<string | null> {
+  const result = await query<{ content: string }>(
+    `SELECT a.content FROM conversations a
+        WHERE a.thread_id = $1 AND a.role = 'assistant' AND a.kind = 'message'
+          AND a.content <> ''
+          AND a.created_at < (SELECT MAX(c.created_at) FROM conversations c
+                               WHERE c.thread_id = $1 AND c.role = 'user'
+                                 AND COALESCE(c.kind, '') <> 'event')
+          AND a.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+        ORDER BY a.created_at DESC LIMIT 1`,
+    [person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const line = result.rows[0]?.content.trim() ?? '';
+  return /[?？]$/u.test(line) ? line : null;
 }
 
 /** The owner's newest line on this goal, a tapped button included. */
