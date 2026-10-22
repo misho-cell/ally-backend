@@ -118,6 +118,7 @@ import {
   markNetaiSeen,
   recordNetaiReply,
 } from '../../services/netaiMessage.service';
+import { queueResearchOnActivation } from '../../services/registrationResearch/registrationResearch.service';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -1165,6 +1166,12 @@ threadsRouter.post(
         res.status(404).json({ success: false, error: 'Thread not found' });
         return;
       }
+
+      // #7426 (D876): a member who joined before research ran is researched now, once.
+      void queueResearchOnActivation(Number(userId)).catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(`[registration-research] user ${userId} not queued:`, (err as Error).message),
+      );
 
       // #7360: in the „Netai" conversation the team answers, not a model. The
       // words (a typed line or a button) are kept and shown on the admin.

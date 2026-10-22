@@ -51,6 +51,38 @@ export async function queueRegistrationResearch(
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * #7426 (the founder's D876, 23 Oct 02:30 Tbilisi): „always research a user
+ * when he or she joins; one who joined before this rule is researched at the
+ * next request or any kind of activation". Joining is already covered (the
+ * registration and the first Netai sign-in queue above). What was left is the
+ * member who joined before the run existed: their next own message queues
+ * them, once. A test seat is never queued.
+ *
+ * OFF until Misho says yes: on 22 Oct about 7,100 accounts that wrote in the
+ * last 30 days had never been researched, and every run is paid web search and
+ * model reading — spending, which is his word (D44).
+ */
+export const RESEARCH_ON_ACTIVATION = false;
+const askedThisProcess = new Set<number>();
+
+/** Queues a member never researched, at most one database call per member per process. */
+export async function queueResearchOnActivation(
+  userId: number,
+  on: boolean = RESEARCH_ON_ACTIVATION,
+): Promise<boolean> {
+  if (!on || askedThisProcess.has(userId)) return false;
+  askedThisProcess.add(userId);
+  const result = await query(
+    `INSERT INTO registration_research (user_id)
+     SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = $1)
+     ON CONFLICT (user_id) DO NOTHING`,
+    [userId],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 interface Claimed {
   readonly userId: number;
   readonly name: string;
