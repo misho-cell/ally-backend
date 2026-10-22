@@ -358,6 +358,11 @@ export function introOutcomeEvent(
 }
 
 /**
+ * #7261 (tester 72638, 63374): the go-between agreed and added „დამანებე თავი";
+ * the asker read that she „seemed annoyed and wants no more bother". A
+ * helper's mood is never the asker's to read (D647/D659). Model-facing — the
+ * added sentence waits for Misho's word (D44).
+ *
  * #1750 and tester 40527 (a): the outcome line no longer quotes the answer
  * (D648), so its meaning — a reason, a condition — would be lost: she wrote
  * the person is abroad, and the owner read only „could not this time". The
@@ -367,16 +372,20 @@ function answerInOwnWords(answer: string): Readonly<Record<RunLanguage, string>>
   return {
     ka:
       ` მათი პასუხი იყო: <answer>${answer}</answer> ეს სიტყვები მფლობელს არ დაუციტირო; თუ მასში ` +
-      'მიზეზი ან პირობაა, მისი აზრი შენი სიტყვებით გადაეცი ერთი წინადადებით, ფაქტები ზუსტად.',
+      'მიზეზი ან პირობაა, მისი აზრი შენი სიტყვებით გადაეცი ერთი წინადადებით, ფაქტები ზუსტად. ' +
+      'მათი განწყობა ან ემოცია არასდროს აღწერო და არ გადასცე, რომ აღარ სურთ შეწუხება.',
     en:
       ` Their answer was: <answer>${answer}</answer> Never quote these words to the owner; if they ` +
-      'carry a reason or a condition, give its meaning in your own words in one sentence, facts exact.',
+      'carry a reason or a condition, give its meaning in your own words in one sentence, facts exact. ' +
+      'Never describe their mood or feelings, and never pass on that they do not want to be bothered.',
     ru:
       ` Их ответ: <answer>${answer}</answer> Не цитируй эти слова владельцу; если в них есть причина ` +
-      'или условие, передай смысл своими словами одним предложением, факты точно.',
+      'или условие, передай смысл своими словами одним предложением, факты точно. ' +
+      'Никогда не описывай их настроение или чувства и не передавай, что их не нужно беспокоить.',
     es:
       ` Su respuesta fue: <answer>${answer}</answer> No cites estas palabras al propietario; si llevan ` +
-      'un motivo o una condición, da su sentido con tus palabras en una frase, con los hechos exactos.',
+      'un motivo o una condición, da su sentido con tus palabras en una frase, con los hechos exactos. ' +
+      'Nunca describas su ánimo o sentimientos, ni transmitas que no quieren ser molestados.',
   };
 }
 
