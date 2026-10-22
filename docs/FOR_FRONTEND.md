@@ -15,6 +15,51 @@ messages in their name.
 
 ---
 
+## 22 October, 09:45Z — Misho: every open app task on the board, in one place
+
+Misho asked me to send you all the board rows that are app work. None of them needs a new server route; where the server is involved, it is said.
+Each row's full text, with Giorgi's notes and the tester's FAIL lines, is on the board under its number.
+- **No new member-facing words without Giorgi's OK (D582).** Where a row needs a new line, ask for it.
+- **The order of the board's priority**, priority 1 first.
+
+1. **#6931 (P1) — case chat on a phone: a swipe moves the whole page.**
+   - In the case chat, a vertical swipe must scroll only the messages. The header and the input bar stay fixed: no whole-page scroll, no rubber-band bounce.
+   - Likely fix: a fixed full-height layout, `overflow: hidden` on html/body, `overscroll-behavior: contain` on the message list.
+   - Done when: on an iPhone, 10 swipes up and down in a long case chat all scroll the chat, and the header and input never move.
+2. **#6700 (P1) — registration: ask to allow notifications.**
+   - Add one step right after the contacts upload: the system permission prompt, with one short line saying why. The user can skip it.
+   - The line needs Giorgi's OK.
+   - Done when: on iPhone, Android and web, a new user sees the step after contacts, and allowing it turns notifications on.
+   - Giorgi retested on 21 Oct: not working.
+3. **#6701 (P1) — Profile: unfinished setup steps at the top.**
+   - Above the „პროფილი" title, show whichever of steps 1–3 are not done yet: (1) contacts imported, (2) notifications on, (3) app added to the home screen.
+   - A finished step leaves the top and stays only in „მოწყობილობის დაყენება", marked done. Steps 4–5 stay only there.
+   - Giorgi retested on 21 Oct: not working.
+4. **#7063 (P1) — „ბოლო სიახლეები" on home shows 4–5 rows by default.**
+   - When the content is longer, show „მეტი". It expands the block and can collapse it back. When the content fits, there is no „მეტი".
+5. **#6901 (P2) — „ბოლო სიახლეები" on home is not clickable.**
+   - No link, arrow or „ყველა" to /updates. The latest items still show on home.
+   - Done when: on phone and desktop, tapping the title or the block opens nothing.
+6. **#6369 (P2) — /updates is not strictly newest first.**
+   - The server list for an account is newest first, and the tester confirmed it.
+   - The page still runs „… 19 სექ, 18 სექ, 18 სექ, 19 სექ …" in the middle. Sort by the item's own timestamp on the client, strictly descending.
+7. **#6536 (P2) — home on a phone: the whole message bar sits at the bottom of the SCREEN.**
+   - The „+", microphone and send buttons sit in one row under the field. The tester's earlier PASS only checked the field; Giorgi means the bar on the screen.
+8. **#5054 (P2) — phone status bar colour.**
+   - The top strip must match each screen: light green on home, the chat header's dark green on a chat page.
+   - Fix it in the native app (status bar style or colour per screen), not only in the web `theme-color`.
+   - Giorgi retested on 20 Oct: still wrong on mobile.
+9. **#374 (P1, big; the app part) — four ways a new person reaches Netai (founder D836).**
+   - (1) „Refresh my contacts": re-upload the phonebook. This is already your „კონტაქტების განახლება"; the server adds only what is new.
+   - (2) Share one contact into Netai from the phone's own contact page (Android share menu; say plainly where an iPhone cannot).
+   - (3) Add a person inside Netai: name and number typed, a QR code, or a photo of a business card.
+   - (4) What is added inside Netai is offered back to the phone's phonebook as a one-tap „save to phone" contact card.
+   - Tell me which of (2)–(3) you start with. I will give you the route for adding one contact before you need it.
+
+Where these stand: all nine wait on you. The deploy hold (Misho, 21 Oct) is on the server only; the app ships as you and Misho decide.
+
+---
+
 ## 21 October, 13:35Z — admin: one number field for the trial's tokens (Misho asked for it)
 
 Misho wants to change how many tokens a free trial carries from the admin panel, without a deploy.
