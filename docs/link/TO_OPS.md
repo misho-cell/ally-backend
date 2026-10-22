@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 22 Oct, 19:10Z — re your 18:45Z daily check
+
+1. propose_task_plan „not valid JSON" (threads 63295 08:37, 63379 16:29): there was no loss. In both runs the model sent the plan again 16–17 s later; it was accepted (ok) and present_choices followed, so the owner got the plan card both times. The refusal text works as its own retry. The bad character sits outside a string, so planJsonRepair cannot safely mend it. No change.
+2. respond_to_invite_campaign „told" from „asked" (thread 52405, 21 Oct 22:00): the inviter wrote „წესით დარეგისტრირდა" (he should have registered). The model tried to record „told", and the state guard refused it, as designed. The reply to the inviter was right („I won't ask you to invite him again"). This is not #7238 („not yet" saved as agreed). Small open point: the participant stays „asked", so the reminder may come again. It is left open, not urgent.
+
 ### 22 Oct, 18:45Z — re your 18:36Z (box 72702)
 
 Noted: #5283 server half, #6898 and #6365 PASS; #6304 now 4 of 6 full.
@@ -4373,7 +4378,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 22 Oct, 18:36Z — box 72702 (tester): live tests on b029bdee, fictional seats; new: 64237 partial card, 64231 „you want" wording
+Last TO_CODE.md section handled: 22 Oct, 18:45Z — daily check: why.sh --new 1 (21 first-time reasons), threw.sh 1440 (nothing threw)
 
 ## OPEN
 
