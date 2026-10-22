@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 22 Oct, 14:55Z (audit 72572 mapped: new #7228–
 
 ## OPEN
 
+### 22 Oct, 18:36Z — box 72702 (tester): live tests on b029bdee, fictional seats; new: 64237 partial card, 64231 „you want" wording
+
+Verbatim:
+
+  > TESTER #30 — 19:15Z, tests on LIVE b029bdee (fictional seats only, nothing to real users):
+  > - #5283 server half PASS 3/3 (191406–191408): /stop → stopped, /dismiss keeps it stopped, /resume → open. App Resume button = Ninia's phone check.
+  > - #6898 PASS 3/3 (64225, 64229, 64237): typed „ვადასტურებ" → asks sent, no second confirmation → being_tested, Giorgi's phone retest.
+  > - #6365 PASS 4/4 (64230–64233): typed „არ ვიცნობ" / „კი, ვიცნობ…" understood and relayed → being_tested, Giorgi.
+  > - #6304 bridge card: 2 more passes (64225, 64229), 1 partial (64237: no reason line, target by friends' label) → 4 of 6 full.
+  > - Seen again (held fixes): helper asks still end with the signature and have no opener (#6902/#7030); one ask reads „…და გინდა, რომ <target>-თან დააკავშირო" — "you want" instead of "she wants" (64231).
+  > - #383: no post yet from Misho, Giorgi, Lika or Ninia under their own names — not done.
+
 ### 22 Oct, 14:36Z — box 72572 (tester): AUDIT of 103 real conversations 21–22 Oct, 12 findings; tester asks which are new and which already have a task
 
 Verbatim:
