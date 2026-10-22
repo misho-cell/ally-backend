@@ -469,6 +469,7 @@ import {
   claimsAnAskWasSent,
   claimsASendNow,
   NOTHING_SENT_YET_NUDGE,
+  ASK_REFUSED_THIS_RUN_NUDGE,
   helperAskedAQuestion,
   HELPER_QUESTION_NUDGE,
   PASSED_ON_NUDGE,
@@ -8404,6 +8405,12 @@ export function withoutInvisibleCharacters(text: string): string {
 const runAnswerSent = new Set<string>();
 /** #2115: runs that sent a question to someone (ask_contact said sent). */
 const runAskSent = new Set<string>();
+/**
+ * #7229 (the tester's audit: 63406, 63823, 63413): every ask a run tried was
+ * refused, and the reply still said „I wrote to X". The goal had sent to other
+ * people before, so goalSentNothing did not catch it.
+ */
+const runAskRefused = new Set<string>();
 /** Who this run's sent questions went to, as the owner saved them. */
 const runAskSentTo = new Map<string, string[]>();
 /**
@@ -9801,6 +9808,7 @@ function clearRunState(runId: string): void {
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
   runAskSent.delete(runId);
+  runAskRefused.delete(runId);
   runAskSentTo.delete(runId);
   runRouteClosed.delete(runId);
   runRelaySent.delete(runId);
@@ -10807,6 +10815,7 @@ async function executeToolCall(
         undefined,
         authored,
       );
+      if ((askOutcome as { sent?: unknown }).sent !== true && runId) runAskRefused.add(runId);
       if ((askOutcome as { sent?: unknown }).sent === true) {
         if (runId) runAskSent.add(runId);
         await markSearchSent(runId, userId, [input['phone']], threadId);
@@ -15072,6 +15081,16 @@ async function runToolLoop(
     runModes.get(runId) !== 'incoming_ask' &&
     (claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText)) &&
     (await goalSentNothing(threadId));
+  // #7229: a send claimed in a run whose every ask was refused — the goal may have sent before.
+  const claimedARefusedAsk =
+    !claimedAnAskNobodyGot &&
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    runModes.get(runId) !== 'incoming_ask' &&
+    runAskRefused.has(runId) &&
+    !runAskSent.has(runId) &&
+    claimsAnAskWasSent(finalText);
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
@@ -15230,38 +15249,41 @@ async function runToolLoop(
       ? lateFileNudge(framedEvents(lateFileEvents), true)
       : claimedAnAskNobodyGot
         ? NOTHING_SENT_YET_NUDGE
-        : claimedASendThatDidNotHappen
-          ? PASSED_ON_NUDGE
-          : helperQuestionUnsent
-            ? HELPER_QUESTION_NUDGE
-            : instructionUnsent
-              ? INSTRUCTION_UNSENT_NUDGE
-              : answeredWithoutSearching
-                ? SEARCH_FIRST_NUDGE
-                : // The tester's 1150 (38316): a promise and the owner's members together —
-                  // the members note leads to the plan with them, which keeps the promise too.
-                  membersSkipped
-                  ? MEMBERS_SKIPPED_NUDGE
-                  : bookMembersSkipped.length > 0
-                    ? membersInTheBookNudge(bookMembersSkipped)
-                    : promisedWithoutActing
-                      ? promiseGap === PromiseGap.Goal
-                        ? PROMISED_ACTION_NO_GOAL_NUDGE
-                        : PROMISED_ACTION_NUDGE
-                      : farFindUnplanned
-                        ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
-                        : rowsMissing.length > 0
-                          ? listRowsNudge(rowsMissing)
-                          : findsHeldBack
-                            ? FINDS_FIRST_NUDGE
-                            : foreignWord !== null
-                              ? foreignWordNudge(foreignWord)
-                              : CLIFFHANGER_NUDGE;
+        : claimedARefusedAsk
+          ? ASK_REFUSED_THIS_RUN_NUDGE
+          : claimedASendThatDidNotHappen
+            ? PASSED_ON_NUDGE
+            : helperQuestionUnsent
+              ? HELPER_QUESTION_NUDGE
+              : instructionUnsent
+                ? INSTRUCTION_UNSENT_NUDGE
+                : answeredWithoutSearching
+                  ? SEARCH_FIRST_NUDGE
+                  : // The tester's 1150 (38316): a promise and the owner's members together —
+                    // the members note leads to the plan with them, which keeps the promise too.
+                    membersSkipped
+                    ? MEMBERS_SKIPPED_NUDGE
+                    : bookMembersSkipped.length > 0
+                      ? membersInTheBookNudge(bookMembersSkipped)
+                      : promisedWithoutActing
+                        ? promiseGap === PromiseGap.Goal
+                          ? PROMISED_ACTION_NO_GOAL_NUDGE
+                          : PROMISED_ACTION_NUDGE
+                        : farFindUnplanned
+                          ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
+                          : rowsMissing.length > 0
+                            ? listRowsNudge(rowsMissing)
+                            : findsHeldBack
+                              ? FINDS_FIRST_NUDGE
+                              : foreignWord !== null
+                                ? foreignWordNudge(foreignWord)
+                                : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
     (lateFileEvents.length > 0 ||
       claimedAnAskNobodyGot ||
+      claimedARefusedAsk ||
       claimedASendThatDidNotHappen ||
       helperQuestionUnsent ||
       instructionUnsent ||
@@ -15637,6 +15659,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   SEARCH_FIRST_NUDGE,
   MEMBERS_SKIPPED_NUDGE,
   FINDS_FIRST_NUDGE,
+  ASK_REFUSED_THIS_RUN_NUDGE,
 ]);
 
 /** A model-only note: one of the fixed ones, or the members note that names people. */
