@@ -18021,7 +18021,15 @@ export async function processChat(
     !ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)
       ? // A blocked reply's plan text clears the run's plan, so the goal may not have been read early.
         await (openTaskForPlanAgain ?? getOpenTaskByThread(threadId))
-          .then((task) => withPlanDecisionAgain(cleanedFinal, choices, task, language))
+          .then((task) =>
+            withPlanDecisionAgain(
+              cleanedFinal,
+              choices,
+              task,
+              language,
+              asksToEndSomething(userMessage),
+            ),
+          )
           .catch((err: unknown) => {
             // eslint-disable-next-line no-console
             console.error('[plan-again] goal not read:', (err as Error).message);

@@ -45,6 +45,15 @@ describe('a plan that still waits for the owner', () => {
     expect(chat).toContain(
       '!ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)',
     );
-    expect(chat).toContain('withPlanDecisionAgain(cleanedFinal, choices, task, language)');
+    expect(chat).toMatch(
+      /withPlanDecisionAgain\(\s*cleanedFinal,\s*choices,\s*task,\s*language,\s*asksToEndSomething\(userMessage\),\s*\)/,
+    );
+  });
+
+  /** #7236 (the tester's audit, 63403): „შეწყვიტე" was answered „შევწყვიტე. … დავიწყო?". */
+  it('does not ask again when the owner’s own line asked to stop', () => {
+    expect(
+      withPlanDecisionAgain('შევწყვიტე. ამ საქმეზე აღარავის მივწერ.', [], WAITING, 'ka', true),
+    ).toBeNull();
   });
 });
