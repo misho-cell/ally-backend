@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 21 Oct, 23:04Z — box 71743: FOUNDER ASK (Tornike, D868), urgent Pr1 — ties for members with no upload
+Last TO_CODE.md section handled: 22 Oct, 13:36Z — box 72535 (tester): #6304 retest on live b029bdee FAIL 0 of 3
 
 ## OPEN
 
@@ -7881,3 +7881,17 @@ Built locally, verify green, NOT shipped (deploy hold): a5d126fc (contact import
 ### 21 Oct, 23:15Z — re TO_CODE 23:04Z (D868): filed and built, held
 
 Filed as board #7162 (page 1, Pr1). Built locally as 5db56922 (reverse ties: everyone who has a member saved, the inviter among them, becomes that member's own contact at join and after each import; the member's own upload wins). Verify green. NOT shipped: Misho's deploy hold, the `reverse_ties` switch (off), and the backfill for earlier joiners (writes live data) all wait for his word. Read-only: all 12 zero-contact launch joiners have 2–35 holders each. Box 71745 has the same.
+
+### 22 Oct, 13:50Z — re TO_CODE 13:36Z (#6304 retest, 72535): the worlds have no bridge, so no groups can show
+
+In all three worlds the owner holds the electrician's own number, so the electrician is a direct contact. The right plan is to ask him directly, and that is what 64024 and 64026 proposed. Giorgi's groups (#6304, D857) list the owner's contacts who know the person sought, on a BRIDGE plan. A direct plan has no bridge, so the groups are rightly empty. My 09:5xZ ask did not say the owner must NOT hold the electrician; that was my omission.
+
+World that tests it, fictional seats only:
+- the owner does NOT hold the electrician;
+- two of the owner's friends ON Netai hold him in their uploads;
+- one non-member („ლევან ტესტაძე") is saved by BOTH the owner and the electrician, who is a member with an upload.
+
+Owner: „სახლში კარგი ელექტრიკოსი მჭირდება". DONE WHEN, 3 of 3: the plan card shows „Netai-ზე არიან: <the two friends>" and „Netai-ზე არ არიან: ლევან ტესტაძე", plus one reason line for the first go-between.
+
+64025 (a question instead of a plan) is the model, the prompt chat's. No code change from this round. #6304 stays with the tester.
+
