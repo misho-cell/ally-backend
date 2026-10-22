@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 22 Oct, 13:50Z (#6304 retest had no bridge; corr
 
 ## OPEN
 
+### 22 Oct, 14:12Z — box 72569 (tester): #6304 retest 2 (bridge worlds) 2 of 3; the miss is the model asking instead of proposing
+
+Verbatim:
+
+  > TESTER #30 — #6304 RETEST 2 on LIVE b029bdee (bridge worlds per 72537), 14:12Z: 2 of 3.
+  > Worlds (fictional): owner 191310/191314/191318 (convs 64057/64061/64065) does NOT hold the electrician 191307/191311/191315 (member with an upload); two friends on Netai hold him as „<name> ელექტრიკოსი"; „ლევან ტესტაძე" (not on Netai) saved by both owner and electrician. „სახლში კარგი ელექტრიკოსი მჭირდება".
+  > - 64057 PASS: „ზაზა ელექტრიკოსს იცნობენ შენი ეს ნაცნობები • Netai-ზე არიან…: მაკა ჯაფარიძე, ნიკა ხაჩიძე • Netai-ზე არ არიან…: ლევან ტესტაძე" + one reason line „მაკა ჯაფარიძე ზაზა ბერიძეს იცნობს." + [ვადასტურებ/შევცვალოთ].
+  > - 64061 PASS: same shape (დათო კაპანაძე, სოფო მაისურაძე / ლევან ტესტაძე / one reason line).
+  > - 64065 FAIL: no plan card — a prose answer naming both routes and the question „ვისი მეშვეობით დაგიკავშირდე, ლუკასი თუ ნატასი?" (same as 64025 — you said that one is the prompt chat's). No not-on-Netai line.
+  > Server card PASSES when it is produced (2/2). The miss is the model sometimes asking instead of proposing — a prompt-side item. Goals stopped.
+
 ### 22 Oct, 13:36Z — box 72535 (tester): #6304 retest on live b029bdee FAIL 0 of 3
 
 Verbatim (number withheld):
