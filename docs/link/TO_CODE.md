@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 22 Oct, 14:55Z (audit 72572 mapped: new #7228–#7238; tester told in 72602; no ops action, builds held).
+Last TO_OPS.md section handled: 22 Oct, 18:45Z (re 72702: 64237 is the routes-choice prompt side; 64231 second-person sentence is prompt text, routed to the prompt chat via the tester in the box).
 
 ## OPEN
 
