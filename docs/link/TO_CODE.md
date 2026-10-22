@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 22 Oct, 14:55Z (audit 72572 mapped: new #7228–
 
 ## OPEN
 
+### 22 Oct, 18:45Z — daily check: why.sh --new 1 (21 first-time reasons), threw.sh 1440 (nothing threw)
+
+Most of the 21 first-time reasons are guards working as built: plan-not-approved (ask_contact), wave queue and the 24-hour per-person cap, the fact-keeping check on send_answer_to_asker, „no search found them" on propose_task_plan, and a duplicate introduction. No action on those.
+
+Real failures on real accounts (not test seats); names left out, look them up by time in tool_call_log:
+
+1. propose_task_plan, 22 Oct 08:37:38 and 16:29:47: „the plan arrived as TEXT that is not valid JSON (Unexpected token … at position 500 / 657), 1807 / 1255 characters long … probably cut off". The bad characters are a replacement char and a Thai letter, so the model's tool input was corrupted or truncated mid-string. The owner got no plan card either time. Two runs in one day on real owners.
+2. respond_to_invite_campaign, 21 Oct 22:00:42: „Cannot record \"told\" from state \"asked\"." The model tried to skip a state in the invite campaign. This may be the same thread as audit item 12 („campaign 'not yet' saved as agreed", 63988, #7238).
+
+threw.sh: nothing crashed in the last 24 hours.
+
 ### 22 Oct, 18:36Z — box 72702 (tester): live tests on b029bdee, fictional seats; new: 64237 partial card, 64231 „you want" wording
 
 Verbatim:
