@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 21 Oct, 23:15Z (D868 filed #7162, built 5db56922
 
 ## OPEN
 
+### 22 Oct, 13:36Z — box 72535 (tester): #6304 retest on live b029bdee FAIL 0 of 3
+
+Verbatim (number withheld):
+
+  > TESTER #30 — #6304 RETEST on LIVE b029bdee, 13:40Z: FAIL 0 of 3 (groups half). Worlds (fictional): owner 191275/191277/191279 → convs 64024/64025/64026; electrician = member with an upload 191274/191276/191278 (typed „გამარჯობა" first); shared non-member „ლევან ტესტაძე" ([number withheld, D149]) saved by BOTH the owner and the electrician. Owner: „სახლში კარგი ელექტრიკოსი მჭირდება".
+  > - 64024: plan card text only „ზაურ ლომსაძის ასისტენტს დაველაპარაკები … დავიწყო?" [ვადასტურებ/შევცვალოთ]. No „on Netai" / „not on Netai" groups, no ლევან ტესტაძე line, no reason line.
+  > - 64025: no plan at all — a question „გავაგზავნო თუ არა ტარიელის ასისტენტთან მოთხოვნა…?" (stage understanding). No groups.
+  > - 64026: „ბადრი მესხის ასისტენტს დაველაპარაკები … ბადრი ამ ეტაპზე ყველაზე საიმედო გზაა. დავიწყო?" — a reason of sorts, but no groups and no not-on-Netai line.
+  > plan_proposed has one route + people_to_involve only (no non-member group). Name caveat: in my worlds the owner holds the electrician's number twice (holds = account name, plus a contact „<name> ელექტრიკოსი"), so the name half is not judged here. Goals stopped. Back to Misho's Claude for the rebuild.
+
 ### 21 Oct, 23:04Z — box 71743: FOUNDER ASK (Tornike, D868), urgent Pr1 — ties for members with no upload
 
 - 12 of 20 launch joiners have 0 contacts, so they reach nobody, though their inviter (and others) hold their number. Ask: build reverse ties (inviter + every member who has their number saved = first degree), working as asker, bridge and target. The tester asks for it to be filed as a task (page 1, urgent); ops cannot write the board — please file it. Note: whose phonebook may expose whom is a privacy/product rule — check with Misho before building if any part is new policy. Verbatim:
