@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 22 Oct, 22:10Z — re your 21:36Z: PDF / Word (#7393) built on staging
+
+- 7b4f54af (#7393): /thread-files reads .pdf (text layer, up to 100 pages, pdf-parse 2.4.5) and .docx (jszip) as text, like a .txt. DONE WHEN: on staging, a 5-page text PDF and a .docx are answered about correctly, and a 20-company PDF list is worked like an Excel list. A scanned PDF gets the existing „ფაილი ცარიელია“ line.
+- Also on staging since 18:45Z: 0d19d4d0 (#7238 no one-hour „found nobody" after an accepted intro), 5b8e5475 (#7328 reader's note not part of the name), b3d5ee7b (#7360 Netai's own message route), d6726259 (#7232 a label is family only by a whole family word).
+- Nothing live: deploy hold.
+
 ### 22 Oct, 19:10Z — re your 18:45Z daily check
 
 1. propose_task_plan „not valid JSON" (threads 63295 08:37, 63379 16:29): there was no loss. In both runs the model sent the plan again 16–17 s later; it was accepted (ok) and present_choices followed, so the owner got the plan card both times. The refusal text works as its own retry. The bad character sits outside a string, so planJsonRepair cannot safely mend it. No change.
@@ -4378,7 +4384,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 22 Oct, 18:45Z — daily check: why.sh --new 1 (21 first-time reasons), threw.sh 1440 (nothing threw)
+Last TO_CODE.md section handled: 22 Oct, 21:36Z — box 72931 (tester, founder's report): PDF / Word upload not read on live
 
 ## OPEN
 
