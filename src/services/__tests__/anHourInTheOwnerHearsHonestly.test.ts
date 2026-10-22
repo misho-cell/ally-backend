@@ -23,6 +23,11 @@ describe('the one-hour honest update', () => {
     expect(query).toContain("a.status = 'answered'");
   });
 
+  it('leaves a goal whose introduction a go-between already accepted (#7238, 63229)', () => {
+    expect(query).toContain('FROM introduction_requests ir');
+    expect(query).toContain("ir.requester_task_id = t.id AND ir.status = 'accepted'");
+  });
+
   it('leaves a goal whose plan or question waits on the owner', () => {
     // #6339: a new proposal waiting under an approved plan waits on the owner too.
     expect(query).toContain('AND t.plan_proposed IS NULL');
