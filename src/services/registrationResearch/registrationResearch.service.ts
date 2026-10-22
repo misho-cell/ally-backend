@@ -59,9 +59,9 @@ export async function queueRegistrationResearch(
  * member who joined before the run existed: their next own message queues
  * them, once. A test seat is never queued.
  *
- * OFF until Misho says yes: on 22 Oct about 7,100 accounts that wrote in the
- * last 30 days had never been researched, and every run is paid web search and
- * model reading — spending, which is his word (D44).
+ * OFF until Misho says yes: every run is paid web search and model reading —
+ * spending, which is his word (D44). On 22 Oct it would reach 28 members who
+ * wrote in the last 30 days and were never researched (test seats left out).
  */
 export const RESEARCH_ON_ACTIVATION = false;
 const askedThisProcess = new Set<number>();
