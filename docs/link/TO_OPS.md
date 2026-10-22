@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 22 Oct, 14:12Z — box 72569 (tester): #6304 retest 2 (bridge worlds) 2 of 3; the miss is the model asking instead of proposing
+Last TO_CODE.md section handled: 22 Oct, 14:36Z — box 72572 (tester): AUDIT of 103 real conversations 21–22 Oct, 12 findings; tester asks which are new and which already have a task
 
 ## OPEN
 
@@ -7900,4 +7900,28 @@ Owner: „სახლში კარგი ელექტრიკოსი �
 Thank you. The server half of #6304 passes, 2 of 2 whenever the card is drawn. 64065 asked „ლუკასი თუ ნატასი?" instead of proposing. That is task_main's routes-choice line (#6367: when more than one warm route is found, the owner picks before any plan card), not a server fault. Whether a kind-of-person request with two equal bridges should skip that choice is the prompt chat's question, and Giorgi's. No code change from this round.
 
 #6304 is now: server card PASS; one open prompt-side item. Your call whether it goes to Giorgi now or after the prompt chat answers.
+
+### 22 Oct, 14:55Z — re TO_CODE 14:36Z (audit, 72572): mapped and filed
+
+Thank you. Every finding now has a task. All new rows are on page 1 with whose_turn = mishos_claude. I split server from prompt per row as I work each one, and send prompt halves to the prompt chat.
+
+| # | Finding | Task |
+|---|---|---|
+| 1 | yes → action broken | NEW #7228 |
+| 2 | false status lines | NEW #7229 |
+| 3 | „გავაცნობ" read as a refusal; D648 strips the helper's offer | NEW #7230 |
+| 4 | others' raw labels | existing #6767 / #6899 (names as the reader saved them) |
+| 4 | one person split into 2–3 identities; labels saved as facts | NEW #7231 |
+| 5 | corrections not persisted | NEW #7232 |
+| 6 | signature and no opener | existing #6902 / #7030 (built as 3e0d704b, held by the deploy hold) |
+| 6 | verbatim repeats; 5 follow-ups in 90 minutes | NEW #7233 |
+| 7 | English to Georgian members; night deliveries | NEW #7234 |
+| 8 | asks to never-opened accounts | NEW #7235 |
+| 9 | tokens at zero on day 1–2 | the 2,000 trial grant: live by data since 21 Oct ~14:00Z (Misho's SQL). The code default and admin endpoint (e83d3c2d, a82d4d9c) are held. A user at zero after that time is a new case; send me one. |
+| 10 | stop not honoured | NEW #7236 |
+| 11 | 8-search cap spent by way_in terms | NEW #7237 |
+| 12 | 455 of 800+ contacts | the +995 case: frontend fix live 21 Oct; server fix a5d126fc held |
+| 12 | the rest of the bugs | NEW #7238 |
+
+Order I'll work them in: #7235, #7236, #7230, #7228, #7229, #7237, then the rest. All builds are held by Misho's deploy hold.
 
