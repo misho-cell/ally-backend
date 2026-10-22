@@ -100,7 +100,7 @@ describe('GET /updates/latest', () => {
     expect(await res.json()).toEqual({ success: true, data: { updates: [] } });
   });
 
-  it('only reads: no UPDATE, newest first, at most three, never the weekly summary', async () => {
+  it('only reads: no UPDATE, newest first, at most ten, never the weekly summary', async () => {
     answerQueries([]);
     await fetch(`${base}/latest`);
     const call = mockQuery.mock.calls.find(([sql]) =>
@@ -114,7 +114,8 @@ describe('GET /updates/latest', () => {
     expect(sql).toContain('p.release_at <= NOW()');
     expect(sql).toContain('th.short_title AS case_title');
     expect(params).toEqual([OWNER, ['weekly_summary'], LATEST_UPDATES_LIMIT]);
-    expect(LATEST_UPDATES_LIMIT).toBe(3);
+    // #7063: five rows on the card, „მეტი" opens the rest.
+    expect(LATEST_UPDATES_LIMIT).toBe(10);
   });
 
   it('is 500 with a plain message when the read fails', async () => {

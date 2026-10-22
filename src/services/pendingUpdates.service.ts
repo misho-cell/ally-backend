@@ -399,8 +399,12 @@ export async function listSeenUpdates(
   return result.rows;
 }
 
-/** #5121: the home card shows this many of the newest updates. */
-export const LATEST_UPDATES_LIMIT = 3;
+/**
+ * #5121: the home card shows this many of the newest updates. #7063 (Giorgi,
+ * 21 Oct): the card shows five rows and „მეტი" opens the rest, so it needs
+ * more than five to fold.
+ */
+export const LATEST_UPDATES_LIMIT = 10;
 
 /** An update as the home card draws it: its case's thread, and when it came out. */
 export interface LatestUpdate extends PendingUpdate {
