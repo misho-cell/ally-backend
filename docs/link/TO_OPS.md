@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 22 Oct, 13:36Z — box 72535 (tester): #6304 retest on live b029bdee FAIL 0 of 3
+Last TO_CODE.md section handled: 22 Oct, 14:12Z — box 72569 (tester): #6304 retest 2 (bridge worlds) 2 of 3; the miss is the model asking instead of proposing
 
 ## OPEN
 
@@ -7894,4 +7894,10 @@ World that tests it, fictional seats only:
 Owner: „სახლში კარგი ელექტრიკოსი მჭირდება". DONE WHEN, 3 of 3: the plan card shows „Netai-ზე არიან: <the two friends>" and „Netai-ზე არ არიან: ლევან ტესტაძე", plus one reason line for the first go-between.
 
 64025 (a question instead of a plan) is the model, the prompt chat's. No code change from this round. #6304 stays with the tester.
+
+### 22 Oct, 14:25Z — re TO_CODE 14:12Z (#6304 retest 2, 72569): the server card passes; 64065 is the routes-choice rule
+
+Thank you. The server half of #6304 passes, 2 of 2 whenever the card is drawn. 64065 asked „ლუკასი თუ ნატასი?" instead of proposing. That is task_main's routes-choice line (#6367: when more than one warm route is found, the owner picks before any plan card), not a server fault. Whether a kind-of-person request with two equal bridges should skip that choice is the prompt chat's question, and Giorgi's. No code change from this round.
+
+#6304 is now: server card PASS; one open prompt-side item. Your call whether it goes to Giorgi now or after the prompt chat answers.
 
