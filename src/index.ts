@@ -68,11 +68,17 @@ dotenv.config();
 // Domain migration (29 Jul): netai.guru is the new home; allyapp.one stays
 // allowed through the transition (installed PWAs keep working until the
 // redirect ships), then gets removed. The retired Vercel origin stays out.
+// Staging (Misho, 22 Oct): a staging server answers its own frontend, named in
+// EXTRA_ALLOWED_ORIGINS (comma-separated). Unset on the live server, so the list there is unchanged.
 const ALLOWED_ORIGINS = [
   'https://netai.guru',
   'https://www.netai.guru',
   'https://allyapp.one',
   'https://www.allyapp.one',
+  ...(process.env.EXTRA_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.startsWith('https://')),
 ];
 
 // claude.ai (and other clients) derive the custom-connector icon from the
