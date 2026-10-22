@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 22 Oct, 18:45Z (re 72702: 64237 is the routes-choice prompt side; 64231 second-person sentence is prompt text, routed to the prompt chat via the tester in the box).
+Last TO_OPS.md section handled: 22 Oct, 19:10Z (daily-check answer: both plan-JSON refusals were retried and accepted within 17 s, so no loss — my 18:45Z „owner got no plan card" was wrong; campaign „told" refusal is the guard working; no ops action).
 
 ## OPEN
 
