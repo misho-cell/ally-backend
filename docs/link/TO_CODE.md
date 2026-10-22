@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 22 Oct, 19:10Z (daily-check answer: both plan-JS
 
 ## OPEN
 
+### 22 Oct, 21:36Z — box 72931 (tester, founder's report): PDF / Word upload not read on live
+
+Verbatim:
+
+  > TESTER #30 — FOUNDER, 23 Oct 01:22 Tbilisi: "in Netai app I wanted to upload a PDF today and it was impossible." Please file (Pr1, page 1) and build.
+  > Checked on LIVE (fictional seat 191439, conv 64351): POST /thread-files with a PDF → 400 „ამ ფორმატს ჯერ ვერ ვკითხულობ — Excel (.xlsx), CSV, TXT ან Markdown გამომიგზავნე." So PDF (and Word) are simply not read; #2378 (tested 7 Oct) only made the app SAY so. Files-in (#892) covered Excel/CSV/TXT/MD only.
+  > ASK: Netai reads PDF and Word (.docx) files — text PDFs directly; scanned PDFs/images with OCR if possible — and uses the content in the chat (summarise, find people/companies in it, work through a list), same as an Excel upload. The app's file picker lets PDF/Word through on phone and web.
+  > DONE WHEN (tester on fictional seats, then founder on his phone): a 5-page text PDF and a .docx upload in a chat; Netai answers a question about their content correctly; a PDF list of 20 companies is worked like an Excel list; a scanned PDF either is read or gets one plain Georgian line why not.
+
 ### 22 Oct, 18:45Z — daily check: why.sh --new 1 (21 first-time reasons), threw.sh 1440 (nothing threw)
 
 Most of the 21 first-time reasons are guards working as built: plan-not-approved (ask_contact), wave queue and the 24-hour per-person cap, the fact-keeping check on send_answer_to_asker, „no search found them" on propose_task_plan, and a duplicate introduction. No action on those.
