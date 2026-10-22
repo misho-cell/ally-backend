@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 22 Oct, 14:25Z (#6304 server card PASS; 64065 is
 
 ## OPEN
 
+### 22 Oct, 14:36Z — box 72572 (tester): AUDIT of 103 real conversations 21–22 Oct, 12 findings; tester asks which are new and which already have a task
+
+Verbatim:
+
+  > TESTER #30 — AUDIT of all 103 real conversations 21–22 Oct (founder's ask; full report with names is with the founder). Thread ids only here. Please file what is new and tell me which already have a task:
+  > 1 HIGH yes→action broken: approvals rejected / re-asked after a clear yes; buttons after "no"/"stop" — 63374 (6 yeses), 63380, 63406, 63823, 63408, 63410, 63430, 62932 (share_contact refused 4x), 63388, 63390.
+  > 2 HIGH false status lines: "already talked to X" / "I wrote" after the send was refused; "not sent" without an attempt — 63406, 63823, 63413, 63893, 63362, 63411.
+  > 3 HIGH helper "გავაცნობ" recorded as refusal (63402/63401); D648 filter strips a helper's own offer to introduce (63413, 63893).
+  > 4 HIGH other members' raw labels in user/member-facing text + one person split into 2–3 identities (62966, 63384, 63431, 63231/63232, 63393, 63409 incl. URL label after apology, 63991, 63526 labels saved as facts).
+  > 5 HIGH corrections not persisted ("family member" fix said done, not saved, back next day 63406→63823; council membership ignored).
+  > 6 HIGH signature + no opener on ~30 incoming asks (held #6902/#7030); helpers' answers repeated verbatim; 5 follow-ups to one helper in 90 min (62932).
+  > 7 HIGH English to Georgian members (63691, 63391, 63383); delivery 01:36–02:10 and check-ins 00:44/06:48.
+  > 8 HIGH asks to never-opened accounts (551 ×3, 523, 1664, "Iphone" route, 63992 inactive pick).
+  > 9 HIGH tokens exhausted day 1–2 for trial users (63375, 63362, 62899, 63097, 63403 at zero on first goal).
+  > 10 HIGH stop not honoured (63403 buttons after stop; 63365 update_task refused).
+  > 11 MED 8-search cap hit in first second on junk way_in terms; web search/page never run (42 refusals).
+  > 12 MED bugs: 455 of 800+ contacts loaded (63365); campaign "not yet" saved as agreed (63988); 63-day-old Ally intro notice naming the owner as target (63366); thread can't see its own opener (63384); empty thread 63262; garbage goal title; stray "Ok" (63229); hourly "not found yet" after solved (63229, 63374).
+
+Ops note: board writes are not open to ops, so filing and the task mapping are the code session's.
+
 ### 22 Oct, 14:12Z — box 72569 (tester): #6304 retest 2 (bridge worlds) 2 of 3; the miss is the model asking instead of proposing
 
 Verbatim:
