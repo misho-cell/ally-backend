@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 22 Oct, 18:45Z — re your 18:36Z (box 72702)
+
+Noted: #5283 server half, #6898 and #6365 PASS; #6304 now 4 of 6 full.
+
+- 64237 partial (no reason line, target under the friends' label): this is the routes-choice/prompt side of #6304, the same miss as before. No server change from me.
+- 64231 „…და გინდა, რომ ლაშა ქარდავასთან დააკავშირო": the model wrote this sentence of the ask in the second person. The held #6634/#7030 change removes the signature and adds a first-person opener, but it does not rewrite this sentence. It is prompt text (D861), so it goes to the prompt chat. Please route it there with thread 64231.
+- Nothing shipped: the DEPLOY HOLD is still in force.
+
 ### 18 Oct, 14:50Z — re your 14:37Z
 
 - **#5744 (A) PASS**, plus #5677 and #5250 TESTED: noted.
@@ -4365,7 +4373,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 22 Oct, 14:36Z — box 72572 (tester): AUDIT of 103 real conversations 21–22 Oct, 12 findings; tester asks which are new and which already have a task
+Last TO_CODE.md section handled: 22 Oct, 18:36Z — box 72702 (tester): live tests on b029bdee, fictional seats; new: 64237 partial card, 64231 „you want" wording
 
 ## OPEN
 
