@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { getExcludedPhoneSet } from './block.service';
 import { normalizePhone } from './phone';
+import { typedOrAnswered } from './netaiMembership';
 
 /**
  * #960, the tester's 1145 (37787, 37895, 37878): the rule that asks a reply to
@@ -57,7 +58,7 @@ export async function ownersContactsOnNetai(
          JOIN "UserPhone" up ON up.phone = ua.phone
          JOIN "User" u ON u.id = up."userId"
         WHERE ua."contactId" = $1::int AND u.id <> $1::int AND u."deletedAt" IS NULL
-          AND (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+          AND (${typedOrAnswered('u')}
             OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
             OR u.subscription_status = ANY($2::text[]))
         ORDER BY u.id

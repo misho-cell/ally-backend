@@ -66,3 +66,20 @@ export function joinedNetai(alias: string): string {
 export function usedNetai(alias: string): string {
   return `EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${alias}.id)`;
 }
+
+/**
+ * #7235 (tester's audit, 22 Oct): asks went to 523 and 1664, who never typed a
+ * word into Netai. Each had threads, so each read as a member, but the threads
+ * were made FOR them: an incoming question opens one in the reader's account.
+ * A thread is not a sign they came. These are: they typed a message, or they
+ * answered a question put to them.
+ *
+ * For the readers that decide whose assistant can be asked. The population
+ * counts above keep their own rule.
+ */
+export function typedOrAnswered(alias: string): string {
+  return `(EXISTS (SELECT 1 FROM conversations c
+                    WHERE c.user_id = ${alias}.id AND c.role = 'user' AND c.kind = 'message')
+           OR EXISTS (SELECT 1 FROM task_asks a
+                       WHERE a.to_user_id = ${alias}.id AND a.answered_at IS NOT NULL))`;
+}
