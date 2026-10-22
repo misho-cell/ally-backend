@@ -54,6 +54,14 @@ import {
 } from '../../services/tokenWallet.service';
 import { randomUUID } from 'crypto';
 import {
+  MAX_NETAI_CHOICE_CHARS,
+  MAX_NETAI_CHOICES,
+  MAX_NETAI_MESSAGE_CHARS,
+  netaiMessagesTo,
+  netaiRecipient,
+  sendNetaiMessage,
+} from '../../services/netaiMessage.service';
+import {
   addGuests,
   DEFAULT_GUEST_DAYS,
   listGuests,
@@ -4311,6 +4319,92 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[user-tokens]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #7360 (founder's word D871 / D873): Netai's own message to one user, in the
+ * user's „Netai" conversation, with a push. The text goes exactly as written;
+ * up to four buttons; the user's reply comes back on the GET below.
+ *
+ *   POST /admin/users/:id/netai-messages { text, choices?: string[] }
+ *   201 { message_id, thread_id, new_thread, person, test_seat }
+ *   400 bad text or buttons · 404 no such (or a deleted) account
+ */
+adminRouter.post(
+  '/users/:id/netai-messages',
+  param('id').isInt({ min: 1 }),
+  body('text').isString().trim().isLength({ min: 1, max: MAX_NETAI_MESSAGE_CHARS }),
+  body('choices').optional().isArray({ max: MAX_NETAI_CHOICES }),
+  body('choices.*').isString().trim().isLength({ min: 1, max: MAX_NETAI_CHOICE_CHARS }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error:
+          `text must be 1-${MAX_NETAI_MESSAGE_CHARS} chars; choices at most ` +
+          `${MAX_NETAI_CHOICES} buttons of 1-${MAX_NETAI_CHOICE_CHARS} chars.`,
+      });
+      return;
+    }
+    const userId = Number(req.params.id);
+    const admin = String((req as AuthenticatedRequest).user.userId);
+    const { text, choices } = req.body as { text: string; choices?: string[] };
+    try {
+      const recipient = await netaiRecipient(userId);
+      if (recipient === null) {
+        res.status(404).json({ success: false, error: 'No such account, or it was deleted.' });
+        return;
+      }
+      const sent = await sendNetaiMessage({
+        userId,
+        text: text.trim(),
+        choices: (choices ?? []).map((c) => c.trim()),
+        sentBy: admin,
+      });
+      // Who and where, never the words: the text is on the admin GET.
+      // eslint-disable-next-line no-console
+      console.log(
+        `[netai-message] admin ${admin} sent ${sent.id} to ${userId} in thread ${sent.threadId}`,
+      );
+      res.status(201).json({
+        success: true,
+        data: {
+          message_id: sent.id,
+          thread_id: sent.threadId,
+          new_thread: sent.newThread,
+          person: recipient.name,
+          test_seat: recipient.testSeat,
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[netai-message] send failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ *   GET /admin/users/:id/netai-messages
+ *   200 [{ id, thread_id, body, choices, sent_by, sent_at, seen_at, reply, replied_at }]
+ */
+adminRouter.get(
+  '/users/:id/netai-messages',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be an account id.' });
+      return;
+    }
+    try {
+      const rows = await netaiMessagesTo(Number(req.params.id));
+      res.status(200).json({ success: true, data: rows });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[netai-message] list failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
