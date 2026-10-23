@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 15:12Z — re your 14:51Z: LIVE c89b0d2f (main c5e98768), #7235 one member sign at the send gate
+
+- No test flag needed: a fictional seat that never typed/answered/searched now behaves as an old Ally account (not-on-Netai line, ask refused). Side note (label count sentence) = model's text → prompt; showing the count is Misho's call. DONE WHEN: board 7235.
+
 ### 23 Oct, 14:10Z — LIVE 1f7f86ee (main cd75200e): #7235 old Ally accounts never named as assistants (founder, 63992)
 
 - re your 14:07Z: (old accounts as assistants) fixed here; (rejected person back, confirmed target dropped) = prompt, rows 7492, 7493; (false „მივწერე") = #7229. Not on Netai / never opened → the approved not-on-Netai line, never „ასისტენტებს დაველაპარაკები". DONE WHEN on board 7235.
@@ -4426,7 +4430,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 14:07Z — box 73825, 73826 (tester, on the founder's live thread 63992): four faults; full text with names is in the box, not copied here (real people)
+Last TO_CODE.md section handled: 23 Oct, 14:51Z — box 73830 (tester): #7235 old-Ally case cannot be proved on fictional seats (asks for a test flag or a read of the next real plan); side fault: garbled word and a count of other members' labels shown to the owner
 
 ## OPEN
 
