@@ -4580,11 +4580,37 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
 
   // Strip leading orphaned tool_result or assistant messages — Anthropic requires
   // the conversation to start with a user message.
-  while (rows.length > 0 && (hasToolResults(rows[0]) || rows[0].role === 'assistant')) {
-    rows.shift();
+  const opened = openingKeptAsServerTurn(rows);
+  while (opened.length > 0 && (hasToolResults(opened[0]) || opened[0].role === 'assistant')) {
+    opened.shift();
   }
 
-  return rows;
+  return opened;
+}
+
+/**
+ * #7238 (audit, thread 63384): a conversation the server opens — an accepted
+ * introduction, an ask — starts with an assistant line, and the strip above
+ * dropped it, because a conversation sent to the model must start with a user
+ * turn. The reader answered „დამაკავშირე", and the model, never shown the
+ * line, asked „with whom?" and then told him „my previous message is not
+ * visible here". The opening line is kept as a server turn instead, in the
+ * same envelope as every other server turn.
+ */
+export function openingKeptAsServerTurn(rows: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const first = rows[0];
+  if (first === undefined || first.role !== 'assistant') return rows;
+  const text =
+    typeof first.content === 'string'
+      ? first.content
+      : first.content.every((block) => block.type === 'text')
+        ? first.content.map((block) => (block.type === 'text' ? block.text : '')).join('\n')
+        : '';
+  if (text.trim() === '') return rows;
+  return mergeAdjacentSameRole([
+    { role: 'user', content: frameServerTurn(text) },
+    ...rows.slice(1),
+  ]);
 }
 
 /**
