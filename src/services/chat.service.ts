@@ -4572,6 +4572,43 @@ async function closeWhatTheReplySaysItStopped(
   }
 }
 
+/** A sentence telling the helper their answer did not go. */
+const NOT_SENT_RE =
+  /ვერ\s+(?:გადა)?(?:გა)?იგზავნ|ვერ\s+გადაეცა|(?:could\s*n[o']t|was\s+not|wasn'?t)\s+(?:be\s+)?(?:sent|delivered)|не\s+удалось\s+отправить|no\s+se\s+pudo\s+enviar/iu;
+const REPLY_SENTENCE_RE = /[^.!?…\n]+[.!?…]*\s*|\n+/gu;
+
+export function claimsNotSent(reply: string): boolean {
+  return NOT_SENT_RE.test(reply);
+}
+
+/** The reply without its „not sent" sentences. */
+export function withoutNotSentSentences(reply: string): string {
+  return (reply.match(REPLY_SENTENCE_RE) ?? [reply])
+    .filter((sentence) => !NOT_SENT_RE.test(sentence))
+    .join('')
+    .trim();
+}
+
+const ANSWERED_SINCE_TIMEOUT_MS = 3_000;
+
+/** This question's answer reached the asker after the given moment (this run). */
+async function askAnsweredSince(threadId: number, sinceMs: number): Promise<boolean> {
+  try {
+    const result = await query<{ answered: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM task_asks
+                       WHERE ask_thread_id = $1 AND answered_at >= to_timestamp($2 / 1000.0))
+              AS answered`,
+      [threadId, sinceMs],
+      ANSWERED_SINCE_TIMEOUT_MS,
+    );
+    return result.rows[0]?.answered === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[answer-sent] thread ${threadId}: not read:`, (err as Error).message);
+    return false;
+  }
+}
+
 function isCompleteAssistantText(row: Anthropic.MessageParam): boolean {
   if (row.role !== 'assistant') return false;
   const c = row.content;
@@ -17930,6 +17967,19 @@ export async function processChat(
     effectiveFinal = withoutClosingApprovalAsk(
       withoutPlanClosingQuestion(effectiveFinal, language, effectiveFinal),
     );
+  }
+  // #7459 retest (tester 73833, thread 64693): „კი, გავაცნობ" reached the asker
+  // on arrival, the run called no tool and wrote „პასუხი ჩვენი მხრიდან ვერ
+  // გადაიგზავნა" — false. When this question's answer went during this run, a
+  // „not sent" sentence gives way to the agreed sent line.
+  if (
+    thread?.type === 'incoming_ask' &&
+    !runAnswerSent.has(runId) &&
+    claimsNotSent(effectiveFinal) &&
+    (await askAnsweredSince(threadId, startedAt))
+  ) {
+    effectiveFinal = withoutNotSentSentences(effectiveFinal);
+    runAnswerSent.add(runId);
   }
   if (runAnswerSent.has(runId)) {
     effectiveFinal = withAnswerSentLineOnce(

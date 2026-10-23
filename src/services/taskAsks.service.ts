@@ -2467,7 +2467,13 @@ export async function sendApprovedAskAnswer(
   // RW-002 (WIDE GATE, §98.8): a „later" tap is not an answer. The asker was
   // told the day at the tap; recorded as an answer it closed the ask and went
   // out as an answer card.
-  if (askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText)) {
+  // #7459 retest (tester 73833): once the answer has gone, a helper's „busy until
+  // Monday, then she can" is more for the asker, not a postponed answer — it
+  // joins the answer like any addition (#6865) instead of being refused.
+  if (
+    row.status !== 'answered' &&
+    (askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText))
+  ) {
     return { sent: false, error: LATER_IS_NOT_AN_ANSWER };
   }
   // D648: the answer goes in the assistant's words, with the helper's facts
