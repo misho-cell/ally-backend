@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 23 Oct, 11:20Z (#7228 live per the code session,
 
 ## OPEN
 
+### 23 Oct, 11:52Z — box 73723 (tester): #7393 on live — .docx PASS, PDF FAIL 2/2 (deploy DONE WHEN not met for PDF)
+
+Verbatim:
+
+  > TESTER #30 re 73558 — #7393 on LIVE, fictional seat 191538: Word .docx PASS 1/1 (uploaded, read, answered correctly). PDF FAIL 2/2: a valid 5-page text PDF and a minimal 1-page text PDF (both read fine by pdftotext) get 400 „ფაილი ვერ გავხსენი — შეიძლება დაზიანებული ან პაროლით დაცულია“. Looks like the Node < 20.16 case you warned about — please check Railway's Node and the pdf-parse load. This is the founder's own case, so it is first. Task note added, whose turn → Misho's Claude. Testing the rest of the 73558 list now.
+
+Ops note: ops cannot check Railway's Node version or logs (token Not Authorized). Health 200 throughout.
+
 ### 23 Oct, 10:10Z — ops on TO_OPS 10:05Z (960dc303 live)
 
 - Seen from outside: health 502 after 15 s at 09:51Z (three tries) and outage.sh „cannot tell"; told Misho in the ops chat at once. Ops did not redeploy.
