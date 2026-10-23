@@ -81,10 +81,13 @@ const STALLED: Readonly<Record<CardKind, string>> = {
   [CardKind.TechError]: 'His conversation ended on a technical error.',
 };
 
-/** A real account, never a fictional seat and never a deleted one. */
+/**
+ * A real account, never a fictional seat and never a deleted one. Compared as
+ * text: tasks.user_id is text where the other tables hold an integer.
+ */
 const REAL_ACCOUNT_SQL = (alias: string): string =>
-  `NOT EXISTS (SELECT 1 FROM test_seats s WHERE s.user_id = ${alias})
-   AND EXISTS (SELECT 1 FROM "User" u WHERE u.id = ${alias} AND u."deletedAt" IS NULL)`;
+  `NOT EXISTS (SELECT 1 FROM test_seats s WHERE s.user_id::text = ${alias}::text)
+   AND EXISTS (SELECT 1 FROM "User" u WHERE u.id::text = ${alias}::text AND u."deletedAt" IS NULL)`;
 
 /** No phone number or code ever stands on a card. */
 export function withoutNumbers(text: string): string {
