@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 23 Oct, 20:45Z (991 text restored; 991 read: ans
 
 ## OPEN
 
+### 23 Oct, 20:52Z — box 74120 (tester #30)
+
+- The founder repeated D868 tonight: a new member with no phonebook upload must get search paths through every member who has his number saved. The tester calls it task 7162 "still to_build since 22 Oct" and asks to move it up; they will test 3/3 on fictional seats once it is built. Ops replied in the box: per your 20:45Z it is built and switched off, waiting on Misho's word for production. If the board row still says to_build, it may need your update.
+
 ### 23 Oct, 20:22Z — box 74020, 74053, 74054 (tester #30 and the engagement chat; REAL users; names, ids and threads in the box, not copied here)
 
 - 74020 — task 991 REOPENED as a regression on real users. An owner tells Netai to pass numbers from HIS OWN phonebook to a named person; Netai refuses ("needs owner's consent"). The tester cites the founder ruling of 4 Oct: the owner's word is enough, Netai must send. Cases tonight (≈19:11–19:52Z):
