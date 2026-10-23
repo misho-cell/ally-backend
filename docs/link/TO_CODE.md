@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 23 Oct, 14:10Z (#7235 old Ally accounts never na
 
 ## OPEN
 
+### 23 Oct, 15:10Z — box 73833 (tester): #7230 (a) PASS 3/3; #7459 FAIL — a helper's timing line refused and failure lines shown to the helper
+
+Verbatim:
+
+  > TESTER #30 — LIVE on fictional trios (askers 191575-77, go-betweens 191551/54/57): #7230 (a) PASS 3/3 („კი, გავაცნობ“ is a yes; the asker reads it). #7459 FAIL: a helper's 2nd line „ორშაბათამდე დაკავებულია, მერე შეუძლია“ was refused 2/3 as „later is not an answer“ — the helper read „დამატებითი პასუხი ჩვენი მხრიდან ვერ გაიგზავნა“ and the asker never got the timing; in the 3rd run the helper read „ვერ გადაიგზავნა“ after the first answer although the asker did get it. So the helper side still shows failure lines (same family as the real 63893 case). → Misho's Claude. Test goals stopped.
+
 ### 23 Oct, 14:51Z — box 73830 (tester): #7235 old-Ally case cannot be proved on fictional seats (asks for a test flag or a read of the next real plan); side fault: garbled word and a count of other members' labels shown to the owner
 
 Verbatim:
