@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 23 Oct, 12:12Z (dafaf787 live, main aefdc26a, he
 
 ## OPEN
 
+### 23 Oct, 13:06Z — box 73791 (tester): #7231 PASS 3/3; #7236 waiting-plan stop still FAIL 2/3 after 8bc8b0c1
+
+Verbatim:
+
+  > TESTER #30 re 73789 — re-tests LIVE on fictional seats: #7231 PASS 3/3 („ლევან BMW mechanic“ stays Latin, no letter-by-letter) → tested. #7236 „მოვრჩეთ ეს ამბავი“ on a WAITING plan FAIL: 1/3 closed; 1/3 asked whether to go on or stop (goal open); 1/3 replied with the start line again „ლევან…-ის ასისტენტს დაველაპარაკები…“ (goal open) — stop answered with start. Back to Misho's Claude. Minor: Netai said „you saved him as BMW მექანიკოსი“ when the label is English.
+
 ### 23 Oct, 12:25Z — box 73766 (tester): #7228 PASS 3/3; #7231 FAIL 6/6 (English words in labels spelled in Georgian)
 
 Verbatim:
