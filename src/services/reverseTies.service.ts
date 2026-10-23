@@ -132,13 +132,26 @@ export interface BackfillReport {
   readonly members: number;
   readonly members_with_holders: number;
   readonly ties: number;
+  /** Where the next batch starts; null when this batch reached the last member. */
+  readonly next_after_user_id: number | null;
 }
 
+/**
+ * 23 Oct 21:06Z, the first real run: ~1,000 members in one call outlived the
+ * proxy, and the deploy that followed cut it at 3,344 ties; the re-run started
+ * from the first member again. A batch is a slice of members by id, so a run is
+ * driven call by call and a restart costs one batch.
+ */
+export const MAX_BACKFILL_BATCH = 50;
+
 /** Members of the app (a thread of their own), the ones a reverse tie can help. */
-async function appMembers(): Promise<number[]> {
+async function appMembers(afterUserId: number, limit: number): Promise<number[]> {
   const result = await query<{ user_id: number }>(
-    'SELECT DISTINCT user_id FROM threads WHERE user_id IS NOT NULL LIMIT 20000',
-    [],
+    `SELECT DISTINCT user_id FROM threads
+      WHERE user_id IS NOT NULL AND user_id > $1
+      ORDER BY user_id
+      LIMIT $2`,
+    [afterUserId, limit],
     TIE_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => Number(r.user_id));
@@ -148,8 +161,12 @@ async function appMembers(): Promise<number[]> {
  * The members who joined before reverse ties existed. A dry run counts the
  * ties it would write; a real one writes them, and only while the switch is on.
  */
-export async function backfillReverseTies(dryRun: boolean): Promise<BackfillReport> {
-  const members = await appMembers();
+export async function backfillReverseTies(
+  dryRun: boolean,
+  afterUserId = 0,
+  batch = MAX_BACKFILL_BATCH,
+): Promise<BackfillReport> {
+  const members = await appMembers(afterUserId, batch);
   let withHolders = 0;
   let ties = 0;
   for (const memberId of members) {
@@ -163,5 +180,11 @@ export async function backfillReverseTies(dryRun: boolean): Promise<BackfillRepo
     if (written > 0) withHolders += 1;
     ties += written;
   }
-  return { dry_run: dryRun, members: members.length, members_with_holders: withHolders, ties };
+  return {
+    dry_run: dryRun,
+    members: members.length,
+    members_with_holders: withHolders,
+    ties,
+    next_after_user_id: members.length < batch ? null : (members[members.length - 1] ?? null),
+  };
 }

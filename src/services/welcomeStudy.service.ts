@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { savePrivateContext } from './userPrivateContext.service';
 import { webSearch } from './tools/webSearch';
+import { LabelCount, nameToResearch } from './researchName';
 import { normalizePhone, phoneDigits } from './phone';
 
 // UserAlias/UserConnectionPhone predate phone normalization and store every
@@ -58,6 +59,21 @@ async function gatherLabels(variants: string[]): Promise<string[]> {
   return [...new Set([...aliases.rows.map((r) => r.alias), ...tags.rows.map((r) => r.tag)])];
 }
 
+/** How many people saved this number under each label — the research name is the most common whole one. */
+async function gatherLabelCounts(variants: string[]): Promise<LabelCount[]> {
+  const result = await query<{ alias: string; count: string }>(
+    `SELECT TRIM(alias) AS alias, COUNT(DISTINCT "contactId") AS count
+       FROM "UserAlias"
+      WHERE phone = ANY($1) AND NULLIF(TRIM(alias), '') IS NOT NULL
+      GROUP BY TRIM(alias)
+      ORDER BY count DESC
+      LIMIT $2`,
+    [variants, MAX_LABELS],
+    STUDY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({ label: r.alias, count: Number(r.count) }));
+}
+
 // The legacy colour sort (RelationshipStatus), aggregated across EVERYONE who
 // ever hand-sorted this phone number — not scoped to one viewer, unlike
 // getOldAllyStatuses (which reads it from one user's own perspective).
@@ -93,11 +109,13 @@ export async function runWelcomeStudy(userId: string, name: string, phone: strin
   if (!phoneDigits(phone)) return;
   const variants = phoneVariants(phone);
   try {
-    const [labels, oldAlly, web] = await Promise.all([
+    const [labels, oldAlly, labelCounts] = await Promise.all([
       gatherLabels(variants),
       gatherOldAllyStanding(variants),
-      name.trim() ? webSearch(name.trim()) : Promise.resolve({}),
+      gatherLabelCounts(variants),
     ]);
+    const searched = nameToResearch(name, labelCounts);
+    const web = searched === null ? {} : await webSearch(searched);
 
     const sections: string[] = [];
     if (labels.length > 0) {

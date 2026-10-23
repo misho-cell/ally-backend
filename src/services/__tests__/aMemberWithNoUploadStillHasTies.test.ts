@@ -124,9 +124,23 @@ describe('reverse ties', () => {
       members: 2,
       members_with_holders: 1,
       ties: 1,
+      next_after_user_id: null,
     });
     expect(mockRun).not.toHaveBeenCalled();
     for (const [sql] of mockQuery.mock.calls as [string][]) expect(sql).not.toContain('INSERT');
+  });
+
+  it('runs a slice of members by id and says where the next one starts', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 501 }, { user_id: 564 }]))
+      .mockResolvedValueOnce(rows([]))
+      .mockResolvedValueOnce(rows([]));
+
+    const report = await backfillReverseTies(true, 500, 2);
+
+    expect(report.next_after_user_id).toBe(564);
+    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(params).toEqual([500, 2]);
   });
 
   it('lets a database error reach the caller', async () => {
