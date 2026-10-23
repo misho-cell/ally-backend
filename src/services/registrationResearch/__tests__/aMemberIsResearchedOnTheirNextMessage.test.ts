@@ -21,9 +21,9 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 describe('research on a member’s next message', () => {
   beforeEach(() => mockQuery.mockReset());
 
-  it('is off until Misho says yes (it is paid search and reading)', async () => {
-    expect(RESEARCH_ON_ACTIVATION).toBe(false);
-    await expect(queueResearchOnActivation(501)).resolves.toBe(false);
+  it('is on since Misho’s yes, and does nothing when switched off', async () => {
+    expect(RESEARCH_ON_ACTIVATION).toBe(true);
+    await expect(queueResearchOnActivation(501, false)).resolves.toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();
   });
 

@@ -59,11 +59,11 @@ export async function queueRegistrationResearch(
  * member who joined before the run existed: their next own message queues
  * them, once. A test seat is never queued.
  *
- * OFF until Misho says yes: every run is paid web search and model reading —
- * spending, which is his word (D44). On 22 Oct it would reach 28 members who
- * wrote in the last 30 days and were never researched (test seats left out).
+ * ON since Misho's yes, 23 Oct (every run is paid web search and model reading,
+ * so it was his word, D44). On 22 Oct it reached 28 members who wrote in the
+ * last 30 days and were never researched (test seats left out).
  */
-export const RESEARCH_ON_ACTIVATION = false;
+export const RESEARCH_ON_ACTIVATION = true;
 const askedThisProcess = new Set<number>();
 
 /** Queues a member never researched, at most one database call per member per process. */
