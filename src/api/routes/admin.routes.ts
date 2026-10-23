@@ -91,6 +91,14 @@ import {
 import { NextFunction, Router, Request, Response } from 'express';
 import { body, param, query as queryParam, validationResult } from 'express-validator';
 import {
+  buildWarRoomCards,
+  CARD_STATUSES,
+  CardStatus,
+  listWarRoomCards,
+  threadsOfUser,
+  updateWarRoomCard,
+} from '../../services/warRoomCards.service';
+import {
   authenticateJwt,
   requireAdminRole,
   AuthenticatedRequest,
@@ -4401,6 +4409,111 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[netai-message] send failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/** One instruction is a few sentences, typed or spoken. */
+const MAX_CARD_INSTRUCTION_CHARS = 2000;
+
+/**
+ * #7591 WAR ROOM, step 1: one person's conversations, newest first, each with
+ * its last line (numbers masked).
+ *
+ *   GET /admin/users/:id/threads
+ *   200 [{ id, type, status, title, updated_at, last_line }]
+ */
+adminRouter.get(
+  '/users/:id/threads',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be an account id.' });
+      return;
+    }
+    try {
+      res.json({ success: true, data: await threadsOfUser(Number(req.params.id)) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[war-room] user threads failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #7591 WAR ROOM, step 2: the cards. Each call finds the cards anew (new
+ * joiner not written to, unanswered reply to Netai, goal stuck a day, ended on
+ * a technical error) and lists them; a card keeps its status and instruction.
+ *
+ *   GET /admin/war-room/cards?status=new|instructed|drafted|approved|sent|held|dropped
+ *   200 [{ id, user_id, kind, thread_id, task_id, brief: { who, their_words, netai_did, stalled },
+ *          status, instruction, instruction_by, instruction_at, created_at, updated_at }]
+ */
+adminRouter.get(
+  '/war-room/cards',
+  queryParam('status')
+    .optional()
+    .isIn([...CARD_STATUSES]),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res
+        .status(400)
+        .json({ success: false, error: `status must be one of ${CARD_STATUSES.join(', ')}.` });
+      return;
+    }
+    try {
+      await buildWarRoomCards();
+      const status = req.query.status as CardStatus | undefined;
+      res.json({ success: true, data: await listWarRoomCards(status) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[war-room] cards failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #7591 WAR ROOM, step 4: the founder's instruction on a card (typed, or the
+ * chat mic's text), or a status move. An instruction on a new card makes it
+ * „instructed".
+ *
+ *   PATCH /admin/war-room/cards/:id { instruction?: string (1-2000), status?: CardStatus }
+ *   200 the card · 400 nothing to change / bad value · 404 no such card
+ */
+adminRouter.patch(
+  '/war-room/cards/:id',
+  param('id').isInt({ min: 1 }),
+  body('instruction')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: MAX_CARD_INSTRUCTION_CHARS }),
+  body('status')
+    .optional()
+    .isIn([...CARD_STATUSES]),
+  async (req: Request, res: Response) => {
+    const { instruction, status } = req.body as { instruction?: string; status?: CardStatus };
+    if (!validationResult(req).isEmpty() || (instruction === undefined && status === undefined)) {
+      res.status(400).json({
+        success: false,
+        error: `Send instruction (1-${MAX_CARD_INSTRUCTION_CHARS} chars) and/or a status.`,
+      });
+      return;
+    }
+    try {
+      const by = String((req as AuthenticatedRequest).user.userId);
+      const card = await updateWarRoomCard(Number(req.params.id), { instruction, status, by });
+      if (card === null) {
+        res.status(404).json({ success: false, error: 'No such card.' });
+        return;
+      }
+      res.json({ success: true, data: card });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[war-room] card update failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
