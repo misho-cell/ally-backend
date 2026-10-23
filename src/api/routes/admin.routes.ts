@@ -212,6 +212,7 @@ import {
 } from '../../services/inviteReward.service';
 import {
   backfillReverseTies,
+  MAX_BACKFILL_BATCH,
   BackfillReport,
   REVERSE_TIES_FLAG,
 } from '../../services/reverseTies.service';
@@ -590,6 +591,11 @@ adminRouter.put(
 adminRouter.post(
   '/reverse-ties/backfill',
   body('dry_run').isBoolean().withMessage('dry_run must be true or false'),
+  body('after_user_id').optional().isInt({ min: 0 }).withMessage('after_user_id must be ≥ 0'),
+  body('batch')
+    .optional()
+    .isInt({ min: 1, max: MAX_BACKFILL_BATCH })
+    .withMessage(`batch must be 1-${MAX_BACKFILL_BATCH}`),
   async (req: Request, res: Response<ApiResponse<BackfillReport>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -597,8 +603,20 @@ adminRouter.post(
       return;
     }
     try {
-      const dryRun = (req.body as { dry_run: boolean }).dry_run;
-      const report = await backfillReverseTies(dryRun);
+      const {
+        dry_run: dryRun,
+        after_user_id: after,
+        batch,
+      } = req.body as {
+        dry_run: boolean;
+        after_user_id?: number;
+        batch?: number;
+      };
+      const report = await backfillReverseTies(
+        dryRun,
+        Number(after ?? 0),
+        Number(batch ?? MAX_BACKFILL_BATCH),
+      );
       // eslint-disable-next-line no-console
       console.log(
         `[reverse-ties] backfill by admin ${(req as AuthenticatedRequest).user.userId}`,
