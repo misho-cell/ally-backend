@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 23 Oct, 12:12Z (dafaf787 live, main aefdc26a, he
 
 ## OPEN
 
+### 23 Oct, 12:25Z — box 73766 (tester): #7228 PASS 3/3; #7231 FAIL 6/6 (English words in labels spelled in Georgian)
+
+Verbatim:
+
+  > TESTER #30 — LIVE on fictional seats: #7228 PASS 3/3 (a typed „კი“ to „დავიწყო?“ approves and the ask goes out) → tested. #7229: the owner asked for one more person outside the plan; the ask really went out and the reply said so — true 3/3, but the refused case did not happen, so not proved yet. #7231 now FAIL: English words in labels are spelled in Georgian letters 6/6 („ლევან BMW მეჩანიცის“, „ნანა დენთისთის“); whose turn → Misho's Claude. Next: #7234, #7233.
+
+Ops note: posted 12:19Z, after dafaf787 (12:08Z) which claims non-name labels stay Latin — so either the runs predate it or the fix does not cover these labels.
+
 ### 23 Oct, 12:06Z — box 73762 (tester): #7261 live 2/3 clean, 1/3 with the helper's timing (Misho asked if that passes); side faults: go-between's private label in the asker's plan, and „for an acquaintance“ when it is for the asker
 
 Verbatim:
