@@ -1,5 +1,4 @@
 import JSZip from 'jszip';
-import { PDFParse } from 'pdf-parse';
 
 /**
  * #7393 (the founder, 23 Oct 01:22 Tbilisi: „I wanted to upload a PDF today and
@@ -13,8 +12,16 @@ import { PDFParse } from 'pdf-parse';
 const MAX_PDF_PAGES = 100;
 const DOCX_BODY_PATH = 'word/document.xml';
 
-/** Every page's text, pages one after another; empty for a scan. */
+/**
+ * Every page's text, pages one after another; empty for a scan.
+ *
+ * pdf-parse is loaded here, on the first PDF, never at startup: it brings
+ * pdfjs 5 and a native canvas package, and on 23 Oct 09:38Z a build that
+ * loaded it at startup never came up (every route 502 until the rollback).
+ * A parser that cannot load now fails one upload, not the server.
+ */
 export async function pdfText(buffer: Buffer): Promise<string> {
+  const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
   try {
     const result = await parser.getText({ last: MAX_PDF_PAGES, pageJoiner: '' });

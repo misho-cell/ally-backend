@@ -32,7 +32,9 @@ jest.mock('pdf-parse', () => {
   return { PDFParse: ChildPdfParse };
 });
 
+import { readFileSync } from 'fs';
 import JSZip from 'jszip';
+import { join } from 'path';
 import { docxBodyText } from '../documentText';
 import {
   ListFileKind,
@@ -135,5 +137,14 @@ describe('a PDF and a Word file are read', () => {
         '<w:p><w:r><w:t>a</w:t><w:tab/><w:t>b</w:t><w:br/><w:t>&#4304;&#x10D1;</w:t></w:r></w:p>',
       ),
     ).toBe('a\tb\nაბ');
+  });
+});
+
+describe('pdf-parse is loaded on the first PDF, never at startup (23 Oct 09:38Z, 502)', () => {
+  const source = readFileSync(join(__dirname, '..', 'documentText.ts'), 'utf8');
+
+  it('has no top-level import of pdf-parse', () => {
+    expect(source).not.toMatch(/^import .*'pdf-parse'/mu);
+    expect(source).toContain("await import('pdf-parse')");
   });
 });
