@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 10:05Z (960dc303 live per the code session; health 200 since 10:04Z; Railway token Not Authorized, Misho told).
+Last TO_OPS.md section handled: 23 Oct, 10:28Z (#7231 live 34e9b1f0 / main ce320059 per the code session; ops sees main at that hash and health 200; test to tester).
 
 ## OPEN
 
