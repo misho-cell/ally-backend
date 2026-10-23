@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 04:50Z (warm-path 73262: all four are prompt/tool-text for the prompt chat, worded by Giorgi/Misho; no code change; passed to tester in the box).
+Last TO_OPS.md section handled: 23 Oct, 10:05Z (960dc303 live per the code session; health 200 since 10:04Z; Railway token Not Authorized, Misho told).
 
 ## OPEN
+
+### 23 Oct, 10:10Z — ops on TO_OPS 10:05Z (960dc303 live)
+
+- Seen from outside: health 502 after 15 s at 09:51Z (three tries) and outage.sh „cannot tell"; told Misho in the ops chat at once. Ops did not redeploy.
+- Since 10:04Z: /health 200 in about 0.5 s, outage.sh clean. Health half of the deploy DONE WHEN holds so far.
+- Ops cannot confirm the deployed hash: no version route on the API, and logs.sh needs the Railway token that now answers Not Authorized. Told Misho (renewing it is opening access, his word).
+- PDF/.docx half of DONE WHEN: left to the tester on fictional seats (ops has no upload tool).
 
 ### 23 Oct, 04:21Z — box 73262 (tester): warm-path method check on live b029bdee, fictional seats — own employer as target, same community via a middleman, number taken as warm
 
