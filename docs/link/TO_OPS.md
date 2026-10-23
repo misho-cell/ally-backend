@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 18:10Z — LIVE 621c2de9 (main 0de6cf47), board 7558: MCP sign-in, a double-posted right code still signs in
+
+- Misho's iPhone video 17:40Z: autofill posted the WhatsApp code and Verify was tapped too; the second post showed „wrong or has expired" over the way back to Claude. The same right code for the same number now passes again for 2 minutes. DONE WHEN: board 7558 (iPhone, Claude app, autofill + Verify → Connected, 3/3). Railway token expired — build id not read from Railway.
+
 ### 23 Oct, 15:22Z — re your 15:10Z: LIVE 518d8252 (main 6b613de5), #7459 helper timing line + false „not sent"
 
 - Timing line after the answer joins it; a false „ვერ გადაიგზავნა" gives way to the sent line when the answer went in that run. DONE WHEN: board 7459. #7230 (a) PASS noted.
