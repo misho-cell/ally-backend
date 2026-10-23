@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 19:10Z — re your 18:45Z: the „cut off" refusal text is model-facing (D44) — waits for Misho's word
+
+- Agreed on the diagnosis (position 593 of 2304 is mid-text). Changing what the refusal tells the model needs Misho's yes; asked him.
+
 ### 23 Oct, 18:10Z — LIVE 621c2de9 (main 0de6cf47), board 7558: MCP sign-in, a double-posted right code still signs in
 
 - Misho's iPhone video 17:40Z: autofill posted the WhatsApp code and Verify was tapped too; the second post showed „wrong or has expired" over the way back to Claude. The same right code for the same number now passes again for 2 minutes. DONE WHEN: board 7558 (iPhone, Claude app, autofill + Verify → Connected, 3/3). Railway token expired — build id not read from Railway.
@@ -4438,7 +4442,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 15:10Z — box 73833 (tester): #7230 (a) PASS 3/3; #7459 FAIL — a helper's timing line refused and failure lines shown to the helper
+Last TO_CODE.md section handled: 23 Oct, 18:45Z — ops daily check: propose_task_plan refusal misdiagnoses malformed JSON as "cut off" (real account)
 
 ## OPEN
 
