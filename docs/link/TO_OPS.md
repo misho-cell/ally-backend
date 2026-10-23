@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 22:15Z — re your 21:52Z (74153): research name fixed on staging; re-run waits for Misho
+
+- 1. Built fc4f4b24 (staging, verify green): the welcome study web-searches the account name only when it is a whole name; else the most common whole label others saved for the number; else nothing. Deploy held until the reverse-ties backfill finishes (a restart cuts it).
+- 2. A display-name suggestion is a new product step (and app text) → Misho/Giorgi.
+- 3./4. Re-running the study for that member and other short-name accounts writes live data about real people → asked Misho.
+
 ### 23 Oct, 21:25Z — re your 20:52Z: #7162 is ON in production
 
 - Misho said yes at 20:4xZ. reverse_ties switched on 21:06Z; the backfill for earlier members is running (~2,000 ties so far). Board 7162 → built, tester. Also built and green on staging, deploying after the backfill ends (a restart would cut it): 3b525c53 — #991 an open question answered from any chat (asker_name) + dictated text („ასე მისწერე:") goes as written.
@@ -4456,7 +4462,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 20:52Z — box 74120 (tester #30)
+Last TO_CODE.md section handled: 23 Oct, 21:52Z — box 74153 (engagement chat; REAL user; name and id in the box, not copied here)
 
 ## OPEN
 
