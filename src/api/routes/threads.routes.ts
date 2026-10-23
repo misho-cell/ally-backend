@@ -113,12 +113,6 @@ import { looksLikeStopRequest } from '../../services/stopIntent';
 import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { PhaseClock } from '../../services/acceptTiming';
-import {
-  isNetaiThread,
-  markNetaiSeen,
-  recordNetaiReply,
-} from '../../services/netaiMessage.service';
-import { queueResearchOnActivation } from '../../services/registrationResearch/registrationResearch.service';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -1032,11 +1026,6 @@ threadsRouter.get(
           console.warn(`[ask-seen] thread ${threadId}:`, (err as Error).message);
         });
       }
-      // #7360: opening the „Netai" conversation is what „seen" means on the admin.
-      markNetaiSeen(threadId, Number(userId)).catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.warn(`[netai-seen] thread ${threadId}:`, (err as Error).message);
-      });
 
       // Optional paging — omitted, the whole history comes back exactly as
       // before. ?limit=30 opens the chat on its most recent 30 messages; the
@@ -1164,23 +1153,6 @@ threadsRouter.post(
       clock.mark('thread');
       if (thread === null) {
         res.status(404).json({ success: false, error: 'Thread not found' });
-        return;
-      }
-
-      // #7426 (D876): a member who joined before research ran is researched now, once.
-      void queueResearchOnActivation(Number(userId)).catch((err: unknown) =>
-        // eslint-disable-next-line no-console
-        console.error(`[registration-research] user ${userId} not queued:`, (err as Error).message),
-      );
-
-      // #7360: in the „Netai" conversation the team answers, not a model. The
-      // words (a typed line or a button) are kept and shown on the admin.
-      if (await isNetaiThread(threadId)) {
-        await keepUserMessage(userId, threadId, message);
-        await recordNetaiReply(threadId, Number(userId), message);
-        // eslint-disable-next-line no-console
-        console.log(`[netai-message] user ${userId} replied in thread ${threadId}`);
-        res.status(200).json({ success: true, data: { kept: true, run: false } });
         return;
       }
 

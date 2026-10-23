@@ -1,4 +1,4 @@
-import express, { NextFunction, Request, Response, Router } from 'express';
+import express, { Request, Response, Router } from 'express';
 import { connectorOriginFor, PUBLIC_BASE_URL } from '../../config/publicUrl';
 import { OtpSendCapError, requestOTP, verifyOTP } from '../../services/auth.service';
 import { normalizePhone } from '../../services/phone';
@@ -23,16 +23,6 @@ import {
 
 const OAUTH_RATE_WINDOW_MS = 5 * 60_000;
 const OAUTH_RATE_MAX = 60;
-/**
- * /token and /register are called by the connector's own servers, not by the
- * person: every user of that connector arrives from the same few addresses.
- * Under the person's 60 they drew on ONE budget, a busy hour (the launch, 21
- * Oct) spent it, the code exchange got a 429 and the connector started the
- * sign-in again — OTP accepted, then the OTP page again. A code is single-use
- * and PKCE-bound, so the higher cap guards load, not guessing.
- */
-const OAUTH_SERVER_RATE_MAX = 600;
-const SERVER_TO_SERVER_PATHS: ReadonlySet<string> = new Set(['/token', '/register']);
 const MAX_REDIRECT_URIS = 5;
 const SUPPORTED_CHALLENGE_METHOD = 'S256';
 /** Country code plus number: fewer digits than this is not a whole number. */
@@ -107,16 +97,7 @@ function logRefusal(step: string, reason: string): void {
 
 const oauthRouter = Router();
 oauthRouter.use(express.urlencoded({ extended: false }));
-const personLimit = rateLimit({
-  windowMs: OAUTH_RATE_WINDOW_MS,
-  max: OAUTH_RATE_MAX,
-  keyBy: 'person',
-});
-const serverLimit = rateLimit({ windowMs: OAUTH_RATE_WINDOW_MS, max: OAUTH_SERVER_RATE_MAX });
-oauthRouter.use((req: Request, res: Response, next: NextFunction): void => {
-  if (SERVER_TO_SERVER_PATHS.has(req.path)) serverLimit(req, res, next);
-  else personLimit(req, res, next);
-});
+oauthRouter.use(rateLimit({ windowMs: OAUTH_RATE_WINDOW_MS, max: OAUTH_RATE_MAX }));
 
 function isAcceptableRedirectUri(uri: string): boolean {
   try {

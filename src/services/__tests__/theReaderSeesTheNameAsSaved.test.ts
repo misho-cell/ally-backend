@@ -44,32 +44,6 @@ describe('a name as the reader has it saved', () => {
     expect(console.warn).toHaveBeenCalled();
   });
 
-  it('drops the reader’s note after the full name (#7328, 64120: „Iro Tsagareishvili Axel")', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ alias: 'Iro Tsagareishvili Axel' }] });
-    await expect(nameAsReaderSaved(READER, PERSON, 'Iro Tsagareishvili')).resolves.toBe(
-      'Iro Tsagareishvili',
-    );
-  });
-
-  it('keeps the reader’s spelling when the name is in the other script', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ alias: 'ირო ცაგარეიშვილი აქსელი' }] });
-    await expect(nameAsReaderSaved(READER, PERSON, 'Iro Tsagareishvili')).resolves.toBe(
-      'ირო ცაგარეიშვილი',
-    );
-  });
-
-  it('keeps a label that is not the registered name followed by a note', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ alias: 'ირო ბიძაშვილი ნათია' }] });
-    await expect(nameAsReaderSaved(READER, PERSON, 'Iro Tsagareishvili')).resolves.toBe(
-      'ირო ბიძაშვილი ნათია',
-    );
-  });
-
-  it('keeps a label when the registered name is a single word', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ alias: 'Iro Axel' }] });
-    await expect(nameAsReaderSaved(READER, PERSON, 'Iro')).resolves.toBe('Iro Axel');
-  });
-
   it('reads nothing when the reader is the person', async () => {
     await expect(nameAsReaderSaved(PERSON, PERSON, 'Giorgi Turashvili')).resolves.toBe(
       'Giorgi Turashvili',

@@ -108,30 +108,3 @@ describe('once they have written, the number is not consulted', () => {
     expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 });
-
-/** #7234 (Misho's yes, 23 Oct): a Georgian member's one English line does not switch them. */
-describe('a member on a Georgian number who writes both', () => {
-  beforeEach(() => mockQuery.mockReset());
-
-  const said = (...lines: string[]): void => {
-    mockQuery.mockResolvedValueOnce({ rows: lines.map((content) => ({ content })) } as never);
-  };
-
-  it('stays Georgian when the latest line is English but an earlier one is Georgian', async () => {
-    said('Why cant you search it on the internet for me?', 'კი, ვიცნობ');
-    mockQuery.mockResolvedValueOnce({ rows: [{ georgian: true }] } as never);
-    expect(await userLanguage('564')).toBe('ka');
-  });
-
-  it('reads English on a foreign number', async () => {
-    said('Why cant you search it on the internet for me?', 'კი, ვიცნობ');
-    mockQuery.mockResolvedValueOnce({ rows: [{ georgian: false }] } as never);
-    expect(await userLanguage('565')).toBe('en');
-  });
-
-  it('reads English when they never wrote Georgian, without reading the number', async () => {
-    said('compliance in the United Kingdom please', 'thanks');
-    expect(await userLanguage('566')).toBe('en');
-    expect(mockQuery).toHaveBeenCalledTimes(1);
-  });
-});

@@ -1316,29 +1316,7 @@ export async function userLanguage(userId: string): Promise<RunLanguage> {
   // already what happens: the moment there is one message, it decides, and the
   // number is never consulted again.
   if (latest === undefined) return languageOfAStrangersNumber(userId).catch(() => 'ka');
-  const spoken = languageOfConversation(latest, earlier);
-  if (spoken === 'ka' || !result.rows.some((r) => GEORGIAN_LETTER_RE.test(r.content))) {
-    return spoken;
-  }
-  return (await hasGeorgianNumber(userId).catch(() => false)) ? 'ka' : spoken;
-}
-
-/**
- * #7234 (audit; Misho's yes, 23 Oct): Iro, a Georgian member, writes mostly
- * Georgian, but her last line was „Why cant u desrch it?" — so the next ask
- * reached her in English. A member on a +995 number who has written Georgian
- * among their recent messages is written to in Georgian; one who writes only
- * English still reads English, and a language they asked for (D752) still wins.
- */
-const GEORGIAN_LETTER_RE = /[ა-ჰ]/u;
-
-async function hasGeorgianNumber(userId: string): Promise<boolean> {
-  const result = await query<{ georgian: boolean | null }>(
-    `SELECT BOOL_OR(regexp_replace(up.phone, '[^0-9]', '', 'g') LIKE $2 || '%') AS georgian
-       FROM "UserPhone" up WHERE up."userId" = $1::int`,
-    [userId, GEORGIAN_DIALLING_CODE],
-  );
-  return result.rows[0]?.georgian === true;
+  return languageOfConversation(latest, earlier);
 }
 
 /** Enough to see past a „ok" or two without reading a whole conversation. */

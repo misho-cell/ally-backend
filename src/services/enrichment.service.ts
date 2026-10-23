@@ -117,27 +117,10 @@ interface WeightUpdate {
   weight: number;
 }
 
-/**
- * #7232 (audit, Lasha's 63406 → 63823): the plan said „ნიკა ქევხიშვილი (შენი
- * ოჯახის წევრი)", the owner said he is not, and the next day it said so again.
- * The label was matched by substring, so „შვილი" made every „-შვილი" surname
- * family, „მამა" made მამალაძე family, „ძმა" made a ძმაკაცი family — 110,707
- * of 110,709 family rows on 22 Oct. The explicit classifier was fixed for this
- * long ago; the label rule now reads whole words too: the family word itself,
- * or with a possessive or case ending („დედაჩემი", „ძმას", „მამიდაშვილო").
- */
-const FAMILY_WORD_ENDINGS: readonly string[] = ['', 'ჩემი', 'ჩემო', 'ჩემის', 'ს', 'ო'];
-const LABEL_WORD_SPLIT_RE = /[\s,.;:!?()"'„“”\-–—/]+/u;
-
-function isFamilyWord(word: string): boolean {
-  return FAMILY_KEYWORDS_UNAMBIGUOUS.some((k) =>
-    FAMILY_WORD_ENDINGS.some((ending) => word === k + ending),
-  );
-}
-
-export function hasFamilyKeyword(alias: string): boolean {
-  const words = alias.toLowerCase().split(LABEL_WORD_SPLIT_RE);
-  return words.some((word) => isFamilyWord(word) || word === 'და');
+function hasFamilyKeyword(alias: string): boolean {
+  const lower = alias.toLowerCase();
+  if (FAMILY_KEYWORDS_UNAMBIGUOUS.some((k) => lower.includes(k))) return true;
+  return /(?:^|\s)და(?:\s|$)/.test(lower);
 }
 
 export function extractCountryCode(phone: string): string | null {

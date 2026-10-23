@@ -141,19 +141,10 @@ describe('importContacts', () => {
     expect(result.skipped).toBe(1);
   });
 
-  /** Ninia, 21 Oct: a Georgian number saved without „+995" was skipped, so search never found it. */
-  it.each(['995555123456', '555 12 34 56', '0555 12 34 56', '00995 555 12 34 56'])(
-    'imports a Georgian number saved without „+" (%s) as +995…',
-    async (raw) => {
-      const result = await importContacts('1', [{ name: 'ნინო', phones: [raw] }]);
+  it('skips phone without leading +', async () => {
+    const contacts = [{ name: 'ნინო', phones: ['995555123456'] }];
 
-      expect(result.imported).toBe(1);
-      expect(result.skipped).toBe(0);
-    },
-  );
-
-  it('still skips a bare number that is not Georgian', async () => {
-    const result = await importContacts('1', [{ name: 'Dato', phones: ['4915112345678'] }]);
+    const result = await importContacts('1', contacts);
 
     expect(result.imported).toBe(0);
     expect(result.skipped).toBe(1);

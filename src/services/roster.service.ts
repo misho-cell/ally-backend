@@ -1,6 +1,5 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
-import { typedOrAnswered } from './netaiMembership';
 
 /**
  * A roster: the members of a named network, as the public `member_of` facts
@@ -100,7 +99,7 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
             NULLIF(TRIM(u.name), '') AS account_name,
             top_alias.all_aliases AS all_aliases,
             (u.id IS NOT NULL AND (
-               ${typedOrAnswered('u')}
+               EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
                OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
                OR u.subscription_status = ANY($2::text[]))) AS on_netai
      FROM contact_facts f

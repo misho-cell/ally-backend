@@ -109,13 +109,6 @@ describe('the helper’s reply after the send', () => {
 
 /** 3763 (box 48564, ask 18052): the helper's „ზაზა გამოგონილი" reached the owner as „ზაზას". */
 describe('a surname the helper wrote', () => {
-  /** ops 21 Oct: „ძალიან" after a name was refused five times as a lost surname. */
-  it('is not an everyday word that only ends like one', () => {
-    const helper = 'გიორგი ძალიან კარგი ხელოსანია';
-    expect(missingFacts(helper, 'გიორგი კარგი ხელოსანია.')).toEqual([]);
-    expect(missingFacts(helper, 'კარგი ხელოსანია.')).toEqual(['გიორგი']);
-  });
-
   it('is held to the answer when it ends in -ილი, -ური or -ული', () => {
     expect(
       missingFacts(

@@ -9,9 +9,8 @@ import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 import { parsePhonebookLabelsForUser } from './labelParser.service';
 import { batchesWithoutSharedPhones, IMPORT_BATCH_SIZE } from './importBatches';
 import { EnrichmentJob, queueEnrichmentJob, takeEnrichmentAllowance } from './enrichmentQueue';
-import { REVERSE_TIE_SOURCE, tieSavedMembersToSaver } from './reverseTies.service';
 // Aliased: this file already has its own, stricter local normalizePhone()
-// (import-path only, rejects a bare foreign number without "+"). UserPhone is
+// (import-path only, rejects anything not already "+..."). UserPhone is
 // written exclusively through registration's normalizePhone (services/phone,
 // Georgian-local-aware) — matching against it needs that same function.
 import { normalizePhone as normalizeForRegisteredPhoneMatch } from './phone';
@@ -187,15 +186,6 @@ export async function importContacts(
     await closeImportAttempt(attemptId, userId, source, contacts.length, { imported, skipped });
   }
 
-  // #7162: every member among the numbers just saved now has this saver as a tie.
-  const savedPhones = fresh
-    .flatMap((c) => c.phones.map(normalizePhone))
-    .filter((p): p is string => p !== null);
-  void tieSavedMembersToSaver(Number(userId), savedPhones).catch((err: unknown) =>
-    // eslint-disable-next-line no-console
-    console.error(`[reverse-ties] after import for ${userId}:`, (err as Error).message),
-  );
-
   // ALARM, not a shrug: an import that saves nothing from non-empty input is
   // the exact silent data-loss shape that ran unnoticed for 16 days (5–21
   // Aug). The per-phone errors are already logged above; this line is the
@@ -314,28 +304,11 @@ async function importSingleContact(
   return { imported, skipped };
 }
 
-/**
- * A Georgian number as phones save it with no country code: „597 12 34 56",
- * „0597 12 34 56", „995 597 12 34 56". Ninia's „გიორგი" (21 Oct) was saved
- * like this and was skipped on every send, so search never found him.
- */
-const GEORGIAN_WITHOUT_PLUS = /^(0?\d{9}|995\d{9})$/;
-const INTERNATIONAL_PREFIX = /^00/;
-
-/**
- * The number as "+…": already international, or a Georgian number written
- * without its „+995". Anything else without a „+" is refused — a bare foreign
- * number cannot be told apart from a wrong one.
- */
 function normalizePhone(raw: string): string | null {
-  const cleaned = raw.replace(/[\s()-]/g, '').replace(INTERNATIONAL_PREFIX, '+');
-  const phone = cleaned.startsWith('+')
-    ? cleaned
-    : GEORGIAN_WITHOUT_PLUS.test(cleaned)
-      ? normalizeForRegisteredPhoneMatch(cleaned)
-      : null;
-  if (phone === null || phone.length < 8 || phone.length > 16) return null;
-  return phone;
+  const cleaned = raw.replace(/[\s()-]/g, '');
+  if (!cleaned.startsWith('+')) return null;
+  if (cleaned.length < 8 || cleaned.length > 16) return null;
+  return cleaned;
 }
 
 function triggerEnrichmentAsync(
@@ -389,11 +362,6 @@ async function saveToPostgres(
   // 25 May) — this endpoint was broken from its 5-Aug rewrite until 21 Aug
   // and nobody noticed, because the apps import through the legacy service.
   await withTransaction(async (client: PoolClient) => {
-    // #7162: the owner's own name for the number replaces a holder's reverse tie.
-    await client.query(
-      `DELETE FROM "UserAlias" WHERE phone = $1 AND "contactId" = $2::int AND source = $3`,
-      [phone, userId, REVERSE_TIE_SOURCE],
-    );
     await client.query(
       `INSERT INTO "UserAlias" (phone, "contactId", alias, source)
        SELECT $1::text, $2::int, $3::text, $4::text
@@ -490,7 +458,6 @@ async function saveToNeo4j(
       `MERGE (u:AllyNode {phoneKey: $userKey})
        MERGE (c:AllyNode {phoneKey: $contactKey})
        MERGE (u)-[r:CONTACT]->(c)
-       REMOVE r.reverse
        SET r.name        = $name,
            r.email       = $email,
            r.employer    = $employer,

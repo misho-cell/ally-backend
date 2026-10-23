@@ -1,4 +1,4 @@
-import { asksToEndSomething, looksLikeStopRequest } from '../stopIntent';
+import { looksLikeStopRequest } from '../stopIntent';
 
 /**
  * Ticket 20 row 113, eighth pass — the MARK was late, not the withholding.
@@ -134,19 +134,5 @@ describe('a one-letter slip in the stop word (2412)', () => {
     expect(looksLikeStopRequest('გააჩინე ახალი მიზანი')).toBe(false);
     expect(looksLikeStopRequest('შეაჩრე')).toBe(false);
     expect(looksLikeStopRequest('შეამოწმე ეს მიზანი')).toBe(false);
-  });
-});
-
-/** #7236 (the tester's audit, 63365): „let's end it" in Georgian is an end too. */
-describe('an owner who says to end it', () => {
-  it.each(['არა არ მინდა მოვრჩეთ ეს ამბავი', 'დავასრულოთ', 'შევწყვიტოთ ეს', 'აღარ მინდა ეს საქმე'])(
-    'lets the run close the goal: %s',
-    (line) => {
-      expect(asksToEndSomething(line)).toBe(true);
-    },
-  );
-
-  it('is not read into a request', () => {
-    expect(asksToEndSomething('სახლში კარგი ელექტრიკოსი მჭირდება')).toBe(false);
   });
 });

@@ -762,14 +762,6 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     // back to the typed line, as 279 run 2 needs.
     const tapped = await latestOwnerLine(person);
     if (tapped !== null && (await lineNamesThisPerson(tapped, person))) return true;
-    // #7228 (the tester's audit, 63374): the assistant asked „ვაგზავნი ომიკოსთან?",
-    // the owner answered „კი", and both walls refused Omiko — the yes named nobody.
-    // A bare yes to the assistant's own question that names exactly this person is
-    // the owner's word for this one ask.
-    if (tapped !== null && BARE_YES_RE.test(tapped)) {
-      const asked = await assistantQuestionBefore(person);
-      if (asked !== null && (await lineNamesThisPerson(asked, person))) return true;
-    }
     const said = await query<{ content: string }>(
       `SELECT c.content FROM conversations c
           WHERE c.thread_id = $1 AND c.role = 'user'
@@ -790,57 +782,6 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     // Fails towards refusing, which is the direction this gate exists for.
     // eslint-disable-next-line no-console
     console.error(`[ask] task ${person.taskId}: could not read who the owner named:`, error);
-    return false;
-  }
-}
-
-/** A whole line that only says yes — „კი", „დიახ", „ვადასტურებ". */
-const BARE_YES_RE = /^\s*(?:კი|დიახ|ხო|ვადასტურებ|yes|yeah|ok|okay|да|sí)[\s!.]*$/iu;
-
-/**
- * The assistant's last line before the owner's newest one, when it is a
- * question; null otherwise.
- */
-async function assistantQuestionBefore(person: NamedPerson): Promise<string | null> {
-  const result = await query<{ content: string }>(
-    `SELECT a.content FROM conversations a
-        WHERE a.thread_id = $1 AND a.role = 'assistant' AND a.kind = 'message'
-          AND a.content <> ''
-          AND a.created_at < (SELECT MAX(c.created_at) FROM conversations c
-                               WHERE c.thread_id = $1 AND c.role = 'user'
-                                 AND COALESCE(c.kind, '') <> 'event')
-          AND a.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
-        ORDER BY a.created_at DESC LIMIT 1`,
-    [person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES],
-    ASK_QUERY_TIMEOUT_MS,
-  );
-  const line = result.rows[0]?.content.trim() ?? '';
-  return /[?？]$/u.test(line) ? line : null;
-}
-
-/**
- * Misho's yes (22 Oct, after Lasha's 63823: „ყველას მიწერე ვისაც ნეტაი აქვს"
- * — four of his people held by the 3-per-wave rule). The owner's own line
- * asking to write to everyone opens the wave for this ask. The 24-hour limit
- * per person stays, so nobody is flooded.
- */
-const ASKS_FOR_EVERYONE_RE =
-  /(?:(?:^|[^\p{L}])ყველა(?:ს|ნი)?(?=[^\p{L}]|$)|\b(?:everyone|everybody|all of them)\b)/iu;
-const SEND_VERB_RE = /(?:მიწერ|მისწერ|გაუგზავნ|გააგზავნ|ჰკითხ|\b(?:write|send|ask|message)\b)/iu;
-
-export function asksToWriteToEveryone(line: string): boolean {
-  return ASKS_FOR_EVERYONE_RE.test(line) && SEND_VERB_RE.test(line);
-}
-
-async function ownerAskedForEveryone(person: NamedPerson): Promise<boolean> {
-  if (person.threadId === undefined) return false;
-  try {
-    const line = await latestOwnerLine(person);
-    return line !== null && asksToWriteToEveryone(line);
-  } catch (error) {
-    // Fails towards the wave, which is the direction this rule had before.
-    // eslint-disable-next-line no-console
-    console.error(`[ask] task ${person.taskId}: could not read the owner's line:`, error);
     return false;
   }
 }
@@ -1289,16 +1230,7 @@ async function createAskNow(
     const room = await waveRoomFor(
       task,
       contactPhone,
-      async () =>
-        introAccepted ||
-        (await ownerJustNamedThisPerson()) ||
-        (await ownerAskedForEveryone({
-          threadId,
-          taskId,
-          taskCreatedAt: task.created_at,
-          fromUserId,
-          contactPhone,
-        })),
+      async () => introAccepted || (await ownerJustNamedThisPerson()),
     );
     if (!room.allowed) {
       // eslint-disable-next-line no-console

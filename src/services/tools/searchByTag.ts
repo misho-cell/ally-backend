@@ -1,7 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { buildSearchTerms, buildMeaningWordGroups, splitIntoWords } from './transliterate';
 import { normalizeSearchToken } from './normalizeSearchToken';
-import { buildExactMatchSql, buildOwnLabelsMatchSql } from './wordMatch';
+import { buildExactMatchSql } from './wordMatch';
 import { tieWorkPatternFor } from './jobTies';
 import {
   RESEARCH_FACTS_NOTE,
@@ -31,7 +31,7 @@ import {
 import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
-import { isSearchTimeout, searchDidNotFinish } from './searchDidNotFinish';
+import { searchDidNotFinish } from './searchDidNotFinish';
 
 const FUZZY_THRESHOLD = 0.45;
 /**
@@ -181,19 +181,6 @@ const AGG_JOINS = `FROM hits h
  * hold up the short queries a conversation is waiting on.
  */
 const EXACT_SEARCH_TIMEOUT_MS = 20_000;
-/** The owner's own labels alone: a read by her id, under a second on a 6,600-contact book. */
-const OWN_LABELS_TIMEOUT_MS = 8_000;
-/** What is reported when the full search timed out and the owner's own labels held nobody. */
-const FULL_SEARCH_TIMED_OUT = new Error('statement timeout');
-
-/**
- * Model-facing (needs Misho's word, D44): what the model is told when only the
- * owner's own labels could be read.
- */
-export const OWN_LABELS_ONLY_NOTE =
-  'The full search did not finish. These results come only from names and tags the user ' +
-  'saved themselves; people found through what others saved are missing. Do NOT say this ' +
-  'is everyone. Use these, and offer to search again.';
 
 /**
  * The tester's 990 (Test 73): the model is shown the first eight results
@@ -244,51 +231,6 @@ async function runExactSearch(
   const rows: TagRow[] = result.rows.map(({ total_matches: _total, ...row }) => row);
   const total = result.rows[0]?.total_matches;
   return { rows, total: total === undefined ? 0 : Number(total) };
-}
-
-/** The owner's own labels and tags only — what runExactSearch falls back to when it runs out of time. */
-async function runOwnLabelsSearch(
-  userId: string,
-  rawGroups: string[][],
-  blockedPhones: string[],
-): Promise<{ rows: TagRow[]; total: number }> {
-  const m = buildOwnLabelsMatchSql(userId, rawGroups, blockedPhones);
-  const result = await query<TagRow>(
-    `WITH ${m.matchedCte},
-     hits AS (
-       SELECT phone, (${m.wordHits}) AS word_hits, TRUE AS own_hit
-       FROM matched
-       WHERE phone != ALL($${m.blockIdx})
-       GROUP BY phone
-     )
-     SELECT ${AGG_SELECT}, TRUE AS own_hit, FALSE AS self_work_only
-     ${AGG_JOINS}
-     GROUP BY h.phone
-     ORDER BY MAX(h.word_hits) DESC, MAX(ut."weightCount") DESC NULLS LAST
-     LIMIT ${RESULT_LIMIT}`,
-    m.params,
-    OWN_LABELS_TIMEOUT_MS,
-  );
-  return { rows: result.rows, total: result.rows.length };
-}
-
-/**
- * Nana's „ICOM" (22 Oct): when the full search runs out of time, the owner's
- * own labels are still read, so the people she saved under the word are not
- * lost with the rest. Any other failure is thrown as before.
- */
-async function exactOrOwnLabels(
-  userId: string,
-  rawGroups: string[][],
-  blockedPhones: string[],
-): Promise<{ rows: TagRow[]; total: number; ownLabelsOnly: boolean }> {
-  try {
-    return { ...(await runExactSearch(userId, rawGroups, blockedPhones)), ownLabelsOnly: false };
-  } catch (err) {
-    if (!isSearchTimeout(err)) throw err;
-    console.warn('searchByTag: full search timed out; reading the owner’s own labels');
-    return { ...(await runOwnLabelsSearch(userId, rawGroups, blockedPhones)), ownLabelsOnly: true };
-  }
 }
 
 /**
@@ -799,7 +741,7 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     const rawGroups = buildMeaningWordGroups(tagQuery);
     if (rawGroups.length === 0) return { found: false, query: tagQuery };
 
-    const exact = await exactOrOwnLabels(userId, rawGroups, blockedPhones);
+    const exact = await runExactSearch(userId, rawGroups, blockedPhones);
     const exactRows = exact.rows.filter((r) => !isExcluded(r.phone));
 
     // Fuzzy pass runs over the flat union of every word's variants (spelling
@@ -819,11 +761,7 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
       (r) => !isExcluded(r.phone) && !seen.has(normalizePhone(r.phone)),
     );
 
-    if (exactRows.length === 0 && fuzzyRows.length === 0) {
-      return exact.ownLabelsOnly
-        ? searchDidNotFinish('The tag search', FULL_SEARCH_TIMED_OUT)
-        : { found: false, query: tagQuery };
-    }
+    if (exactRows.length === 0 && fuzzyRows.length === 0) return { found: false, query: tagQuery };
 
     const allPhones = [...exactRows, ...fuzzyRows].map((r) => r.phone);
     const [facts, accountStates, relationships, exclusions, humanTiers] = await Promise.all([
@@ -858,7 +796,6 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     };
     // Whole result is approximate only when nothing matched exactly.
     if (exactRows.length === 0) payload.fuzzy = true;
-    if (exact.ownLabelsOnly) payload.partial_note = OWN_LABELS_ONLY_NOTE;
     return payload;
   } catch (err) {
     console.error('searchByTag error:', (err as Error).message);

@@ -28,19 +28,13 @@ export function planWaitsForTheOwner(task: PlanState | null): boolean {
   );
 }
 
-/**
- * The reply with the plan's question and buttons again; null when it already asks or
- * offers, or when the owner's own line asked to stop. #7236 (the tester's audit, thread
- * 63403): „შეწყვიტე" was answered „შევწყვიტე. … დავიწყო?" with the plan's two buttons.
- */
+/** The reply with the plan's question and buttons again; null when it already asks or offers. */
 export function withPlanDecisionAgain(
   reply: string,
   offered: readonly string[] | undefined,
   task: PlanState | null,
   language: RunLanguage,
-  ownerAskedToEnd = false,
 ): { readonly text: string; readonly choices: string[] } | null {
-  if (ownerAskedToEnd) return null;
   if ((offered ?? []).length > 0 || lastQuestionIn(reply) !== null) return null;
   if (!planWaitsForTheOwner(task)) return null;
   return {

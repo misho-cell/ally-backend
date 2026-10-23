@@ -1,5 +1,4 @@
 import ExcelJS from 'exceljs';
-import { docxText, pdfText } from './documentText';
 import { RunLanguage } from './runLanguage';
 import { withCellAddresses } from './xlsxAddresses';
 import { fallbackXlsxCells } from './xlsxFallback';
@@ -27,17 +26,7 @@ export enum ListFileKind {
   Csv = 'csv',
   Xlsx = 'xlsx',
   Text = 'text',
-  /** #7393: read as text, like a .txt. */
-  Pdf = 'pdf',
-  Docx = 'docx',
 }
-
-/** The kinds that are binary on disk and are opened by their own reader. */
-const BINARY_KINDS: ReadonlySet<ListFileKind> = new Set([
-  ListFileKind.Xlsx,
-  ListFileKind.Pdf,
-  ListFileKind.Docx,
-]);
 
 export enum ListFileRefusal {
   TooLarge = 'too_large',
@@ -68,8 +57,6 @@ const EXTENSION_KINDS: Readonly<Record<string, ListFileKind>> = {
   txt: ListFileKind.Text,
   md: ListFileKind.Text,
   markdown: ListFileKind.Text,
-  pdf: ListFileKind.Pdf,
-  docx: ListFileKind.Docx,
 };
 
 /** What kind of file this is, by its extension; null for anything slice 1 does not read. */
@@ -102,13 +89,19 @@ export async function parseListFile(buffer: Buffer, filename: string): Promise<L
   if (buffer.length > MAX_FILE_BYTES) return { ok: false, reason: ListFileRefusal.TooLarge };
   const kind = listFileKind(filename);
   if (kind === null) return { ok: false, reason: ListFileRefusal.Unsupported };
-  if (!BINARY_KINDS.has(kind) && isBinary(buffer)) {
+  if (kind !== ListFileKind.Xlsx && isBinary(buffer)) {
     // eslint-disable-next-line no-console
     console.warn(`[list-file] ${kind} is binary (${buffer.length} bytes) — not read`);
     return { ok: false, reason: ListFileRefusal.Unreadable };
   }
   try {
-    const file = await readFile(buffer, kind);
+    const table =
+      kind === ListFileKind.Xlsx
+        ? await xlsxCells(buffer)
+        : kind === ListFileKind.Csv
+          ? csvCells(buffer.toString('utf8'))
+          : null;
+    const file = table === null ? textFile(buffer.toString('utf8')) : tableFile(kind, table);
     if (file.text.trim() === '') return { ok: false, reason: ListFileRefusal.Empty };
     return { ok: true, file };
   } catch (err) {
@@ -120,25 +113,9 @@ export async function parseListFile(buffer: Buffer, filename: string): Promise<L
   }
 }
 
-/** The file as a table (Excel, CSV) or as text (everything else). */
-async function readFile(buffer: Buffer, kind: ListFileKind): Promise<ParsedListFile> {
-  switch (kind) {
-    case ListFileKind.Xlsx:
-      return tableFile(kind, await xlsxCells(buffer));
-    case ListFileKind.Csv:
-      return tableFile(kind, csvCells(buffer.toString('utf8')));
-    case ListFileKind.Pdf:
-      return textFile(await pdfText(buffer), kind);
-    case ListFileKind.Docx:
-      return textFile(await docxText(buffer), kind);
-    case ListFileKind.Text:
-      return textFile(buffer.toString('utf8'), kind);
-  }
-}
-
-function textFile(raw: string, kind: ListFileKind): ParsedListFile {
+function textFile(raw: string): ParsedListFile {
   return {
-    kind,
+    kind: ListFileKind.Text,
     columns: [],
     rows: [],
     rowsCut: false,
@@ -292,7 +269,7 @@ const SUMMARY: Readonly<
 /** The one line Netai answers with: what it understood (#892). */
 export function listFileSummary(file: ParsedListFile, language: RunLanguage): string {
   const words = SUMMARY[language] ?? SUMMARY.ka;
-  if (file.columns.length === 0) return words.text(file.text.length);
+  if (file.kind === ListFileKind.Text) return words.text(file.text.length);
   const named = file.columns
     .filter((c) => c !== '')
     .slice(0, MAX_COLUMNS_NAMED)
@@ -300,19 +277,18 @@ export function listFileSummary(file: ParsedListFile, language: RunLanguage): st
   return words.table(file.rows.length, named) + (file.rowsCut ? words.cut : '');
 }
 
-// #7393 (Misho's yes, 23 Oct): the formats line names PDF and Word, which are read now.
 const REFUSAL: Readonly<Record<RunLanguage, Readonly<Record<ListFileRefusal, string>>>> = {
   ka: {
     [ListFileRefusal.TooLarge]: 'ფაილი 2 MB-ზე დიდია — უფრო პატარა ან ნაწილებად გამომიგზავნე.',
     [ListFileRefusal.Unsupported]:
-      'ამ ფორმატს ჯერ ვერ ვკითხულობ — Excel (.xlsx), CSV, TXT, Markdown, PDF ან Word (.docx) გამომიგზავნე.',
+      'ამ ფორმატს ჯერ ვერ ვკითხულობ — Excel (.xlsx), CSV, TXT ან Markdown გამომიგზავნე.',
     [ListFileRefusal.Empty]: 'ფაილი ცარიელია — მასში წასაკითხი არაფერი იპოვა.',
     [ListFileRefusal.Unreadable]: 'ფაილი ვერ გავხსენი — შეიძლება დაზიანებული ან პაროლით დაცულია.',
   },
   en: {
     [ListFileRefusal.TooLarge]: 'The file is over 2 MB — send a smaller one, or in parts.',
     [ListFileRefusal.Unsupported]:
-      'I cannot read this format yet — send Excel (.xlsx), CSV, TXT, Markdown, PDF or Word (.docx).',
+      'I cannot read this format yet — send Excel (.xlsx), CSV, TXT or Markdown.',
     [ListFileRefusal.Empty]: 'The file is empty — there was nothing in it to read.',
     [ListFileRefusal.Unreadable]:
       'I could not open the file — it may be damaged or password-protected.',
@@ -320,7 +296,7 @@ const REFUSAL: Readonly<Record<RunLanguage, Readonly<Record<ListFileRefusal, str
   ru: {
     [ListFileRefusal.TooLarge]: 'Файл больше 2 МБ — пришли поменьше или частями.',
     [ListFileRefusal.Unsupported]:
-      'Этот формат я пока не читаю — пришли Excel (.xlsx), CSV, TXT, Markdown, PDF или Word (.docx).',
+      'Этот формат я пока не читаю — пришли Excel (.xlsx), CSV, TXT или Markdown.',
     [ListFileRefusal.Empty]: 'Файл пустой — в нём нечего читать.',
     [ListFileRefusal.Unreadable]:
       'Не смог открыть файл — возможно, он повреждён или защищён паролем.',
@@ -328,7 +304,7 @@ const REFUSAL: Readonly<Record<RunLanguage, Readonly<Record<ListFileRefusal, str
   es: {
     [ListFileRefusal.TooLarge]: 'El archivo pasa de 2 MB — envía uno más pequeño o por partes.',
     [ListFileRefusal.Unsupported]:
-      'Aún no leo este formato — envía Excel (.xlsx), CSV, TXT, Markdown, PDF o Word (.docx).',
+      'Aún no leo este formato — envía Excel (.xlsx), CSV, TXT o Markdown.',
     [ListFileRefusal.Empty]: 'El archivo está vacío — no había nada que leer.',
     [ListFileRefusal.Unreadable]:
       'No pude abrir el archivo — puede estar dañado o protegido con contraseña.',

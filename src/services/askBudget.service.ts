@@ -91,10 +91,8 @@ export const MIN_MONTHLY_ASK_BUDGET = Number(process.env.MIN_MONTHLY_ASK_BUDGET 
  * goal closing ends it, and every single outbound message still needs their
  * sender's explicit approval of the exact text — that boundary does not move.
  */
-// #7233 (audit, 62932; Misho's yes, 23 Oct): four was one helper getting five
-// messages in ninety minutes. Two: the question and one follow-up.
 export const RELAY_MESSAGES_PER_PERSON_PER_DAY = Number(
-  process.env.RELAY_MESSAGES_PER_PERSON_PER_DAY ?? 2,
+  process.env.RELAY_MESSAGES_PER_PERSON_PER_DAY ?? 4,
 );
 
 export type GrowthAskRefusalReason =

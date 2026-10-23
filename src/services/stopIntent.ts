@@ -148,10 +148,8 @@ export function looksLikeStopRequest(message: string): boolean {
 // The tester's 1116 (j, 34594, 34600): the app's own button sends „დავხუროთ ეს
 // დავალება" — the first-person „დავხურ-" and „შევაჩერ-" forms, which the stems
 // above did not hold, so the close was refused and the owner was asked again.
-// #7236 (the tester's audit, thread 63365): „არა არ მინდა მოვრჩეთ ეს ამბავი" was not
-// read as an end, so the run's close was refused and the goal stayed open.
 const END_VERB =
-  /(მოვრჩ|დავასრულ|დავამთავრ|შევწყვიტ|აღარ\s+მინდა|აღარ\s+მაინტერესებ|დახურ|დავხურ|შევაჩერ|გავაჩერ|გავაუქმ|გააუქმ|აღარ\s+მჭირდ|აღარ\s+გვჭირდ|\bclose\b|\bcancel|no\s+longer\s+need|don'?t\s+need\s+(?:it|this)|закр|отмен|не\s+нужн|cerrar|cancela|ya\s+no\s+(?:lo\s+)?necesit)/iu;
+  /(დახურ|დავხურ|შევაჩერ|გავაჩერ|გავაუქმ|გააუქმ|აღარ\s+მჭირდ|აღარ\s+გვჭირდ|\bclose\b|\bcancel|no\s+longer\s+need|don'?t\s+need\s+(?:it|this)|закр|отмен|не\s+нужн|cerrar|cancela|ya\s+no\s+(?:lo\s+)?necesit)/iu;
 
 export function asksToEndSomething(message: string): boolean {
   return STOP_VERB.test(message) || END_VERB.test(message);

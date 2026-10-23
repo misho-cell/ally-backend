@@ -513,10 +513,6 @@ export async function ensureNextWake(taskId: number, hours: number): Promise<boo
  * „გავაგრძელო?" card was drawn under the waiting plan, his „კი, გააგრძელე"
  * answered the update instead, and the plan had to be asked again. A goal
  * with any proposal waiting gets no update: the plan card is the question.
- *
- * #7238 (audit, thread 63229): Tornike agreed to the introduction 50 minutes
- * in, and at the hour the owner still read „ჯერ ვერ ვიპოვე ის, ვინც ამას
- * ზუსტად მოაგვარებს". An introduction a go-between accepted is an answer.
  */
 export async function getGoalsUnsolvedAfterAnHour(
   limit: number,
@@ -531,8 +527,6 @@ export async function getGoalsUnsolvedAfterAnHour(
        AND t.pending_question IS NULL
        AND NOT EXISTS (SELECT 1 FROM task_asks a
                         WHERE a.task_id = t.id AND a.status = 'answered')
-       AND NOT EXISTS (SELECT 1 FROM introduction_requests ir
-                        WHERE ir.requester_task_id = t.id AND ir.status = 'accepted')
      ORDER BY t.created_at ASC
      LIMIT $1`,
     [limit],

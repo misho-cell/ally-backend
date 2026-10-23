@@ -1,6 +1,5 @@
 import { query } from '../db/postgres/client';
 import { withoutAllyWord } from './georgianScriptName';
-import { nameKey } from './tools/transliterate';
 
 /**
  * #6767 (Giorgi, 20 Oct): a person is named the way the READER has him saved —
@@ -31,21 +30,6 @@ async function readersLabelFor(readerUserId: number, personUserId: number): Prom
   return label === '' ? null : label;
 }
 
-/**
- * #7328 (Lia's case, thread 64120): Omiko saved Iro as „Iro Tsagareishvili
- * Axel" — her name and then where she works. The Georgian line declined the
- * last word and read „ირო ცაგარეიშვილი ახელს". A label that starts with the
- * registered name, word for word in either script, is that name; the words
- * after it are the reader's note, not part of the name.
- */
-export function nameWithoutNote(label: string, registeredName: string): string {
-  const words = label.split(/\s+/u);
-  const registered = nameKey(registeredName).split(' ');
-  if (registered.length < 2 || words.length <= registered.length) return label;
-  const head = words.slice(0, registered.length);
-  return nameKey(head.join(' ')) === registered.join(' ') ? head.join(' ') : label;
-}
-
 /** The person's name as this reader saved him; the registered name when he did not, or the read failed. */
 export async function nameAsReaderSaved(
   readerUserId: number,
@@ -54,8 +38,7 @@ export async function nameAsReaderSaved(
 ): Promise<string> {
   if (readerUserId === personUserId) return registeredName;
   try {
-    const label = await readersLabelFor(readerUserId, personUserId);
-    return label === null ? registeredName : nameWithoutNote(label, registeredName);
+    return (await readersLabelFor(readerUserId, personUserId)) ?? registeredName;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[reader-name] the reader’s label was not read:', (err as Error).message);

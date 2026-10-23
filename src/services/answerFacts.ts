@@ -29,26 +29,6 @@ const SENTENCE_OPENING_RE = /(?:^|[.!?…]["'”’)]*)\s*$/u;
  * hit costs one rewrite that keeps the helper's own word.
  */
 const SURNAME_RE = /^\p{L}+(?:შვილ|ძე|ძის|ავა|უა|ანი|ელი|ია|ურ|ულ|ილ)\p{L}{0,3}$/u;
-/**
- * Everyday words that end like a surname. ops 21 Oct (why.sh): „ძალიან" after
- * a first name („გიორგი ძალიან კარგია") was held to the answer as a surname,
- * five times in two days — each a refusal and a rewrite for nothing.
- */
-const NOT_SURNAMES: ReadonlySet<string> = new Set([
-  'ძალიან',
-  'კარგია',
-  'მაგარია',
-  'ცუდია',
-  'ქართული',
-  'ინგლისური',
-  'რუსული',
-  'გერმანული',
-  'ფრანგული',
-]);
-
-function isSurname(word: string): boolean {
-  return SURNAME_RE.test(word) && !NOT_SURNAMES.has(word.toLowerCase());
-}
 /** The word before one of these is the street's name. */
 const STREET_RE = /([ა-ჰ]+)\s+(?:ქ\.|ქუჩ\p{L}*|გამზ\.|გამზირ\p{L}*|ჩიხ\p{L}*|შესახვ\p{L}*)/gu;
 /**
@@ -240,7 +220,7 @@ function namesOf(line: string): AnswerFact[] {
     if (!isFirstName(word)) return;
     facts.push({ written: word, mustAppear: stemOf(word) });
     const next = words[i + 1] ?? '';
-    if (isSurname(next)) facts.push({ written: next, mustAppear: stemOf(next) });
+    if (SURNAME_RE.test(next)) facts.push({ written: next, mustAppear: stemOf(next) });
   });
   return facts;
 }

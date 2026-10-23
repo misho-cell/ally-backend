@@ -24,19 +24,14 @@ const AT_MOST_TWO = 2;
 
 export async function targetNameForMediator(
   mediatorUserId: number,
-  askerUserId: number,
   askersName: string,
   targetPhone: string | null,
 ): Promise<string> {
   try {
-    // #6601 / #6602 retest (seat 190122): the asker's label („my buddy") came
-    // with no number and the go-between has no such word, so nothing matched.
-    // The asker's own book knows the number behind his label.
     const phone =
       targetPhone ??
       (await onlyMatch(mediatorUserId, askersName)) ??
-      (await onlyRegisteredContact(mediatorUserId, askersName)) ??
-      (await onlyMatch(askerUserId, askersName));
+      (await onlyRegisteredContact(mediatorUserId, askersName));
     if (phone === null) return askersName;
     // #6601 / #6602 (Giorgi, 20 Oct): a go-between who has not saved the target
     // read the asker's own word for him („chemi") in the card and the message.
@@ -56,9 +51,8 @@ export async function targetNameForMediator(
   }
 }
 
-/** Exactly one contact in this member's own book answers to the name. */
-async function onlyMatch(bookOwnerId: number, name: string): Promise<string | null> {
-  const matches = await findContactPhonesByName(String(bookOwnerId), name, AT_MOST_TWO);
+async function onlyMatch(mediatorUserId: number, name: string): Promise<string | null> {
+  const matches = await findContactPhonesByName(String(mediatorUserId), name, AT_MOST_TWO);
   return matches.length === 1 ? (matches[0] ?? null) : null;
 }
 

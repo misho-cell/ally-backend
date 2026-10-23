@@ -5,11 +5,7 @@ jest.mock('../../db/postgres/client', () => ({
 }));
 jest.mock('../../db/neo4j/client', () => ({ getSession: jest.fn(), __esModule: true }));
 
-import {
-  classifyExplicitRelationship,
-  computeRelationshipScore,
-  hasFamilyKeyword,
-} from '../enrichment.service';
+import { classifyExplicitRelationship, computeRelationshipScore } from '../enrichment.service';
 
 // Ticket 6 close §5: keyword matching on free text scored an investee as
 // FAMILY because his note said "grew up in a trucking family". While fixing
@@ -96,27 +92,4 @@ describe('computeRelationshipScore with old-Ally status', () => {
     const score = computeRelationshipScore('Full Name Person', false, undefined, undefined);
     expect(score.relationship_type).toBe('formal');
   });
-});
-
-/** #7232 (audit, 63406 → 63823): a label is family by a whole family word, not a substring. */
-describe('a family word in the owner’s label', () => {
-  it.each([
-    'ნიკა ქევხიშვილი',
-    'გიორგი აბრამიშვილი',
-    'ნოდარ მამალაძე',
-    'ლევან ძმაკაცი',
-    'ბიძინა ბერიძე',
-    'ანი ელიაშვილი ნოეს დამრიგებელი',
-  ])('is not family: %s', (label) => {
-    expect(hasFamilyKeyword(label)).toBe(false);
-    expect(computeRelationshipScore(label, false).relationship_type).not.toBe('family');
-  });
-
-  it.each(['დედა', 'მამაჩემი', 'ძმა გიორგი', 'ნინო (ცოლი)', 'ლევანი ბიძაშვილი', 'ნინო და', 'ძმას'])(
-    'is family: %s',
-    (label) => {
-      expect(hasFamilyKeyword(label)).toBe(true);
-      expect(computeRelationshipScore(label, false).relationship_type).toBe('family');
-    },
-  );
 });

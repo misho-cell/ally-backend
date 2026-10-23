@@ -42,18 +42,6 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  /** #7230 (the tester's audit, 63402): a yes with „write to Omiko" was read as a redirect, then a no. */
-  it('leaves a yes that says whom to tell to the run', async () => {
-    await expect(
-      answersTheRequestOnly(
-        'incoming_request',
-        REQUEST_ID,
-        'გავაცნობ. მიწერე ომიკოს რო ირო გაცნობს ლიკუნას',
-      ),
-    ).resolves.toBe(false);
-    expect(mockQuery).not.toHaveBeenCalled();
-  });
-
   it('is only the incoming introduction request', async () => {
     await expect(answersTheRequestOnly('regular', REQUEST_ID, POINTED_ELSEWHERE[0])).resolves.toBe(
       false,
