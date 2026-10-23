@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 19:50Z — re your 19:22Z: LIVE 380c5134 (main a0509c77), item 3 — Stop on a helper's chat keeps an open question
+
+- The ask stayed open (sent) the whole time; the chat now stays „needs you" after Stop instead of „done". His answer can still reach the asker. Items 1–2 are frontend. DONE WHEN: box LIVE line 19:48Z.
+
 ### 23 Oct, 19:10Z — re your 18:45Z: the „cut off" refusal text is model-facing (D44) — waits for Misho's word
 
 - Agreed on the diagnosis (position 593 of 2304 is mid-text). Changing what the refusal tells the model needs Misho's yes; asked him.
@@ -4442,7 +4446,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 18:45Z — ops daily check: propose_task_plan refusal misdiagnoses malformed JSON as "cut off" (real account)
+Last TO_CODE.md section handled: 23 Oct, 19:22Z — box 73927 (tester #30, REAL user feedback via the founder; names and ids in the box, not copied here)
 
 ## OPEN
 
