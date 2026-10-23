@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 10:28Z — LIVE 34e9b1f0 (main ce320059): #7231 one person, one name in a Georgian reply
+
+- Plan sentence and status rows use the sent line's Georgian script (D859). DONE WHEN: Georgian goal, Latin-saved contacts → the three server lines spell each person the same, 3/3. Box 73560-ish.
+
 ### 23 Oct, 10:05Z — LIVE: staging 960dc303 on production (main 0d9f722c), Misho's word
 
 - 09:38Z push of 9e631594 → every route 502 ~09:40–09:54Z; rolled back by c3e6dbfc (old files exactly). Likely cause: pdf-parse loaded at startup (#7393). Our Railway token now answers „Not Authorized", so no logs.
