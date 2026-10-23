@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { linesNotShownBefore, openAskLines } from '../askStatusSection';
+import { georgianScriptName } from '../georgianScriptName';
 
 /** #6356 (Giorgi, G-095, goal 29308). */
 const BESO_SENT = 'ბესო: კითხვა მიუვიდა, პასუხს ველოდები';
@@ -44,7 +45,27 @@ describe('#6356: a waiting line is said once, and again only when it changes', (
       },
     ];
     const lines = openAskLines(asks as never, [], 'ka', now);
-    expect(lines).toEqual(['Lika Osepashvili: ნახა, პასუხს ველოდები']);
+    expect(lines[0]).not.toContain('Ally');
     expect(linesNotShownBefore(lines, [`კითხვა გავუგზავნე.\n\n${lines[0]}`])).toEqual([]);
+  });
+
+  // #7231 (audit, 63431): one person, one name — the sent line's Georgian script, not the Latin label.
+  it('names the person in Georgian script in a Georgian reply, as the sent line does', () => {
+    const now = new Date('2026-10-22T12:15:00Z');
+    const asks = [{ to_user_id: 7, to_name: 'Tamuna Kovziridze', status: 'sent', seen_at: null }];
+    const [line] = openAskLines(asks as never, [], 'ka', now);
+    expect(line).toBe(
+      `${georgianScriptName('Tamuna Kovziridze')}: კითხვა მიუვიდა, პასუხს ველოდები`,
+    );
+    expect(line).not.toMatch(/[A-Za-z]/u);
+  });
+
+  it('keeps the saved spelling in an English reply', () => {
+    const now = new Date('2026-10-22T12:15:00Z');
+    const asks = [
+      { to_user_id: 7, to_name: 'Tamuna Kovziridze Ally', status: 'sent', seen_at: null },
+    ];
+    const [line] = openAskLines(asks as never, [], 'en', now);
+    expect(line.startsWith('Tamuna Kovziridze')).toBe(true);
   });
 });

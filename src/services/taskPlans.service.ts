@@ -1,3 +1,4 @@
+import { georgianScriptName } from './georgianScriptName';
 import { query } from '../db/postgres/client';
 import { repairedPlanJson } from './planJsonRepair';
 import { geoName } from './georgianCase';
@@ -1140,7 +1141,10 @@ const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
   ka: {
     ask: (people) => {
       const names = joinWithAnd(
-        people.map((p) => withNote(p.asIs === true ? p.name : geoName(p.name, 'gen'), p.note)),
+        // #7231: the plan names each person as the sent line and the status rows do (D859).
+        people.map((p) =>
+          withNote(p.asIs === true ? p.name : geoName(georgianScriptName(p.name), 'gen'), p.note),
+        ),
         'და',
       );
       const assistants = people.length === 1 ? 'ასისტენტს' : 'ასისტენტებს';
