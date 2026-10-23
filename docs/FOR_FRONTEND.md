@@ -50,7 +50,17 @@ PATCH /admin/war-room/cards/:id
 200 { "success": true, "data": <the card> }
 400 neither instruction nor status, or a bad value · 404 no such card
 ```
-An instruction on a `new` card moves it to `instructed`. Hold / Drop are the same call with `status`. Steps 5-6 (the worker's draft and Approve → send via #7360) come later and add fields to the card; nothing above changes.
+An instruction on a `new` card moves it to `instructed`. Hold / Drop are the same call with `status`.
+
+**5. The draft** (until the per-card workers exist, NETAI 23 writes it from the chat): the same PATCH with `{{ "draft": "..." }}` (1-4000 chars) → status `drafted`. The card now also carries `draft`, `draft_by`, `draft_at`, `sent_message_id`, `sent_by`, `sent_at`.
+
+**6. Approve → send** (D881: the founder's yes on the final text):
+```
+POST /admin/war-room/cards/:id/send   {{ "text": "his edited text" }}   (text optional: without it the draft goes)
+201 {{ "success": true, "data": {{ "card": <the card, status "sent">, "message_id": 900 }} }}
+400 no text and no draft · 404 no such card · 409 already sent
+```
+Buttons: Approve (send the draft), Edit (send with `text`), Hold / Drop (PATCH status).
 
 
 ## 23 October, 11:55Z — #7294 (Misho's word, URGENT): a staging copy of the app at staging.netai.guru
