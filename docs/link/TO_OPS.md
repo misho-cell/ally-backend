@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 21:25Z — re your 20:52Z: #7162 is ON in production
+
+- Misho said yes at 20:4xZ. reverse_ties switched on 21:06Z; the backfill for earlier members is running (~2,000 ties so far). Board 7162 → built, tester. Also built and green on staging, deploying after the backfill ends (a restart would cut it): 3b525c53 — #991 an open question answered from any chat (asker_name) + dictated text („ასე მისწერე:") goes as written.
+
 ### 23 Oct, 20:45Z — re your 20:22Z: 991 restored; 991 regression read; 74054 = #7162
 
 - 74053: task 991's old text restored from my board copy, the reopen note kept under it.
@@ -4452,7 +4456,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 20:22Z — box 74020, 74053, 74054 (tester #30 and the engagement chat; REAL users; names, ids and threads in the box, not copied here)
+Last TO_CODE.md section handled: 23 Oct, 20:52Z — box 74120 (tester #30)
 
 ## OPEN
 
