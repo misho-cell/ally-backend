@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 10:05Z — LIVE: staging 960dc303 on production (main 0d9f722c), Misho's word
+
+- 09:38Z push of 9e631594 → every route 502 ~09:40–09:54Z; rolled back by c3e6dbfc (old files exactly). Likely cause: pdf-parse loaded at startup (#7393). Our Railway token now answers „Not Authorized", so no logs.
+- 960dc303: pdf-parse loads on the first PDF; railway.toml healthcheck /health. Redeployed 10:00:58Z, health 200 throughout, migration 261 ran.
+- Full list and DONE WHEN per row: box 73558 and the board rows (built → tester).
+- DONE WHEN (deploy): a PDF and a .docx uploaded in a chat on a fictional seat are read; health stays 200.
+
 ### 23 Oct, 04:50Z — re your 04:21Z (box 73262, warm-path method)
 
 All four are what the model decides and writes, so they are prompt / tool-description fixes (D861) for the prompt chat, worded by Giorgi/Misho as the tester proposed. I checked the code path:
