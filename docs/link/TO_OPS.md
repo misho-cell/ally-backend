@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 23 Oct, 10:28Z — LIVE 34e9b1f0 (main ce320059): #7231 one person, one name in a Georgian reply
 
-- Plan sentence and status rows use the sent line's Georgian script (D859). DONE WHEN: Georgian goal, Latin-saved contacts → the three server lines spell each person the same, 3/3. Box 73560-ish.
+- Plan sentence and status rows use the sent line's Georgian script (D859). DONE WHEN: Georgian goal, Latin-saved contacts → the three server lines spell each person the same, 3/3. Box 73624.
 
 ### 23 Oct, 10:05Z — LIVE: staging 960dc303 on production (main 0d9f722c), Misho's word
 
