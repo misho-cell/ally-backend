@@ -170,9 +170,24 @@ async function netaiOfferedTheNumber(askThreadId: number): Promise<boolean> {
   return NUMBER_WORD_RE.test(said) && OFFER_TO_PASS_ON_RE.test(said) && /[?？]/u.test(said);
 }
 
+/**
+ * #7228 (audit, 62932): to „tornike abuladze ნომერი გავუგზავნო გიორგის?" the
+ * owner wrote „კი გაუგზავნე და თორნიკეს მიწერე რო მე დავაკავშირე" — a yes and
+ * a give word, then a second instruction. Only a bare yes counted, so the share
+ * was refused four times while she said it twice. A line that opens with the
+ * give word (a yes before it or not) answers the offer, unless it also holds
+ * the instruction back.
+ */
+const GIVE_OPENING_RE =
+  /^\s*(?:(?:კი|ki|ho|yes|yeah|ok|okay|да|sí|si)[\s,!.]*)?(?:გაუგზავნე|გააგზავნე|გადაეცი|გადაეცით|მიეცი|send it|give it|share it|pass it on|отправь|передай|envíalo|dáselo)(?=$|[\s,.!])/iu;
+
 /** Her newest line is a yes, a give word or a pick — an answer to Netai's offer. */
 export function answersTheOffer(latestLine: string): boolean {
-  return BARE_YES_RE.test(latestLine) || ORDINAL_PICK_RE.test(latestLine);
+  return (
+    BARE_YES_RE.test(latestLine) ||
+    ORDINAL_PICK_RE.test(latestLine) ||
+    (GIVE_OPENING_RE.test(latestLine) && !HOLD_RE.test(latestLine))
+  );
 }
 
 async function ownersLatestLines(askThreadId: number): Promise<string[]> {
