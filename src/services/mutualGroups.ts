@@ -45,6 +45,18 @@ const WORDS: Readonly<Partial<Record<RunLanguage, GroupWords>>> = {
   },
 };
 
+/**
+ * #7235 reopened (founder, thread 63992): the plan sentence put old Ally
+ * accounts under „their assistants", with only a note. The not-on-Netai line
+ * of these groups — Giorgi's approved words — is what such people get in any
+ * plan. Null when nobody is named or the words are not approved in this language.
+ */
+export function notOnNetaiLine(names: readonly string[], language: RunLanguage): string | null {
+  const words = WORDS[language];
+  if (words === undefined || names.length === 0) return null;
+  return `• ${words.notOnNetai}: ${names.join(NAME_SEPARATOR)}`;
+}
+
 /** The two groups as the owner reads them; null when nobody was found or the words are not approved. */
 export function mutualGroupsText(
   target: string,

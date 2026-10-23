@@ -1,3 +1,4 @@
+import { notOnNetaiLine } from './mutualGroups';
 import { georgianScriptName } from './georgianScriptName';
 import { query } from '../db/postgres/client';
 import { repairedPlanJson } from './planJsonRepair';
@@ -1242,9 +1243,26 @@ export function withAskablePeopleOnly(plan: TaskPlan): TaskPlan {
     : { ...plan, people_to_involve: askable };
 }
 
+/** Not on Netai, or an account that never opened it: nobody's assistant to ask. */
+function notAnAssistantToAsk(person: PlanPerson): boolean {
+  return person.reach === 'not_member' || person.reach === 'never_opened';
+}
+
 export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
   const words = PLAN_SENTENCES[language];
-  const people: PlanPersonLine[] = plan.people_to_involve.slice(0, MAX_PEOPLE_SHOWN).map((p) => ({
+  const shown = plan.people_to_involve.slice(0, MAX_PEOPLE_SHOWN);
+  /**
+   * #7235 reopened (founder, thread 63992): old Ally accounts who do not know
+   * Netai exists were named among „the assistants I will talk to", with a small
+   * note. Where the not-on-Netai line has approved words, they go there instead
+   * and no assistant language is used for them.
+   */
+  const outside = notOnNetaiLine(
+    shown.filter(notAnAssistantToAsk).map((p) => p.name),
+    language,
+  );
+  const asked = outside === null ? shown : shown.filter((p) => !notAnAssistantToAsk(p));
+  const people: PlanPersonLine[] = asked.map((p) => ({
     name: p.name,
     note: personNote(p, language),
   }));
@@ -1255,7 +1273,9 @@ export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): s
   // the goal counts as solved. `solved_when` is still kept and tracked; it is
   // only not shown.
   // D663: no routes sentence — the owner reads whom Netai will talk to, not „paths".
-  const lines: string[] = [people.length > 0 ? words.ask(people) : words.askNobody];
+  const lines: string[] =
+    people.length > 0 ? [words.ask(people)] : outside === null ? [words.askNobody] : [];
+  if (outside !== null) lines.push(lines.length > 0 ? `\n${outside}` : outside);
   if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);
   // The tester's 957: the closing question is NOT part of the plan text. A
   // model pasted these lines into a reply whose ask had already gone out, so

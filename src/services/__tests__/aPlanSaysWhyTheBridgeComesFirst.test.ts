@@ -29,7 +29,9 @@ describe('a plan with a close bridge', () => {
       plan([{ name: 'Nika', tie: OwnerTieReason.Family, reach: 'not_member' }]),
       'en',
     );
-    expect(text).toContain('(not on Netai — will need an invitation)');
+    // #7235 reopened: nobody's assistant to ask — the approved not-on-Netai line, no „I will talk to".
+    expect(text).toContain('Not on Netai — you write to them yourself, or invite them: Nika');
+    expect(text).not.toContain('I will talk to');
     expect(text).not.toContain('(your family)');
   });
 
@@ -72,5 +74,20 @@ describe('a plan through one close bridge (the tester\u2019s 65642)', () => {
       [{ name: 'ზურაბი', viaPhones: ['+111'] }],
     );
     expect(sentence).toMatch(/^ნიკას ასისტენტს დაველაპარაკები/u);
+  });
+});
+
+describe('#7235 reopened (founder, 63992): an old account is never an assistant to ask', () => {
+  it('puts a never-opened account on the not-on-Netai line, beside the ones whose assistant is asked', () => {
+    const text = planInSentences(
+      plan([
+        { name: 'ლევანი', reach: 'ok' },
+        { name: 'მამუკა', reach: 'never_opened' },
+      ]),
+      'ka',
+    );
+    expect(text).toContain('ლევანის ასისტენტს დაველაპარაკები');
+    expect(text).toContain('• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: მამუკა');
+    expect(text).not.toContain('მამუკას');
   });
 });

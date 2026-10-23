@@ -33,10 +33,14 @@ const PLAN: TaskPlan = {
 
 describe('the plan in plain sentences', () => {
   it('has no version, no form heading and no bracketed status', () => {
-    const text = planInSentences(PLAN, 'en');
+    // #7235 reopened: the not-on-Netai person sits on the approved group line below.
+    const [paragraph, ...rest] = planInSentences(PLAN, 'en').split('\n');
+    const text = paragraph;
     // The tester's 957: no „label: value" lines either — one paragraph of sentences.
     expect(text).not.toContain(':');
-    expect(text).not.toContain('\n');
+    expect(rest).toEqual([
+      '• Not on Netai — you write to them yourself, or invite them: Netai Test 54',
+    ]);
     expect(text).not.toMatch(/\bv\d/);
     expect(text).not.toContain('awaiting your approval');
     expect(text).not.toContain('[waiting]');
@@ -49,7 +53,9 @@ describe('the plan in plain sentences', () => {
     expect(text).not.toContain('solved');
     expect(text).not.toContain('a reliable architect is found');
     expect(text).not.toContain('look through');
-    expect(text).toContain("I will talk to Netai Test 50's and Netai Test 54's (not on Netai");
+    // #7235 reopened (founder, 63992): only someone whose assistant can be asked is in this sentence.
+    expect(text).toContain("I will talk to Netai Test 50's assistant");
+    expect(text).not.toContain("Netai Test 54's");
   });
 
   it('says it is writing to nobody when the plan names nobody', () => {
@@ -184,14 +190,15 @@ describe('the plan reads as Georgian sentences', () => {
   it('puts the people in the genitive, joins them with „და", and names their assistants (D663)', () => {
     const text = planInSentences(PLAN, 'ka');
     // #7231: in Georgian script, as the sent line names the same person (D859).
-    expect(text).toContain(`${geoName(georgianScriptName('Netai Test 50'), 'gen')} და`);
-    expect(text).toContain('ასისტენტებს დაველაპარაკები');
+    expect(text).toContain(`${geoName(georgianScriptName('Netai Test 50'), 'gen')} ასისტენტს`);
+    expect(text).toContain('ასისტენტს დაველაპარაკები');
     expect(text).not.toContain('ვეძებ ამ გზებით');
     expect(text).not.toContain('კითხვას დავუსვამ:');
-    // The note stays after the name, and only the name is put in its case.
+    // #7235 reopened: not on Netai is said on the approved group line, never as an assistant.
     expect(text).toContain(
-      `${geoName(georgianScriptName('Netai Test 54'), 'gen')} (Netai-ზე არ არის`,
+      '• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: Netai Test 54',
     );
+    expect(text).not.toContain(`${geoName(georgianScriptName('Netai Test 54'), 'gen')}`);
   });
 });
 
