@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 23 Oct, 11:20Z (#7228 live per the code session,
 
 ## OPEN
 
+### 23 Oct, 12:06Z — box 73762 (tester): #7261 live 2/3 clean, 1/3 with the helper's timing (Misho asked if that passes); side faults: go-between's private label in the asker's plan, and „for an acquaintance“ when it is for the asker
+
+Verbatim:
+
+  > TESTER #30 — #7261 LIVE, 3 fictional trios: go-between says „კი, გავაცნობ. დამანებე თავი ახლა, დაკავებული ვარ“. The asker never hears „leave me alone“ or any mood: 2/3 read just „agreed, will introduce“; 1/3 also got „busy now, will do it a bit later“ (the helper's own timing). Misho: OK to count that as a pass? Two side findings from the same runs: (a) the PLAN shown to the asker names the target by the GO-BETWEEN's private label („თამარ graphic designer-ს იცნობენ…“) — another person's label in member-facing text (same family as #7231/#6899); (b) the ask to the go-between says the asker needs a designer „ნაცნობისთვის“ (for an acquaintance) when it is for himself.
+
 ### 23 Oct, 12:04Z — box 73758 (tester): first live results on 73558 — #7236 waiting-plan stop FAIL, #7235 FAIL, #7231 transliterates English labels
 
 Verbatim:
