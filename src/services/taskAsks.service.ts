@@ -6,7 +6,7 @@ import { MAX_RELAYS_IN_A_CHAIN, relaysBefore } from './relayChain';
 export { MAX_RELAYS_IN_A_CHAIN } from './relayChain';
 import { ownerWordsAnswerNote } from './ownerWordsAnswer';
 import { missingFacts, missingFactsRefusal } from './answerFacts';
-import { sentenceCarriedOver } from './sentenceCarriedOver';
+import { dictatesTheText, sentenceCarriedOver } from './sentenceCarriedOver';
 import {
   factsAdded,
   factsAddedRefusal,
@@ -3190,7 +3190,9 @@ async function answerHeldBack(
     const missing = missingFacts(own, answerText);
     if (missing.length > 0) return missingFactsRefusal(missing);
     if ((await askTapOnThread(askThreadId, own)) === AskTap.Decline) return null;
-    if (sentenceCarriedOver(own, answerText) !== null) return HELPERS_SENTENCE_REFUSAL;
+    if (!dictatesTheText(own) && sentenceCarriedOver(own, answerText) !== null) {
+      return HELPERS_SENTENCE_REFUSAL;
+    }
     const added = factsAdded(own, question, answerText);
     if (added.length > 0) return factsAddedRefusal(added);
     const endorsed = endorsementAdded(own, answerText);
@@ -3858,6 +3860,34 @@ export async function markAsksSeen(askThreadId: number, readerUserId: string): P
   );
   return result.rowCount ?? 0;
 }
+
+/** One open question addressed to this member, as the answer path needs it. */
+export interface OpenQuestionToMe {
+  readonly askThreadId: number;
+  readonly askerName: string;
+}
+
+/**
+ * #991 reopened (tester 74020, 23 Oct): a helper answered an open question
+ * from a NEW chat („ლაშა კურაშვილის მოთხოვნა … ასე მისწერე"), and the answer
+ * path lived only in the question's own chat, so nothing reached the asker.
+ * The member's open questions, newest first, each with the asker as the
+ * member saved them — so the answer can be routed by the name he gives.
+ */
+export async function openQuestionsToMe(recipientUserId: string): Promise<OpenQuestionToMe[]> {
+  const result = await query<{ ask_thread_id: number; asker_name: string | null }>(
+    `SELECT ta.ask_thread_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
+       FROM task_asks ta
+      WHERE ta.to_user_id = $1::int AND ta.status = 'sent' AND ta.ask_thread_id IS NOT NULL
+      ORDER BY ta.id DESC
+      LIMIT $2`,
+    [recipientUserId, MAX_OPEN_QUESTIONS_READ],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({ askThreadId: r.ask_thread_id, askerName: r.asker_name ?? '' }));
+}
+
+const MAX_OPEN_QUESTIONS_READ = 20;
 
 export async function getAskByThread(askThreadId: number): Promise<IncomingAsk | null> {
   const result = await query<IncomingAsk>(

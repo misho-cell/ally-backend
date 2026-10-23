@@ -72,3 +72,16 @@ export function sentenceCarriedOver(source: string, sent: string): string | null
   }
   return null;
 }
+
+/**
+ * Misho, 23 Oct (on the tester's 74020): when the owner DICTATES the text —
+ * „ასე მისწერე: …", „write him this: …" — the words are meant to go as they
+ * are, and D648's no-quotation rule does not hold them back. Only an explicit
+ * dictation counts: a verb of writing or telling with „ასე"/„this", then a colon.
+ */
+const DICTATION_RE =
+  /(?:ასე|ზუსტად\s+ეს(?:\s+ტექსტი)?|ეს(?:\s+ტექსტი)?)\s+(?:მი|გა|გადა)?(?:წერე|სწერე|უწერე|უგზავნე|უთხარი|ეცი|ეცით)\s*[:：]|\b(?:write|send|tell)\s+(?:him|her|them)(?:\s+(?:this|exactly\s+this))?\s*[:：]/iu;
+
+export function dictatesTheText(ownerLine: string): boolean {
+  return DICTATION_RE.test(ownerLine);
+}

@@ -286,7 +286,9 @@ import {
   setLaterDays,
   tappedPersonOnThread,
   ownerLineNamesThisContact,
+  openQuestionsToMe,
 } from './taskAsks.service';
+import { askThreadForName } from './askThreadByName';
 import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
@@ -2218,6 +2220,44 @@ const RELAY_ASK_TOOL: AnthropicTool = {
  * a number from HIS OWN phonebook — on his own typed word, for that contact.
  * The server checks the word and resolves the number; the model never types it.
  */
+/**
+ * #991 reopened (tester 74020, 23 Oct; Misho's yes): an answer to an open
+ * question may be given from any of the member's chats. Inside the question's
+ * own chat it is that chat; elsewhere it is the open question whose asker the
+ * call names (asker_name), or the only one open.
+ */
+async function askThreadForCall(
+  userId: string,
+  threadId: number,
+  runId: string | undefined,
+  input: Record<string, unknown>,
+): Promise<number | null> {
+  if (runId !== undefined && runModes.get(runId) === 'incoming_ask') return threadId;
+  const open = await openQuestionsToMe(userId);
+  return askThreadForName(open, String(input['asker_name'] ?? ''));
+}
+
+/** Whether any open question waits on this member; a failed read offers no extra tools. */
+async function hasOpenQuestions(userId: string): Promise<boolean> {
+  try {
+    return (await openQuestionsToMe(userId)).length > 0;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[tools] open questions not read:', (err as Error).message);
+    return false;
+  }
+}
+
+/** What the model is told when the named asker has no single open question here. */
+async function whichQuestionNote(userId: string): Promise<string> {
+  const names = [...new Set((await openQuestionsToMe(userId)).map((q) => q.askerName))].filter(
+    (n) => n !== '',
+  );
+  return names.length === 0
+    ? 'Not sent: this person has no open question from anyone — nothing can be answered.'
+    : `Not sent: pass asker_name — the person whose open question this answers. Open questions are from: ${names.join(', ')}.`;
+}
+
 const SHARE_CONTACT_NUMBER_TOOL: AnthropicTool = {
   name: 'share_contact_number_with_asker',
   description:
@@ -2231,6 +2271,12 @@ const SHARE_CONTACT_NUMBER_TOOL: AnthropicTool = {
     type: 'object',
     properties: {
       phone: { type: 'string', description: "The contact's phone id from a search result." },
+      asker_name: {
+        type: 'string',
+        description:
+          "Outside the question's own chat: the name of the person whose open question this " +
+          'answers, as the owner said it.',
+      },
       note: {
         type: 'string',
         description:
@@ -2310,7 +2356,8 @@ const SHARE_REFUSAL_NOTE: Readonly<Record<ShareRefusal, string>> = {
 const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
   name: 'send_answer_to_asker',
   description:
-    'Inside an incoming-ask thread ONLY: sends the answer to the person who asked. NOTHING ' +
+    'Sends the answer to the person who asked the user an open question — inside that ' +
+    "question's own chat, or from any other chat with asker_name. NOTHING " +
     'reaches them automatically — this call is the only channel. A CLEAR answer (a name, a ' +
     'yes, a time, a place, a recommendation, an offer to connect the asker with someone, a no ' +
     'in their own words) goes AT ONCE with confirmed=true, in YOUR words — its content, never ' +
@@ -2339,6 +2386,12 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
       answer_text: {
         type: 'string',
         description: 'The exact text the user approved — sent verbatim to the asker.',
+      },
+      asker_name: {
+        type: 'string',
+        description:
+          "Outside the question's own chat: the name of the person whose open question this " +
+          'answers, as the owner said it.',
       },
       confirmed: {
         type: 'boolean',
@@ -11060,11 +11113,14 @@ async function executeToolCall(
     case 'share_contact_number_with_asker': {
       if (threadId === undefined)
         return { shared: false, error: 'No thread context for this call.' };
+      const askThread = await askThreadForCall(userId, threadId, runId, input);
+      if (askThread === null) return { shared: false, error: await whichQuestionNote(userId) };
       const outcome = await shareContactNumberWithAsker(
         userId,
-        threadId,
+        askThread,
         String(input['phone'] ?? ''),
         String(input['note'] ?? ''),
+        threadId,
       );
       if (outcome.shared && runId) runAnswerSent.add(runId);
       return outcome.shared
@@ -11096,7 +11152,9 @@ async function executeToolCall(
       // Row 302 / D527 (tester 958): the send never writes a rule, whatever
       // the call carries — rule 232 was written that way with no yes. The rule
       // is one optional button after the answer, saved only on its tap.
-      const sent = await sendApprovedAskAnswer(userId, threadId, answerText);
+      const askThread = await askThreadForCall(userId, threadId, runId, input);
+      if (askThread === null) return { sent: false, error: await whichQuestionNote(userId) };
+      const sent = await sendApprovedAskAnswer(userId, askThread, answerText);
       if (sent.sent && runId) runAnswerSent.add(runId);
       return sent.sent ? { ...sent, next: answerSentNote(runLang(runId)) } : sent;
     }
@@ -16009,7 +16067,12 @@ export async function buildToolsForThread(
       ...(await buildEnabledTools(userId, ownerAbsent)),
     ];
   }
-  return buildEnabledTools(userId, ownerAbsent);
+  // #991 reopened (tester 74020): an open question can be answered from any chat.
+  const answerTools =
+    !ownerAbsent && (await hasOpenQuestions(userId))
+      ? [SEND_ANSWER_TO_ASKER_TOOL, SHARE_CONTACT_NUMBER_TOOL]
+      : [];
+  return [...answerTools, ...(await buildEnabledTools(userId, ownerAbsent))];
 }
 
 /**

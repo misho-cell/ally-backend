@@ -1,4 +1,4 @@
-import { sentenceCarriedOver } from './sentenceCarriedOver';
+import { dictatesTheText, sentenceCarriedOver } from './sentenceCarriedOver';
 import { nameKey } from './tools/transliterate';
 /**
  * Board #100 (plate F1): when Netai worded a question for the owner it changed
@@ -156,6 +156,7 @@ export function factChangedRefusal(changed: FactChanged): string {
 /** The owner's sentence the question repeats whole, or null (the tester's 1154: one sentence is enough). */
 export function ownersLineQuoted(question: string, ownerLines: readonly string[]): string | null {
   for (const line of ownerLines) {
+    if (dictatesTheText(line)) continue;
     const carried = sentenceCarriedOver(line, question);
     if (carried !== null) return carried;
   }

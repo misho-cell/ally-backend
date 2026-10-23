@@ -321,17 +321,20 @@ export async function shareContactNumberWithAsker(
   askThreadId: number,
   phoneRaw: string,
   noteRaw = '',
+  // #991 reopened (tester 74020): the owner may give the word in another chat
+  // of his; his word, his taps and the offer are read where he wrote them.
+  wordsThreadId: number = askThreadId,
 ): Promise<ShareOutcome> {
-  const phone = await pickedPhone(askThreadId, phoneRaw.trim());
+  const phone = await pickedPhone(wordsThreadId, phoneRaw.trim());
   if ((await liveAskFor(ownerId, askThreadId)) === null) {
     return { shared: false, reason: ShareRefusal.NoLiveQuestion };
   }
   const alias = phone === '' ? null : await ownContactAlias(ownerId, phone);
   if (alias === null) return { shared: false, reason: ShareRefusal.NotOwnContact };
-  const lines = await ownersLatestLines(askThreadId);
+  const lines = await ownersLatestLines(wordsThreadId);
   const herWord =
     ownerLinesShareNumber(lines, alias) ||
-    (answersTheOffer(lines[0] ?? '') && (await netaiOfferedTheNumber(askThreadId)));
+    (answersTheOffer(lines[0] ?? '') && (await netaiOfferedTheNumber(wordsThreadId)));
   if (!herWord) {
     return { shared: false, reason: ShareRefusal.NotTheOwnersWord };
   }

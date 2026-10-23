@@ -70,9 +70,11 @@ describe('the helper’s send', () => {
     expect(asks).toContain(
       'if ((await askTapOnThread(askThreadId, own)) === AskTap.Decline) return null;',
     );
+    // Misho, 23 Oct: text the helper dictates („ასე მისწერე:") is the one exception.
     expect(asks).toContain(
-      'if (sentenceCarriedOver(own, answerText) !== null) return HELPERS_SENTENCE_REFUSAL;',
+      'if (!dictatesTheText(own) && sentenceCarriedOver(own, answerText) !== null) {',
     );
+    expect(asks).toContain('return HELPERS_SENTENCE_REFUSAL;');
   });
 
   it('is held back for added facts, then once for the first person', () => {
