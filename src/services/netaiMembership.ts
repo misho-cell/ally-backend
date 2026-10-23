@@ -83,3 +83,14 @@ export function typedOrAnswered(alias: string): string {
            OR EXISTS (SELECT 1 FROM task_asks a
                        WHERE a.to_user_id = ${alias}.id AND a.answered_at IS NOT NULL))`;
 }
+
+/**
+ * #7235 retest (tester 73758): seat 191540 never typed and never answered, yet
+ * was asked — a live subscription still made it a member, and every account
+ * gets one at sign-up. Whose assistant can be asked is decided by what they did
+ * in Netai: typed, answered, or searched. A subscription alone is not that.
+ */
+export function netaiMember(alias: string): string {
+  return `(${typedOrAnswered(alias)}
+           OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = ${alias}.id::text))`;
+}

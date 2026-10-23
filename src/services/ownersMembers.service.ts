@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import { getExcludedPhoneSet } from './block.service';
 import { normalizePhone } from './phone';
-import { typedOrAnswered } from './netaiMembership';
+import { netaiMember } from './netaiMembership';
 
 /**
  * #960, the tester's 1145 (37787, 37895, 37878): the rule that asks a reply to
@@ -12,7 +12,6 @@ import { typedOrAnswered } from './netaiMembership';
  * never leaves this function.
  */
 const MEMBERS_QUERY_TIMEOUT_MS = 3_000;
-const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
 
 /**
  * #6370 (the tester's 69142; Ninia's Axel test): the note built from this list
@@ -58,12 +57,10 @@ export async function ownersContactsOnNetai(
          JOIN "UserPhone" up ON up.phone = ua.phone
          JOIN "User" u ON u.id = up."userId"
         WHERE ua."contactId" = $1::int AND u.id <> $1::int AND u."deletedAt" IS NULL
-          AND (${typedOrAnswered('u')}
-            OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
-            OR u.subscription_status = ANY($2::text[]))
+          AND ${netaiMember('u')}
         ORDER BY u.id
-        LIMIT $3::int`,
-      [userId, NETAI_ACTIVE_SUBSCRIPTION_STATUSES, onTopic ? TOPIC_POOL : limit],
+        LIMIT $2::int`,
+      [userId, onTopic ? TOPIC_POOL : limit],
       MEMBERS_QUERY_TIMEOUT_MS,
     ),
     getExcludedPhoneSet(userId),

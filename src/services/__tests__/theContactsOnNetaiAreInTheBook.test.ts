@@ -40,8 +40,10 @@ describe('the owner’s contacts on Netai, from his phonebook', () => {
     await expect(ownersContactsOnNetai('501', 5)).resolves.toEqual(['ნინო ექიმი']);
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('ua."contactId" = $1::int AND u.id <> $1::int');
-    expect(String(sql)).toContain('LIMIT $3::int');
-    expect(params).toEqual(['501', ['active', 'trialing', 'past_due'], 5]);
+    // #7235 retest: a subscription alone is not a member, so no statuses ride along.
+    expect(String(sql)).toContain('LIMIT $2::int');
+    expect(String(sql)).not.toContain('subscription_status');
+    expect(params).toEqual(['501', 5]);
   });
 });
 
@@ -62,8 +64,8 @@ describe('#6370 (69142): only the members on the subject are named', () => {
     await expect(ownersContactsOnNetai('501', 5, ['ბუღალტერ', 'ფირმ'])).resolves.toEqual(['ნინო']);
 
     const [poolSql, poolParams] = mockQuery.mock.calls[0];
-    expect(String(poolSql)).toContain('LIMIT $3::int');
-    expect(poolParams?.[2]).toBe(200);
+    expect(String(poolSql)).toContain('LIMIT $2::int');
+    expect(poolParams?.[1]).toBe(200);
     const [topicSql, topicParams] = mockQuery.mock.calls[1];
     expect(String(topicSql)).toContain('a.alias ILIKE ANY($2::text[])');
     expect(String(topicSql)).toContain('t.tag ILIKE ANY($2::text[])');
@@ -224,5 +226,16 @@ describe('a run that repeats an open goal', () => {
     expect(chat).toContain(
       "else if (addition !== '') finalText = `${finalText}\\n\\n${addition}`;",
     );
+  });
+});
+
+describe('#7235 retest (tester 73758): a subscription alone does not make a member', () => {
+  it('the member sign is typed, answered or searched — never the subscription', async () => {
+    const { netaiMember } = await import('../netaiMembership');
+    const sql = netaiMember('u');
+    expect(sql).toContain("c.role = 'user' AND c.kind = 'message'");
+    expect(sql).toContain('a.answered_at IS NOT NULL');
+    expect(sql).toContain('search_activity');
+    expect(sql).not.toContain('subscription_status');
   });
 });
