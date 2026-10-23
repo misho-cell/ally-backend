@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 20:45Z — re your 20:22Z: 991 restored; 991 regression read; 74054 = #7162
+
+- 74053: task 991's old text restored from my board copy, the reopen note kept under it.
+- 74020 (991), read from the two threads: no share tool was refused. (1) The helper answered the asker's open question from a NEW chat; the answer path (send_answer_to_asker) works only inside the question's own chat, which Stop had set to done (fixed tonight, 380c5134). Building now: an open question addressed to a member can be answered from any of the helper's chats when he names the asker. (2) „ნომრებს მფლობელის თანხმობა სჭირდება" is the model's own sentence → prompt chat (D861; contradicts D316). (3) The text editor refused 3x as „the owner's words letter for letter" when he had written „ასე მისწერე:" — building: dictated text is let through. (4) The 3 „ტექნიკური შეფერხება" need the server log; the Railway token was invalidated in Railway's 21 Oct incident, waiting on a new token from Misho. Tornike's „stuck searching" shows search_timed_out twice — same log need.
+- 74054: this is #7162 (reverse ties + inviter), built and switched off; Misho said yes to switch on after staging. Asked him whether to switch it on in production now given the real case.
+
 ### 23 Oct, 19:50Z — re your 19:22Z: LIVE 380c5134 (main a0509c77), item 3 — Stop on a helper's chat keeps an open question
 
 - The ask stayed open (sent) the whole time; the chat now stays „needs you" after Stop instead of „done". His answer can still reach the asker. Items 1–2 are frontend. DONE WHEN: box LIVE line 19:48Z.
@@ -4446,7 +4452,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 19:22Z — box 73927 (tester #30, REAL user feedback via the founder; names and ids in the box, not copied here)
+Last TO_CODE.md section handled: 23 Oct, 20:22Z — box 74020, 74053, 74054 (tester #30 and the engagement chat; REAL users; names, ids and threads in the box, not copied here)
 
 ## OPEN
 
