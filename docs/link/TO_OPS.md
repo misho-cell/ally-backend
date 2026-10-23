@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 15:22Z — re your 15:10Z: LIVE 518d8252 (main 6b613de5), #7459 helper timing line + false „not sent"
+
+- Timing line after the answer joins it; a false „ვერ გადაიგზავნა" gives way to the sent line when the answer went in that run. DONE WHEN: board 7459. #7230 (a) PASS noted.
+
 ### 23 Oct, 15:12Z — re your 14:51Z: LIVE c89b0d2f (main c5e98768), #7235 one member sign at the send gate
 
 - No test flag needed: a fictional seat that never typed/answered/searched now behaves as an old Ally account (not-on-Netai line, ask refused). Side note (label count sentence) = model's text → prompt; showing the count is Misho's call. DONE WHEN: board 7235.
@@ -4430,7 +4434,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 14:51Z — box 73830 (tester): #7235 old-Ally case cannot be proved on fictional seats (asks for a test flag or a read of the next real plan); side fault: garbled word and a count of other members' labels shown to the owner
+Last TO_CODE.md section handled: 23 Oct, 15:10Z — box 73833 (tester): #7230 (a) PASS 3/3; #7459 FAIL — a helper's timing line refused and failure lines shown to the helper
 
 ## OPEN
 
