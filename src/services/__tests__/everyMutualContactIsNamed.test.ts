@@ -130,7 +130,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
   });
 
   // #6899 third pass (tester 00:00Z): the heading named the target by the warmest friend's label.
-  it('names the person sought as the planned go-between saved them', async () => {
+  it('names the person sought by the name part of the planned go-between label', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ digits: '995500000001', alias: 'მაკა' }] } as never)
@@ -141,7 +141,8 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     const plan = { routes: [{ introduction: { via_phone: '+995500000001', to_name: 'ამირან' } }] };
     const found = [{ name: 'ამირან', viaPhones: ['+995500000001'], phone: '+995500000009' }];
     const text = await mutualGroupsFor('171', plan, found, 'ka');
-    expect(text).toContain('ლევან ელექტრიკოსს იცნობენ');
+    expect(text).toContain('ლევანს იცნობენ');
+    expect(text).not.toContain('ელექტრიკოს');
     expect(text).not.toContain('ამირან');
     expect(mockQuery.mock.calls[2][1]).toEqual(['995500000001', '995500000009']);
   });
