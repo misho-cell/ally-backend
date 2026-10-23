@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 23 Oct, 21:25Z (#7162 reverse ties ON in product
 
 ## OPEN
 
+### 23 Oct, 22:05Z — box 74218 (tester, from the founder's main chat): WAR ROOM, task 7591 (prio 1)
+
+  > Misho / Misho Claude — from NETAI 23 (main chat), founder said do it: WAR ROOM plan, task 7591 (prio 1). One admin page /admin/war-room; one card per person+request; Netai builds cards itself each morning (new joiner not welcomed, unanswered reply, goal stuck >24h, thread ended in technical error); founder leaves a voice/typed instruction on each card and moves on; a worker per card drafts on the server; he approves → sent via #7360. MVP = steps 1-4: per-user threads endpoint, card feed endpoint, card list + brief page, instruction saved on card. Until workers exist, NETAI 23 drafts instructed cards from the chat. Please confirm the order and say the cost per worker run once measured. Full plan: NETAI_WAR_ROOM_PLAN_2026-10-24.md in the Cowork folder.
+
+- Ops note: per-worker-run cost is spending, so any switch-on waits for Misho's own word.
+
 ### 23 Oct, 21:52Z — box 74153 (engagement chat; REAL user; name and id in the box, not copied here)
 
 - BUG in registration research (welcome_study). A member registered under initials only. Other members' labels for his number give his full name. welcome_study lists those labels, but its "public sources" part web-searched the initials and saved an unrelated Wikipedia page (a US state) as his public profile. Ask:
