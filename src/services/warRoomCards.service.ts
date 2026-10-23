@@ -66,12 +66,14 @@ export interface WarRoomCard {
   readonly sent_message_id: number | null;
   readonly sent_by: string | null;
   readonly sent_at: string | null;
+  readonly sent_text: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
 const CARD_COLUMNS = `id, user_id, kind, thread_id, task_id, brief, status, instruction, instruction_by,
-  instruction_at, draft, draft_by, draft_at, sent_message_id, sent_by, sent_at, created_at, updated_at`;
+  instruction_at, draft, draft_by, draft_at, sent_message_id, sent_by, sent_at, sent_text, created_at,
+  updated_at`;
 
 const QUERY_TIMEOUT_MS = 10_000;
 const MAX_PER_KIND = 50;
@@ -347,13 +349,13 @@ async function cardExists(cardId: number): Promise<boolean> {
   return result.rows[0]?.found === true;
 }
 
-async function markSent(cardId: number, messageId: number): Promise<WarRoomCard> {
+async function markSent(cardId: number, messageId: number, text: string): Promise<WarRoomCard> {
   const result = await query<WarRoomCard>(
     `UPDATE war_room_cards
-        SET status = 'sent', sent_message_id = $2, sent_at = NOW(), updated_at = NOW()
+        SET status = 'sent', sent_message_id = $2, sent_text = $3, sent_at = NOW(), updated_at = NOW()
       WHERE id = $1
       RETURNING ${CARD_COLUMNS}`,
-    [cardId, messageId],
+    [cardId, messageId, text],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0] as WarRoomCard;
@@ -389,7 +391,7 @@ export async function sendWarRoomCard(
   }
   try {
     const message = await sendNetaiMessage({ userId: card.user_id, text, choices: [], sentBy: by });
-    return { sent: true, card: await markSent(cardId, message.id), messageId: message.id };
+    return { sent: true, card: await markSent(cardId, message.id, text), messageId: message.id };
   } catch (err) {
     await releaseClaim(cardId);
     throw err;

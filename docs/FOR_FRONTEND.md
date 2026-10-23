@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 23 October, 23:55Z — re your 23:20Z and 23:40Z (#7591): sent_text added; the mic; your JSON reading is right
+
+- **`{{ }}` was my slip** (a template escape that leaked into the doc); it is fixed above. Plain JSON, exactly as you send it: `{ "text": "..." }`, or an empty body to send the draft.
+- **`sent_text`**: every card now carries `sent_text` (null until sent) — the text that actually went, his edit or the draft. Show that on a sent card. Branch: staging `<this commit>`, LIVE line follows.
+- **The mic**: `/speech` accepts a member's sign-in only (`requireUserRole`), not the admin token, and speech-to-text is a paid service that is off until Misho approves the spend. So the keyboard's own dictation is right for now; an admin speech route waits for his word.
+- New `##` heading for additions from now on — understood.
+
+
 ## 23 October, 22:50Z — #7591 WAR ROOM (founder, prio 1): the backend half of MVP steps 1, 2 and 4 is built; step 3 (the page) is yours
 
 Admin page `/admin/war-room`: a list of cards, each a short brief, and a place to leave the founder's instruction (typed, or the chat mic's text). Admin token as for the other admin pages. Branch: staging (verify green), live once deployed — I will write the LIVE line here.
@@ -52,12 +60,12 @@ PATCH /admin/war-room/cards/:id
 ```
 An instruction on a `new` card moves it to `instructed`. Hold / Drop are the same call with `status`.
 
-**5. The draft** (until the per-card workers exist, NETAI 23 writes it from the chat): the same PATCH with `{{ "draft": "..." }}` (1-4000 chars) → status `drafted`. The card now also carries `draft`, `draft_by`, `draft_at`, `sent_message_id`, `sent_by`, `sent_at`.
+**5. The draft** (until the per-card workers exist, NETAI 23 writes it from the chat): the same PATCH with `{ "draft": "..." }` (1-4000 chars) → status `drafted`. The card now also carries `draft`, `draft_by`, `draft_at`, `sent_message_id`, `sent_by`, `sent_at`.
 
 **6. Approve → send** (D881: the founder's yes on the final text):
 ```
-POST /admin/war-room/cards/:id/send   {{ "text": "his edited text" }}   (text optional: without it the draft goes)
-201 {{ "success": true, "data": {{ "card": <the card, status "sent">, "message_id": 900 }} }}
+POST /admin/war-room/cards/:id/send   { "text": "his edited text" }   (text optional: without it the draft goes)
+201 { "success": true, "data": { "card": <the card, status "sent">, "message_id": 900 } }
 400 no text and no draft · 404 no such card · 409 already sent
 ```
 Buttons: Approve (send the draft), Edit (send with `text`), Hold / Drop (PATCH status).
@@ -608,7 +616,7 @@ When you write „built #N", I move each to `built` with `whose_turn: tester`.
 { "phone": "+995555010203", "actionType": "AUTH", "referralCode": "TORNIKE20", "referralPhone": "+995599000111" }
 ```
 With the flag ON:
-- **200** `{"success":true,"data":{"sent":true}}` goes to a member, to a number with a valid invitation (code, link or the other eligibility routes), and to the review number.
+- **200** `{"success":true,"data":{"sent":true}` goes to a member, to a number with a valid invitation (code, link or the other eligibility routes), and to the review number.
 - **403** goes to a number with no invitation: `{"success":false,"error":"<the same refusal line /auth/eligibility gives>","reason":"referral_required"}`. The reason can be any eligibility reason (e.g. `invite_link_full`). Nothing is sent and nothing counts toward the send cap.
 - **400** stays as today (phone missing, send cap, cooldown, OTP not found, a non-string referralCode).
 
@@ -1225,17 +1233,17 @@ Giorgi's retests of 14 Oct, as I read them:
 
 Your proposal, almost as written. Each choice is stored where the assistant already reads it, so it changes what Netai does, not only what the page shows. Every route sits behind the same contact-ownership check as the facts routes: another person's contact is a 404, and nothing is written.
 
-**Warmth.** `PUT /contacts/:id/warmth {"warmth": "warm" | "neutral" | "distant" | null}` → `200 {"success": true, "data": {"warmth": "warm"}}`.
+**Warmth.** `PUT /contacts/:id/warmth {"warmth": "warm" | "neutral" | "distant" | null}` → `200 {"success": true, "data": {"warmth": "warm"}`.
 - It is stored as the owner's hand-set tier, which the searches and the page both read.
 - `null` goes back to what Netai infers. If an older hand-set tier existed (from old Ally), it comes back.
 - Any other value is 400.
 
 **Own labels.** These are kept apart from the phonebook import's labels.
-- `POST /contacts/:id/labels {"label": "…"}` → `201 {"success": true, "data": {"added": true}}`. The label is 1–40 characters, and the same label twice is kept once.
-- `DELETE /contacts/:id/labels/:label` → `200 {"success": true, "data": {"removed": true}}`. It removes only a label the owner wrote; an imported one is a 404.
+- `POST /contacts/:id/labels {"label": "…"}` → `201 {"success": true, "data": {"added": true}`. The label is 1–40 characters, and the same label twice is kept once.
+- `DELETE /contacts/:id/labels/:label` → `200 {"success": true, "data": {"removed": true}`. It removes only a label the owner wrote; an imported one is a 404.
 - The page (`GET /contacts/:id`, as today) now carries `"own_labels": ["…"]` beside `"labels"`.
 
-**Exclusion by goal.** `POST /contacts/:id/exclusions {"goal_id": 123}` → `201 {"success": true, "data": {"excluded": true}}`.
+**Exclusion by goal.** `POST /contacts/:id/exclusions {"goal_id": 123}` → `201 {"success": true, "data": {"excluded": true}`.
 - The words shown are the goal's title.
 - A goal that is not the owner's is 404, and a goal_id that is not a positive integer is 400.
 - Each exclusion on the page now carries `"goal_id": 123 | null`. Removal stays `DELETE /contacts/:id/exclusions/:exclusionId`.
@@ -1269,7 +1277,7 @@ POST /members/m_…/intro-request
 - `GET /profile` now carries `"assistant_name": string | null`. `null` means the default name.
 - `PATCH /profile` with `{"assistant_name": "ნეტა"}` sets it, and `{"assistant_name": null}` or `""` goes back to the default.
 - The value is trimmed, with at most **40 characters**. Longer is a 400 („არასწორი ველები"), as for the other fields.
-- Success is `200 {"success": true, "data": {"updated": 1}}`, the same as today.
+- Success is `200 {"success": true, "data": {"updated": 1}`, the same as today.
 
 ```json
 PATCH /profile
