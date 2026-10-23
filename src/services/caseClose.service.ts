@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { tellCaseClosedByDeleting } from './caseDeclinedByDeleting';
 import { settleParticipantThreads } from './goalResolve.service';
 import { dismissStoppedGoal, stopGoal } from './goalStop.service';
 import { pendingIntroInMediatorThread, resolveIntroductionRequest } from './introduction.service';
@@ -15,7 +16,8 @@ import { Thread } from './threads.service';
  *     each person gets the same note a stop sends), is dismissed from the
  *     current list, and every helper's and go-between's thread settles;
  *   * a go-between's or helper's own thread settles, and a request still
- *     waiting in it is declined — „წაშლა" there means „no".
+ *     waiting in it is declined — „წაშლა" there means „no". #7096 / #7097:
+ *     their assistant says they closed it, and the owner is told they declined.
  *
  * A plain chat with nobody else in it is not a case: it is still erased, as
  * Lika's D23 and the Privacy Policy promise.
@@ -58,6 +60,7 @@ async function closeHelpersCase(userId: string, threadId: number): Promise<void>
     });
   }
   await setThreadStatus(userId, threadId, 'done');
+  await tellCaseClosedByDeleting(userId, threadId);
 }
 
 /** Closes the case for everyone in it; NotACase when it is a plain chat to erase. */

@@ -42,28 +42,28 @@ import { RunLanguage } from './runLanguage';
 const DAY_ONE_EVENT_BASE: Readonly<Record<RunLanguage, string>> = {
   ka:
     'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
-    'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად — ცალკე თანხმობა არ ' +
+    'მისწერე გეგმაში მყოფებს ერთდროულად — ცალკე თანხმობა არ ' +
     'სჭირდება და ტექსტების ჩვენება-დადასტურებაც არა: გეგმა დამტკიცებულია და ეს თანხმობაა (D119). ' +
     'გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და set_task_wake-ით დანიშნე შემდეგი ' +
     'შემოწმება. ბოლოს ერთი სტრიქონი: ვის ვკითხე და შემდეგ ზუსტად ეს — „როგორც კი ვინმე ' +
     'გიპასუხებს, მაშინვე გეტყვი." საათები და დღეები არ ახსენო (D563).',
   en:
     'The plan has just been approved — this is day one. The first rule of the standard: everything ' +
-    'today. From the plan’s "who I will ask" list, write to the first 3–5 people at once — no ' +
+    'today. Write to the people in the plan at once — no ' +
     'separate consent is needed, and no showing the texts for confirmation either: the plan is ' +
     'approved and that IS the consent (D119). Run the web search and the network search along the ' +
     'plan’s paths, and set the next check with set_task_wake. End with one line: whom I asked, then ' +
     'exactly „As soon as anyone answers, I will tell you." Never name hours or days (D563).',
   ru:
-    'План только что утверждён — это первый день. Первое правило стандарта: всё сегодня. Из списка ' +
-    '«кого спрошу» напиши первым 3–5 людям сразу — отдельное согласие не нужно, и показывать ' +
+    'План только что утверждён — это первый день. Первое правило стандарта: всё сегодня. ' +
+    'Напиши сразу тем, кто есть в плане — отдельное согласие не нужно, и показывать ' +
     'тексты на подтверждение тоже не нужно: план утверждён, и это и есть согласие (D119). Запусти ' +
     'веб-поиск и поиск по сети путями плана и назначь следующую проверку через set_task_wake. В ' +
     'конце одна строка: кого спросил, и затем ровно «Как только кто-то ответит, сразу скажу.» ' +
     'Не называй часы и дни (D563).',
   es:
-    'El plan acaba de ser aprobado — es el día uno. La primera regla del estándar: todo hoy. De la ' +
-    'lista «a quién preguntaré» del plan, escribe a las primeras 3–5 personas a la vez — no hace ' +
+    'El plan acaba de ser aprobado — es el día uno. La primera regla del estándar: todo hoy. ' +
+    'Escribe a la vez a las personas del plan — no hace ' +
     'falta un consentimiento aparte, ni mostrar los textos para confirmarlos: el plan está ' +
     'aprobado y eso ES el consentimiento (D119). Lanza la búsqueda web y la búsqueda en la red por ' +
     'los caminos del plan, y fija la siguiente revisión con set_task_wake. Termina con una línea: ' +
@@ -358,6 +358,11 @@ export function introOutcomeEvent(
 }
 
 /**
+ * #7261 (tester 72638, 63374): the go-between agreed and added „დამანებე თავი";
+ * the asker read that she „seemed annoyed and wants no more bother". A
+ * helper's mood is never the asker's to read (D647/D659). Model-facing — the
+ * added sentence waits for Misho's word (D44).
+ *
  * #1750 and tester 40527 (a): the outcome line no longer quotes the answer
  * (D648), so its meaning — a reason, a condition — would be lost: she wrote
  * the person is abroad, and the owner read only „could not this time". The
@@ -367,16 +372,20 @@ function answerInOwnWords(answer: string): Readonly<Record<RunLanguage, string>>
   return {
     ka:
       ` მათი პასუხი იყო: <answer>${answer}</answer> ეს სიტყვები მფლობელს არ დაუციტირო; თუ მასში ` +
-      'მიზეზი ან პირობაა, მისი აზრი შენი სიტყვებით გადაეცი ერთი წინადადებით, ფაქტები ზუსტად.',
+      'მიზეზი ან პირობაა, მისი აზრი შენი სიტყვებით გადაეცი ერთი წინადადებით, ფაქტები ზუსტად. ' +
+      'მათი განწყობა ან ემოცია არასდროს აღწერო და არ გადასცე, რომ აღარ სურთ შეწუხება.',
     en:
       ` Their answer was: <answer>${answer}</answer> Never quote these words to the owner; if they ` +
-      'carry a reason or a condition, give its meaning in your own words in one sentence, facts exact.',
+      'carry a reason or a condition, give its meaning in your own words in one sentence, facts exact. ' +
+      'Never describe their mood or feelings, and never pass on that they do not want to be bothered.',
     ru:
       ` Их ответ: <answer>${answer}</answer> Не цитируй эти слова владельцу; если в них есть причина ` +
-      'или условие, передай смысл своими словами одним предложением, факты точно.',
+      'или условие, передай смысл своими словами одним предложением, факты точно. ' +
+      'Никогда не описывай их настроение или чувства и не передавай, что их не нужно беспокоить.',
     es:
       ` Su respuesta fue: <answer>${answer}</answer> No cites estas palabras al propietario; si llevan ` +
-      'un motivo o una condición, da su sentido con tus palabras en una frase, con los hechos exactos.',
+      'un motivo o una condición, da su sentido con tus palabras en una frase, con los hechos exactos. ' +
+      'Nunca describas su ánimo o sentimientos, ni transmitas que no quieren ser molestados.',
   };
 }
 

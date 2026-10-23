@@ -30,5 +30,11 @@ buildCommand = "npm install --include=dev && npm run build"
 # last breath is also the first real measurement of how long the platform
 # actually grants us, which DRAIN_BUDGET_MS (20 s) is currently guessing at.
 startCommand = "node dist/index.js"
+# A build that does not answer /health is never put in front of people: the
+# running deployment keeps serving (23 Oct 09:38Z, a build that crashed while
+# loading took every route down for 15 minutes). The server listens only after
+# the migrations, so the wait covers them.
+healthcheckPath = "/health"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3

@@ -626,7 +626,12 @@ async function requestIntroductionInner(
     targetName,
     mediatorTargetName: isDirect
       ? targetName
-      : await targetNameForMediator(mediatorUserId, targetName, targetPhone ?? null),
+      : await targetNameForMediator(
+          mediatorUserId,
+          Number(bookOwner),
+          targetName,
+          targetPhone ?? null,
+        ),
     message: reason,
     isDirect,
     requesterTaskId: context.requesterTaskId,

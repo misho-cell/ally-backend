@@ -51,7 +51,7 @@ jest.mock('../askBudget.service', () => ({
   __esModule: true,
   checkAskBudget: jest.fn().mockResolvedValue({ allowed: true }),
   checkFollowUpBudget: jest.fn().mockResolvedValue({ allowed: true }),
-  RELAY_MESSAGES_PER_PERSON_PER_DAY: 4,
+  RELAY_MESSAGES_PER_PERSON_PER_DAY: 2,
 }));
 // Resolves, because the real one does. A mock that hands back `undefined`
 // where the function returns a Promise is a mock that lies, and it broke the

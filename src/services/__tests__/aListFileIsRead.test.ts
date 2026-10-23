@@ -32,8 +32,8 @@ describe('which files are read', () => {
   });
 
   it('refuses what it does not read yet, and anything too large', async () => {
-    expect(listFileKind('scan.pdf')).toBeNull();
-    await expect(parseListFile(Buffer.from('x'), 'scan.pdf')).resolves.toEqual({
+    expect(listFileKind('old.doc')).toBeNull();
+    await expect(parseListFile(Buffer.from('x'), 'old.doc')).resolves.toEqual({
       ok: false,
       reason: ListFileRefusal.Unsupported,
     });

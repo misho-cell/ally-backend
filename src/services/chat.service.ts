@@ -117,6 +117,15 @@ import {
   foundThroughFirstLinks,
   introTargetSentence,
 } from './introTargetSentence';
+import {
+  ownerNamedAGoBetween,
+  personWithSeveralRoutes,
+  RouteToPerson,
+  routesFromFound,
+  routesFromWarmPath,
+  routesWereOffered,
+  SEVERAL_ROUTES_LINE,
+} from './severalRoutes';
 import { withQuestionFromSteps } from './questionWithButtons';
 import { withOwnersNetwork } from './planVoice';
 import { withoutInternalText } from './internalText';
@@ -460,6 +469,7 @@ import {
   claimsAnAskWasSent,
   claimsASendNow,
   NOTHING_SENT_YET_NUDGE,
+  ASK_REFUSED_THIS_RUN_NUDGE,
   helperAskedAQuestion,
   HELPER_QUESTION_NUDGE,
   PASSED_ON_NUDGE,
@@ -2747,7 +2757,8 @@ const RESPOND_TO_INVITE_CAMPAIGN_TOOL: AnthropicTool = {
     "Only usable inside a campaign_invite thread (Netai asked the user, on the network's own " +
     "initiative, to invite someone they know). Read the user's reply and record what it means: " +
     '"agreed" they will invite them, "declined" they will not (this ends it — no follow-up), ' +
-    '"told" they already reached out in real life and are just reporting back. Only call once ' +
+    '"told" they already reached out in real life and are just reporting back, "later" not now ' +
+    'but maybe later (nothing is decided; set a reminder for the time they named). Only call once ' +
     'per reply, matching what was actually said — never guess "agreed" from a vague or ' +
     'noncommittal answer. Also report the technique tag of how the ask was ACTUALLY made in this ' +
     'conversation — three numbers: when (1 the moment it worked, 2 thank them first, 3 the first ' +
@@ -2758,7 +2769,7 @@ const RESPOND_TO_INVITE_CAMPAIGN_TOOL: AnthropicTool = {
   input_schema: {
     type: 'object',
     properties: {
-      response: { type: 'string', description: 'One of: agreed, declined, told' },
+      response: { type: 'string', description: 'One of: agreed, declined, told, later' },
       technique_when: {
         type: 'number',
         description: 'WHEN the ask was made: 1-4, omit if unknown',
@@ -3437,8 +3448,8 @@ export function approvalResult(
         : '') +
       'The plan is approved and that is the consent: do NOT show drafts, do NOT ask ' +
       '„გავუშვა?" or any second yes, and do NOT call ask_contact in this turn — day one ' +
-      'starts by itself right behind your reply and writes to the first 3–5 people the plan ' +
-      'names. Tell the user in one or two sentences that you are on it and when you will be ' +
+      'starts by itself right behind your reply and writes to the people in the plan. ' +
+      'Tell the user in one or two sentences that you are on it and when you will be ' +
       'back. Nothing else. ' +
       /**
        * AND NOT IN THE PAST TENSE. This is the sibling of the day-one
@@ -4529,6 +4540,43 @@ function mergeAdjacentSameRole(rows: Anthropic.MessageParam[]): Anthropic.Messag
   return out.filter((row) => asBlocks(row.content).length > 0 || typeof row.content === 'string');
 }
 
+function isCompleteAssistantText(row: Anthropic.MessageParam): boolean {
+  if (row.role !== 'assistant') return false;
+  const c = row.content;
+  return typeof c === 'string'
+    ? c.length > 0
+    : c.some((b) => b.type === 'text') && !c.some((b) => b.type === 'tool_use');
+}
+
+/** A user turn made only of tool results — after repairToolPairs, each answers the call before it. */
+function isToolResultsOnly(row: Anthropic.MessageParam): boolean {
+  const blocks = blocksOf(row.content);
+  return (
+    row.role === 'user' &&
+    blocks !== null &&
+    blocks.length > 0 &&
+    blocks.every((b) => b.type === 'tool_result')
+  );
+}
+
+/**
+ * Strips the trailing incomplete exchange. A history ends on the assistant's
+ * text, or on a finished tool round: #7229 / #7195 (threads 64087, 63400) —
+ * a helper's run sent the answer and ended quietly (#6766), with no text
+ * after its tool result. Stripping that round took the send out of every
+ * later run's history, so the next run did not know the answer had gone. The
+ * round is kept; the next user turn joins it (mergeAdjacentSameRole).
+ */
+export function withoutUnfinishedEnd(rows: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const kept = [...rows];
+  while (kept.length > 0) {
+    const last = kept[kept.length - 1];
+    if (isCompleteAssistantText(last) || isToolResultsOnly(last)) break;
+    kept.pop();
+  }
+  return kept;
+}
+
 async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
     // 'event' rows are engine turns: model history yes, chat view no.
@@ -4548,33 +4596,41 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
   }));
 
   // G4: mid-history first — the two strippers below only reach the ends.
-  const rows = mergeAdjacentSameRole(repairToolPairs(stored));
-
-  // Strip trailing incomplete exchanges — must end with a pure-text assistant message.
-  // A message with tool_use blocks (even alongside text) is not a valid endpoint because
-  // it requires a following tool_result; without it the next API call is rejected.
-  while (rows.length > 0) {
-    const last = rows[rows.length - 1];
-    if (last.role === 'assistant') {
-      const c = last.content;
-      const isCompleteText =
-        typeof c === 'string'
-          ? c.length > 0
-          : Array.isArray(c) &&
-            c.some((b) => b.type === 'text') &&
-            !c.some((b) => b.type === 'tool_use');
-      if (isCompleteText) break;
-    }
-    rows.pop();
-  }
+  const rows = withoutUnfinishedEnd(mergeAdjacentSameRole(repairToolPairs(stored)));
 
   // Strip leading orphaned tool_result or assistant messages — Anthropic requires
   // the conversation to start with a user message.
-  while (rows.length > 0 && (hasToolResults(rows[0]) || rows[0].role === 'assistant')) {
-    rows.shift();
+  const opened = openingKeptAsServerTurn(rows);
+  while (opened.length > 0 && (hasToolResults(opened[0]) || opened[0].role === 'assistant')) {
+    opened.shift();
   }
 
-  return rows;
+  return opened;
+}
+
+/**
+ * #7238 (audit, thread 63384): a conversation the server opens — an accepted
+ * introduction, an ask — starts with an assistant line, and the strip above
+ * dropped it, because a conversation sent to the model must start with a user
+ * turn. The reader answered „დამაკავშირე", and the model, never shown the
+ * line, asked „with whom?" and then told him „my previous message is not
+ * visible here". The opening line is kept as a server turn instead, in the
+ * same envelope as every other server turn.
+ */
+export function openingKeptAsServerTurn(rows: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const first = rows[0];
+  if (first === undefined || first.role !== 'assistant') return rows;
+  const text =
+    typeof first.content === 'string'
+      ? first.content
+      : first.content.every((block) => block.type === 'text')
+        ? first.content.map((block) => (block.type === 'text' ? block.text : '')).join('\n')
+        : '';
+  if (text.trim() === '') return rows;
+  return mergeAdjacentSameRole([
+    { role: 'user', content: frameServerTurn(text) },
+    ...rows.slice(1),
+  ]);
 }
 
 /**
@@ -6003,6 +6059,60 @@ function notePeopleFound(runId: string, result: unknown, sought?: string): void 
       ...throughBridges.map((person) => person.name),
     ]);
   }
+}
+
+/** #6367: the routes find_warm_path returned in this run. */
+const runWarmPathRoutes = new Map<string, RouteToPerson[]>();
+/** #6367: the runs whose plan card waited for the owner to pick one of several routes. */
+const runRoutesToChoose = new Set<string>();
+/** #6367: when each conversation was last asked which route to start with. */
+const routesOfferedAt = new Map<number, number>();
+
+/**
+ * #6367 / #5251 (Misho's (a), 21 Oct): a plan to someone this run reached by
+ * several routes waits for the owner's pick. The pick is a line naming one of
+ * the plan's go-betweens, or the turn after the routes were put to them.
+ */
+function planWaitsForRoutePick(
+  runId: string | undefined,
+  threadId: number | undefined,
+  plan: unknown,
+): boolean {
+  if (runId === undefined || threadId === undefined) return false;
+  const people = planGoBetweens(plan);
+  const routes = [
+    ...routesFromFound(runFoundThroughBridges.get(runId) ?? []),
+    ...(runWarmPathRoutes.get(runId) ?? []),
+  ];
+  const person = personWithSeveralRoutes(
+    people.map((p) => p.phone),
+    routes,
+  );
+  if (person === null) return false;
+  if (
+    routesWereOffered(routesOfferedAt.get(threadId), Date.now()) ||
+    ownerNamedAGoBetween(
+      runOwnerLine.get(runId) ?? '',
+      people.map((p) => p.name),
+    )
+  ) {
+    return false;
+  }
+  routesOfferedAt.set(threadId, Date.now());
+  runRoutesToChoose.add(runId);
+  return true;
+}
+
+/** The people a proposed plan would ask, as the model passed them. */
+function planGoBetweens(plan: unknown): { name: string; phone: string }[] {
+  const people = (plan as { people_to_involve?: unknown } | null)?.people_to_involve;
+  if (!Array.isArray(people)) return [];
+  return people.flatMap((person: unknown) => {
+    const p = (person ?? {}) as { name?: unknown; phone?: unknown };
+    return typeof p.phone === 'string' && p.phone !== ''
+      ? [{ name: typeof p.name === 'string' ? p.name : '', phone: p.phone }]
+      : [];
+  });
 }
 
 /** 5347 (63930): who this run found past the second circle, by name. */
@@ -8341,6 +8451,12 @@ export function withoutInvisibleCharacters(text: string): string {
 const runAnswerSent = new Set<string>();
 /** #2115: runs that sent a question to someone (ask_contact said sent). */
 const runAskSent = new Set<string>();
+/**
+ * #7229 (the tester's audit: 63406, 63823, 63413): every ask a run tried was
+ * refused, and the reply still said „I wrote to X". The goal had sent to other
+ * people before, so goalSentNothing did not catch it.
+ */
+const runAskRefused = new Set<string>();
 /** Who this run's sent questions went to, as the owner saved them. */
 const runAskSentTo = new Map<string, string[]>();
 /**
@@ -8869,11 +8985,23 @@ export const SEARCH_BUDGET_SPENT =
   'in this run. Write your answer now from what you found — who or what was found, and the ' +
   'next route — and continue the search in a later step if it is needed.';
 
-/** Counts a budgeted search; true when this one is past the run's budget. */
+/**
+ * #7237 (the tester's Netai-vs-Gemini test, 23 Oct): every one of the 21 failed
+ * web calls in 20 web questions was this budget, spent first on network
+ * searches that found nobody (a seat with no contacts still ran search_by_tag,
+ * search_second_degree, search_by_insight) — so the web never got its turn.
+ * The web (search and page reads) now has its own eight, apart from the
+ * network's eight, and neither can spend the other's.
+ */
+const WEB_BUDGET_TOOLS: ReadonlySet<string> = new Set([WEB_SEARCH_TOOL, 'fetch_page']);
+const WEB_BUDGET_KEY_SUFFIX = ':web';
+
+/** Counts a budgeted search; true when this one is past the run's budget for its kind. */
 export function searchBudgetSpent(runId: string, tool: string): boolean {
   if (!BUDGETED_SEARCH_TOOLS.has(tool)) return false;
-  const used = (runSearchCalls.get(runId) ?? 0) + 1;
-  runSearchCalls.set(runId, used);
+  const key = WEB_BUDGET_TOOLS.has(tool) ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
+  const used = (runSearchCalls.get(key) ?? 0) + 1;
+  runSearchCalls.set(key, used);
   return used > MAX_SEARCHES_PER_RUN;
 }
 
@@ -9738,6 +9866,7 @@ function clearRunState(runId: string): void {
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
   runAskSent.delete(runId);
+  runAskRefused.delete(runId);
   runAskSentTo.delete(runId);
   runRouteClosed.delete(runId);
   runRelaySent.delete(runId);
@@ -9750,12 +9879,15 @@ function clearRunState(runId: string): void {
   clearRunEvidence(runId);
   takeSavedFact(runId);
   runFoundThroughBridges.delete(runId);
+  runWarmPathRoutes.delete(runId);
+  runRoutesToChoose.delete(runId);
   runFoundFurtherOut.delete(runId);
   runRedirectAnswers.delete(runId);
   runListedContacts.delete(runId);
   runServerSentLines.delete(runId);
   forgetNamesAsked(runId);
   runWithheldByOwnerLine.delete(runId);
+  runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
 }
 
 /**
@@ -10742,6 +10874,7 @@ async function executeToolCall(
         undefined,
         authored,
       );
+      if ((askOutcome as { sent?: unknown }).sent !== true && runId) runAskRefused.add(runId);
       if ((askOutcome as { sent?: unknown }).sent === true) {
         if (runId) runAskSent.add(runId);
         await markSearchSent(runId, userId, [input['phone']], threadId);
@@ -11040,8 +11173,16 @@ async function executeToolCall(
     }
     case 'respond_to_invite_campaign': {
       const response = String(input['response'] ?? '');
-      if (response !== 'agreed' && response !== 'declined' && response !== 'told') {
-        return { recorded: false, error: 'response must be one of: agreed, declined, told.' };
+      if (
+        response !== 'agreed' &&
+        response !== 'declined' &&
+        response !== 'told' &&
+        response !== 'later'
+      ) {
+        return {
+          recorded: false,
+          error: 'response must be one of: agreed, declined, told, later.',
+        };
       }
       if (threadId === undefined) {
         return { recorded: false, error: 'No thread context for this call.' };
@@ -11396,6 +11537,9 @@ async function executeToolCall(
       const excludedInPlan = await excludedPeopleInPlan(userId, input['plan']);
       if (excludedInPlan.length > 0) {
         return { proposed: false, error: planNamesExcluded(excludedInPlan) };
+      }
+      if (planWaitsForRoutePick(runId, threadId, input['plan'])) {
+        return { proposed: false, reason: 'several_routes', error: SEVERAL_ROUTES_LINE };
       }
       const unfound =
         runId === undefined || threadId === undefined
@@ -12149,8 +12293,8 @@ async function executeToolCall(
       );
     case 'search_roster':
       return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
-    case 'find_warm_path':
-      return findWarmPath(
+    case 'find_warm_path': {
+      const warm = await findWarmPath(
         userId,
         walkTargetPhone(
           String(input['target_phone'] ?? ''),
@@ -12162,6 +12306,14 @@ async function executeToolCall(
           ? null
           : ((await getOpenTaskByThread(threadId).catch(() => null))?.title ?? null),
       );
+      if (runId !== undefined) {
+        runWarmPathRoutes.set(runId, [
+          ...(runWarmPathRoutes.get(runId) ?? []),
+          ...routesFromWarmPath(warm),
+        ]);
+      }
+      return warm;
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -14996,6 +15148,16 @@ async function runToolLoop(
     runModes.get(runId) !== 'incoming_ask' &&
     (claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText)) &&
     (await goalSentNothing(threadId));
+  // #7229: a send claimed in a run whose every ask was refused — the goal may have sent before.
+  const claimedARefusedAsk =
+    !claimedAnAskNobodyGot &&
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    runModes.get(runId) !== 'incoming_ask' &&
+    runAskRefused.has(runId) &&
+    !runAskSent.has(runId) &&
+    claimsAnAskWasSent(finalText);
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
@@ -15068,10 +15230,13 @@ async function runToolLoop(
     );
     return !noteOutOfPlace;
   };
+  // #6367: a turn that put several routes to the owner is not pushed to a card.
+  const routesToChoose = runRoutesToChoose.has(runId);
   const membersSkipped =
     !ownerAbsent &&
     !repeatsAnOpenGoal &&
     skippedTheMembersFound(runId, finalText, toolNamesUsed) &&
+    !routesToChoose &&
     (await membersNoteFits());
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
   // A clarifying question back („which city?") is a correct first answer.
@@ -15091,6 +15256,7 @@ async function runToolLoop(
   // The tester's 1149 (38116): a quick answer that saved the goal is a goal run too.
   const bookMembersSkipped =
     !ownerAbsent &&
+    !routesToChoose &&
     !promoted &&
     !answeringALaterTap &&
     !repeatsAnOpenGoal &&
@@ -15117,6 +15283,7 @@ async function runToolLoop(
   const farFindAsked = !farFindHasNoGoal || wantsSomethingDone(runOwnerLine.get(runId) ?? '');
   const farFindUnplanned =
     !ownerAbsent &&
+    !routesToChoose &&
     !promoted &&
     !answeringALaterTap &&
     !promisedWithoutActing &&
@@ -15149,38 +15316,41 @@ async function runToolLoop(
       ? lateFileNudge(framedEvents(lateFileEvents), true)
       : claimedAnAskNobodyGot
         ? NOTHING_SENT_YET_NUDGE
-        : claimedASendThatDidNotHappen
-          ? PASSED_ON_NUDGE
-          : helperQuestionUnsent
-            ? HELPER_QUESTION_NUDGE
-            : instructionUnsent
-              ? INSTRUCTION_UNSENT_NUDGE
-              : answeredWithoutSearching
-                ? SEARCH_FIRST_NUDGE
-                : // The tester's 1150 (38316): a promise and the owner's members together —
-                  // the members note leads to the plan with them, which keeps the promise too.
-                  membersSkipped
-                  ? MEMBERS_SKIPPED_NUDGE
-                  : bookMembersSkipped.length > 0
-                    ? membersInTheBookNudge(bookMembersSkipped)
-                    : promisedWithoutActing
-                      ? promiseGap === PromiseGap.Goal
-                        ? PROMISED_ACTION_NO_GOAL_NUDGE
-                        : PROMISED_ACTION_NUDGE
-                      : farFindUnplanned
-                        ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
-                        : rowsMissing.length > 0
-                          ? listRowsNudge(rowsMissing)
-                          : findsHeldBack
-                            ? FINDS_FIRST_NUDGE
-                            : foreignWord !== null
-                              ? foreignWordNudge(foreignWord)
-                              : CLIFFHANGER_NUDGE;
+        : claimedARefusedAsk
+          ? ASK_REFUSED_THIS_RUN_NUDGE
+          : claimedASendThatDidNotHappen
+            ? PASSED_ON_NUDGE
+            : helperQuestionUnsent
+              ? HELPER_QUESTION_NUDGE
+              : instructionUnsent
+                ? INSTRUCTION_UNSENT_NUDGE
+                : answeredWithoutSearching
+                  ? SEARCH_FIRST_NUDGE
+                  : // The tester's 1150 (38316): a promise and the owner's members together —
+                    // the members note leads to the plan with them, which keeps the promise too.
+                    membersSkipped
+                    ? MEMBERS_SKIPPED_NUDGE
+                    : bookMembersSkipped.length > 0
+                      ? membersInTheBookNudge(bookMembersSkipped)
+                      : promisedWithoutActing
+                        ? promiseGap === PromiseGap.Goal
+                          ? PROMISED_ACTION_NO_GOAL_NUDGE
+                          : PROMISED_ACTION_NUDGE
+                        : farFindUnplanned
+                          ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
+                          : rowsMissing.length > 0
+                            ? listRowsNudge(rowsMissing)
+                            : findsHeldBack
+                              ? FINDS_FIRST_NUDGE
+                              : foreignWord !== null
+                                ? foreignWordNudge(foreignWord)
+                                : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
     (lateFileEvents.length > 0 ||
       claimedAnAskNobodyGot ||
+      claimedARefusedAsk ||
       claimedASendThatDidNotHappen ||
       helperQuestionUnsent ||
       instructionUnsent ||
@@ -15556,6 +15726,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   SEARCH_FIRST_NUDGE,
   MEMBERS_SKIPPED_NUDGE,
   FINDS_FIRST_NUDGE,
+  ASK_REFUSED_THIS_RUN_NUDGE,
 ]);
 
 /** A model-only note: one of the fixed ones, or the members note that names people. */
@@ -16585,15 +16756,24 @@ const OWNER_LINES_TIMEOUT_MS = 5_000;
  */
 const ANSWER_SENT_LOOKUP_TIMEOUT_MS = 3_000;
 
-/** #6766: whether this conversation already told its reader that an answer went. */
+/**
+ * #6766: whether the reader was just told that an answer went.
+ *
+ * #7459 (Iro, 64087; Misho's yes, 23 Oct): „once in a conversation" left a
+ * helper who answered a second question with an empty screen — she sent „?",
+ * the answer again and „????????". The line is skipped only when the
+ * assistant's last line in the conversation already was it, so it never
+ * stands under every reply (Giorgi's #6766) and every new answer is confirmed.
+ */
 async function answerSentAlreadySaid(threadId: number): Promise<boolean> {
   try {
     const result = await query<{ said: boolean }>(
-      `SELECT EXISTS (
-         SELECT 1 FROM conversations c
-          WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.kind = 'message'
-            AND (c.content = ANY($2::text[]) OR c.content LIKE ANY($3::text[]))
-       ) AS said`,
+      `SELECT (c.content = ANY($2::text[]) OR c.content LIKE ANY($3::text[])) AS said
+         FROM conversations c
+        WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.kind = 'message'
+          AND c.content <> ''
+        ORDER BY c.created_at DESC
+        LIMIT 1`,
       [threadId, [...ANSWER_SENT_FORMS], ANSWER_SENT_FORMS.map((f) => `${f}%`)],
       ANSWER_SENT_LOOKUP_TIMEOUT_MS,
     );
@@ -17499,11 +17679,12 @@ export async function processChat(
   // 2907 (46235): a tap on the reader's own person is read as the text she was shown with it.
   const personTapped =
     thread.type === 'incoming_ask' ? await tappedPersonOnThread(threadId, userMessage) : null;
-  const messages: Anthropic.MessageParam[] = [
+  // A history may end on a finished tool round; the user turn after it joins its results.
+  const messages: Anthropic.MessageParam[] = mergeAdjacentSameRole([
     ...history,
     ...(replyContext === null ? [] : [{ role: 'user' as const, content: replyContext }]),
     { role: 'user', content: personTapped ?? userMessage },
-  ];
+  ]);
   // Question A, the tester's 949: a run that answers from the web results an
   // EARLIER run fetched (they are in this history) must be allowed the same
   // numbers and links — the allowance was per run, so they came out „[hidden]".
@@ -17940,7 +18121,15 @@ export async function processChat(
     !ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)
       ? // A blocked reply's plan text clears the run's plan, so the goal may not have been read early.
         await (openTaskForPlanAgain ?? getOpenTaskByThread(threadId))
-          .then((task) => withPlanDecisionAgain(cleanedFinal, choices, task, language))
+          .then((task) =>
+            withPlanDecisionAgain(
+              cleanedFinal,
+              choices,
+              task,
+              language,
+              asksToEndSomething(userMessage),
+            ),
+          )
           .catch((err: unknown) => {
             // eslint-disable-next-line no-console
             console.error('[plan-again] goal not read:', (err as Error).message);

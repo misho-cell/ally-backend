@@ -103,7 +103,7 @@ describe('GET /updates/latest — a helper’s answer', () => {
     expect(row.detail).toContain('უპასუხა');
   });
 
-  it('stands among the updates by time, newest first, three at most', async () => {
+  it('stands among the updates by time, newest first', async () => {
     const update = (id: number, at: string): Record<string, unknown> => ({
       id,
       task_id: GOAL_ID,
@@ -122,8 +122,8 @@ describe('GET /updates/latest — a helper’s answer', () => {
       [LIKA_SAID_YES],
     );
     const rows = await latest();
-    expect(rows.map((r) => r.update_ref)).toEqual(['upd_1', 'ask_24718', 'upd_2']);
-    expect(rows).toHaveLength(LATEST_UPDATES_LIMIT);
+    expect(rows.map((r) => r.update_ref)).toEqual(['upd_1', 'ask_24718', 'upd_2', 'upd_3']);
+    expect(rows.length).toBeLessThanOrEqual(LATEST_UPDATES_LIMIT);
   });
 
   it('reads only the owner’s own answered questions of the last two weeks', async () => {

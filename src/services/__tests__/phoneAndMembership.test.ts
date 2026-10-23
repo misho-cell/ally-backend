@@ -94,13 +94,21 @@ describe('the three account states', () => {
     expect(accountStateFor(states, '+995599123456')).toBe('netai_user');
   });
 
-  it('counts a subscription and a search, not only a thread, as having used Netai', async () => {
+  /**
+   * #7235 (tester's audit, 22 Oct): a thread is opened in the READER's account by
+   * an incoming question, so 523 and 1664, who never typed a word, read as
+   * members and were asked again. A message they typed or a question they
+   * answered is the sign; a thread alone is not.
+   */
+  it('counts a typed message, an answered question, a search or a subscription — not a bare thread', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
 
     await fetchAccountStates(['+995599123456']);
 
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain('FROM threads t');
+    expect(sql).not.toContain('FROM threads t');
+    expect(sql).toContain("c.role = 'user' AND c.kind = 'message'");
+    expect(sql).toContain('a.answered_at IS NOT NULL');
     expect(sql).toContain('FROM search_activity sa');
     expect(sql).toContain('u.subscription_status = ANY($2::text[])');
     expect(params[1]).toEqual(['active', 'trialing', 'past_due']);

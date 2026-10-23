@@ -316,3 +316,63 @@ ${ownWorkBranch}     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.valu
     totalSql,
   };
 }
+
+export interface OwnLabelsMatchSql {
+  /** `matched AS (…)` — only what the owner saved: her own labels and tags. */
+  readonly matchedCte: string;
+  readonly wordHits: string;
+  readonly params: unknown[];
+  readonly blockIdx: number;
+}
+
+/**
+ * Nana, 22 Oct (thread 63429): 6,597 contacts, seven of them saved with „ICOM"
+ * in the name, and the exact search for „ICOM" ran out of its 20 s three times
+ * and came back empty — the assistant offered a far route and missed all seven.
+ * The time goes on the crowd branches: every label anybody saved for each of
+ * her numbers, about a hundred thousand rows for her book. Her own labels are a
+ * read by her id alone, measured at well under a second on the same book.
+ *
+ * This is that read, for when the full search does not finish. Same word
+ * patterns, same folding and same per-word scoring as buildExactMatchSql, so a
+ * row ranks the same way it would have there.
+ */
+export function buildOwnLabelsMatchSql(
+  userId: string,
+  rawGroups: readonly string[][],
+  blockedPhones: readonly string[],
+): OwnLabelsMatchSql {
+  const groupRegex = rawGroups.map((g) => g.map(toWordStartPattern));
+  const allRegex = groupRegex.flat();
+  const regexStart = 2; // $1 = userId
+  const anyPatternIdx = regexStart + allRegex.length;
+  const blockIdx = anyPatternIdx + 1;
+  const anyPattern = allRegex.map((pattern) => `(?:${pattern})`).join('|');
+  const regexOr = (col: string): string => `((${foldedLower(col)} || '') ~ $${anyPatternIdx})`;
+
+  const matchedCte = `matched AS (
+     SELECT a.phone, ${foldedLower('a.alias')} AS label
+     FROM "UserAlias" a
+     WHERE a."contactId" = $1 AND ${regexOr('a.alias')}
+     UNION ALL
+     SELECT t.phone, ${foldedLower('t.tag')} AS label
+     FROM "UserTags" t
+     WHERE t."contactId" = $1 AND ${regexOr('t.tag')}
+   )`;
+
+  let cursor = regexStart;
+  const wordHits = groupRegex
+    .map((group) => {
+      const clause = group.map((_, i) => `label ~ $${cursor + i}`).join(' OR ');
+      cursor += group.length;
+      return `bool_or(${clause})::int`;
+    })
+    .join(' + ');
+
+  return {
+    matchedCte,
+    wordHits,
+    params: [userId, ...allRegex, anyPattern, [...blockedPhones]],
+    blockIdx,
+  };
+}

@@ -42,15 +42,19 @@ export interface SearchDidNotFinish {
 
 const TIMEOUT = /statement timeout|query_canceled|ETIMEDOUT|timeout exceeded/i;
 
+/** Whether the search ran out of time, as opposed to failing for another reason. */
+export function isSearchTimeout(err: unknown): boolean {
+  return TIMEOUT.test(err instanceof Error ? err.message : String(err));
+}
+
 /**
  * @param what the search, in words the model can put in a sentence —
  *   „the second-degree search", „the tag search". It goes into the note.
  */
 export function searchDidNotFinish(what: string, err: unknown): SearchDidNotFinish {
-  const message = err instanceof Error ? err.message : String(err);
   return {
     found: false,
-    reason: TIMEOUT.test(message) ? 'search_timed_out' : 'search_failed',
+    reason: isSearchTimeout(err) ? 'search_timed_out' : 'search_failed',
     note:
       `${what} DID NOT FINISH — this is a technical failure on our side, not an empty ` +
       'network, and it says nothing about whether anybody is there. Do NOT tell the user ' +

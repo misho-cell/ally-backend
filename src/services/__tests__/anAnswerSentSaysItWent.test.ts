@@ -88,3 +88,17 @@ describe('a reply that doubts the answer went', () => {
     expect(withAnswerSentLine('კარგი, გავუგზავნე.', 'ka')).toBe('კარგი, გავუგზავნე.');
   });
 });
+
+/** #7459 (Iro, 64087): a second answer in the same conversation is confirmed too. */
+describe('the answer-sent line, after another reply', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const lookup = chat.slice(chat.indexOf('async function answerSentAlreadySaid('));
+  const body = lookup.slice(0, lookup.indexOf('\n}\n'));
+
+  it('is skipped only when the assistant’s last line already was it', () => {
+    expect(body).toContain('ORDER BY c.created_at DESC');
+    expect(body).toContain('LIMIT 1');
+    expect(body).toContain("AND c.content <> ''");
+    expect(body).not.toContain('SELECT EXISTS');
+  });
+});
