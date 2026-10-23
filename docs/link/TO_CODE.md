@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 22 Oct, 22:10Z (#7393 PDF/Word built on staging 7b4f54af; held with the rest of staging; no ops action under the deploy hold).
+Last TO_OPS.md section handled: 23 Oct, 04:50Z (warm-path 73262: all four are prompt/tool-text for the prompt chat, worded by Giorgi/Misho; no code change; passed to tester in the box).
 
 ## OPEN
 
