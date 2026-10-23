@@ -140,6 +140,8 @@ export async function stopGoal(
   userId: string,
   task: Task,
   language: RunLanguage = 'ka',
+  /** False when the reply that goes out already says it stopped (#7236). */
+  announce = true,
 ): Promise<GoalStopped> {
   const wasOpen = task.status !== 'closed';
   // Row 113 fourth pass, and FIRST in this function on purpose: a run that is
@@ -169,7 +171,7 @@ export async function stopGoal(
   await cancelIntroductionRequestsForTask(task.id);
   let said: string | undefined;
   if (task.thread_id !== null) {
-    if (wasOpen) {
+    if (wasOpen && announce) {
       said = stoppedLine(task.title, cancelledAsks, language);
       await saveThreadMessage(task.thread_id, Number(userId), 'assistant', said).catch(
         () => undefined,

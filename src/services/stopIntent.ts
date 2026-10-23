@@ -156,3 +156,15 @@ const END_VERB =
 export function asksToEndSomething(message: string): boolean {
   return STOP_VERB.test(message) || END_VERB.test(message);
 }
+
+/**
+ * #7236 retest (tester 73758, goal 31421): to „მოვრჩეთ ეს ამბავი" on a waiting
+ * plan the reply said „ვწყვეტ" and no tool closed the goal, so it stayed open.
+ * The reply's own claim that it stopped, beside the owner's end words.
+ */
+const SAYS_IT_STOPPED =
+  /(ვწყვეტ|შევწყვიტე|ვაჩერებ|შევაჩერე|ვხურავ|დავხურე|ვასრულებ|დავასრულე|\bI(?:'ve| have| will|'ll)?\s+(?:stopp?(?:ed)?|clos(?:e|ed)|end(?:ed)?)\b|остановил|закрыл|he\s+cerrado|lo\s+cierro|detengo)/iu;
+
+export function replySaysItStopped(reply: string): boolean {
+  return SAYS_IT_STOPPED.test(reply);
+}
