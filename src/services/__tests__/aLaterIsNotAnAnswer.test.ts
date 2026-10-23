@@ -13,7 +13,7 @@ describe('aLaterIsNotAnAnswer', () => {
   it('is refused before an answer is recorded', () => {
     const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     const refused = source.indexOf(
-      'if (askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText)) {',
+      '(askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText))',
     );
     const recorded = source.indexOf(
       'const captured = await recordAskAnswer(askThreadId, answerText);',
@@ -21,5 +21,14 @@ describe('aLaterIsNotAnAnswer', () => {
     );
     expect(refused).toBeGreaterThan(0);
     expect(recorded).toBeGreaterThan(refused);
+  });
+
+  // #7459 retest (tester 73833): after the answer went, a timing line is more for the asker.
+  it('is refused only while the question is still unanswered', () => {
+    const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    const gate = source.slice(source.indexOf("row.status !== 'answered' &&"));
+    expect(gate.slice(0, 200)).toContain(
+      '(askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText))',
+    );
   });
 });
