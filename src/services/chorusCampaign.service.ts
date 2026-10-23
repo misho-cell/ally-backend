@@ -763,6 +763,28 @@ const NEXT_STATE: Record<string, Record<string, string>> = {
   agreed: { told: 'told' },
 };
 
+/**
+ * #7238 (audit, 63988; Misho's yes, 23 Oct): „tell me about Shota in a month,
+ * not now" was recorded as agreed — the tool had no „later". Later leaves the
+ * ask open and starts its clock again, so the stale-ask sweep does not count
+ * the waiting month against it; the model's own reminder brings it back.
+ */
+async function postponeCampaignAsk(
+  participantId: number,
+  state: string,
+): Promise<CampaignResponseOutcome> {
+  if (state !== 'asked') {
+    return { recorded: false, error: `Cannot record "later" from state "${state}".` };
+  }
+  await query(
+    `UPDATE invite_campaign_participants SET asked_at = NOW(), state_updated_at = NOW()
+      WHERE id = $1 AND state = 'asked'`,
+    [participantId],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  return { recorded: true };
+}
+
 export interface CampaignResponseOutcome {
   recorded: boolean;
   error?: string;
@@ -782,7 +804,7 @@ export interface CampaignResponseOutcome {
 export async function recordCampaignResponse(
   threadId: number,
   userId: string,
-  response: 'agreed' | 'declined' | 'told',
+  response: 'agreed' | 'declined' | 'told' | 'later',
   technique?: Partial<TechniqueTag>,
 ): Promise<CampaignResponseOutcome> {
   const participant = await query<{ id: number; state: string; campaign_id: number }>(
@@ -793,6 +815,7 @@ export async function recordCampaignResponse(
   );
   const row = participant.rows[0];
   if (!row) return { recorded: false, error: 'This thread has no live campaign ask.' };
+  if (response === 'later') return postponeCampaignAsk(row.id, row.state);
   const nextState = NEXT_STATE[row.state]?.[response];
   if (!nextState) {
     return { recorded: false, error: `Cannot record "${response}" from state "${row.state}".` };

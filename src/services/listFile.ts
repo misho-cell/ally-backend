@@ -300,18 +300,19 @@ export function listFileSummary(file: ParsedListFile, language: RunLanguage): st
   return words.table(file.rows.length, named) + (file.rowsCut ? words.cut : '');
 }
 
+// #7393 (Misho's yes, 23 Oct): the formats line names PDF and Word, which are read now.
 const REFUSAL: Readonly<Record<RunLanguage, Readonly<Record<ListFileRefusal, string>>>> = {
   ka: {
     [ListFileRefusal.TooLarge]: 'ფაილი 2 MB-ზე დიდია — უფრო პატარა ან ნაწილებად გამომიგზავნე.',
     [ListFileRefusal.Unsupported]:
-      'ამ ფორმატს ჯერ ვერ ვკითხულობ — Excel (.xlsx), CSV, TXT ან Markdown გამომიგზავნე.',
+      'ამ ფორმატს ჯერ ვერ ვკითხულობ — Excel (.xlsx), CSV, TXT, Markdown, PDF ან Word (.docx) გამომიგზავნე.',
     [ListFileRefusal.Empty]: 'ფაილი ცარიელია — მასში წასაკითხი არაფერი იპოვა.',
     [ListFileRefusal.Unreadable]: 'ფაილი ვერ გავხსენი — შეიძლება დაზიანებული ან პაროლით დაცულია.',
   },
   en: {
     [ListFileRefusal.TooLarge]: 'The file is over 2 MB — send a smaller one, or in parts.',
     [ListFileRefusal.Unsupported]:
-      'I cannot read this format yet — send Excel (.xlsx), CSV, TXT or Markdown.',
+      'I cannot read this format yet — send Excel (.xlsx), CSV, TXT, Markdown, PDF or Word (.docx).',
     [ListFileRefusal.Empty]: 'The file is empty — there was nothing in it to read.',
     [ListFileRefusal.Unreadable]:
       'I could not open the file — it may be damaged or password-protected.',
@@ -319,7 +320,7 @@ const REFUSAL: Readonly<Record<RunLanguage, Readonly<Record<ListFileRefusal, str
   ru: {
     [ListFileRefusal.TooLarge]: 'Файл больше 2 МБ — пришли поменьше или частями.',
     [ListFileRefusal.Unsupported]:
-      'Этот формат я пока не читаю — пришли Excel (.xlsx), CSV, TXT или Markdown.',
+      'Этот формат я пока не читаю — пришли Excel (.xlsx), CSV, TXT, Markdown, PDF или Word (.docx).',
     [ListFileRefusal.Empty]: 'Файл пустой — в нём нечего читать.',
     [ListFileRefusal.Unreadable]:
       'Не смог открыть файл — возможно, он повреждён или защищён паролем.',
@@ -327,7 +328,7 @@ const REFUSAL: Readonly<Record<RunLanguage, Readonly<Record<ListFileRefusal, str
   es: {
     [ListFileRefusal.TooLarge]: 'El archivo pasa de 2 MB — envía uno más pequeño o por partes.',
     [ListFileRefusal.Unsupported]:
-      'Aún no leo este formato — envía Excel (.xlsx), CSV, TXT o Markdown.',
+      'Aún no leo este formato — envía Excel (.xlsx), CSV, TXT, Markdown, PDF o Word (.docx).',
     [ListFileRefusal.Empty]: 'El archivo está vacío — no había nada que leer.',
     [ListFileRefusal.Unreadable]:
       'No pude abrir el archivo — puede estar dañado o protegido con contraseña.',

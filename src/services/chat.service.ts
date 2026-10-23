@@ -2757,7 +2757,8 @@ const RESPOND_TO_INVITE_CAMPAIGN_TOOL: AnthropicTool = {
     "Only usable inside a campaign_invite thread (Netai asked the user, on the network's own " +
     "initiative, to invite someone they know). Read the user's reply and record what it means: " +
     '"agreed" they will invite them, "declined" they will not (this ends it — no follow-up), ' +
-    '"told" they already reached out in real life and are just reporting back. Only call once ' +
+    '"told" they already reached out in real life and are just reporting back, "later" not now ' +
+    'but maybe later (nothing is decided; set a reminder for the time they named). Only call once ' +
     'per reply, matching what was actually said — never guess "agreed" from a vague or ' +
     'noncommittal answer. Also report the technique tag of how the ask was ACTUALLY made in this ' +
     'conversation — three numbers: when (1 the moment it worked, 2 thank them first, 3 the first ' +
@@ -2768,7 +2769,7 @@ const RESPOND_TO_INVITE_CAMPAIGN_TOOL: AnthropicTool = {
   input_schema: {
     type: 'object',
     properties: {
-      response: { type: 'string', description: 'One of: agreed, declined, told' },
+      response: { type: 'string', description: 'One of: agreed, declined, told, later' },
       technique_when: {
         type: 'number',
         description: 'WHEN the ask was made: 1-4, omit if unknown',
@@ -11153,8 +11154,16 @@ async function executeToolCall(
     }
     case 'respond_to_invite_campaign': {
       const response = String(input['response'] ?? '');
-      if (response !== 'agreed' && response !== 'declined' && response !== 'told') {
-        return { recorded: false, error: 'response must be one of: agreed, declined, told.' };
+      if (
+        response !== 'agreed' &&
+        response !== 'declined' &&
+        response !== 'told' &&
+        response !== 'later'
+      ) {
+        return {
+          recorded: false,
+          error: 'response must be one of: agreed, declined, told, later.',
+        };
       }
       if (threadId === undefined) {
         return { recorded: false, error: 'No thread context for this call.' };
@@ -16728,15 +16737,24 @@ const OWNER_LINES_TIMEOUT_MS = 5_000;
  */
 const ANSWER_SENT_LOOKUP_TIMEOUT_MS = 3_000;
 
-/** #6766: whether this conversation already told its reader that an answer went. */
+/**
+ * #6766: whether the reader was just told that an answer went.
+ *
+ * #7459 (Iro, 64087; Misho's yes, 23 Oct): „once in a conversation" left a
+ * helper who answered a second question with an empty screen — she sent „?",
+ * the answer again and „????????". The line is skipped only when the
+ * assistant's last line in the conversation already was it, so it never
+ * stands under every reply (Giorgi's #6766) and every new answer is confirmed.
+ */
 async function answerSentAlreadySaid(threadId: number): Promise<boolean> {
   try {
     const result = await query<{ said: boolean }>(
-      `SELECT EXISTS (
-         SELECT 1 FROM conversations c
-          WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.kind = 'message'
-            AND (c.content = ANY($2::text[]) OR c.content LIKE ANY($3::text[]))
-       ) AS said`,
+      `SELECT (c.content = ANY($2::text[]) OR c.content LIKE ANY($3::text[])) AS said
+         FROM conversations c
+        WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.kind = 'message'
+          AND c.content <> ''
+        ORDER BY c.created_at DESC
+        LIMIT 1`,
       [threadId, [...ANSWER_SENT_FORMS], ANSWER_SENT_FORMS.map((f) => `${f}%`)],
       ANSWER_SENT_LOOKUP_TIMEOUT_MS,
     );

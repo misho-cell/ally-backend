@@ -498,6 +498,30 @@ describe('recordCampaignResponse', () => {
     expect(update?.[1]).toEqual([5, 'agreed', null, null, null]);
   });
 
+  it('#7238 (63988): „not now, in a month" is later — the ask stays open and its clock restarts', async () => {
+    routeRespondQueries({ participant: { id: 5, state: 'asked', campaign_id: 900 } });
+
+    const out = await recordCampaignResponse(77, '10', 'later');
+
+    expect(out).toEqual({ recorded: true });
+    expect(mockQuery.mock.calls.some(([sql]) => (sql as string).includes('state = $2'))).toBe(
+      false,
+    );
+    const restart = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('asked_at = NOW()'),
+    );
+    expect(restart?.[1]).toEqual([5]);
+  });
+
+  it('#7238: later is refused once the ask has moved on', async () => {
+    routeRespondQueries({ participant: { id: 5, state: 'agreed', campaign_id: 900 } });
+
+    await expect(recordCampaignResponse(77, '10', 'later')).resolves.toEqual({
+      recorded: false,
+      error: 'Cannot record "later" from state "agreed".',
+    });
+  });
+
   it("D50: the assistant's reported technique overrides the stamp; out-of-range values fall to unknown, never guessed into range", async () => {
     routeRespondQueries({ participant: { id: 5, state: 'asked', campaign_id: 900 } });
 

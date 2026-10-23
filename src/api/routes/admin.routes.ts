@@ -53,6 +53,7 @@ import {
   TokenAdjustmentOutOfRange,
 } from '../../services/tokenWallet.service';
 import { randomUUID } from 'crypto';
+import { MAX_RECOUNT_OWNERS, recountFamilyBatch } from '../../services/familyRecount.service';
 import {
   MAX_NETAI_CHOICE_CHARS,
   MAX_NETAI_CHOICES,
@@ -4405,6 +4406,54 @@ adminRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[netai-message] list failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #7232 (Misho's yes, 23 Oct): family scores the old substring rule made are
+ * read again with the whole-word rule. One call reads up to 50 owners; call
+ * again with after_user_id = next_after_user_id until it comes back null.
+ *
+ *   POST /admin/relationships/family-recount { owners?: 1-50, after_user_id?: number }
+ *   200 { checked, changed, still_family, next_after_user_id }
+ */
+adminRouter.post(
+  '/relationships/family-recount',
+  body('owners').optional().isInt({ min: 1, max: MAX_RECOUNT_OWNERS }),
+  body('after_user_id').optional().isInt({ min: 0 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `owners must be 1-${MAX_RECOUNT_OWNERS}; after_user_id a non-negative id.`,
+      });
+      return;
+    }
+    const { owners, after_user_id } = req.body as { owners?: number; after_user_id?: number };
+    try {
+      const done = await recountFamilyBatch(
+        Number(owners ?? MAX_RECOUNT_OWNERS),
+        Number(after_user_id ?? 0),
+      );
+      // eslint-disable-next-line no-console
+      console.log(
+        `[family-recount] admin ${(req as AuthenticatedRequest).user.userId}: ` +
+          `${done.checked} checked, ${done.changed} changed, next ${done.nextAfterUserId ?? 'none'}`,
+      );
+      res.status(200).json({
+        success: true,
+        data: {
+          checked: done.checked,
+          changed: done.changed,
+          still_family: done.stillFamily,
+          next_after_user_id: done.nextAfterUserId,
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[family-recount] failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
