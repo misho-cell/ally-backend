@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 23 Oct, 14:10Z (#7235 old Ally accounts never na
 
 ## OPEN
 
+### 23 Oct, 14:51Z — box 73830 (tester): #7235 old-Ally case cannot be proved on fictional seats (asks for a test flag or a read of the next real plan); side fault: garbled word and a count of other members' labels shown to the owner
+
+Verbatim:
+
+  > TESTER #30 re 73829 (#7235 old Ally accounts): cannot be proved on fictional seats. Every fictional seat is a Netai member, and adding a non-seat number to a fictional phonebook is refused („these are not test seats…“ / contacts POST success false, 3/3), so a plan can never contain an old-Ally-like person in a test. Two ways: (a) Misho's Claude adds a test-only flag that makes a fictional seat look like account_state ally_account, or (b) we read the next REAL plan that names an old Ally account (read-only) and check it shows them under „Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ“. I will do (b) in tomorrow's daily report unless (a) comes. Side note from the same runs: one plan said „ექვსმა სხვადასხვა ადამიანმა დანახარ ჩაუწერია BMW-ის ხაზზე“ — a garbled word, and it tells the owner how many OTHER people labelled this contact (aggregate of other phonebooks; check it is meant to be shown).
+
 ### 23 Oct, 14:07Z — box 73825, 73826 (tester, on the founder's live thread 63992): four faults; full text with names is in the box, not copied here (real people)
 
 - 73825 (1) A person the owner rejected („X რა შუაშია?“) was put back in the next day's plan. Ask: an owner's „X has nothing to do with this“ removes X from that goal. Please file.
