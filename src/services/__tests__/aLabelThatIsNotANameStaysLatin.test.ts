@@ -24,4 +24,17 @@ describe('only a label that reads as a name is put into Georgian script', () => 
   it('does not treat lower-case words with a surname-like ending as a name', () => {
     expect(readsAsAName('social media')).toBe(false);
   });
+
+  // #7231 retest (tester 73766): a name, then the owner's own description.
+  it('writes the name in Georgian and leaves the description as written', () => {
+    expect(georgianScriptName('Levan BMW mechanic')).toBe(
+      `${georgianScriptName('Levan')} BMW mechanic`,
+    );
+    expect(georgianScriptName('Nana dentist')).toBe(`${georgianScriptName('Nana')} dentist`);
+    expect(georgianScriptName('Levan BMW mechanic')).not.toMatch(/მეჩანიც/u);
+  });
+
+  it('still writes a first name and its surname both in Georgian', () => {
+    expect(georgianScriptName('Giorgi Turashvili')).not.toMatch(/[A-Za-z]/u);
+  });
 });
