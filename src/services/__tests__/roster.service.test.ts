@@ -88,13 +88,13 @@ describe('the roster', () => {
   it('steps past an unfilled registration form, in the account name and in the label', async () => {
     await rosterMembers('axel');
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
-    const placeholders = params[3] as string[];
+    const placeholders = params[2] as string[];
 
     expect(placeholders).toContain('first last');
     // Both readings consult the same list: the account's own name...
-    expect(sql).toContain('LOWER(TRIM(u.name)) = ANY($4::text[])');
+    expect(sql).toContain('LOWER(TRIM(u.name)) = ANY($3::text[])');
     // ...and the label that stands in for it.
-    expect(sql).toContain('LOWER(TRIM(a.alias)) <> ALL($4::text[])');
+    expect(sql).toContain('LOWER(TRIM(a.alias)) <> ALL($3::text[])');
   });
 
   it('filters by every word of a name', async () => {

@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone, phoneDigits } from './phone';
-import { typedOrAnswered } from './netaiMembership';
+import { netaiMember } from './netaiMembership';
 
 /**
  * A roster: the members of a named network, as the public `member_of` facts
@@ -20,7 +20,6 @@ import { typedOrAnswered } from './netaiMembership';
 
 const ROSTER_QUERY_TIMEOUT_MS = 8_000;
 const ROSTER_LIMIT = 200;
-const NETAI_LIVE_STATUSES = ['active', 'trialing', 'past_due'];
 
 /**
  * Registration-form placeholders that were never filled in. A label was
@@ -90,7 +89,7 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
             -- Ticket 17: an unfilled registration form is not a name either, so
             -- it steps aside for the label the same way an empty one does.
             COALESCE(
-              CASE WHEN LOWER(TRIM(u.name)) = ANY($4::text[]) THEN NULL
+              CASE WHEN LOWER(TRIM(u.name)) = ANY($3::text[]) THEN NULL
                    ELSE NULLIF(TRIM(u.name), '') END,
               top_alias.alias
             ) AS name,
@@ -99,10 +98,7 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
             -- that lost.
             NULLIF(TRIM(u.name), '') AS account_name,
             top_alias.all_aliases AS all_aliases,
-            (u.id IS NOT NULL AND (
-               ${typedOrAnswered('u')}
-               OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
-               OR u.subscription_status = ANY($2::text[]))) AS on_netai
+            (u.id IS NOT NULL AND ${netaiMember('u')}) AS on_netai
      FROM contact_facts f
      LEFT JOIN "UserPhone" up
        ON regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(f.neo4j_contact_id, '\\D', '', 'g')
@@ -122,15 +118,15 @@ export async function rosterMembers(group: string): Promise<RosterMember[]> {
                   AS shaped
          FROM "UserAlias" a
          WHERE a.phone = f.neo4j_contact_id AND a.alias IS NOT NULL AND TRIM(a.alias) <> ''
-           AND LOWER(TRIM(a.alias)) <> ALL($4::text[])
+           AND LOWER(TRIM(a.alias)) <> ALL($3::text[])
          GROUP BY a.alias
        ) labels
      ) top_alias ON TRUE
      WHERE f.field_type = 'member_of' AND f.is_public AND f.retracted_at IS NULL
        AND LOWER(COALESCE(f.canonical_value, f.value)) LIKE $1
      ORDER BY f.neo4j_contact_id, u.id
-     LIMIT $3`,
-    [pattern, NETAI_LIVE_STATUSES, ROSTER_LIMIT, PLACEHOLDER_NAMES],
+     LIMIT $2`,
+    [pattern, ROSTER_LIMIT, PLACEHOLDER_NAMES],
     ROSTER_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => ({

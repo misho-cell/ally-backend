@@ -1,7 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { phoneDigits } from '../phone';
 import { isStaffUser } from '../staff';
-import { typedOrAnswered } from '../netaiMembership';
+import { netaiMember } from '../netaiMembership';
 
 const MEMBER_TIMEOUT_MS = 8_000;
 
@@ -94,9 +94,7 @@ export async function fetchAccountStates(phones: string[]): Promise<Map<string, 
     old_ally_paid: boolean | null;
   }>(
     `SELECT DISTINCT up.phone, u.id AS user_id,
-            (${typedOrAnswered('u')}
-             OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
-             OR u.subscription_status = ANY($2::text[])) AS netai_user,
+            ${netaiMember('u')} AS netai_user,
             (u.subscription_status = ANY($2::text[])) AS netai_subscriber,
             (u."boughtPremiumMapAt" IS NOT NULL AND u."cancelledPremiumMapAt" IS NULL)
               AS old_ally_paid
