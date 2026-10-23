@@ -7642,7 +7642,12 @@ export function ownerWordsGrantPermission(
    * established that the owner told us to contact a named person. Being wrong
    * in this direction grants a permission the owner's own sentence asked for.
    */
-  const instructs = (said: string): boolean => looksLikeContactInstruction(said);
+  // #7228 (audit, 63430): a 213-character line „ასევე თეონა მაკალათიას უთხარი
+  // რომ …" was an instruction to the approve wall (D625: a long line is judged
+  // by the sentence that carries the verb) and „nothing reads as a yes" here, so
+  // the model was sent from one wall to the other. Both read it the same way.
+  const instructs = (said: string): boolean =>
+    !asksForAPreview(said) && looksLikeContactInstruction(instructionSentence(said.trim()));
 
   /**
    * AN INSTRUCTION IS NOT AN ANSWER, SO IT CANNOT CONTRADICT ITSELF — and the

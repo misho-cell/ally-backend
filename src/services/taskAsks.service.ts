@@ -766,7 +766,7 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     // the owner answered „კი", and both walls refused Omiko — the yes named nobody.
     // A bare yes to the assistant's own question that names exactly this person is
     // the owner's word for this one ask.
-    if (tapped !== null && BARE_YES_RE.test(tapped)) {
+    if (tapped !== null && (BARE_YES_RE.test(tapped) || YES_GO_RE.test(tapped))) {
       const asked = await assistantQuestionBefore(person);
       if (asked !== null && (await lineNamesThisPerson(asked, person))) return true;
     }
@@ -796,6 +796,14 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
 
 /** A whole line that only says yes — „კი", „დიახ", „ვადასტურებ". */
 const BARE_YES_RE = /^\s*(?:კი|დიახ|ხო|ვადასტურებ|yes|yeah|ok|okay|да|sí)[\s!.]*$/iu;
+
+/**
+ * #7228 (audit, 63380): to „გონზის ასისტენტს ვკითხო …?" the owner wrote „კი,
+ * კითხე" — a yes and the go word, nothing else — and both walls refused Gonzi
+ * four times. A whole line of yes plus ask / write / send is the same yes.
+ */
+const YES_GO_RE =
+  /^\s*(?:(?:კი|დიახ|ხო|yes|yeah|ok|okay|да|sí)[\s,!.]*)?(?:კითხე|ჰკითხე|მიწერე|მისწერე|გაუგზავნე|გააგზავნე|დაუკავშირდი|ask|ask (?:him|her|them)|write|send it|go ahead|спроси|напиши|pregunta|escríbele)[\s!.]*$/iu;
 
 /**
  * The assistant's last line before the owner's newest one, when it is a

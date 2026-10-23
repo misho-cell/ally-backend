@@ -458,8 +458,11 @@ const CONTACT_VERB_RE =
  * sentence says the opposite. Row 215's shape, and the seat's own safety
  * phrasing is what found it.
  */
+// #7228 (audit, 63430): „ნოდარს და ლიკუნას მაგაზე არ დაუკავშირდე … ტყუილად არ
+// მიწერო" read as an instruction to contact them — only „არავის არ" and „ნუ" were
+// known negations. „არ" right before the contact verb takes it back as well.
 const NEGATED_CONTACT_RE =
-  /(write to (nobody|no one)|(do not|don't|never)\s+(write|message|contact|ask))|(არავის\s+(არ\s+)?(მისწერ|მიწერ|დაუკავშირდ)|ნუ\s+(მისწერ|დაუკავშირდ))/iu;
+  /(write to (nobody|no one)|(do not|don't|never)\s+(write|message|contact|ask))|(არავის\s+(არ\s+)?(მისწერ|მიწერ|დაუკავშირდ)|(?:^|[\s,.!?])(?:ნუ|არ)\s+(მისწერ|მიწერ|დაუკავშირდ|ჰკითხ|შეეხმიან))/iu;
 
 /**
  * An instruction is short. Row 104's are 30 to 80 characters; a paragraph that
