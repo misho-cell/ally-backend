@@ -117,6 +117,8 @@ describe('a draft and the founder’s approval (D881)', () => {
       choices: [],
       sentBy: '167250',
     });
+    const [, params] = mockQuery.mock.calls[2] as [string, unknown[]];
+    expect(params).toEqual([7, 900, 'edited']);
   });
 
   it('refuses a card already sent, and a card with no text', async () => {
