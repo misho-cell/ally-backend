@@ -77,10 +77,31 @@ export async function learnGeorgianSpellings(names: readonly string[]): Promise<
   if (words.length > 0) await learnSurnameSpellings(words);
 }
 
-/** The name as a Georgian line writes it: no „Ally", Georgian script (D859). */
+/** A Georgian surname's ending, on the last word of a capitalised label. */
+const SURNAME_END_RE = /(?:dze|shvili|ia|ua|ava|uri|iani|eli|ani)$/iu;
+const CAPITALISED_RE = /^[A-Z]/u;
+
+/**
+ * #7231 (tester 73758): „Mechanic BMW service" came out „მეჩანიც BMW სერვიცის"
+ * — English words spelt letter by letter. D859 is about names: a label is
+ * written in Georgian script when it reads as a person's name (a listed first
+ * name first, or capitalised words ending in a Georgian surname); any other
+ * label keeps the owner's own Latin.
+ */
+export function readsAsAName(clean: string): boolean {
+  const words = clean.split(WORD_SPLIT_RE).filter((w) => w !== '');
+  if (words.length === 0) return false;
+  if (georgianFirstNameOf(words[0]) !== null) return true;
+  const last = words[words.length - 1];
+  return (
+    words.length >= 2 && words.every((w) => CAPITALISED_RE.test(w)) && SURNAME_END_RE.test(last)
+  );
+}
+
+/** The name as a Georgian line writes it: no „Ally", Georgian script for a name (D859). */
 export function georgianScriptName(name: string): string {
   const clean = withoutAllyWord(name);
-  if (clean === '' || hasGeorgian(clean)) return clean;
+  if (clean === '' || hasGeorgian(clean) || !readsAsAName(clean)) return clean;
   return clean
     .split(WORD_SPLIT_RE)
     .map((word, index) => wordInGeorgian(word, index === 0))

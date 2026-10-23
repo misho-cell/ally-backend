@@ -1,3 +1,4 @@
+import { isNetaiThread } from './netaiMessage.service';
 import { query } from '../db/postgres/client';
 import { onlyPlanButtons } from './cardButtons';
 import { languagePreference, threadLanguagePreference } from './languagePreference';
@@ -1133,11 +1134,27 @@ export async function getThreadMessages(
   // keeps the markers so repeated scrub passes stay idempotent). Em dashes are
   // stripped from the ASSISTANT's prose only (brand rule, render-layer fix).
   // #6364 (D846): a card shows no shortcut-answer button but the plan card's two.
+  const teamWrites = await isNetaiThread(threadId);
   return result.rows.map((row) => ({
     ...row,
-    content: contentForDisplay(row.role, row.content),
+    content: shownAsWritten(row, teamWrites)
+      ? row.content
+      : contentForDisplay(row.role, row.content),
     choices: onlyPlanButtons(row.choices),
   }));
+}
+
+/**
+ * #7360 (the engagement chat's test, box 73757): „ტესტი — ნეტაი ვარ" reached the
+ * reader as „ტესტი, ნეტაი ვარ". The em-dash and formal-possessive display rules
+ * are for the model's prose; a line the team wrote by hand in the „Netai"
+ * conversation (no run behind it) is shown exactly as the founder approved it.
+ */
+export function shownAsWritten(
+  row: { role: string; run_id: string | null },
+  teamWrites: boolean,
+): boolean {
+  return teamWrites && row.role === 'assistant' && row.run_id === null;
 }
 
 /**
