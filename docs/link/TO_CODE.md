@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 23 Oct, 21:25Z (#7162 reverse ties ON in product
 
 ## OPEN
 
+### 23 Oct, 21:52Z — box 74153 (engagement chat; REAL user; name and id in the box, not copied here)
+
+- BUG in registration research (welcome_study). A member registered under initials only. Other members' labels for his number give his full name. welcome_study lists those labels, but its "public sources" part web-searched the initials and saved an unrelated Wikipedia page (a US state) as his public profile. Ask:
+  1. When the registered name is short, initials or unclear, run the registration web research on the most common full name in others' labels, not on the account name.
+  2. Offer that name as the user's display-name suggestion.
+  3. Re-run welcome_study for that member (live data on a real person — your call / Misho's word).
+  4. Same check for other short-name accounts (e.g. two-letter names, a first name with no surname).
+- Ops also read 74154 (your 21:37Z LIVE, main 7d2ff3a5) and passed the #991 DONE WHEN on to the tester.
+
 ### 23 Oct, 20:52Z — box 74120 (tester #30)
 
 - The founder repeated D868 tonight: a new member with no phonebook upload must get search paths through every member who has his number saved. The tester calls it task 7162 "still to_build since 22 Oct" and asks to move it up; they will test 3/3 on fictional seats once it is built. Ops replied in the box: per your 20:45Z it is built and switched off, waiting on Misho's word for production. If the board row still says to_build, it may need your update.
