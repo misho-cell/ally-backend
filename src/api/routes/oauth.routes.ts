@@ -3,6 +3,7 @@ import { connectorOriginFor, PUBLIC_BASE_URL } from '../../config/publicUrl';
 import { OtpSendCapError, requestOTP, verifyOTP } from '../../services/auth.service';
 import { normalizePhone } from '../../services/phone';
 import { admittedUserIdByPhone } from '../../services/connectorAdmission.service';
+import { rememberAcceptedCode, wasJustAccepted } from '../../services/connectorCodeRepeat';
 import {
   createAuthorizationCode,
   exchangeAuthorizationCode,
@@ -270,13 +271,27 @@ oauthRouter.post('/authorize/verify', async (req: Request, res: Response): Promi
   const code = typeof source.code === 'string' ? source.code.trim() : '';
   try {
     await verifyOTP(phone, code, 'AUTH');
+    rememberAcceptedCode(phone, code);
   } catch {
+    if (wasJustAccepted(phone, code)) {
+      await answerWithSignInCode(params, phone, res);
+      return;
+    }
     // The shared OTP service reports errors in Georgian — this page is English.
     res
       .status(200)
       .send(renderCodePage(params, phone, 'The code is wrong or has expired — try again.'));
     return;
   }
+  await answerWithSignInCode(params, phone, res);
+});
+
+/** The verified person goes back to the client with a fresh single-use sign-in code. */
+async function answerWithSignInCode(
+  params: AuthorizePageParams,
+  phone: string,
+  res: Response,
+): Promise<void> {
   try {
     const userId = await admittedUserIdByPhone(phone);
     if (userId === null) {
@@ -299,7 +314,7 @@ oauthRouter.post('/authorize/verify', async (req: Request, res: Response): Promi
     console.error('[oauth] verify failed:', err);
     res.status(500).send(renderErrorPage('Server error — please try again.'));
   }
-});
+}
 
 function tokenParam(body: Record<string, unknown>, key: string): string {
   const value = body[key];
