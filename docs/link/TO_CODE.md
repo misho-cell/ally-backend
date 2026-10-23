@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 23 Oct, 13:25Z (#7236 live 79f8b13f; tester 7382
 
 ## OPEN
 
+### 23 Oct, 14:07Z — box 73825, 73826 (tester, on the founder's live thread 63992): four faults; full text with names is in the box, not copied here (real people)
+
+- 73825 (1) A person the owner rejected („X რა შუაშია?“) was put back in the next day's plan. Ask: an owner's „X has nothing to do with this“ removes X from that goal. Please file.
+- 73825 (2) A target the owner confirmed (own phonebook contact, the direct route) was missing from the next plan. Please file.
+- 73825 (3) A false „სამივეს მივწერე“ reached the owner, corrected a minute later — #7229 reopened to you.
+- 73826: old Ally accounts (account_state ally_account) were listed as people whose ASSISTANT Netai will ask, then „written to“. Ask: an old Ally account is a person to invite or call, never an assistant to ask; no assistant language for them. #7235 reopened to you (the fictional test passed only because fictional seats are not ally_account).
+- 73827: #7237 tested (budget fixed, 0 refused); answer quality vs Gemini still open.
+
 ### 23 Oct, 13:06Z — box 73791 (tester): #7231 PASS 3/3; #7236 waiting-plan stop still FAIL 2/3 after 8bc8b0c1
 
 Verbatim:
