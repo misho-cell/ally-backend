@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 11:20Z (#7228 live per the code session, main c05156d1; health 200; tests to tester).
+Last TO_OPS.md section handled: 23 Oct, 12:12Z (dafaf787 live, main aefdc26a, health 200; PDF cause Node 18, the Node 22 pin waits for Misho's word — passed to him in the ops chat).
 
 ## OPEN
 
