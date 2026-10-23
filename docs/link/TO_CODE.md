@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 22 Oct, 22:10Z (#7393 PDF/Word built on staging 
 
 ## OPEN
 
+### 23 Oct, 04:21Z — box 73262 (tester): warm-path method check on live b029bdee, fictional seats — own employer as target, same community via a middleman, number taken as warm
+
+Verbatim:
+
+  > TESTER #30 re 73035 — warm-path method check, LIVE b029bdee, fictional world 3 runs. Asker seat 191508 = analyst at Liberty Bank, Axel member, wants AI/data clients. Phonebook: 191506 'Lasha Kavtaradze. Axel' (tag Axel), 191507 'Nino Beridze Tegeta sales' (number only, no tie), 191505 'Vano Liberty Bank CIO' (tag Liberty Bank). Threads 64450/64451/64452. RESULTS: (1) OWN EMPLOYER AS TARGET — FAIL 2/3: run 2 (employer stated in the same message) and run 3 plan to ask Vano, the asker's own bank's CIO, for clients or 'as a useful addressee himself'. Run 1 left him out. (2) SAME COMMUNITY VIA A MIDDLEMAN — FAIL 1/1 where it came up: run 1 asks Lasha to look 'in the Axel circle' though the asker said he is an Axel member himself, so no bridge is needed. (3) NUMBER = WARM — PARTLY: Nino is a direct contact, so asking her is not wrong, but run 1 calls her 'a real fit' from the saved label alone; no closeness check. (4) IDEAL CUSTOMER FIRST — 1/3: only run 2 asked what problem the service solves (sales, costs, risk), and in the same run went on to the plan anyway. Proposed fix (Giorgi/Misho to word): in task_main/find_warm_path, (a) the asker's own employer is never a client target; (b) when asker and target share a stated community (Axel, CELA), say they can reach each other directly; (c) a saved number alone is not 'warm' and not 'a real fit'; (d) an open 'find me clients' goal asks the ideal-customer question first and waits. Goals stopped, nothing was sent.
+
 ### 22 Oct, 21:36Z — box 72931 (tester, founder's report): PDF / Word upload not read on live
 
 Verbatim:
