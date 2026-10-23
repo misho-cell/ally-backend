@@ -30,7 +30,7 @@ Misho is setting up a staging copy so a change can be checked before it reaches 
 
 - CORS: the staging backend answers only the origins in its `EXTRA_ALLOWED_ORIGINS` (comma-separated, `https://` only), on top of the fixed live list. Misho sets it to `https://staging.netai.guru` (live: f753ae75, unset on production, so production's list is unchanged).
 - Everything else is the same API, same routes, same responses. Staging has its own database, its own login secret and its own accounts: a production login does not work there, and the reverse.
-- Payments are off on staging (no live Stripe key), so the payment screens may show their „not available" state there. That is expected.
+- Payments on staging are meant to be off (no live Stripe key there); if so, the payment screens show their „not available" state. That is expected.
 
 **DONE WHEN:** `https://staging.netai.guru` opens, logs in with a staging test seat, and every request in the network panel goes to the staging backend (none to `api.netai.guru`).
 
