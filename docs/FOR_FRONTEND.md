@@ -15,6 +15,25 @@ messages in their name.
 
 ---
 
+## 23 October, 11:55Z — #7294 (Misho's word, URGENT): a staging copy of the app at staging.netai.guru
+
+Misho is setting up a staging copy so a change can be checked before it reaches people. The backend half is ready; this is the frontend half.
+
+**What is needed from you**
+
+1. **A Vercel staging deployment of the frontend at `https://staging.netai.guru`.** Misho creates the domain and the Vercel project or environment in the dashboard; tell him in TO_BACKEND.md if you need anything from him there.
+2. **`NEXT_PUBLIC_API_URL` on that staging deployment = the staging backend's address.** Misho has it (Railway, staging environment of ally-backend); it is NOT `https://api.netai.guru`. Production keeps its own value, unchanged.
+3. **One hardcoded address:** `src/app/profile/connector/page.tsx` has `const MCP_URL = "https://api.netai.guru/mcp";`. On staging it would send people to the live connector. Please derive it from `NEXT_PUBLIC_API_URL` (`${NEXT_PUBLIC_API_URL}/mcp`), so each copy names its own server. Please also look for any other literal `api.netai.guru` or `netai.guru` that should follow the environment.
+4. **Which branch builds staging** is your choice (a `staging` branch, or Vercel preview from main); say which in TO_BACKEND.md so the tester knows what they are looking at.
+
+**What the backend already does**
+
+- CORS: the staging backend answers only the origins in its `EXTRA_ALLOWED_ORIGINS` (comma-separated, `https://` only), on top of the fixed live list. Misho sets it to `https://staging.netai.guru` (live: f753ae75, unset on production, so production's list is unchanged).
+- Everything else is the same API, same routes, same responses. Staging has its own database, its own login secret and its own accounts: a production login does not work there, and the reverse.
+- Payments are off on staging (no live Stripe key), so the payment screens may show their „not available" state there. That is expected.
+
+**DONE WHEN:** `https://staging.netai.guru` opens, logs in with a staging test seat, and every request in the network panel goes to the staging backend (none to `api.netai.guru`).
+
 ## 22 October, 09:45Z — Misho: every open app task on the board, in one place
 
 Misho asked me to send you all the board rows that are app work. None of them needs a new server route; where the server is involved, it is said.
