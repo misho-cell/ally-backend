@@ -24,7 +24,7 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
  *   not_member    no account at all. Nothing we send can arrive.
  *   never_opened  an account exists and the person has never opened Netai —
  *                 the account was made FOR them, by an import or an invite.
- *   ok            a Netai user, or a subscriber.
+ *   ok            a Netai user: typed, answered or searched (#7235).
  *
  * „No account" and „an account nobody has ever opened" being the same answer
  * is the bug this file exists to prevent: the second is somebody the owner may
@@ -80,15 +80,15 @@ describe('who can be asked at all', () => {
   });
 
   /**
-   * A SUBSCRIBER IS REACHABLE WITHOUT THE SECOND QUERY. Paying for it is
-   * stronger evidence of having opened it than a thread row, and the lookup is
-   * on the hot path of every plan that names people.
+   * #7235 (founder, thread 63992; tester 73830): A SUBSCRIPTION IS NOT PROOF.
+   * Every account gets one at sign-up, so old Ally accounts who never opened
+   * Netai were shown as reachable. Only typed, answered or searched counts.
    */
-  it('takes a subscription as proof and does not look further', async () => {
-    lookups({ userId: 42, subscriptionStatus: 'active' });
+  it('does not take a subscription alone as proof', async () => {
+    lookups({ userId: 42, subscriptionStatus: 'active' }, false);
 
-    expect(await canBeAsked('+995500000004')).toBe('ok');
-    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(await canBeAsked('+995500000004')).toBe('never_opened');
+    expect(mockQuery).toHaveBeenCalledTimes(2);
   });
 
   /**
@@ -98,7 +98,7 @@ describe('who can be asked at all', () => {
    * query strips non-digits on BOTH sides.
    */
   it('compares the number without trusting its spelling', async () => {
-    lookups({ userId: 42, subscriptionStatus: 'active' });
+    lookups({ userId: 42, subscriptionStatus: 'active' }, true);
 
     await canBeAsked('+995 599 12 34 56');
 
@@ -112,7 +112,7 @@ describe('who can be asked at all', () => {
    * offered as askable because their row is still on disk.
    */
   it('does not count an account that has been deleted', async () => {
-    lookups({ userId: 42, subscriptionStatus: 'active' });
+    lookups({ userId: 42, subscriptionStatus: 'active' }, true);
 
     await canBeAsked('+995500000005');
 

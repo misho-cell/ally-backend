@@ -577,13 +577,18 @@ describe('createAsk', () => {
     });
   });
 
-  it('a live subscription proves Netai use without a second query', async () => {
-    routeAskQueries({ member: { userId: 7, name: 'გია', subscriptionStatus: 'trialing' } });
+  // #7235 (founder, 63992; tester 73830): every account gets a subscription at
+  // sign-up, so a subscription alone no longer proves Netai use.
+  it('a live subscription alone does not prove Netai use', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია', subscriptionStatus: 'trialing' },
+      onNetai: false,
+    });
 
     const out = await createAsk('42', 3, '+995599111222', 'q');
 
-    expect(out.sent).toBe(true);
-    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes(') AS opened'))).toBe(false);
+    expect(out.sent).toBe(false);
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes(') AS opened'))).toBe(true);
   });
 
   it('a second message to the same person continues the SAME thread (ticket 9 task 12)', async () => {
@@ -770,6 +775,8 @@ describe('createRelayAsk', () => {
     alreadyOnGoal?: boolean;
   }): void {
     mockQuery.mockImplementation((sql: string) => {
+      // #7235: the named person has opened Netai (typed, answered or searched).
+      if (sql.includes(') AS opened')) return Promise.resolve(rows([{ opened: true }]) as never);
       if (sql.includes('WITH RECURSIVE chain'))
         return Promise.resolve(rows([{ relays: opts.relays ?? 0 }]) as never);
       if (sql.includes('AS known'))

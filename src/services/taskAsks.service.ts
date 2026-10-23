@@ -1,3 +1,4 @@
+import { netaiMember } from './netaiMembership';
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
 import { nameAsReaderSaved } from './readerSavedName';
@@ -570,13 +571,16 @@ async function recordReroutedIfSecondRoute(
   }
 }
 
-async function isNetaiUser(userId: number, subscriptionStatus: string | null): Promise<boolean> {
-  if (subscriptionStatus !== null && NETAI_SUBSCRIPTION_STATUSES.has(subscriptionStatus)) {
-    return true;
-  }
+/**
+ * #7235 (tester 73830; founder, thread 63992): an account with a subscription or
+ * a thread counted as having opened Netai — but every account gets a
+ * subscription at sign-up, and an incoming question opens a thread in the
+ * reader's account. The send gate and the plan's reach now use the same sign as
+ * every member reader: typed, answered or searched (netaiMember).
+ */
+async function isNetaiUser(userId: number): Promise<boolean> {
   const result = await query<{ opened: boolean }>(
-    `SELECT (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = $1)
-             OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = $1::text)) AS opened`,
+    `SELECT ${netaiMember('u')} AS opened FROM "User" u WHERE u.id = $1`,
     [userId],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -624,7 +628,7 @@ export async function canBeAsked(contactPhone: string): Promise<AskReach> {
   );
   const row = member.rows[0];
   if (!row) return 'not_member';
-  return (await isNetaiUser(row.userId, row.subscriptionStatus)) ? 'ok' : 'never_opened';
+  return (await isNetaiUser(row.userId)) ? 'ok' : 'never_opened';
 }
 
 /** The task's plan columns, read at send time — a plan may have been approved a second ago. */
@@ -642,13 +646,6 @@ async function planRowFor(
   );
   return result.rows[0] ?? { plan: null, plan_version: 0, plan_approved_at: null };
 }
-
-/** Statuses that on their own prove the account has used Netai. */
-const NETAI_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set([
-  'active',
-  'trialing',
-  'past_due',
-]);
 
 /**
  * The tester's 44650 (six-turn case, turn 5, goal 20428): with the owner's last
@@ -1405,7 +1402,7 @@ async function createAskNow(
   // Both refusals are worded so they CANNOT be read as the recipient's own
   // choice (12 Aug: the model once translated a refusal into "this person
   // switched Netai messages off", a false statement about a third party).
-  if (!(await isNetaiUser(toUserId, member.rows[0].subscriptionStatus))) {
+  if (!(await isNetaiUser(toUserId))) {
     return {
       sent: false,
       reason: 'recipient_not_on_netai',
