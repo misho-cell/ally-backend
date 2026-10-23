@@ -21,9 +21,21 @@ describe('the war-room routes', () => {
   });
 
   it('saves an instruction or a status, refuses an empty change, 404s an unknown card', () => {
-    const fn = cut("  '/war-room/cards/:id',", '/**\n *   GET /admin/users/:id/netai-messages');
-    expect(fn).toContain('instruction === undefined && status === undefined');
-    expect(fn).toContain("error: 'No such card.'");
-    expect(fn).toContain('isLength({ min: 1, max: MAX_CARD_INSTRUCTION_CHARS })');
+    const fn = cut("  '/war-room/cards/:id',", "  '/war-room/cards/:id/send',");
+    expect(fn).toContain(
+      'instruction === undefined && draft === undefined && status === undefined',
+    );
+    expect(fn).toContain("error: 'No such card, or it was already sent.'");
+    expect(fn).toContain('.isLength({ min: 1, max: MAX_CARD_INSTRUCTION_CHARS })');
+  });
+
+  it('sends on approval with the right refusals', () => {
+    const fn = cut(
+      "  '/war-room/cards/:id/send',",
+      '/**\n *   GET /admin/users/:id/netai-messages',
+    );
+    expect(fn).toContain('sendWarRoomCard(Number(req.params.id), by, text)');
+    expect(route).toContain('[SendRefusal.AlreadySent]: { code: 409');
+    expect(route).toContain('[SendRefusal.NoText]: { code: 400');
   });
 });

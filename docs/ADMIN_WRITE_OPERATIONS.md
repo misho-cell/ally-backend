@@ -6366,3 +6366,11 @@ question, and „everything" here answered the texts on the table; it is asked a
 - `POST /admin/referral-rewards/credit {"user_id": 501, "amount_usd": 10, "board_row": "390"}` writes one `admin_credit` row (external id `credit_390`). It is not held: only `earn` rows are. A second call writes nothing.
   - Read back: `GET /billing/referral` on 501 shows the 10 USD as available, or `SELECT amount_usd, reason FROM referral_transactions WHERE user_id = '501' AND external_id = 'credit_390'`.
   - Undo, only before any of it is spent: `DELETE FROM referral_transactions WHERE user_id = '501' AND external_id = 'credit_390'`.
+
+## 58 · WAR ROOM: A CARD'S MESSAGE SENT TO A REAL PERSON (#7591, founder 24 Oct)
+
+- **What:** `POST /admin/war-room/cards/:id/send { text? }` sends the card's text to that person as Netai's own message (the #7360 path: the „Netai" conversation and a push).
+- **Who authorises:** the founder, per card, on the final text (D881). Nothing is sent by the server on its own: cards are only found and briefed; the send is this call.
+- **Guards:** one card is sent once (a second approval gets 409); no text and no draft → 400; a failed send frees the card for another try; the log line names admin, card and message id, never the words.
+- **Undo:** a sent message cannot be unsent; a correction is a new card or a new #7360 message.
+

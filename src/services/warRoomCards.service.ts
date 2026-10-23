@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { sendNetaiMessage } from './netaiMessage.service';
 
 /**
  * #7591 WAR ROOM (founder, 24 Oct 02:01 Tbilisi): one card per person and one
@@ -59,9 +60,18 @@ export interface WarRoomCard {
   readonly instruction: string | null;
   readonly instruction_by: string | null;
   readonly instruction_at: string | null;
+  readonly draft: string | null;
+  readonly draft_by: string | null;
+  readonly draft_at: string | null;
+  readonly sent_message_id: number | null;
+  readonly sent_by: string | null;
+  readonly sent_at: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
+
+const CARD_COLUMNS = `id, user_id, kind, thread_id, task_id, brief, status, instruction, instruction_by,
+  instruction_at, draft, draft_by, draft_at, sent_message_id, sent_by, sent_at, created_at, updated_at`;
 
 const QUERY_TIMEOUT_MS = 10_000;
 const MAX_PER_KIND = 50;
@@ -255,8 +265,7 @@ export async function buildWarRoomCards(): Promise<number> {
 /** The cards, newest first, optionally of one status. */
 export async function listWarRoomCards(status?: CardStatus): Promise<WarRoomCard[]> {
   const result = await query<WarRoomCard>(
-    `SELECT id, user_id, kind, thread_id, task_id, brief, status, instruction, instruction_by,
-            instruction_at, created_at, updated_at
+    `SELECT ${CARD_COLUMNS}
        FROM war_room_cards
       WHERE ($1::text IS NULL OR status = $1)
       ORDER BY created_at DESC
@@ -269,34 +278,122 @@ export async function listWarRoomCards(status?: CardStatus): Promise<WarRoomCard
 
 export interface CardChange {
   readonly instruction?: string;
+  readonly draft?: string;
   readonly status?: CardStatus;
   readonly by: string;
 }
 
 /**
- * The founder's instruction or a status move. An instruction on a new card
- * makes it „instructed"; an explicit status always wins.
+ * The founder's instruction, a draft for the card, or a status move. An
+ * instruction on a new card makes it „instructed"; a draft on a new or
+ * instructed card makes it „drafted"; an explicit status always wins. A card
+ * being sent or already sent is never changed.
  */
 export async function updateWarRoomCard(
   cardId: number,
   change: CardChange,
 ): Promise<WarRoomCard | null> {
   const instruction = change.instruction?.trim() || null;
+  const draft = change.draft?.trim() || null;
   const result = await query<WarRoomCard>(
     `UPDATE war_room_cards SET
         instruction    = COALESCE($2, instruction),
         instruction_by = CASE WHEN $2::text IS NULL THEN instruction_by ELSE $4 END,
         instruction_at = CASE WHEN $2::text IS NULL THEN instruction_at ELSE NOW() END,
-        status = COALESCE($3, CASE WHEN $2::text IS NOT NULL AND status = 'new'
-                                   THEN 'instructed' ELSE status END),
+        draft          = COALESCE($5, draft),
+        draft_by       = CASE WHEN $5::text IS NULL THEN draft_by ELSE $4 END,
+        draft_at       = CASE WHEN $5::text IS NULL THEN draft_at ELSE NOW() END,
+        status = COALESCE($3,
+          CASE WHEN $5::text IS NOT NULL AND status IN ('new', 'instructed') THEN 'drafted'
+               WHEN $2::text IS NOT NULL AND status = 'new' THEN 'instructed'
+               ELSE status END),
         updated_at = NOW()
-      WHERE id = $1
-      RETURNING id, user_id, kind, thread_id, task_id, brief, status, instruction,
-                instruction_by, instruction_at, created_at, updated_at`,
-    [cardId, instruction, change.status ?? null, change.by],
+      WHERE id = $1 AND sent_by IS NULL
+      RETURNING ${CARD_COLUMNS}`,
+    [cardId, instruction, change.status ?? null, change.by, draft],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0] ?? null;
+}
+
+export enum SendRefusal {
+  NoSuchCard = 'no_such_card',
+  AlreadySent = 'already_sent',
+  NoText = 'no_text',
+}
+
+export type CardSend =
+  | { readonly sent: true; readonly card: WarRoomCard; readonly messageId: number }
+  | { readonly sent: false; readonly reason: SendRefusal };
+
+/** Claims the card for one send: the first approval holds it, a second is refused. */
+async function claimForSending(cardId: number, by: string): Promise<WarRoomCard | null> {
+  const result = await query<WarRoomCard>(
+    `UPDATE war_room_cards SET sent_by = $2, updated_at = NOW()
+      WHERE id = $1 AND sent_by IS NULL
+      RETURNING ${CARD_COLUMNS}`,
+    [cardId, by],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
+async function cardExists(cardId: number): Promise<boolean> {
+  const result = await query<{ found: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM war_room_cards WHERE id = $1) AS found`,
+    [cardId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.found === true;
+}
+
+async function markSent(cardId: number, messageId: number): Promise<WarRoomCard> {
+  const result = await query<WarRoomCard>(
+    `UPDATE war_room_cards
+        SET status = 'sent', sent_message_id = $2, sent_at = NOW(), updated_at = NOW()
+      WHERE id = $1
+      RETURNING ${CARD_COLUMNS}`,
+    [cardId, messageId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] as WarRoomCard;
+}
+
+/** A send that did not happen frees the card for the next approval. */
+async function releaseClaim(cardId: number): Promise<void> {
+  await query(
+    `UPDATE war_room_cards SET sent_by = NULL, updated_at = NOW()
+      WHERE id = $1 AND sent_message_id IS NULL`,
+    [cardId],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
+/**
+ * #7591 step 6 (D881): the founder approves the final text and Netai sends it
+ * to the person as its own message (#7360). The text is his edit when he gives
+ * one, else the card's draft. One card is sent once.
+ */
+export async function sendWarRoomCard(
+  cardId: number,
+  by: string,
+  editedText?: string,
+): Promise<CardSend> {
+  if (!(await cardExists(cardId))) return { sent: false, reason: SendRefusal.NoSuchCard };
+  const card = await claimForSending(cardId, by);
+  if (card === null) return { sent: false, reason: SendRefusal.AlreadySent };
+  const text = editedText?.trim() || card.draft?.trim() || '';
+  if (text === '') {
+    await releaseClaim(cardId);
+    return { sent: false, reason: SendRefusal.NoText };
+  }
+  try {
+    const message = await sendNetaiMessage({ userId: card.user_id, text, choices: [], sentBy: by });
+    return { sent: true, card: await markSent(cardId, message.id), messageId: message.id };
+  } catch (err) {
+    await releaseClaim(cardId);
+    throw err;
+  }
 }
 
 export interface UserThreadRow {

@@ -3,20 +3,28 @@
  * one per person and request — and the founder leaves an instruction on each.
  */
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('../netaiMessage.service', () => ({ sendNetaiMessage: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';
+import { sendNetaiMessage } from '../netaiMessage.service';
 import {
   briefLine,
   buildWarRoomCards,
   CardKind,
+  SendRefusal,
+  sendWarRoomCard,
   updateWarRoomCard,
   withoutNumbers,
 } from '../warRoomCards.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+const mockSend = sendNetaiMessage as jest.MockedFunction<typeof sendNetaiMessage>;
 const rows = (r: unknown[]): never => ({ rows: r, rowCount: r.length }) as never;
 
-beforeEach(() => mockQuery.mockReset());
+beforeEach(() => {
+  mockQuery.mockReset();
+  mockSend.mockReset();
+});
 
 describe('what a card may say', () => {
   it('never carries a number', () => {
@@ -73,12 +81,71 @@ describe('the founder’s instruction', () => {
 
     expect(card?.status).toBe('instructed');
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(params).toEqual([7, 'მიწერე ბოდიში', null, '167250']);
+    expect(params).toEqual([7, 'მიწერე ბოდიში', null, '167250', null]);
     expect(sql).toContain("THEN 'instructed'");
+    expect(sql).toContain('sent_by IS NULL');
   });
 
   it('answers null for a card that does not exist', async () => {
     mockQuery.mockResolvedValueOnce(rows([]));
     await expect(updateWarRoomCard(999, { status: 'held', by: '1' })).resolves.toBeNull();
+  });
+});
+
+describe('a draft and the founder’s approval (D881)', () => {
+  it('saves a draft and moves the card to drafted', async () => {
+    mockQuery.mockResolvedValueOnce(rows([{ id: 7, status: 'drafted' }]));
+    await updateWarRoomCard(7, { draft: 'გამარჯობა, ისევ გჭირდება?', by: 'netai23' });
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(params[4]).toBe('გამარჯობა, ისევ გჭირდება?');
+    expect(sql).toContain("THEN 'drafted'");
+  });
+
+  it('sends his edit as Netai’s own message, once', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ found: true }]))
+      .mockResolvedValueOnce(rows([{ id: 7, user_id: 5005, draft: 'draft' }]))
+      .mockResolvedValueOnce(rows([{ id: 7, status: 'sent' }]));
+    mockSend.mockResolvedValueOnce({ id: 900, threadId: 64000, newThread: false });
+
+    const out = await sendWarRoomCard(7, '167250', ' edited ');
+
+    expect(out.sent).toBe(true);
+    expect(mockSend).toHaveBeenCalledWith({
+      userId: 5005,
+      text: 'edited',
+      choices: [],
+      sentBy: '167250',
+    });
+  });
+
+  it('refuses a card already sent, and a card with no text', async () => {
+    mockQuery.mockResolvedValueOnce(rows([{ found: true }])).mockResolvedValueOnce(rows([]));
+    await expect(sendWarRoomCard(7, '1')).resolves.toEqual({
+      sent: false,
+      reason: SendRefusal.AlreadySent,
+    });
+
+    mockQuery
+      .mockResolvedValueOnce(rows([{ found: true }]))
+      .mockResolvedValueOnce(rows([{ id: 8, user_id: 5005, draft: null }]))
+      .mockResolvedValueOnce(rows([]));
+    await expect(sendWarRoomCard(8, '1')).resolves.toEqual({
+      sent: false,
+      reason: SendRefusal.NoText,
+    });
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('frees the card when the send fails', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ found: true }]))
+      .mockResolvedValueOnce(rows([{ id: 9, user_id: 5005, draft: 'x' }]))
+      .mockResolvedValueOnce(rows([]));
+    mockSend.mockRejectedValueOnce(new Error('push down'));
+
+    await expect(sendWarRoomCard(9, '1')).rejects.toThrow('push down');
+    const [sql] = mockQuery.mock.calls[2] as [string];
+    expect(sql).toContain('SET sent_by = NULL');
   });
 });

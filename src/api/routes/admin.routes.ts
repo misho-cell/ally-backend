@@ -95,6 +95,8 @@ import {
   CARD_STATUSES,
   CardStatus,
   listWarRoomCards,
+  SendRefusal,
+  sendWarRoomCard,
   threadsOfUser,
   updateWarRoomCard,
 } from '../../services/warRoomCards.service';
@@ -4476,12 +4478,15 @@ adminRouter.get(
 );
 
 /**
- * #7591 WAR ROOM, step 4: the founder's instruction on a card (typed, or the
- * chat mic's text), or a status move. An instruction on a new card makes it
- * „instructed".
+ * #7591 WAR ROOM, steps 4-5: the founder's instruction on a card (typed, or the
+ * chat mic's text), the draft written for it (by NETAI 23 from the chat until
+ * the per-card workers exist), or a status move. An instruction on a new card
+ * makes it „instructed", a draft makes it „drafted". A card being sent or
+ * already sent is not changed.
  *
- *   PATCH /admin/war-room/cards/:id { instruction?: string (1-2000), status?: CardStatus }
- *   200 the card · 400 nothing to change / bad value · 404 no such card
+ *   PATCH /admin/war-room/cards/:id
+ *     { instruction?: string (1-2000), draft?: string (1-4000), status?: CardStatus }
+ *   200 the card · 400 nothing to change / bad value · 404 no such card, or already sent
  */
 adminRouter.patch(
   '/war-room/cards/:id',
@@ -4491,29 +4496,92 @@ adminRouter.patch(
     .isString()
     .trim()
     .isLength({ min: 1, max: MAX_CARD_INSTRUCTION_CHARS }),
+  body('draft').optional().isString().trim().isLength({ min: 1, max: MAX_NETAI_MESSAGE_CHARS }),
   body('status')
     .optional()
     .isIn([...CARD_STATUSES]),
   async (req: Request, res: Response) => {
-    const { instruction, status } = req.body as { instruction?: string; status?: CardStatus };
-    if (!validationResult(req).isEmpty() || (instruction === undefined && status === undefined)) {
+    const { instruction, draft, status } = req.body as {
+      instruction?: string;
+      draft?: string;
+      status?: CardStatus;
+    };
+    const nothing = instruction === undefined && draft === undefined && status === undefined;
+    if (!validationResult(req).isEmpty() || nothing) {
       res.status(400).json({
         success: false,
-        error: `Send instruction (1-${MAX_CARD_INSTRUCTION_CHARS} chars) and/or a status.`,
+        error:
+          `Send instruction (1-${MAX_CARD_INSTRUCTION_CHARS} chars), draft ` +
+          `(1-${MAX_NETAI_MESSAGE_CHARS} chars) and/or a status.`,
       });
       return;
     }
     try {
       const by = String((req as AuthenticatedRequest).user.userId);
-      const card = await updateWarRoomCard(Number(req.params.id), { instruction, status, by });
+      const card = await updateWarRoomCard(Number(req.params.id), {
+        instruction,
+        draft,
+        status,
+        by,
+      });
       if (card === null) {
-        res.status(404).json({ success: false, error: 'No such card.' });
+        res.status(404).json({ success: false, error: 'No such card, or it was already sent.' });
         return;
       }
       res.json({ success: true, data: card });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[war-room] card update failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+const SEND_REFUSAL_STATUS: Readonly<Record<SendRefusal, { code: number; error: string }>> = {
+  [SendRefusal.NoSuchCard]: { code: 404, error: 'No such card.' },
+  [SendRefusal.AlreadySent]: { code: 409, error: 'This card was already sent.' },
+  [SendRefusal.NoText]: { code: 400, error: 'No text: the card has no draft and none was given.' },
+};
+
+/**
+ * #7591 WAR ROOM, step 6 (D881): the founder approves the final text and
+ * Netai sends it to the person as its own message (#7360). `text` is his edit;
+ * without it the card's draft goes. One card is sent once.
+ *
+ *   POST /admin/war-room/cards/:id/send { text?: string (1-4000) }
+ *   201 { card, message_id } · 400 no text · 404 no such card · 409 already sent
+ */
+adminRouter.post(
+  '/war-room/cards/:id/send',
+  param('id').isInt({ min: 1 }),
+  body('text').optional().isString().trim().isLength({ min: 1, max: MAX_NETAI_MESSAGE_CHARS }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `text must be 1-${MAX_NETAI_MESSAGE_CHARS} chars.`,
+      });
+      return;
+    }
+    try {
+      const by = String((req as AuthenticatedRequest).user.userId);
+      const text = (req.body as { text?: string }).text;
+      const outcome = await sendWarRoomCard(Number(req.params.id), by, text);
+      if (!outcome.sent) {
+        const refusal = SEND_REFUSAL_STATUS[outcome.reason];
+        res.status(refusal.code).json({ success: false, error: refusal.error });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[war-room] admin ${by} sent card ${outcome.card.id} as message ${outcome.messageId}`,
+      );
+      res
+        .status(201)
+        .json({ success: true, data: { card: outcome.card, message_id: outcome.messageId } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[war-room] card send failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
