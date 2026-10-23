@@ -171,12 +171,29 @@ function jsonTextComplaint(raw: unknown): string | null {
     return null;
   } catch (err) {
     const why = err instanceof Error ? err.message : 'it is not valid JSON';
-    return (
+    const opening =
       `the plan arrived as TEXT that is not valid JSON (${why}), ${text.length} characters long. ` +
-      'It looks like an object, so this is not a shape problem: it was probably cut off. ' +
-      'Send the plan again as an object, shorter if it was long.'
-    );
+      'It looks like an object, so this is not a shape problem: ';
+    return looksCutOff(why, text.length)
+      ? opening +
+          'it was probably cut off. Send the plan again as an object, shorter if it was long.'
+      : opening +
+          'it breaks in the middle, not at the end, so it was not cut off — most likely a double ' +
+          'quote inside one of the values was left unescaped. Send the plan again as an object, ' +
+          'with no double quotes inside the texts.';
   }
+}
+
+/** Ops 18:45Z (23 Oct, real account): position 593 of 2304 was called „cut off". */
+const CUT_OFF_SLACK_CHARS = 3;
+const END_OF_INPUT_RE = /end of (?:JSON )?input|Unterminated/i;
+const POSITION_RE = /at position (\d+)/i;
+
+/** A parse that failed at the end of the text was cut off; one that failed inside it was malformed. */
+export function looksCutOff(parseError: string, length: number): boolean {
+  if (END_OF_INPUT_RE.test(parseError)) return true;
+  const at = POSITION_RE.exec(parseError);
+  return at !== null && Number(at[1]) >= length - CUT_OFF_SLACK_CHARS;
 }
 
 /**
