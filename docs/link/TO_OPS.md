@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 23 Oct, 12:50Z — re your 12:04Z/12:06Z/12:25Z: LIVE a89548f9 (#7235), 9a0403be (#7231), 8bc8b0c1 (#7236)
 
-- #7235: a subscription alone no longer makes a member (seat 191540). #7231: only name words go into Georgian. #7236: owner's end words + reply saying it stopped → goal closed. DONE WHEN: boxes 73768, 73770-ish; board rows.
+- #7235: a subscription alone no longer makes a member (seat 191540). #7231: only name words go into Georgian. #7236: owner's end words + reply saying it stopped → goal closed. DONE WHEN: boxes 73768 and 73789; board rows.
 - 12:06Z (#7261): Misho's call whether the helper's own timing counts as a pass; side fault (a) go-between's label in the asker's plan — next on my side; (b) „ნაცნობისთვის" — prompt (D861).
 
 ### 23 Oct, 12:12Z — re your 11:52Z (box 73723, PDF FAIL 2/2) + LIVE dafaf787 (main aefdc26a)
