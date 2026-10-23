@@ -35,4 +35,15 @@ describe('a yes to the assistant’s question that names the person', () => {
     const reader = code.slice(code.indexOf('async function assistantQuestionBefore'));
     expect(reader.slice(0, 1200)).toContain('/[?？]$/u.test(line) ? line : null');
   });
+
+  // #7228 (audit, 63380): „კი, კითხე" to „გონზის ასისტენტს ვკითხო …?".
+  it('counts a whole line of yes plus ask / write / send', () => {
+    const source = code.slice(code.indexOf('const YES_GO_RE'));
+    const pattern = new RegExp(source.slice(source.indexOf('/') + 1, source.indexOf('/iu')), 'iu');
+    for (const yes of ['კი, კითხე', 'კი კითხე!', 'მიწერე', 'კი, მიწერე', 'yes, ask', 'go ahead'])
+      expect(pattern.test(yes)).toBe(true);
+    for (const not of ['კი, მაგრამ სხვას ჰკითხე', 'კითხე ომიკოს', 'არ მიწერო', 'კი'])
+      expect(pattern.test(not)).toBe(false);
+    expect(helper).toContain('YES_GO_RE.test(tapped)');
+  });
 });
