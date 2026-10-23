@@ -128,8 +128,64 @@ function startsWithNearStop(text: string): boolean {
   return STOP_IMPERATIVES.some((word) => editDistance(first, word) <= NEAR_STOP_EDITS);
 }
 
+/**
+ * #7236 second retest (tester 73791, 2/3 FAIL after 8bc8b0c1): „მოვრჩეთ ეს
+ * ამბავი" on a waiting plan was left to the model, which asked whether to go
+ * on, or answered with the plan again. „შეწყვიტე" passed 3/3 because the server
+ * answers it itself. A short line made ONLY of end words and „this whole thing"
+ * words is that same stop. Any other word — a person's name, „მისწერო" — and
+ * the line is not read here.
+ */
+const WHOLE_END_VERBS: ReadonlySet<string> = new Set([
+  'მოვრჩეთ',
+  'მოვრჩით',
+  'მორჩა',
+  'დავასრულოთ',
+  'დავამთავროთ',
+  'შევწყვიტოთ',
+  'დავხუროთ',
+  'გავაუქმოთ',
+]);
+const WHOLE_END_FILLERS: ReadonlySet<string> = new Set([
+  'არა',
+  'არ',
+  'აღარ',
+  'მინდა',
+  'კარგი',
+  'მოდი',
+  'ეს',
+  'ამ',
+  'ამას',
+  'ამით',
+  'ამაზე',
+  'უკვე',
+  'ახლა',
+  'ამბავი',
+  'ამბავს',
+  'საქმე',
+  'საქმეს',
+  'საკითხი',
+  'თემა',
+  'ძებნა',
+  'ძებნას',
+  'მიზანი',
+  'დავალება',
+  'ok',
+]);
+const WHOLE_END_MAX_CHARS = 50;
+const WORDS_RE = /[\p{L}\p{N}]+/gu;
+
+export function looksLikeWholeGoalEnd(message: string): boolean {
+  const text = message.trim().toLowerCase();
+  if (text === '' || text.length > WHOLE_END_MAX_CHARS) return false;
+  const words = text.match(WORDS_RE) ?? [];
+  const ends = words.some((w) => WHOLE_END_VERBS.has(w)) || /აღარ\s+მინდა/u.test(text);
+  return ends && words.every((w) => WHOLE_END_VERBS.has(w) || WHOLE_END_FILLERS.has(w));
+}
+
 export function looksLikeStopRequest(message: string): boolean {
   const text = message.trim();
+  if (looksLikeWholeGoalEnd(text)) return true;
   if (!STOP_VERB.test(text) && !startsWithNearStop(text)) return false;
   if (text.length <= BARE_STOP_MAX_CHARS) return true;
   if (text.length > NAMED_STOP_MAX_CHARS) return false;
