@@ -1,3 +1,5 @@
+import { geoName } from '../georgianCase';
+import { georgianScriptName } from '../georgianScriptName';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { planInSentences, TaskPlan } from '../taskPlans.service';
@@ -181,12 +183,15 @@ describe('only a reply that asks for approval is a plan reply', () => {
 describe('the plan reads as Georgian sentences', () => {
   it('puts the people in the genitive, joins them with „და", and names their assistants (D663)', () => {
     const text = planInSentences(PLAN, 'ka');
-    expect(text).toContain('Netai Test 50-ის და');
+    // #7231: in Georgian script, as the sent line names the same person (D859).
+    expect(text).toContain(`${geoName(georgianScriptName('Netai Test 50'), 'gen')} და`);
     expect(text).toContain('ასისტენტებს დაველაპარაკები');
     expect(text).not.toContain('ვეძებ ამ გზებით');
     expect(text).not.toContain('კითხვას დავუსვამ:');
     // The note stays after the name, and only the name is put in its case.
-    expect(text).toMatch(/Netai Test 54-ის \(Netai-ზე არ არის/);
+    expect(text).toContain(
+      `${geoName(georgianScriptName('Netai Test 54'), 'gen')} (Netai-ზე არ არის`,
+    );
   });
 });
 

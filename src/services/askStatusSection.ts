@@ -1,5 +1,5 @@
 import { askStateOf, isOpenAskState, ownerAskLine, AskState, type AskStamps } from './askState';
-import { withoutAllyWord } from './georgianScriptName';
+import { georgianScriptName, withoutAllyWord } from './georgianScriptName';
 import type { RunLanguage } from './runLanguage';
 
 /**
@@ -31,9 +31,15 @@ export interface HeldAskStamp {
  * back under every reply. Giorgi saved Lika as „… Ally"; the line kept the old
  * app's word, the stored reply did not, so „already shown" never matched. The
  * line names the person without it, as every name is written (#6767).
+ *
+ * #7231 (audit, 63431): a Georgian reply said „ახლა ვწერ ასისტენტებს: თამუნა
+ * კოვზირიძე" and, under it, „Tamuna Kovziridze: კითხვა მიუვიდა" — one person,
+ * two names. A Georgian line names everyone in Georgian script (D859), as the
+ * sent line and the sent sentence already do.
  */
 function lineName(name: string | null, language: RunLanguage): string {
-  const clean = withoutAllyWord(name ?? '');
+  const raw = name ?? '';
+  const clean = language === 'ka' ? georgianScriptName(raw) : withoutAllyWord(raw);
   return clean === '' ? FALLBACK_NAME[language] : clean;
 }
 
