@@ -4540,6 +4540,43 @@ function mergeAdjacentSameRole(rows: Anthropic.MessageParam[]): Anthropic.Messag
   return out.filter((row) => asBlocks(row.content).length > 0 || typeof row.content === 'string');
 }
 
+function isCompleteAssistantText(row: Anthropic.MessageParam): boolean {
+  if (row.role !== 'assistant') return false;
+  const c = row.content;
+  return typeof c === 'string'
+    ? c.length > 0
+    : c.some((b) => b.type === 'text') && !c.some((b) => b.type === 'tool_use');
+}
+
+/** A user turn made only of tool results — after repairToolPairs, each answers the call before it. */
+function isToolResultsOnly(row: Anthropic.MessageParam): boolean {
+  const blocks = blocksOf(row.content);
+  return (
+    row.role === 'user' &&
+    blocks !== null &&
+    blocks.length > 0 &&
+    blocks.every((b) => b.type === 'tool_result')
+  );
+}
+
+/**
+ * Strips the trailing incomplete exchange. A history ends on the assistant's
+ * text, or on a finished tool round: #7229 / #7195 (threads 64087, 63400) —
+ * a helper's run sent the answer and ended quietly (#6766), with no text
+ * after its tool result. Stripping that round took the send out of every
+ * later run's history, so the next run did not know the answer had gone. The
+ * round is kept; the next user turn joins it (mergeAdjacentSameRole).
+ */
+export function withoutUnfinishedEnd(rows: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const kept = [...rows];
+  while (kept.length > 0) {
+    const last = kept[kept.length - 1];
+    if (isCompleteAssistantText(last) || isToolResultsOnly(last)) break;
+    kept.pop();
+  }
+  return kept;
+}
+
 async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> {
   const result = await query<ConversationRow>(
     // 'event' rows are engine turns: model history yes, chat view no.
@@ -4559,25 +4596,7 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
   }));
 
   // G4: mid-history first — the two strippers below only reach the ends.
-  const rows = mergeAdjacentSameRole(repairToolPairs(stored));
-
-  // Strip trailing incomplete exchanges — must end with a pure-text assistant message.
-  // A message with tool_use blocks (even alongside text) is not a valid endpoint because
-  // it requires a following tool_result; without it the next API call is rejected.
-  while (rows.length > 0) {
-    const last = rows[rows.length - 1];
-    if (last.role === 'assistant') {
-      const c = last.content;
-      const isCompleteText =
-        typeof c === 'string'
-          ? c.length > 0
-          : Array.isArray(c) &&
-            c.some((b) => b.type === 'text') &&
-            !c.some((b) => b.type === 'tool_use');
-      if (isCompleteText) break;
-    }
-    rows.pop();
-  }
+  const rows = withoutUnfinishedEnd(mergeAdjacentSameRole(repairToolPairs(stored)));
 
   // Strip leading orphaned tool_result or assistant messages — Anthropic requires
   // the conversation to start with a user message.
@@ -17660,11 +17679,12 @@ export async function processChat(
   // 2907 (46235): a tap on the reader's own person is read as the text she was shown with it.
   const personTapped =
     thread.type === 'incoming_ask' ? await tappedPersonOnThread(threadId, userMessage) : null;
-  const messages: Anthropic.MessageParam[] = [
+  // A history may end on a finished tool round; the user turn after it joins its results.
+  const messages: Anthropic.MessageParam[] = mergeAdjacentSameRole([
     ...history,
     ...(replyContext === null ? [] : [{ role: 'user' as const, content: replyContext }]),
     { role: 'user', content: personTapped ?? userMessage },
-  ];
+  ]);
   // Question A, the tester's 949: a run that answers from the web results an
   // EARLIER run fetched (they are in this history) must be allowed the same
   // numbers and links — the allowance was per run, so they came out „[hidden]".
