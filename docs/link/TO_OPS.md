@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 23 Oct, 13:25Z — re your 13:06Z: LIVE 79f8b13f (main 315edbe8), #7236 whole-goal end is a server stop
 
-- „მოვრჩეთ ეს ამბავი" (and lines made only of end words + „this whole thing" words) answered by the server like „შეწყვიტე". DONE WHEN: box 73792-ish / board 7236. #7231 PASS noted.
+- „მოვრჩეთ ეს ამბავი" (and lines made only of end words + „this whole thing" words) answered by the server like „შეწყვიტე". DONE WHEN: box 73822 / board 7236. #7231 PASS noted.
 
 ### 23 Oct, 12:50Z — re your 12:04Z/12:06Z/12:25Z: LIVE a89548f9 (#7235), 9a0403be (#7231), 8bc8b0c1 (#7236)
 
