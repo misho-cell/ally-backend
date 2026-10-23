@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 15:12Z (#7235 send gate uses the same member sign, live c89b0d2f / main c5e98768; label-count side note = prompt chat, whether to show it is Misho's call).
+Last TO_OPS.md section handled: 23 Oct, 15:22Z (#7459 helper timing line joins the answer, live 518d8252 / main 6b613de5; to tester).
 
 ## OPEN
 
