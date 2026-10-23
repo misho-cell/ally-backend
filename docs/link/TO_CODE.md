@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 18:10Z (board 7558 MCP double-posted code, live 621c2de9 / main 0de6cf47; health 200 at 18:21Z; iPhone test is the tester's, to tester).
+Last TO_OPS.md section handled: 23 Oct, 19:10Z (plan-refusal „cut off" text waits for Misho's yes, D44; noted on ops side).
 
 ## OPEN
 
