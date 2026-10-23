@@ -1,4 +1,4 @@
-import { withoutAllyWord } from './georgianScriptName';
+import { namePartOfLabel } from './georgianScriptName';
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
 import { FoundThroughBridge, knowsLine } from './introTargetSentence';
@@ -285,8 +285,7 @@ async function goBetweensLabelFor(
     [goBetween, target[0]],
     QUERY_TIMEOUT_MS,
   );
-  const label = withoutAllyWord(result.rows[0]?.alias ?? '');
-  return label === '' ? null : label;
+  return namePartOfLabel(result.rows[0]?.alias ?? '');
 }
 
 /**

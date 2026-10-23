@@ -4,6 +4,7 @@ import { query } from '../../db/postgres/client';
 import {
   approveTaskPlan,
   parsePlan,
+  looksCutOff,
   nobodyCanBeWrittenTo,
   peopleToInvite,
   planAllows,
@@ -940,6 +941,27 @@ describe('a plan that arrived as broken JSON says so', () => {
     expect(out.error).toContain(String(cutOff.length));
     expect(out.error).toContain('cut off');
     expect(out.error).not.toBe('plan must be an object');
+  });
+
+  // Ops 18:45Z (23 Oct, real account): position 593 of 2304 was called „cut off".
+  it('does not call a plan broken in the middle cut off', () => {
+    const strayQuote =
+      '{"solved_when": "ვაკეში "ნოტარიუსი" მოიძებნა", "routes": [{"name": "პირადი კონტაქტი"}]}';
+
+    const out = parsePlan(strayQuote);
+
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error).toContain('not valid JSON');
+    expect(out.error).not.toContain('probably cut off');
+    expect(out.error).toContain('unescaped');
+  });
+
+  it('reads the parse position against the length', () => {
+    expect(looksCutOff('Unexpected end of JSON input', 80)).toBe(true);
+    expect(looksCutOff('Unterminated string in JSON at position 79', 80)).toBe(true);
+    expect(looksCutOff('Unexpected token დ in JSON at position 593', 2304)).toBe(false);
+    expect(looksCutOff('Unexpected token \'დ\', "…" is not valid JSON', 2304)).toBe(false);
   });
 
   /** And the old message survives for things that are genuinely not objects. */

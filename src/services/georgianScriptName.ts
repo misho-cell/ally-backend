@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { georgianFirstNameOf } from './ownerNameGeorgian';
+import { GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
 import { learnSurnameSpellings, learnedSurnameSpelling } from './surnameSpelling';
 import { hasGeorgian, latinToGeorgian, nameKey } from './tools/transliterate';
 
@@ -122,6 +123,35 @@ export function georgianScriptName(name: string): string {
 function isNameWord(word: string, index: number, listedFirst: boolean): boolean {
   if (!listedFirst || index === 0) return true;
   return CAPITALISED_RE.test(word) && SURNAME_END_RE.test(word);
+}
+
+/** A first name the names list holds, in either script. */
+function isListedFirstName(word: string): boolean {
+  return hasGeorgian(word) ? GEORGIAN_FIRST_NAMES.has(word) : georgianFirstNameOf(word) !== null;
+}
+
+/** A Georgian surname's ending in Georgian script. */
+const GEORGIAN_SURNAME_END_RE = /(?:ძე|შვილი|ია|უა|ავა|ური|იანი|ელი|ანი)$/u;
+
+/**
+ * Misho, 23 Oct („ყველა კი", recommendation 8): #6899 names the target as the
+ * planned go-between saved them, #7231 says no other person's label reaches a
+ * member. Both hold when only the NAME is taken from that label: its listed
+ * first name and the surname after it, never the go-between's own words about
+ * the person („ელექტრიკოსი", „designer", „BMW"). Null when the label does not
+ * open on a first name — then it holds nothing that is only a name.
+ */
+export function namePartOfLabel(label: string): string | null {
+  const words = withoutAllyWord(label)
+    .split(WORD_SPLIT_RE)
+    .filter((w) => w !== '');
+  const [first, next] = words;
+  if (first === undefined || !isListedFirstName(first)) return null;
+  const isSurname =
+    next !== undefined &&
+    ((CAPITALISED_RE.test(next) && SURNAME_END_RE.test(next)) ||
+      GEORGIAN_SURNAME_END_RE.test(next));
+  return isSurname ? `${first} ${next}` : first;
 }
 
 /** The first name only, as a Georgian line writes it. */
