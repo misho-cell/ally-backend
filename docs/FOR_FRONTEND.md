@@ -15,6 +15,44 @@ messages in their name.
 
 ---
 
+## 23 October, 22:50Z — #7591 WAR ROOM (founder, prio 1): the backend half of MVP steps 1, 2 and 4 is built; step 3 (the page) is yours
+
+Admin page `/admin/war-room`: a list of cards, each a short brief, and a place to leave the founder's instruction (typed, or the chat mic's text). Admin token as for the other admin pages. Branch: staging (verify green), live once deployed — I will write the LIVE line here.
+
+**1. One person's conversations** — for the card's "open his chats" link.
+```
+GET /admin/users/:id/threads
+200 { "success": true, "data": [ { "id": 63790, "type": "regular", "status": "waiting",
+      "title": "გულის ექოსკოპია", "updated_at": "2026-10-23T16:14:05Z",
+      "last_line": "ჯერ ახალი პასუხი არ მიმიღია." } ] }
+400 id not a number
+```
+
+**2. The cards** — every call finds new cards first, then lists them, newest first (max 200).
+```
+GET /admin/war-room/cards?status=new|instructed|drafted|approved|sent|held|dropped   (status optional)
+200 { "success": true, "data": [ {
+      "id": 7, "user_id": 5005, "kind": "stuck_goal", "thread_id": 63790, "task_id": 31021,
+      "brief": { "who": "Dato", "their_words": "არ არის სიახლე?",
+                 "netai_did": "ჯერ ახალი პასუხი არ მიმიღია.",
+                 "stalled": "An open goal with no activity for over a day." },
+      "status": "new", "instruction": null, "instruction_by": null, "instruction_at": null,
+      "created_at": "...", "updated_at": "..." } ] }
+400 unknown status
+```
+`kind` is one of `new_joiner`, `unanswered_reply`, `stuck_goal`, `tech_error`. `their_words` / `netai_did` may be null (a new joiner has no conversation yet). Numbers are already masked („…") on the server; show the brief as text.
+
+**4. The founder's instruction, or a status move**
+```
+PATCH /admin/war-room/cards/:id
+  { "instruction": "მიწერე ბოდიში და ჰკითხე, ისევ სჭირდება თუ არა" }   (1-2000 chars)
+  and/or { "status": "held" }
+200 { "success": true, "data": <the card> }
+400 neither instruction nor status, or a bad value · 404 no such card
+```
+An instruction on a `new` card moves it to `instructed`. Hold / Drop are the same call with `status`. Steps 5-6 (the worker's draft and Approve → send via #7360) come later and add fields to the card; nothing above changes.
+
+
 ## 23 October, 11:55Z — #7294 (Misho's word, URGENT): a staging copy of the app at staging.netai.guru
 
 Misho is setting up a staging copy so a change can be checked before it reaches people. The backend half is ready; this is the frontend half.
