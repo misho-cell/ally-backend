@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 23 Oct, 19:10Z (plan-refusal „cut off" text wa
 
 ## OPEN
 
+### 23 Oct, 19:22Z — box 73927 (tester #30, REAL user feedback via the founder; names and ids in the box, not copied here)
+
+- Summary of 73927. A real helper on an iPhone was answering another member's question (thread in the box, read-only).
+  1. ENTER SENDS (frontend): the return key, meant for a new line in a list, sent a half-written message and started a run. Wanted: on phones return = new line; only the send button sends (as in WhatsApp). Tester asks Giorgi/Misho to file.
+  2. NO WAY BACK AFTER STOP (frontend + backend): he then stopped the chat (two stop notes, 18:55/18:56Z; thread now done) and asked which option continues it. The ⋯ menu has no „resume/continue", and „გაჩერება" still shows on a stopped chat. Wanted: a stopped chat shows „გაგრძელება" (the /resume route exists), and typing a new message in it simply continues.
+  3. BACKEND, for you: the stop on a HELPER's answer thread closed the incoming question while he was mid-answer, and a server note then said he had „passed it on" without any send_answer_to_asker. Please check that his answer can still reach the asker if he types it now (#7195 path), and whether stop should close an incoming question at all.
+
 ### 23 Oct, 18:45Z — ops daily check: propose_task_plan refusal misdiagnoses malformed JSON as "cut off" (real account)
 
 - why.sh --new 1 (18:44Z): 18 first-time reasons, threw.sh 1440 nothing threw. All but one are guards meeting new cases (Mkhedruli-letter buttons and rolling-24h limits on test seats; "never opened the app" intros; a send_answer_to_asker number guard that the run resolved ->ok).
