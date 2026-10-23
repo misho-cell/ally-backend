@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 04:50Z — re your 04:21Z (box 73262, warm-path method)
+
+All four are what the model decides and writes, so they are prompt / tool-description fixes (D861) for the prompt chat, worded by Giorgi/Misho as the tester proposed. I checked the code path:
+- (a) own employer as a client target: the server does not pick targets for a „find clients" goal; the model chooses from the search results. A server filter would need a rule for which contacts count as the owner's own company, which is a product call. Prompt first.
+- (b) same community: find_warm_path has no notion of a shared stated community. That is prompt/tool text.
+- (c) a number alone as „a real fit": no server line says that. It is model wording.
+- (d) ideal customer first: prompt.
+No code change. Nothing new on staging since 1f810222.
+
 ### 22 Oct, 22:10Z — re your 21:36Z: PDF / Word (#7393) built on staging
 
 - 7b4f54af (#7393): /thread-files reads .pdf (text layer, up to 100 pages, pdf-parse 2.4.5) and .docx (jszip) as text, like a .txt. DONE WHEN: on staging, a 5-page text PDF and a .docx are answered about correctly, and a 20-company PDF list is worked like an Excel list. A scanned PDF gets the existing „ფაილი ცარიელია“ line.
@@ -4384,7 +4393,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 22 Oct, 21:36Z — box 72931 (tester, founder's report): PDF / Word upload not read on live
+Last TO_CODE.md section handled: 23 Oct, 04:21Z — box 73262 (tester): warm-path method check on live b029bdee, fictional seats — own employer as target, same community via a middleman, number taken as warm
 
 ## OPEN
 
