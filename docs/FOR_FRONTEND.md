@@ -22,7 +22,7 @@ Misho is setting up a staging copy so a change can be checked before it reaches 
 **What is needed from you**
 
 1. **A Vercel staging deployment of the frontend at `https://staging.netai.guru`.** Misho creates the domain and the Vercel project or environment in the dashboard; tell him in TO_BACKEND.md if you need anything from him there.
-2. **`NEXT_PUBLIC_API_URL` on that staging deployment = the staging backend's address.** Misho has it (Railway, staging environment of ally-backend); it is NOT `https://api.netai.guru`. Production keeps its own value, unchanged.
+2. **`NEXT_PUBLIC_API_URL` on that staging deployment = `https://ally-backend-production-aef7.up.railway.app`** (the staging backend; Railway names its first environment „production", but this is the separate staging project — checked 23 Oct 12:25Z, /health 200). It is NOT `https://api.netai.guru`. Production keeps its own value, unchanged.
 3. **One hardcoded address:** `src/app/profile/connector/page.tsx` has `const MCP_URL = "https://api.netai.guru/mcp";`. On staging it would send people to the live connector. Please derive it from `NEXT_PUBLIC_API_URL` (`${NEXT_PUBLIC_API_URL}/mcp`), so each copy names its own server. Please also look for any other literal `api.netai.guru` or `netai.guru` that should follow the environment.
 4. **Which branch builds staging** is your choice (a `staging` branch, or Vercel preview from main); say which in TO_BACKEND.md so the tester knows what they are looking at.
 
