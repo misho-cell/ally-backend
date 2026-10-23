@@ -3,7 +3,11 @@ jest.mock('../taskStore.service', () => ({
   getGoalOnThread: jest.fn(),
   __esModule: true,
 }));
-jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
+jest.mock('../taskAsks.service', () => ({
+  cancelAsksForTask: jest.fn(),
+  getAskByThread: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../introduction.service', () => ({
   cancelIntroductionRequestsForTask: jest.fn(),
   cancelGoallessIntroductionsFromThread: jest.fn(),
@@ -23,7 +27,7 @@ jest.mock('../threads.service', () => ({
 }));
 
 import { updateTask, getGoalOnThread, Task } from '../taskStore.service';
-import { cancelAsksForTask } from '../taskAsks.service';
+import { cancelAsksForTask, getAskByThread, IncomingAsk } from '../taskAsks.service';
 import {
   cancelGoallessIntroductionsFromThread,
   cancelIntroductionRequestsForTask,
@@ -208,6 +212,42 @@ describe('stopGoalOnThread', () => {
     expect(runWasStopped(42172, 'run-before-the-stop')).toBe(true);
     expect(mockSay).toHaveBeenCalledWith(42172, 501, 'assistant', RUN_STOPPED_LINE.ka);
     expect(mockThread).toHaveBeenCalledWith('501', 42172, 'done', { statusLine: null });
+  });
+
+  // The tester's 73927: Stop on a helper's chat while the question is still open.
+  it('keeps a helper chat with an open question waiting on the helper', async () => {
+    mockGetThread.mockResolvedValue({
+      id: 63856,
+      status: 'working',
+      type: 'incoming_ask',
+    } as Thread);
+    mockOpenTask.mockResolvedValue(null);
+    (getAskByThread as jest.MockedFunction<typeof getAskByThread>).mockResolvedValue({
+      id: 27127,
+      status: 'sent',
+    } as IncomingAsk);
+
+    const out = await stopGoalOnThread('1036', 63856, 'ka');
+
+    expect(out.said).toBe(RUN_STOPPED_LINE.ka);
+    expect(mockThread).toHaveBeenCalledWith('1036', 63856, 'needs_you', { statusLine: null });
+  });
+
+  it('closes a helper chat whose question is already answered', async () => {
+    mockGetThread.mockResolvedValue({
+      id: 63857,
+      status: 'working',
+      type: 'incoming_ask',
+    } as Thread);
+    mockOpenTask.mockResolvedValue(null);
+    (getAskByThread as jest.MockedFunction<typeof getAskByThread>).mockResolvedValue({
+      id: 27128,
+      status: 'answered',
+    } as IncomingAsk);
+
+    await stopGoalOnThread('1036', 63857, 'ka');
+
+    expect(mockThread).toHaveBeenCalledWith('1036', 63857, 'done', { statusLine: null });
   });
 
   it('stops the goal the thread holds, asks and all', async () => {

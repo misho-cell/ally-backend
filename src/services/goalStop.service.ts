@@ -1,13 +1,13 @@
 import { query } from '../db/postgres/client';
 import { Task, updateTask, getGoalOnThread } from './taskStore.service';
 import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
-import { cancelAsksForTask } from './taskAsks.service';
+import { cancelAsksForTask, getAskByThread } from './taskAsks.service';
 import {
   cancelGoallessIntroductionsFromThread,
   cancelIntroductionRequestsForTask,
 } from './introduction.service';
 import { setThreadStatus } from './threadStatus.service';
-import { getThread, saveThreadMessage, clearStoredChoices } from './threads.service';
+import { getThread, saveThreadMessage, clearStoredChoices, Thread } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
 import { emitChoicesCleared, emitThreadUpdated } from './sse.service';
 import { RunLanguage, STOPPED_STATUS_LINE } from './runLanguage';
@@ -252,7 +252,8 @@ export async function stopGoalOnThread(
    */
   const task = await getGoalOnThread(threadId);
   if (!task || task.status === 'closed') {
-    if (thread.status === 'working') return stopTheWorkOnly(userId, threadId, language);
+    if (thread.status === 'working')
+      return stopTheWorkOnly(userId, threadId, language, thread.type);
     const withdrawn = await introductionsWithdrawnLine(userId, threadId, language);
     if (withdrawn === null) return NOTHING_TO_STOP;
     await saveThreadMessage(threadId, Number(userId), 'assistant', withdrawn);
@@ -310,12 +311,28 @@ async function stopTheWorkOnly(
   userId: string,
   threadId: number,
   language: RunLanguage,
+  threadType: Thread['type'],
 ): Promise<GoalStopped> {
   markThreadStopped(threadId);
   const said = RUN_STOPPED_LINE[language];
   await saveThreadMessage(threadId, Number(userId), 'assistant', said);
-  void setThreadStatus(userId, threadId, 'done', { statusLine: null });
+  const status = (await questionStillOwed(threadId, threadType)) ? 'needs_you' : 'done';
+  void setThreadStatus(userId, threadId, status, { statusLine: null });
   return { stopped: true, goal_id: null, said };
+}
+
+/**
+ * Stop on a HELPER's chat stops the search, not the question.
+ *
+ * The tester's 73927 (23 Oct, a real helper on an iPhone): the return key sent
+ * half a list of brokers, the search started, he pressed Stop twice — and the
+ * chat moved to „done" while the question he was answering was still open.
+ * The question stays with him; so does the chat, until he answers or declines.
+ */
+async function questionStillOwed(threadId: number, threadType: Thread['type']): Promise<boolean> {
+  if (threadType !== 'incoming_ask') return false;
+  const ask = await getAskByThread(threadId);
+  return ask?.status === 'sent';
 }
 
 /**
