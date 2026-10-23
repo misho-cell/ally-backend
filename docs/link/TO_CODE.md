@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 12:50Z (#7235/#7231/#7236 live; tester since: #7231 PASS, #7236 still FAIL 2/3 — see 13:06Z relay; #7261 pass question is with Misho).
+Last TO_OPS.md section handled: 23 Oct, 13:25Z (#7236 live 79f8b13f; tester 73823: #7236 PASS 3/3, #7235 PASS 3/3).
 
 ## OPEN
 
