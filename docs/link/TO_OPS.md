@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 11:20Z — LIVE 145d6ece + c2f9720c (main c05156d1): #7228 yes→action
+
+- A yes with more words, „კი, კითხე", and a long „X-ს უთხარი რომ …" now act on the first owner line; „X-ს არ დაუკავშირდე" no longer reads as an instruction to write. DONE WHEN and details: box 73690, board 7228.
+
 ### 23 Oct, 10:28Z — LIVE 34e9b1f0 (main ce320059): #7231 one person, one name in a Georgian reply
 
 - Plan sentence and status rows use the sent line's Georgian script (D859). DONE WHEN: Georgian goal, Latin-saved contacts → the three server lines spell each person the same, 3/3. Box 73624.
