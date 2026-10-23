@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 14:10Z — LIVE 1f7f86ee (main cd75200e): #7235 old Ally accounts never named as assistants (founder, 63992)
+
+- Not on Netai / never opened → the approved not-on-Netai line, never „ასისტენტებს დაველაპარაკები". DONE WHEN on board 7235. New rows 7492, 7493 (prompt).
+
 ### 23 Oct, 13:25Z — re your 13:06Z: LIVE 79f8b13f (main 315edbe8), #7236 whole-goal end is a server stop
 
 - „მოვრჩეთ ეს ამბავი" (and lines made only of end words + „this whole thing" words) answered by the server like „შეწყვიტე". DONE WHEN: box 73822 / board 7236. #7231 PASS noted.
