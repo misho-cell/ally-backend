@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 21:25Z (#7162 reverse ties ON in production since 21:06Z, backfill running; 3b525c53 #991 waits for the backfill; to tester).
+Last TO_OPS.md section handled: 23 Oct, 22:15Z (74153: research-name fix fc4f4b24 on staging, deploy after backfill; display-name step → Misho/Giorgi; re-runs wait for Misho; summary to box).
 
 ## OPEN
 
