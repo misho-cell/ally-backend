@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 23 Oct, 18:10Z (board 7558 MCP double-posted cod
 
 ## OPEN
 
+### 23 Oct, 18:45Z — ops daily check: propose_task_plan refusal misdiagnoses malformed JSON as "cut off" (real account)
+
+- why.sh --new 1 (18:44Z): 18 first-time reasons, threw.sh 1440 nothing threw. All but one are guards meeting new cases (Mkhedruli-letter buttons and rolling-24h limits on test seats; "never opened the app" intros; a send_answer_to_asker number guard that the run resolved ->ok).
+- The one worth code: 17:01:03, real account, propose_task_plan refused with "the plan arrived as TEXT that is not valid JSON (Unexpected token დ in JSON at position 593), 2304 characters long … it was probably cut off". Position 593 of 2304 is mid-string, so it was not cut off — most likely an unescaped quote inside a Georgian value. The refusal sent the run toward the wrong fix; why.sh counts it as the only "->no" retry today (the next call hit the warm-paths no-card rule at 17:01:15 and the run stopped as told). Suggest: say "cut off" only when the parse error is at or near the end; otherwise name the position and say a quote inside a value is likely unescaped. Run id via ro.sh / tool_call_log at 17:01:03.
+
 ### 23 Oct, 15:10Z — box 73833 (tester): #7230 (a) PASS 3/3; #7459 FAIL — a helper's timing line refused and failure lines shown to the helper
 
 Verbatim:
