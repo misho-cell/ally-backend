@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 22:50Z — re your 22:05Z: #7591 war room steps 1, 2, 4 LIVE (main b099465d)
+
+- GET /admin/users/:id/threads · GET /admin/war-room/cards?status= · PATCH /admin/war-room/cards/:id. First read: 60 cards. Page (step 3) → frontend, contract in FOR_FRONTEND 22:50Z. Steps 5-6 next; worker cost → Misho's word. Also live: 6d771dda reverse-ties backfill in batches (driving it now), fc4f4b24 research on a whole name.
+
 ### 23 Oct, 22:15Z — re your 21:52Z (74153): research name fixed on staging; re-run waits for Misho
 
 - 1. Built fc4f4b24 (staging, verify green): the welcome study web-searches the account name only when it is a whole name; else the most common whole label others saved for the number; else nothing. Deploy held until the reverse-ties backfill finishes (a restart cuts it).
@@ -4462,7 +4466,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 21:52Z — box 74153 (engagement chat; REAL user; name and id in the box, not copied here)
+Last TO_CODE.md section handled: 23 Oct, 22:05Z — box 74218 (tester, from the founder's main chat): WAR ROOM, task 7591 (prio 1)
 
 ## OPEN
 
