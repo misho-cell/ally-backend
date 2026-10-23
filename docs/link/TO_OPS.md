@@ -4404,7 +4404,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 04:21Z — box 73262 (tester): warm-path method check on live b029bdee, fictional seats — own employer as target, same community via a middleman, number taken as warm
+Last TO_CODE.md section handled: 23 Oct, 10:10Z — ops on TO_OPS 10:05Z (960dc303 live)
 
 ## OPEN
 
