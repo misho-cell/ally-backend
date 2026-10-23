@@ -8939,11 +8939,23 @@ export const SEARCH_BUDGET_SPENT =
   'in this run. Write your answer now from what you found — who or what was found, and the ' +
   'next route — and continue the search in a later step if it is needed.';
 
-/** Counts a budgeted search; true when this one is past the run's budget. */
+/**
+ * #7237 (the tester's Netai-vs-Gemini test, 23 Oct): every one of the 21 failed
+ * web calls in 20 web questions was this budget, spent first on network
+ * searches that found nobody (a seat with no contacts still ran search_by_tag,
+ * search_second_degree, search_by_insight) — so the web never got its turn.
+ * The web (search and page reads) now has its own eight, apart from the
+ * network's eight, and neither can spend the other's.
+ */
+const WEB_BUDGET_TOOLS: ReadonlySet<string> = new Set([WEB_SEARCH_TOOL, 'fetch_page']);
+const WEB_BUDGET_KEY_SUFFIX = ':web';
+
+/** Counts a budgeted search; true when this one is past the run's budget for its kind. */
 export function searchBudgetSpent(runId: string, tool: string): boolean {
   if (!BUDGETED_SEARCH_TOOLS.has(tool)) return false;
-  const used = (runSearchCalls.get(runId) ?? 0) + 1;
-  runSearchCalls.set(runId, used);
+  const key = WEB_BUDGET_TOOLS.has(tool) ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
+  const used = (runSearchCalls.get(key) ?? 0) + 1;
+  runSearchCalls.set(key, used);
   return used > MAX_SEARCHES_PER_RUN;
 }
 
@@ -9829,6 +9841,7 @@ function clearRunState(runId: string): void {
   runServerSentLines.delete(runId);
   forgetNamesAsked(runId);
   runWithheldByOwnerLine.delete(runId);
+  runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
 }
 
 /**

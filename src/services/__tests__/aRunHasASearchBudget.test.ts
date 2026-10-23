@@ -9,13 +9,24 @@ import { SEARCH_BUDGET_SPENT, searchBudgetSpent } from '../chat.service';
  * rounds and eleven searches each. A run's searches are capped at eight.
  */
 describe('a run’s search budget', () => {
-  it('allows eight searches, then refuses the ninth', () => {
+  it('allows eight network searches, then refuses the ninth', () => {
     const run = 'budget-run-1';
     const verdicts = Array.from({ length: 9 }, (_, i) =>
-      searchBudgetSpent(run, i % 2 === 0 ? 'search_by_tag' : 'web_search'),
+      searchBudgetSpent(run, i % 2 === 0 ? 'search_by_tag' : 'search_second_degree'),
     );
     expect(verdicts.slice(0, 8).every((spent) => !spent)).toBe(true);
     expect(verdicts[8]).toBe(true);
+  });
+
+  it('gives the web its own eight, which network searches cannot spend (#7237)', () => {
+    const run = 'budget-run-web';
+    for (let i = 0; i < 8; i += 1) expect(searchBudgetSpent(run, 'search_by_tag')).toBe(false);
+    expect(searchBudgetSpent(run, 'search_by_insight')).toBe(true);
+    const web = Array.from({ length: 9 }, (_, i) =>
+      searchBudgetSpent(run, i % 2 === 0 ? 'web_search' : 'fetch_page'),
+    );
+    expect(web.slice(0, 8).every((spent) => !spent)).toBe(true);
+    expect(web[8]).toBe(true);
   });
 
   it('leaves a lookup by name and non-search tools free', () => {
@@ -23,7 +34,7 @@ describe('a run’s search budget', () => {
     for (let i = 0; i < 8; i += 1) searchBudgetSpent(run, 'search_second_degree');
     expect(searchBudgetSpent(run, 'search_contact_by_name')).toBe(false);
     expect(searchBudgetSpent(run, 'propose_task_plan')).toBe(false);
-    expect(searchBudgetSpent(run, 'fetch_page')).toBe(true);
+    expect(searchBudgetSpent(run, 'find_warm_path')).toBe(true);
   });
 
   it('tells the model to answer now from what it found', () => {
@@ -35,5 +46,6 @@ describe('a run’s search budget', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('    searchBudgetSpent(runId, name)\n  ) {');
     expect(chat).toContain('runSearchCalls.delete(runId);');
+    expect(chat).toContain('runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);');
   });
 });
