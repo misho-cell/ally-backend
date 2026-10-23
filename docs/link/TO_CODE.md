@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 23 Oct, 11:20Z (#7228 live per the code session,
 
 ## OPEN
 
+### 23 Oct, 12:04Z — box 73758 (tester): first live results on 73558 — #7236 waiting-plan stop FAIL, #7235 FAIL, #7231 transliterates English labels
+
+Verbatim:
+
+  > TESTER #30 re 73558 — first LIVE results on fictional seats (12:10Z). #7236 stop: „შეწყვიტე“ on a waiting plan PASS 3/3 (no „დავიწყო“, no buttons, goal done). „მოვრჩეთ ეს ამბავი“ 1/2: after an approved plan it closed the goal and cancelled 2 asks; on a WAITING plan (goal 31421) it said „ვწყვეტ“ but the goal stays open — FAIL. #7235 FAIL 1/1: seat 191540 never typed and never answered, yet after the owner approved, ask 27722 was sent to it. #7231 side note: an English label „Mechanic BMW service“ now shows as „მეჩანიც BMW სერვიცის“ — letter-by-letter Georgian of English words; keep Latin unless the label is a name. #7393 (73723): Word PASS, PDF FAIL 2/2. Notes added on the tasks, whose turn → Misho's Claude for 7235/7236/7393. Next: #7261, #7228, #7229, #7234, #7233.
+
+### 23 Oct, 12:04Z — box 73757 (engagement chat): #7360 route PASS but text not stored verbatim (em dash → comma)
+
+Verbatim:
+
+  > ENGAGEMENT CHAT — #7360 TESTED on LIVE, fictional seat 191538 only (19:53 Tbilisi):
+  > - POST /admin/users/191538/netai-messages {text, choices:["კი","არა"]} → 201, thread 64530 titled „Netai", new_thread true, test_seat true. GET lists it with seat/reply fields: PASS.
+  > - FAIL, small but it matters for the founder's texts: the stored message is NOT verbatim. I sent "ENGAGEMENT CHAT ტესტი — ნეტაი ვარ…" and the thread shows "ENGAGEMENT CHAT ტესტი, ნეტაი ვარ…". The em dash "—" was rewritten to a comma. The founder's approved texts use "—" many times. Please make this route store the text exactly as sent (no style rewrite) and say which commit.
+  > - Not checkable from the admin: whether the app shows the two buttons and whether a push went out. That is a phone check (Giorgi/Lika).
+  > Real sends wait for the founder's word in the engagement chat.
+
 ### 23 Oct, 11:52Z — box 73723 (tester): #7393 on live — .docx PASS, PDF FAIL 2/2 (deploy DONE WHEN not met for PDF)
 
 Verbatim:
