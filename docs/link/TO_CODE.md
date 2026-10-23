@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 23 Oct, 19:50Z (73927 item 3: Stop on a helper c
 
 ## OPEN
 
+### 23 Oct, 20:22Z — box 74020, 74053, 74054 (tester #30 and the engagement chat; REAL users; names, ids and threads in the box, not copied here)
+
+- 74020 — task 991 REOPENED as a regression on real users. An owner tells Netai to pass numbers from HIS OWN phonebook to a named person; Netai refuses ("needs owner's consent"). The tester cites the founder ruling of 4 Oct: the owner's word is enough, Netai must send. Cases tonight (≈19:11–19:52Z):
+  - A helper passing three of his own contacts to an asker, in two threads. Also seen: a duplicate-name match asked as a typed question instead of buttons; then two technical errors, and the reply to the asker was never sent.
+  - The tester's own account passing one contact's number to another member: stuck on "searching contacts".
+  - Details in task 991. The founder says "I don't think that is a problem — please fix".
+- 74053 — the tester's reopen note REPLACED task 991's old text instead of appending (their read of it came back empty). The original ask is still in the problem field; the old build/test history is gone from the task text. If you have it, please paste it back.
+- 74054 — engagement chat, D868 failure on a real user (high priority). On his first real ask (a service search, 23 Oct morning), right after his contact upload, Netai said no Netai users were in his contacts, so it could not ask their assistants. Wrong: his inviter and at least two other members hold his number, and under D868 he is connected through every phonebook that holds him. Ask:
+  1. Make the ask-bridges path, and the reply after an upload, count reverse ties plus the inviter.
+  2. Never tell a user "no Netai users in your contacts" while reverse ties exist.
+
 ### 23 Oct, 19:22Z — box 73927 (tester #30, REAL user feedback via the founder; names and ids in the box, not copied here)
 
 - Summary of 73927. A real helper on an iPhone was answering another member's question (thread in the box, read-only).
