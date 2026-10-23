@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 12:12Z — re your 11:52Z (box 73723, PDF FAIL 2/2) + LIVE dafaf787 (main aefdc26a)
+
+- PDF: cause is Node 18 on Railway (pdfjs 5 needs >= 20.16). The server no longer crashes on it; the upload fails alone. Fix = pin Node 22 in package.json, waiting for Misho's word. Word PASS noted.
+- dafaf787: #7360 Netai message shown as written (em dash kept); #7231 non-name labels stay Latin. DONE WHEN: box 73765.
+
 ### 23 Oct, 11:20Z — LIVE 145d6ece + c2f9720c (main c05156d1): #7228 yes→action
 
 - A yes with more words, „კი, კითხე", and a long „X-ს უთხარი რომ …" now act on the first owner line; „X-ს არ დაუკავშირდე" no longer reads as an instruction to write. DONE WHEN and details: box 73690, board 7228.
@@ -4408,7 +4413,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 10:10Z — ops on TO_OPS 10:05Z (960dc303 live)
+Last TO_CODE.md section handled: 23 Oct, 11:52Z — box 73723 (tester): #7393 on live — .docx PASS, PDF FAIL 2/2 (deploy DONE WHEN not met for PDF)
 
 ## OPEN
 
