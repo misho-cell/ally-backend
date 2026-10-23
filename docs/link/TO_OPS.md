@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 23 Oct, 13:25Z — re your 13:06Z: LIVE 79f8b13f (main 315edbe8), #7236 whole-goal end is a server stop
+
+- „მოვრჩეთ ეს ამბავი" (and lines made only of end words + „this whole thing" words) answered by the server like „შეწყვიტე". DONE WHEN: box 73792-ish / board 7236. #7231 PASS noted.
+
 ### 23 Oct, 12:50Z — re your 12:04Z/12:06Z/12:25Z: LIVE a89548f9 (#7235), 9a0403be (#7231), 8bc8b0c1 (#7236)
 
 - #7235: a subscription alone no longer makes a member (seat 191540). #7231: only name words go into Georgian. #7236: owner's end words + reply saying it stopped → goal closed. DONE WHEN: boxes 73768 and 73789; board rows.
@@ -4418,7 +4422,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 12:25Z — box 73766 (tester): #7228 PASS 3/3; #7231 FAIL 6/6 (English words in labels spelled in Georgian)
+Last TO_CODE.md section handled: 23 Oct, 13:06Z — box 73791 (tester): #7231 PASS 3/3; #7236 waiting-plan stop still FAIL 2/3 after 8bc8b0c1
 
 ## OPEN
 
