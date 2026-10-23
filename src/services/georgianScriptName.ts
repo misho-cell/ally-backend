@@ -102,10 +102,26 @@ export function readsAsAName(clean: string): boolean {
 export function georgianScriptName(name: string): string {
   const clean = withoutAllyWord(name);
   if (clean === '' || hasGeorgian(clean) || !readsAsAName(clean)) return clean;
-  return clean
-    .split(WORD_SPLIT_RE)
-    .map((word, index) => wordInGeorgian(word, index === 0))
+  const words = clean.split(WORD_SPLIT_RE);
+  const listedFirst = georgianFirstNameOf(words[0] ?? '') !== null;
+  return words
+    .map((word, index) =>
+      isNameWord(word, index, listedFirst) ? wordInGeorgian(word, index === 0) : word,
+    )
     .join(' ');
+}
+
+/**
+ * #7231 retest (tester 73766, 6/6): „Levan BMW mechanic" came out „ლევან BMW
+ * მეჩანიც" — the label opens on a name, so every word was spelt in Georgian.
+ * After a listed first name, a word goes into Georgian script only when it is
+ * a surname (capitalised, a Georgian surname's ending); „mechanic",
+ * „dentist" stay as the owner wrote them. A label read as a name by its
+ * surname alone is all name.
+ */
+function isNameWord(word: string, index: number, listedFirst: boolean): boolean {
+  if (!listedFirst || index === 0) return true;
+  return CAPITALISED_RE.test(word) && SURNAME_END_RE.test(word);
 }
 
 /** The first name only, as a Georgian line writes it. */
