@@ -101,14 +101,65 @@ async function writeReverseEdges(memberId: number, holders: readonly Holder[]): 
   }
 }
 
-/** Ties a member to everyone who has them saved. Returns how many new ties were written. */
+/** A member as the other side of a tie: their registered name and first number. */
+async function memberAsHolder(userId: number): Promise<Holder | null> {
+  const result = await query<{ user_id: number; name: string | null; phone: string }>(
+    `SELECT u.id AS user_id, u.name, p.phone
+       FROM "User" u
+       JOIN "UserPhone" p ON p."userId" = u.id
+      WHERE u.id = $1 AND u."deletedAt" IS NULL
+      ORDER BY p.phone
+      LIMIT 1`,
+    [userId],
+    TIE_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  if (row === undefined) return null;
+  return { userId: Number(row.user_id), name: (row.name ?? '').trim(), phone: row.phone };
+}
+
+/** Who brought this member in, when an invitation did. */
+async function inviterOf(memberId: number): Promise<number | null> {
+  const result = await query<{ inviter: number | null }>(
+    `SELECT "inviterReferralUserId" AS inviter FROM "User" WHERE id = $1 LIMIT 1`,
+    [memberId],
+    TIE_QUERY_TIMEOUT_MS,
+  );
+  const inviter = result.rows[0]?.inviter;
+  return inviter === null || inviter === undefined || Number(inviter) === memberId
+    ? null
+    : Number(inviter);
+}
+
+/**
+ * D868 part 1 (#7162; tester 74779, INVITER TIE FAIL 3/3): „the inviter is a
+ * first-degree tie from the moment of joining, both directions" — even when
+ * neither has the other saved. Each side gets the other under their registered
+ * name, in Postgres and in the graph, as a reverse tie: a later upload of the
+ * same number replaces it. Returns how many new ties were written.
+ */
+export async function tieMemberToInviter(memberId: number): Promise<number> {
+  const inviterId = await inviterOf(memberId);
+  if (inviterId === null) return 0;
+  const [member, inviter] = await Promise.all([
+    memberAsHolder(memberId),
+    memberAsHolder(inviterId),
+  ]);
+  if (member === null || inviter === null) return 0;
+  const toInviter = await writeReverseAliases(memberId, [inviter]);
+  const toMember = await writeReverseAliases(inviterId, [member]);
+  await writeReverseEdges(memberId, [inviter]);
+  await writeReverseEdges(inviterId, [member]);
+  return toInviter + toMember;
+}
+
+/** Ties a member to everyone who has them saved, and to their inviter. Returns how many new ties were written. */
 export async function tieMemberToHolders(memberId: number): Promise<number> {
   if (!(await isReverseTiesEnabled())) return 0;
   const holders = await holdersOf(memberId);
-  if (holders.length === 0) return 0;
-  const written = await writeReverseAliases(memberId, holders);
-  await writeReverseEdges(memberId, holders);
-  return written;
+  const fromHolders = holders.length === 0 ? 0 : await writeReverseAliases(memberId, holders);
+  if (holders.length > 0) await writeReverseEdges(memberId, holders);
+  return fromHolders + (await tieMemberToInviter(memberId));
 }
 
 /** The members among numbers somebody just saved: each now has that saver as a tie too. */
