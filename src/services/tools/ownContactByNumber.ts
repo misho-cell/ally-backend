@@ -1,4 +1,6 @@
 import { query } from '../../db/postgres/client';
+import { REVERSE_TIE_SOURCE } from '../reverseTieSource';
+import { notAnExcludedHolder } from '../excludedHolders.service';
 import { phoneDigits } from '../phone';
 import { buildRawWordGroups } from './transliterate';
 import { askedWordKeys, LabelKind, NetworkLabel, networkNamesFor } from './networkNames';
@@ -101,6 +103,8 @@ export async function fetchOthersLabels(
          FROM "UserTags" ut WHERE ut.phone = ANY($1::text[])
      ) l
      WHERE saver_id IS NOT NULL AND saver_id <> $2::text AND NULLIF(label, '') IS NOT NULL
+       -- Misho (24 Oct): a copied phonebook's labels are nobody's word for anyone.
+       AND ${notAnExcludedHolder('saver_id::int')}
      ORDER BY kind, label
      LIMIT $3`,
     [[...phones], userId, MAX_LABEL_ROWS],
@@ -160,10 +164,14 @@ async function ownLabelFor(userId: string, phone: string): Promise<OwnLabelRow> 
     `SELECT
        (SELECT NULLIF(TRIM(ua.alias), '') FROM "UserAlias" ua
          WHERE ua.phone = $1 AND ua."contactId" = $2 AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+           AND ua.source IS DISTINCT FROM $3
          ORDER BY ua.id DESC LIMIT 1) AS own_label,
-       (EXISTS (SELECT 1 FROM "UserAlias" WHERE phone = $1 AND "contactId" = $2)
+       (EXISTS (SELECT 1 FROM "UserAlias"
+                 WHERE phone = $1 AND "contactId" = $2 AND source IS DISTINCT FROM $3)
         OR EXISTS (SELECT 1 FROM "UserTags" WHERE phone = $1 AND "contactId" = $2)) AS is_own`,
-    [phone, userId],
+    // Tester 75679 (the founder's connector, 24 Oct): a reverse tie is not the owner's
+    // contact or label — the other person saved the owner.
+    [phone, userId, REVERSE_TIE_SOURCE],
     LABELS_TIMEOUT_MS,
   );
   return result.rows[0] ?? { own_label: null, is_own: false };
