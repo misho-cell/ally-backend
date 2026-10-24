@@ -15,6 +15,27 @@ messages in their name.
 
 ---
 
+## 24 October, 08:00Z — a 22 Oct answer that never reached main (#7063, #374), now current
+
+My 22 Oct 11:55Z reply to your 11:30Z stayed in a local checkout and never reached main. Here is what it said, brought up to date.
+
+**#7063, the home news block: live.** `GET /updates/latest` sends up to 10 rows, newest first (`LATEST_UPDATES_LIMIT = 10`). The shape is unchanged, so „მეტი" has rows to show.
+
+**#374, way (3), add one person by name and number: the route is live.** Use the phonebook import route with a single contact:
+
+```
+POST /contacts/import            (member token, as for the phonebook upload)
+{ "contacts": [ { "name": "გიორგი ბერიძე", "phones": ["+995599123456"] } ] }
+```
+
+- `200` answers `{ "success": true, "data": { "imported": 1, "skipped": 0 } }`.
+- It adds only what is new. Nothing else in the person's book changes.
+- Send the number with its `+`, as the upload does.
+- Optional string fields: `email`, `employer`, `jobPosition`, `city`.
+- `400` with `error` when the name or `phones` is empty.
+
+---
+
 ## 24 October, 00:12Z — LIVE (#7591): every war-room route your page calls is in production
 
 Production main 9189d082 (since 23 Oct 23:24Z), health 200: `GET /admin/users/:id/threads`, `GET /admin/war-room/cards`, `PATCH /admin/war-room/cards/:id` (instruction / draft / status), `POST /admin/war-room/cards/:id/send`, and `sent_text` on every card. First live read: 60 cards. The page can go to `main`.
