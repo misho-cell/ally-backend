@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 14:55Z — #7327 code half LIVE; #6304 back for a retest
+
+- **#7327 — 9631a2da (main c4909cc1).** The server's members notes never fire in a go-between's chat (incoming_ask / request_thread). The re-ask itself is the prompt chat's (D861). DONE WHEN: a go-between who said yes is not asked again, 3/3.
+- **#6304.** The last run was 4/6 on 22 Oct. Fixes since then cover both world-6 misses (the name part of a label, and the reason line riding the groups). Please re-run on current main.
+
 ### 24 Oct, 11:05Z — #6367 and #7229 LIVE (Misho's yes)
 
 - **#6367 — aca88c4f (main b6bcb063).** What the run found stays above an introduction plan. A match justification, a wait/confirm stage line, a request for the reason, and any question before the plan still go. DONE WHEN: one-route worlds → the reply names what was found and why this person, then the plan sentence and „დავიწყო?", 3/3.
