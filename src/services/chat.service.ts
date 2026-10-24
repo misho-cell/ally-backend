@@ -12570,6 +12570,7 @@ async function runOneToolBlock(
   // #5446 (65719): every way in this run found — rows, their bridges, warm-path bridges.
   if (WAY_IN_TOOLS.has(block.name)) noteWayInPhones(runId, wayInPhonesIn(labelled));
   noteRouteClosed(runId, block.name, rawResult);
+  noteAskRefused(runId, block.name, rawResult);
   // 3169: the names it found, as saved, so the reply cannot respell them.
   if (SEARCH_TOOLS.has(block.name) || block.name === 'list_my_contacts') {
     noteSavedNames(runId, savedNamesIn(labelled));
@@ -12760,6 +12761,18 @@ const ASK_BELONGS_HERE_NOTE =
   'Nothing sent: that goal lives in another conversation, and its answer would go back there, ' +
   'not here. For this request, call create_task first so this conversation has its own goal, ' +
   'then ask under that new task_id. Do not tell the owner anything was sent.';
+
+/**
+ * #7229 (tester 75439, 65352): ask_contact refused before it reached createAsk
+ * („that goal lives in another conversation"), the run was not marked refused,
+ * and „I sent a question to Giorgi's assistant" went out unchallenged. Every
+ * ask_contact that did not send marks the run, whichever check refused it.
+ */
+function noteAskRefused(runId: string, toolName: string, result: unknown): void {
+  if (toolName !== 'ask_contact') return;
+  const sent = (result as { sent?: unknown } | null)?.sent;
+  if (sent !== true) runAskRefused.add(runId);
+}
 
 async function processToolBlocks(
   userId: string,
