@@ -9,6 +9,30 @@ Last TO_OPS.md section handled: 24 Oct, 15:20Z (#5941 seat circles live, main 00
 
 ## OPEN
 
+### 24 Oct, 18:52Z — box 75439 (tester evening round, fictional seats): 9 PASS; FAIL #7195/#7459 asker relay text, #7229 1/3, #6304 0/3
+
+  > NETAI 24 (tester) — 24 Oct 18:50Z, evening round on everything shipped today. Fictional seats only. (Tester's computer was offline ~08:20–18:20Z, hence the gap.)
+  > 
+  > PASS:
+  > #7162 inviter tie 3/3 — seats made with invited_by, 0 contacts (191837/191840/191843): firstDegree 1, secondDegree 1; a lawyer goal from each routes through the inviter (65278/65279/65280).
+  > #6367 3/3 — the web findings now stay above the plan card (same three runs).
+  > #7195/#7459 helper side 3/3 — a second answer into a done question gets „მადლობა, პასუხი გაიგზავნა." again (65293/65294/65297).
+  > #7096/#7097 3/3 — helper deletes at once: „ეს მოთხოვნა დახურე." for the helper, and the asker's LAST line is now „… უარი თქვა ამ საქმეში მონაწილეობაზე." (65290-92 / askers).
+  > Grammar 3/3 — „ანა ბერიძესაც ვაცნობე" (no more „-ს-აც").
+  > #7328 3/3 — target saved the go-between as „<Name> <Surname> Axel" (contacts route): the target reads „…დაუკავშირდა ირინე კაპანაძეს…", no "Axel" anywhere (191856-64).
+  > #7393 PDF 3/3 — a text PDF uploads (201, "ფაილი წავიკითხე") and the company and price are answered right (65344-46). Side: the company name is transliterated three different ways.
+  > #5941 5/5 — with circles set, "tell me about X" opens with "in your closest circle" (191868-72). Note: contacts on seats now need +1 202 555 01xx.
+  > #7327 3/3 — go-betweens who said "კი, გავაცნობ" were thanked, not asked again (65309/65311/65313).
+  > 
+  > FAIL:
+  > #7195/#7459 asker side 3/3 — the relayed message repeats the FIRST answer before the new line („…კარგი ხელოსანია. ბესო ორშაბათამდე დაკავებულია…"), and right after it the asker's assistant says „ეს იგივე პასუხია… ახალი არაფერია" (65287/65288/65289). The wake may carry only the new lines, but the relay text the asker sees still repeats the old answer.
+  > #7229 1/3 — 65352: ask_contact refused ("Nothing sent: that goal lives in another conversation…") yet the helper reads „გიორგი სანტექნიკოსის ასისტენტს კითხვა გავუგზავნე" — no ask at all, and Giorgi is not a member. The 87f20fcd guard did not catch it. (65353 truthful, 65354 true.)
+  > #6304 0/3 on main — bridge worlds (owner does not hold the electrician; two member friends hold him under „<Name> ელექტრიკოსი"; non-member „ლევან ტესტაძე" saved by owner and electrician): no plan card at all, a typed question each time (65367/65368/65369). Registered name used, not the label (good). The shared non-member is named in 1 of 3 (65368).
+  > 
+  > Not tested: #7558 (iPhone keyboard — phone only). #7096/#7097 target-deletes half still open.
+
+- Ops note: daily check 18:43Z could not run (why.sh/threw.sh "unauthorized", read-only DB password); outage/attribution rc 2 since 07:20Z. Misho told.
+
 ### 24 Oct, 08:08Z — box 74815, 74816, 74817 (tester batch 3, plate v518, connector note); box back at 08:07Z
 
 - 74815 (batch 3, fictional seats), verbatim:
