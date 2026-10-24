@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
 import { query } from '../../db/postgres/client';
-import { markAskWakeDelivered } from '../taskAsks.service';
+import { listUnwokenAnswersForTask, markAskWakeDelivered } from '../taskAsks.service';
 import { unheardAnswerOf } from '../answerAddition';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -38,5 +38,12 @@ describe('an answer that grew while its wake ran', () => {
     await expect(markAskWakeDelivered(28418, FIRST)).resolves.toBe(true);
     const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain('ELSE delivered_answer END');
+  });
+
+  it('is read by the delivery that runs at once, not only by the sweep', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await listUnwokenAnswersForTask(31849, 10);
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('ta.delivered_answer');
   });
 });
