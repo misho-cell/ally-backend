@@ -72,6 +72,7 @@ export interface TagRow {
   phone: string;
   name: string | null;
   saved_as: string | null;
+  only_reverse_tie?: boolean | null;
   all_tags: string[];
   own_tags: string[] | null;
   /** The tester's 988: did any match come from the owner's own label or a public field? */
@@ -149,6 +150,26 @@ export const LATEST_OWN_LABEL = `(array_agg(NULLIF(TRIM(ua.alias), '') ORDER BY 
             FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL
                       AND ua.source IS DISTINCT FROM '${REVERSE_TIE_SOURCE}'))[1]`;
 
+/**
+ * Misho (24 Oct, on the recommendation; tester 75675): the owner's only row for
+ * this number is a reverse tie — the person saved the OWNER, the owner never
+ * saved them. Said in the row, so no reader calls it the owner's label.
+ */
+export const ONLY_REVERSE_TIE = `COALESCE(BOOL_AND(ua.source = '${REVERSE_TIE_SOURCE}')
+            FILTER (WHERE ua.id IS NOT NULL), false)`;
+
+/** MODEL-FACING (Misho's word, 24 Oct). */
+export const THEY_SAVED_YOU_NOTE =
+  'The owner did not save this person; this person has the owner in their own contacts. ' +
+  'Never say "you have him/her saved as …". Say "he/she has you in their contacts".';
+
+/** The row's they-saved-you marker, when the owner's only row for the number is a reverse tie. */
+export function theySavedYou(row: { only_reverse_tie?: boolean | null }): Record<string, unknown> {
+  return row.only_reverse_tie === true
+    ? { they_saved_you: true, they_saved_you_note: THEY_SAVED_YOU_NOTE }
+    : {};
+}
+
 export const DISPLAY_NAME = `COALESCE(
           ${LATEST_OWN_LABEL},
           CASE WHEN TRIM(MAX(u.name)) LIKE '%@%' THEN NULL
@@ -157,6 +178,7 @@ export const DISPLAY_NAME = `COALESCE(
 const AGG_SELECT = `h.phone,
         ${DISPLAY_NAME} AS name,
         ${LATEST_OWN_LABEL} AS saved_as,
+        ${ONLY_REVERSE_TIE} AS only_reverse_tie,
         array_agg(DISTINCT ut.tag)           AS all_tags,
         array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
         MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
@@ -567,6 +589,7 @@ function shape(
     netai_subscriber: isSubscriberPhone(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
+    ...theySavedYou(row),
     // Enrichment-computed edge category (family/close/professional/formal) —
     // lets the agent phrase how well the user knows this person. The numeric
     // strength stays server-side: a raw score printed to a user is a leak
