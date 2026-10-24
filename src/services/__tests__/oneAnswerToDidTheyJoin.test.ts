@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-import { joinedNetai, usedNetai, NETAI_LIVE_STATUSES } from '../netaiMembership';
+import { joinedNetai, usedNetai, wroteInAThread, NETAI_LIVE_STATUSES } from '../netaiMembership';
 
 /**
  * ROW 264 — „IS THIS PERSON ON NETAI" MEANT TWO DIFFERENT THINGS, AND A TESTER
@@ -36,8 +36,8 @@ describe('one definition, and it says which question it answers', () => {
   it('is a strict subset: anybody who used it has also joined', () => {
     // Both rest on the same thread test, so USED cannot be true where JOINED
     // is false — asserted on the text because that is what the database runs.
-    expect(joinedNetai('u')).toContain('EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)');
-    expect(usedNetai('u')).toContain('EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)');
+    expect(joinedNetai('u')).toContain(wroteInAThread('u.id'));
+    expect(usedNetai('u')).toContain(wroteInAThread('u.id'));
   });
 
   it('takes the alias it is given, so every caller reads its own row', () => {

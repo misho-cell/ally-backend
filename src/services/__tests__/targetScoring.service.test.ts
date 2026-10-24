@@ -5,6 +5,7 @@ jest.mock('../unmetNeeds.service', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
+import { wroteInAThread } from '../netaiMembership';
 import { findUnmetNeeds, UnmetNeed } from '../unmetNeeds.service';
 import {
   buildTargetList,
@@ -289,7 +290,7 @@ describe('buildTargetList', () => {
     const sql = poolQuery?.[0] as string;
     // The anti-join now asks whether the account behind the number has ever
     // USED Netai — the same three signals the rest of the product reads.
-    expect(sql).toContain('FROM threads t WHERE t.user_id = u.id');
+    expect(sql).toContain(wroteInAThread('u.id'));
     expect(sql).toContain('FROM search_activity sa WHERE sa.user_id = u.id::text');
     expect(sql).toContain('u.subscription_status = ANY($5::text[])');
     // ...and it is given exactly that list, not the subscriber-only one.

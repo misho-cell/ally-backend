@@ -56,15 +56,28 @@ function statusList(): string {
  * written by us at every call site and never comes from a request; the type
  * says string because SQL aliases are not values and cannot be bound.
  */
+/**
+ * Tester 75643 (24 Oct): an old Ally account that never signed in became a
+ * Netai user, and „active" on 20 Oct, because an introduction notice was
+ * written into a new thread on his account. Nine accounts were members only by
+ * threads Netai itself wrote. A thread counts when its owner wrote in it.
+ * `idExpr` is a column expression we write, never request data.
+ */
+export function wroteInAThread(idExpr: string): string {
+  return `EXISTS (SELECT 1 FROM threads t JOIN conversations c ON c.thread_id = t.id
+                  WHERE t.user_id = ${idExpr} AND c.role = 'user' AND c.kind = 'message'
+                    AND TRIM(c.content) <> '')`;
+}
+
 export function joinedNetai(alias: string): string {
-  return `(EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${alias}.id)
+  return `(${wroteInAThread(`${alias}.id`)}
            OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = ${alias}.id::text)
            OR ${alias}.subscription_status IN (${statusList()}))`;
 }
 
 /** Actually opened a conversation. A strict subset of `joinedNetai`. */
 export function usedNetai(alias: string): string {
-  return `EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${alias}.id)`;
+  return wroteInAThread(`${alias}.id`);
 }
 
 /**
