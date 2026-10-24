@@ -368,6 +368,10 @@ import {
 import { FOLLOW_UP_IN_CONVERSATION_FLAG } from '../../services/sharedRequestThread.service';
 import { confirmedWarmTieSql } from '../../services/chorusCap';
 import { rateLimit } from '../middleware/rateLimit.middleware';
+import { adminReadOnlyQuery } from './roQuery.routes';
+
+const RO_SQL_WINDOW_MS = 60_000;
+const RO_SQL_PER_WINDOW = 30;
 import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
@@ -417,6 +421,13 @@ const AXEL_EXPORTS_PER_MINUTE = 3;
 const STAFF_NAME_MAX_CHARS = 60;
 
 adminRouter.use(authenticateJwt, requireAdminRole);
+
+// The read-only SQL window for a signed-in admin (see roQuery.routes.ts).
+adminRouter.post(
+  '/ro-sql',
+  rateLimit({ windowMs: RO_SQL_WINDOW_MS, max: RO_SQL_PER_WINDOW }),
+  adminReadOnlyQuery,
+);
 
 // App flags an admin may flip from the console. Whitelist on purpose — a typo
 // must not mint a brand-new (fail-open-read) flag row.
