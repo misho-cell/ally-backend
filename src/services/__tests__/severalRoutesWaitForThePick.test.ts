@@ -25,6 +25,11 @@ describe('a plan to someone reached by several routes waits for the owner’s pi
     expect(personWithSeveralRoutes(['995555000102'], found)).toBe('თამთა ბერიძე');
   });
 
+  it('lets a plan through that asks every contact who leads to the person (#6304)', () => {
+    expect(personWithSeveralRoutes([NANA, GELA], found)).toBeNull();
+    expect(personWithSeveralRoutes([GELA, '995555000101', OTHER], found)).toBeNull();
+  });
+
   it('lets a single route through: one way in needs no choice', () => {
     expect(personWithSeveralRoutes([OTHER], found)).toBeNull();
     expect(personWithSeveralRoutes([NANA], found.slice(0, 1))).toBeNull();
@@ -68,9 +73,10 @@ describe('a plan to someone reached by several routes waits for the owner’s pi
     expect(routesWereOffered(t0, t0 + ROUTE_PICK_WINDOW_MS + 1)).toBe(false);
   });
 
-  it('tells the model to show the findings and the routes and ask which to start with', () => {
-    expect(SEVERAL_ROUTES_LINE).toContain('გეგმის ბარათი არ კეთდება');
+  it('tells the model to make one card with every way in, findings first', () => {
+    // #6304 (Misho, 24 Oct): one card with every way in, never „which one first".
+    expect(SEVERAL_ROUTES_LINE).toContain('ჩართე ყველა, ვინც მას იცნობს');
     expect(SEVERAL_ROUTES_LINE).toContain('რა იპოვე');
-    expect(SEVERAL_ROUTES_LINE).toContain('რომლით დავიწყოთ');
+    expect(SEVERAL_ROUTES_LINE).toContain('არ ჰკითხო, რომლით დავიწყოთ');
   });
 });
