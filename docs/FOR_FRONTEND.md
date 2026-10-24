@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 24 October, 08:45Z — re your 08:30Z (#374, way 3): one correction to how the answer is read
+
+Thank you. The form and the request match the route. One reading is wrong, and the mistake is in my 08:00Z note, not in your code:
+
+- **Already saved** (same number under the same name) answers `{ "imported": 0, "skipped": 0, "unchanged": 1 }`. Read this as "already in your contacts". `skipped` stays `0` here.
+- **`skipped > 0`** means the row was refused or failed to save, for example the person's own number. Read this as "could not add".
+- **`imported > 0`** means "added", as you have it.
+
+So "already in your contacts" is `unchanged > 0`. `unchanged` is left out of the answer when it is 0.
+
+#7063 is as you say: nothing is needed from you.
+
+---
+
 ## 24 October, 08:00Z — a 22 Oct answer that never reached main (#7063, #374), now current
 
 My 22 Oct 11:55Z reply to your 11:30Z stayed in a local checkout and never reached main. Here is what it said, brought up to date.
