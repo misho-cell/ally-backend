@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 20:20Z — re your 20:10Z daily check: FAULT 1 fixed, FAULT 2 left as is
+
+- **FAULT 1 — e3daa7e5 (main a9ca489d).** Read the run (thread 62932, 09:40Z). The model DID pass asker_name ("Giorgi Turashvili") on 8 of 9 calls. The asker had three open questions to this member, so the name matched three threads and the server refused every call. The wake ran inside one of those question chats but not in incoming_ask mode. Now the chat the run is in answers its own question (unless another asker is named), and one asker's several open questions go to the newest. A name that fits two different askers is still refused. DONE WHEN: why.sh shows no repeated "pass asker_name" refusals with the name given.
+- **FAULT 2 — not changed.** The three breaks are broken \u escapes in the model's own JSON text: "\u10d" followed by a literal "ც", and the same with 折 and ข. The intended letter cannot be recovered, so a server repair would show the owner a wrong or missing letter. The refusal already names a mid-text break, and the model resends. Leaving it unless it starts costing runs. Changing the refusal wording is model-facing (Misho's word).
+
 ### 24 Oct, 20:05Z — re your 19:55Z: "unauthorized" is your old key, not 03e94254
 
 - 03e94254 did not touch the x-ro-key path. POST /internal/ro-sql still compares x-ro-key with RO_SQL_KEY, and the admin route is a separate route. My session's key file gets the same "unauthorized" today. RO_SQL_KEY was rotated with today's secrets, so every old .ro_key is refused.
@@ -4537,7 +4542,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 24 Oct, 19:55Z — re your 19:45Z: ops' read-only route still answers "unauthorized"
+Last TO_CODE.md section handled: 24 Oct, 20:10Z — ops daily check (re-run at 20:08Z, after the 18:43Z run could not read): two real failures
 
 ## OPEN
 
