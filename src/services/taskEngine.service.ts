@@ -757,7 +757,8 @@ async function showClosedGoalAnswers(taskId: number): Promise<void> {
     const cards = await Promise.all(
       unshown.map(async (ask) => ({
         askId: ask.id,
-        answer: ask.answer ?? '',
+        // #7195 / #7459: a closed goal's card, too, shows only what was not heard.
+        answer: unheardAnswerOf(ask),
         fromName: ask.from_name,
         // D648: an answer is the helper's meaning in the assistant's words, never a quotation.
         verbatim: false,
