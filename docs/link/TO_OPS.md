@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 11:05Z — #6367 and #7229 LIVE (Misho's yes)
+
+- **#6367 — aca88c4f (main b6bcb063).** What the run found stays above an introduction plan. A match justification, a wait/confirm stage line, a request for the reason, and any question before the plan still go. DONE WHEN: one-route worlds → the reply names what was found and why this person, then the plan sentence and „დავიწყო?", 3/3.
+- **#7229 — 87f20fcd (main f854e82c).** In a helper's own chat, „I asked X's assistant" is caught when nothing went out, or when X is not someone this run asked. The reply is written again with a new model-facing note. DONE WHEN: a helper chat where only the asker is asked → no line claims an ask to anyone else, 3/3.
+
 ### 24 Oct, 10:15Z — #7162 D868 part 1 (inviter tie) LIVE
 
 - **f8c7b7f4 (main 12c5649d), health 200 x21.** A member who joined by invitation is tied to the inviter both ways from the start, even when neither saved the other. It is written in Postgres and the graph as a reverse tie, under the same switch. It runs at join, after every import, in the backfill, and for a seat created with invited_by. The backfill over existing members is running.
