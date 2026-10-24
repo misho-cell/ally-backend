@@ -21,6 +21,14 @@ import {
 const SCRAM_PREFIX = 'SCRAM-SHA-256$';
 const SCRAM_KEY_BYTES = 32;
 const MD5_PREFIX = 'md5';
+const SCHEME_RE = /^([a-z][a-z0-9+.-]*):\/\//i;
+
+/** After the last @ only — the password is before it — letters and digits folded to x. */
+function hostPartShape(url: string): string | null {
+  const at = url.lastIndexOf('@');
+  return at < 0 ? null : url.slice(at + 1).replace(/[\p{L}\p{N}]+/gu, 'x');
+}
+
 const QUOTE_CHARS = /^["']|["']$/;
 
 export interface MainConnection {
@@ -31,6 +39,10 @@ export interface MainConnection {
 
 export interface RoUrlStatus {
   readonly configured: boolean;
+  /** The part before the scheme separator; never secret. */
+  readonly scheme: string | null;
+  /** What follows the last @ with letters and digits as x: the host-part shape, no password. */
+  readonly host_part_shape: string | null;
   readonly parses: boolean;
   readonly quoted: boolean;
   readonly user: string | null;
@@ -103,6 +115,8 @@ export function describeRoUrl(url: string | undefined, main: MainConnection): Ro
   const parsed = trimmed ? parseRoUrl(trimmed) : null;
   return {
     configured: trimmed.length > 0,
+    scheme: SCHEME_RE.exec(trimmed)?.[1] ?? null,
+    host_part_shape: hostPartShape(trimmed),
     parses: parsed !== null,
     quoted,
     user: parsed?.user ?? null,
