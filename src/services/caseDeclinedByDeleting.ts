@@ -67,10 +67,41 @@ async function declineWaitingAsk(threadId: number): Promise<DeclinedAsk | null> 
   return result.rows[0] ?? null;
 }
 
-async function tellOwner(ask: DeclinedAsk): Promise<void> {
+/**
+ * #7096 / #7097 retest (tester 74813, askers 65072-74): the go-between deleted
+ * within seconds, while the asker's own run was still writing „კითხვა
+ * გავუგზავნე… მაშინვე მოგწერ" — and that line landed after the decline, so the
+ * last thing the asker read was stale, 3/3. The decline waits for the run.
+ */
+export const OWNER_FREE_POLL_MS = 3_000;
+export const OWNER_FREE_MAX_POLLS = 60;
+
+async function conversationIsWorking(threadId: number): Promise<boolean> {
+  const result = await query<{ status: string }>(
+    `SELECT status FROM threads WHERE id = $1 LIMIT 1`,
+    [threadId],
+    DECLINE_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.status === 'working';
+}
+
+/** Until the conversation's run has written its line, bounded; then the line goes anyway. */
+export async function untilConversationIsFree(
+  threadId: number,
+  pollMs = OWNER_FREE_POLL_MS,
+  maxPolls = OWNER_FREE_MAX_POLLS,
+): Promise<void> {
+  for (let poll = 0; poll < maxPolls; poll += 1) {
+    if (!(await conversationIsWorking(threadId))) return;
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+}
+
+async function tellOwner(ask: DeclinedAsk, pollMs?: number): Promise<void> {
   if (ask.task_thread_id === null) return;
   const name = ask.reader_name?.trim() ?? '';
   if (name === '') return;
+  await untilConversationIsFree(ask.task_thread_id, pollMs);
   const language = await userLanguage(String(ask.from_user_id));
   await saveThreadMessage(
     ask.task_thread_id,
@@ -85,12 +116,22 @@ async function tellOwner(ask: DeclinedAsk): Promise<void> {
  * says so, and a question still waiting there is declined and told to the
  * owner. Best-effort: the close itself has already happened and stands.
  */
-export async function tellCaseClosedByDeleting(userId: string, threadId: number): Promise<void> {
+export async function tellCaseClosedByDeleting(
+  userId: string,
+  threadId: number,
+  pollMs?: number,
+): Promise<void> {
   try {
     const declined = await declineWaitingAsk(threadId);
-    if (declined !== null) await tellOwner(declined);
     const language = await userLanguage(userId);
     await saveThreadMessage(threadId, Number(userId), 'assistant', closedByYouLine(language));
+    // The deleter's answer does not wait for the owner's run to finish.
+    if (declined !== null) {
+      void tellOwner(declined, pollMs).catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(`[case-close] thread ${threadId}: owner not told:`, (err as Error).message),
+      );
+    }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[case-close] thread ${threadId}: not told:`, (err as Error).message);
