@@ -16,12 +16,17 @@ describe('an introduction plan in English is its one sentence', () => {
     expect(carriesPlanSentence('I searched your contacts.')).toBe(false);
   });
 
-  it('drops what the model wrote around it, the reason asked twice included', () => {
+  // #6367 (Misho's yes, 24 Oct): what was found stays above the plan; the reason asked twice goes.
+  it('keeps what was found and drops the reason asked twice', () => {
     const reply =
       "They're not in your own contacts, but they show up one ring out.\n\n" +
       'Levan Nimushadze and Maia Fiktiuri both know Bakhva.\n\n' +
       '1. Could you tell me in a line why you want to meet Bakhva?\n\n' +
       'And if you can share why you would like to meet Bakhva, that line will help.\n\nShall I start?';
-    expect(planReplyText(reply, PLAN, 'en')).toBe(`${PLAN.text}\n\nShall I start?`);
+    expect(planReplyText(reply, PLAN, 'en')).toBe(
+      "They're not in your own contacts, but they show up one ring out.\n\n" +
+        'Levan Nimushadze and Maia Fiktiuri both know Bakhva.\n\n' +
+        `${PLAN.text}\n\nShall I start?`,
+    );
   });
 });
