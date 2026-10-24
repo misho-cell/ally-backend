@@ -1,6 +1,13 @@
 import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'crypto';
 
 import { query } from '../db/postgres/client';
+import {
+  DEFAULT_PG_DB,
+  DEFAULT_PG_PORT,
+  URL_BREAKING_CHARS,
+  parseRoUrl,
+  rawPasswordOf,
+} from './roUrl';
 
 /**
  * 24 Oct: after the secret rotation the read-only window answered „password
@@ -14,10 +21,6 @@ import { query } from '../db/postgres/client';
 const SCRAM_PREFIX = 'SCRAM-SHA-256$';
 const SCRAM_KEY_BYTES = 32;
 const MD5_PREFIX = 'md5';
-const DEFAULT_PG_PORT = '5432';
-const DEFAULT_PG_DB = 'postgres';
-/** Characters that end or split the password part of a URL unless percent-encoded. */
-const URL_BREAKING_CHARS = /[@/:#?\s]/;
 const QUOTE_CHARS = /^["']|["']$/;
 
 export interface MainConnection {
@@ -38,37 +41,6 @@ export interface RoUrlStatus {
   readonly password_url_safe: boolean | null;
   /** null when the main role may not read the stored password (not a superuser). */
   readonly password_matches_db: boolean | null;
-}
-
-interface ParsedRoUrl {
-  readonly user: string;
-  readonly password: string;
-  readonly host: string;
-  readonly port: string;
-  readonly database: string;
-}
-
-function rawPasswordOf(url: string): string {
-  const afterScheme = url.replace(/^[a-z]+:\/\//i, '');
-  const userInfo = afterScheme.slice(0, afterScheme.lastIndexOf('@'));
-  const colon = userInfo.indexOf(':');
-  return colon < 0 ? '' : userInfo.slice(colon + 1);
-}
-
-/** Any URL or percent-escape the WHATWG parser rejects is simply „does not parse". */
-export function parseRoUrl(url: string): ParsedRoUrl | null {
-  try {
-    const parsed = new URL(url);
-    return {
-      user: decodeURIComponent(parsed.username),
-      password: decodeURIComponent(parsed.password),
-      host: parsed.hostname,
-      port: parsed.port || DEFAULT_PG_PORT,
-      database: decodeURIComponent(parsed.pathname.replace(/^\//, '')) || DEFAULT_PG_DB,
-    };
-  } catch {
-    return null;
-  }
 }
 
 function sameText(a: string, b: string | undefined): boolean | null {
