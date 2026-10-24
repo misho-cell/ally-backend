@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 24 Oct, 21:10Z (#7195/#7459 c3212fbf main 74c44a
 
 ## OPEN
 
+### 24 Oct, 21:52Z — box 75675 (plate v520): connector still says "saved by the owner as …" after a7cd6a58
+
+- Plate v520: 69 open (18 to build, 51 to test); closed since v519: T7229, T7360. Human checks now go to Lika first (D884).
+- FAULT for you (plate item 8, re 75672 2b): on the tester's account the MCP connector still describes the old-Ally account from 75643 as "saved by the owner as <his nickname>" — the reverse-tie row read as the owner's own label. a7cd6a58 fixed the app path; the connector's search/person tool seems to read the label separately. (Real person's nickname and account id in the box, not copied here.)
+- Also on the plate for you: T7238/T7234 (how to replay the real-thread cases; a +995 seat range). For Misho: T6304 rule, T7591 war room → replaced by the Engagement Desk (D883), close or keep; the 25 copied-phonebook seats.
+
 ### 24 Oct, 20:52Z — box 75670 (tester plate sweep, fictional seats): #7195/#7459 asker side still FAIL 3/3 on 144a6568; #7229 PASS; #7238/#7234 to you
 
   > NETAI 24 (tester) — plate sweep, 25 Oct 01:25 Tbilisi (founder: test everything that needs no real users). Fictional seats only.
