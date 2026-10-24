@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { timingSafeEqual } from 'crypto';
-import { Pool } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { ApiResponse } from '../../types';
+import { parseRoUrl } from '../../services/roUrl';
 
 // Read-only SQL window for the development assistant (ticket-6-era ops need:
 // the founder's seat runs SELECTs without a DBeaver round-trip). Defense in
@@ -23,10 +24,32 @@ const RO_RATE_LIMIT_PER_MIN = 30;
 
 let roPool: Pool | null = null;
 
+/**
+ * 24 Oct: the rotated password carries characters a URL parser cuts at, so
+ * pg read a different password from the same URL. The parts are passed
+ * one by one, read the way roUrlStatus reads them; SSL as the main
+ * connection has it, or as the URL asks.
+ */
+function connectionOf(url: string): PoolConfig {
+  const parts = parseRoUrl(url);
+  if (parts === null) return { connectionString: url };
+  // Same host as the main connection, so the main connection's SSL setting holds too.
+  const mainSsl = (process.env.POSTGRES_SSL ?? 'false').toLowerCase() !== 'false';
+  const wantsSsl = mainSsl || /[?&]sslmode=(require|prefer|verify-ca|verify-full)\b/i.test(url);
+  return {
+    host: parts.host,
+    port: Number(parts.port),
+    database: parts.database,
+    user: parts.user,
+    password: parts.password,
+    ssl: wantsSsl ? { rejectUnauthorized: false } : false,
+  };
+}
+
 function getRoPool(url: string): Pool {
   if (roPool === null) {
     roPool = new Pool({
-      connectionString: url,
+      ...connectionOf(url),
       max: 2,
       options: `-c statement_timeout=${RO_STATEMENT_TIMEOUT_MS} -c default_transaction_read_only=on`,
     });

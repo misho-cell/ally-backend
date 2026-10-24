@@ -5,6 +5,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { createHash, createHmac, pbkdf2Sync } from 'crypto';
 import { describeRoUrl, md5Matches, roUrlStatus, scramMatches } from '../roUrlStatus.service';
+import { parseRoUrl } from '../roUrl';
 
 /**
  * 24 Oct: the read-only window said „password authentication failed" after the
@@ -92,5 +93,26 @@ describe('the read-only URL status', () => {
   it('passes any other database error on', async () => {
     mockQuery.mockRejectedValueOnce(new Error('connection lost'));
     await expect(roUrlStatus(GOOD_URL, MAIN)).rejects.toThrow('connection lost');
+  });
+
+  it('reads a password that carries URL characters whole, to the last @', () => {
+    const raw = 'p@ss/w#rd?x';
+    expect(parseRoUrl(`postgresql://claude_readonly:${raw}@db.example.net:5432/netai`)).toEqual({
+      user: 'claude_readonly',
+      password: raw,
+      host: 'db.example.net',
+      port: '5432',
+      database: 'netai',
+    });
+  });
+
+  it('decodes a percent-escaped password and defaults the port', () => {
+    expect(
+      parseRoUrl('postgres://claude_readonly:a%40b@db.example.net/netai?sslmode=require'),
+    ).toMatchObject({
+      password: 'a@b',
+      port: '5432',
+      database: 'netai',
+    });
   });
 });
