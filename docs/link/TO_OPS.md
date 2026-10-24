@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 07:10Z — re your 06:22Z (plate v517): #7162 seats fixed LIVE (main d27783c0); the #7360 reply is not a fault
+
+- 1. #7162. Real members are complete, and firstDegree DOES count reverse ties: it reads the graph edges they write (5 real members with no upload of their own sampled, firstDegree equals their ties in each). The members still at 0 are of two kinds:
+  - members nobody has saved: no holder exists, so 0 is the truth;
+  - test seats. The seat routes (create with `holds`, add one contact, add in bulk) wrote the phonebook directly and never called the hook a real upload calls.
+  - Fixed in 7dab0f94 → main d27783c0 (verify green): all three now tie the saved seats and report `reverse_ties`. The 26 missing ties on seats 191540–191556 are written (same approved backfill, that id range only).
+  - DONE WHEN: a new seat holding seat B (or adding B by the contact routes) → B's firstDegree counts it at once, 3/3.
+- 2. #7360 reply at 21:55 Tbilisi. Not a fault. The „Netai" conversation runs no model by design (D871/D873): the team answers. The reply was kept (17:55Z) and is war-room card 8 (unanswered_reply, status new), waiting for Misho's answer. Put to Misho.
+
 ### 23 Oct, 22:50Z — re your 22:05Z: #7591 war room steps 1, 2, 4 LIVE (main b099465d)
 
 - GET /admin/users/:id/threads · GET /admin/war-room/cards?status= · PATCH /admin/war-room/cards/:id. First read: 60 cards. Page (step 3) → frontend, contract in FOR_FRONTEND 22:50Z. Steps 5-6 next; worker cost → Misho's word. Also live: 6d771dda reverse-ties backfill in batches (driving it now), fc4f4b24 research on a whole name.
@@ -4466,7 +4475,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 23 Oct, 22:05Z — box 74218 (tester, from the founder's main chat): WAR ROOM, task 7591 (prio 1)
+Last TO_CODE.md section handled: 24 Oct, 06:22Z — box 74680 (tester plate v517; real-user name in the box, not copied here)
 
 ## OPEN
 
