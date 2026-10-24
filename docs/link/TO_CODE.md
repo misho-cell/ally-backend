@@ -9,6 +9,36 @@ Last TO_OPS.md section handled: 24 Oct, 07:10Z (#7162 seats get reverse ties, li
 
 ## OPEN
 
+### 24 Oct, 08:08Z — box 74815, 74816, 74817 (tester batch 3, plate v518, connector note); box back at 08:07Z
+
+- 74815 (batch 3, fictional seats), verbatim:
+  > NETAI 24 (tester) — 24 Oct 08:13Z, batch 3, LIVE fictional seats only.
+  > 
+  > #5251 (TBC loan, solver first) PASS 3/3: asker holds one TBC business-loans person + two plain friends (worlds 191799-802, 191803-06, 191807-10; threads 65093/65094/65095). The plan opens with the solver by full name, friends not targeted, no duplicate, no raw label. Side (65095): no card — a typed "shall I ask Irakli first?" with no buttons, plus the bank's CEO and a deputy from the annual report listed as background; and "his current job at TBC not confirmed" although his saved name says TBC.
+  > 
+  > #6367 (findings dropped before a plan card) FAIL 2/2 where a card was shown: 65093/65094 searched 18-20 times (web too), the reply is only „ნინო ჩიქოვანის ასისტენტს დაველაპარაკები… დავიწყო?" — nothing it found, nothing on why her. Where no card was shown (freight forwarder from China, 65096/65099) the findings DO show (3 named companies with links). Matches planReplyText dropping text before the card — server.
+  > 
+  > #7328 NOT DECIDED by this test: seats cannot hold a member under a custom label, so the target had no own label and Netai used the go-between's ACCOUNT name, which I made "ნინო კაპანაძე Axel". The target's line reads „…დაუკავშირდა ნინო კაპანაძე Axel-ს…" 3/3 (65117/65115/65116). Needs a real label (phone) or a way to give a seat a custom label for a member.
+  > Side: go-between's confirmation „…და მაია ნოზაძეს-აც ვაცნობე" 3/3 — wrong Georgian (should be „ნოზაძესაც"). And 65108: the target's name came out as „სოფო ჯაფარიძე (https://tabula.ge/topic/94346)სთან" — a news link inside the name (fictional person matched to a public article).
+  > 
+  > #7426 NOT TESTABLE by the tester: the "research on next message" step skips test seats by design and is switched off (RESEARCH_ON_ACTIVATION false, waiting Misho's word, paid). → whose Misho.
+  > 
+  > #6304 not re-tested: no new build since the 22 Oct 4/6 (D504).
+
+- 74816 plate v518 (summary): 76 open (19 to build, 57 to test). Closed T5251, T7230, T7232. Back to you: T991, T7162, T7459, T7195, T7229, T6367. Your list of 14: T5941, T1849, T6634, T7162 (inviter tie), T6997, T374, T6367, T7195, T7229, T991, T7459, T1693, T7328 (needs a seat route for custom labels), T7393 (PDF). Misho: T7294, T7493, T7492, T4293, T7426 (research switch, paid), T7591.
+
+- 74817 connector note (D670), verbatim — item 6 is a question for you:
+  > CONNECTOR NOTE (D670, every second day) — NETAI 24 tester, 24 Oct 08:40Z (due 07:00Z; computer was offline). Since the 22 Oct note (72139), for the one MCP server (Claude + ChatGPT, 72141):
+  > 
+  > 1. Reverse ties (#7162, live 23 Oct 21:06Z; seat hook 07:10Z today): a member's network now includes everyone whose phonebook holds him. Connector search tools should return those people and route through a no-upload member as a bridge — same as the app (passed 3/3 today). The inviter tie is NOT built yet; do not describe it.
+  > 2. Answering a question from any chat (#991, 3b525c53): send_answer_to_asker and share_contact_number_with_asker take asker_name outside the question's own chat. A number is passed only on the owner's explicit words (passed 4/4 incl. the control). Expose the same on the connector.
+  > 3. Web search budget fix (#7237): web calls no longer share the 8-search cap.
+  > 4. Word (.docx) files are read in chat (#7393 Word part); PDF still fails — do not offer PDF upload on the connector yet.
+  > 5. Admin-only, NOT for the connector: war room routes (#7591), Netai's own messages (#7360).
+  > 6. The D864/D865/D867/D868 instruction update: I find no LIVE post for it in 72139→now (193 posts read). Please say if it shipped; if not, it is still owed to the connector text.
+
+- Ops: the box was HTTP 500 from 08:04Z, answers again at 08:07Z; outage.sh still rc 2 (read-only window).
+
 ### 24 Oct, 08:05Z — ops: the box answers HTTP 500, and outage/attribution cannot read since 07:20Z
 
 - box.sh read (GET /admin/handoff, ops' admin key) → HTTP 500 {"success":false,"error":"სერვერის შეცდომა"} 3/3 at 08:04Z; it worked at 07:50Z. /health 200.
