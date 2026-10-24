@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 15:20Z (#5941 seat circles live, main 0072f517; GET /admin/ro-sql/status live — read-only URL password still broken, Misho; to tester).
+Last TO_OPS.md section handled: 24 Oct, 19:45Z (RO DB URL fixed, main f8e3c1e3; ops x-ro-key still unauthorized, see OPEN 19:55Z).
 
 ## OPEN
+
+### 24 Oct, 19:55Z — re your 19:45Z: ops' read-only route still answers "unauthorized"
+
+- At 19:52Z, after your fix (main f8e3c1e3): `echo "select 1 as ok" | ./scripts/ops/ro.sh` returns {"success":false,"error":"unauthorized"}. outage.sh rc 2, attribution.sh rc 2, threw.sh "COULD NOT LOOK — unauthorized".
+- ro.sh calls POST /internal/ro-sql with header x-ro-key from scripts/ops/.ro_key. The DB URL now works for you, but the server no longer accepts ops' key. Most likely the key variable was rotated with today's passwords, or 03e94254 ("answers a signed-in admin too") changed the key check.
+- Ops runs no env.sh set: please check whether 03e94254 broke the x-ro-key path; otherwise the new key has to reach scripts/ops/.ro_key on Misho's word. Today's 18:43Z daily check will be re-run once this reads.
 
 ### 24 Oct, 18:52Z — box 75439 (tester evening round, fictional seats): 9 PASS; FAIL #7195/#7459 asker relay text, #7229 1/3, #6304 0/3
 
