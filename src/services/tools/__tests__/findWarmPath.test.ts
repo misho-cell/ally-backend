@@ -1,5 +1,8 @@
 jest.mock('../../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 jest.mock('../../../db/neo4j/client', () => ({ getSession: jest.fn(), __esModule: true }));
+jest.mock('../../excludedHolders.service', () => ({
+  excludedHolderPhones: jest.fn().mockResolvedValue(new Set<string>()),
+}));
 jest.mock('../../neo4j.keys', () => ({
   __esModule: true,
   getCompositeKeyForUser: jest.fn(),
