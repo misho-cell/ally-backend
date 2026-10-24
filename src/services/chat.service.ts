@@ -16901,13 +16901,22 @@ const ANSWER_SENT_LOOKUP_TIMEOUT_MS = 3_000;
  * the answer again and „????????". The line is skipped only when the
  * assistant's last line in the conversation already was it, so it never
  * stands under every reply (Giorgi's #6766) and every new answer is confirmed.
+ *
+ * #7195 / #7459 retest (tester 74813, 65059/65061/65068): „the assistant's last
+ * line" skipped the helper's own words in between. He answered, read the line,
+ * wrote a second answer — and the last ASSISTANT line was still the line, so
+ * the addition reached the asker and the helper got nothing, 3/3. It counts as
+ * said only when it is the last thing in the conversation, after the helper's
+ * latest words; his line is stored on arrival, so a new answer is confirmed,
+ * and a wake with nothing new from him stays quiet.
  */
 async function answerSentAlreadySaid(threadId: number): Promise<boolean> {
   try {
     const result = await query<{ said: boolean }>(
-      `SELECT (c.content = ANY($2::text[]) OR c.content LIKE ANY($3::text[])) AS said
+      `SELECT (c.role = 'assistant'
+               AND (c.content = ANY($2::text[]) OR c.content LIKE ANY($3::text[]))) AS said
          FROM conversations c
-        WHERE c.thread_id = $1 AND c.role = 'assistant' AND c.kind = 'message'
+        WHERE c.thread_id = $1 AND c.role IN ('assistant', 'user') AND c.kind = 'message'
           AND c.content <> ''
         ORDER BY c.created_at DESC
         LIMIT 1`,

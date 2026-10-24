@@ -101,4 +101,10 @@ describe('the answer-sent line, after another reply', () => {
     expect(body).toContain("AND c.content <> ''");
     expect(body).not.toContain('SELECT EXISTS');
   });
+
+  /** #7195 / #7459 retest (tester 74813): the helper's own words in between count. */
+  it('reads the helper’s latest words too, so a line after them is not „already said"', () => {
+    expect(body).toContain("c.role IN ('assistant', 'user')");
+    expect(body).toContain("c.role = 'assistant'");
+  });
 });
