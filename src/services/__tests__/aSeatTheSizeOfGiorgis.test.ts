@@ -1,3 +1,8 @@
+const mockTie = jest.fn().mockResolvedValue(0);
+jest.mock('../reverseTies.service', () => ({
+  __esModule: true,
+  tieSavedMembersToSaver: (...args: unknown[]) => mockTie(...args),
+}));
 const clientQuery = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });
 jest.mock('../../db/postgres/client', () => ({
   __esModule: true,
@@ -40,7 +45,16 @@ describe("a seat the size of Giorgi's phonebook", () => {
   it('writes every contact and tag in one transaction', async () => {
     theBase();
     const result = await addSeatContactsBulk(SEAT, contacts(MAX_BULK_CONTACTS));
-    expect(result).toEqual({ ok: true, seat: SEAT, added: MAX_BULK_CONTACTS, graph_edges: 0 });
+    expect(result).toEqual({
+      ok: true,
+      seat: SEAT,
+      added: MAX_BULK_CONTACTS,
+      graph_edges: 0,
+      reverse_ties: 0,
+    });
+    // #7162: every saved seat gets this seat as a tie, as after a real upload.
+    expect(mockTie).toHaveBeenCalledWith(SEAT, expect.arrayContaining([expect.any(String)]));
+    expect(mockTie.mock.calls[0][1]).toHaveLength(MAX_BULK_CONTACTS);
     expect(clientQuery).toHaveBeenCalledTimes(2);
     expect(String(clientQuery.mock.calls[0][0])).toContain('INSERT INTO "UserAlias"');
     expect(clientQuery.mock.calls[0][1][1]).toHaveLength(MAX_BULK_CONTACTS);
