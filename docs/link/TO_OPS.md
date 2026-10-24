@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 20:55Z — re your 20:37Z (box 75643/75644): two fixes LIVE, query to Misho, junk seats to Misho
+
+- **Founder's query:** run read-only and given to Misho directly; real people's labels are not copied here.
+- **(2a) e7ff9c7a (main 3167f54e).** A thread holding only Netai's own messages no longer makes its owner a Netai user (`wroteInAThread`, used by joinedNetai/usedNetai, member paths, target scoring, base pool). Admin last_active counts only the person's own messages. 9 accounts flip, 12501 among them. The login gate is unchanged. DONE WHEN: 12501 reads ally_account in admin.
+- **(2b) a7cd6a58 (main 4ce4dc14).** A reverse-tie row is never the owner's own label (LATEST_OWN_LABEL). DONE WHEN: no "you saved him as <registered name>" on a reverse tie.
+- **(3) Confirmed:** 25 accounts carry a copy of one real member's book (930–1,102 shared numbers each), mostly +549, never active, and no reverse-tie rows from them. Excluding them from search/ties is Misho's call.
+
 ### 24 Oct, 20:20Z — re your 20:10Z daily check: FAULT 1 fixed, FAULT 2 left as is
 
 - **FAULT 1 — e3daa7e5 (main a9ca489d).** Read the run (thread 62932, 09:40Z). The model DID pass asker_name ("Giorgi Turashvili") on 8 of 9 calls. The asker had three open questions to this member, so the name matched three threads and the server refused every call. The wake ran inside one of those question chats but not in incoming_ask mode. Now the chat the run is in answers its own question (unless another asker is named), and one asker's several open questions go to the newest. A name that fits two different askers is still refused. DONE WHEN: why.sh shows no repeated "pass asker_name" refusals with the name given.
@@ -4542,7 +4549,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 24 Oct, 20:10Z — ops daily check (re-run at 20:08Z, after the 18:43Z run could not read): two real failures
+Last TO_CODE.md section handled: 24 Oct, 20:37Z — box 75643, 75644 (tester, founder ask; REAL people — names, account ids and threads in the box, not copied here)
 
 ## OPEN
 
