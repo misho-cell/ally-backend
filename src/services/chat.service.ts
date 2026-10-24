@@ -472,6 +472,8 @@ import {
   claimsASendNow,
   NOTHING_SENT_YET_NUDGE,
   ASK_REFUSED_THIS_RUN_NUDGE,
+  HELPER_ASKED_NOBODY_NUDGE,
+  helperChatClaimsAnAskNobodyGot,
   helperAskedAQuestion,
   HELPER_QUESTION_NUDGE,
   PASSED_ON_NUDGE,
@@ -15290,6 +15292,17 @@ async function runToolLoop(
     runAskRefused.has(runId) &&
     !runAskSent.has(runId) &&
     claimsAnAskWasSent(finalText);
+  // #7229 (65053; Misho's yes, 24 Oct): in a helper's own chat, „I asked X's assistant" with no ask to X.
+  const claimedAHelperAskNobodyGot =
+    !claimedASendThatDidNotHappen &&
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    runModes.get(runId) === 'incoming_ask' &&
+    helperChatClaimsAnAskNobodyGot(finalText, {
+      asked: runAskSentTo.get(runId) ?? [],
+      anythingWent: runAskSent.has(runId) || runRelaySent.has(runId) || runAnswerSent.has(runId),
+    });
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
@@ -15450,39 +15463,42 @@ async function runToolLoop(
         ? NOTHING_SENT_YET_NUDGE
         : claimedARefusedAsk
           ? ASK_REFUSED_THIS_RUN_NUDGE
-          : claimedASendThatDidNotHappen
-            ? PASSED_ON_NUDGE
-            : helperQuestionUnsent
-              ? HELPER_QUESTION_NUDGE
-              : instructionUnsent
-                ? INSTRUCTION_UNSENT_NUDGE
-                : answeredWithoutSearching
-                  ? SEARCH_FIRST_NUDGE
-                  : // The tester's 1150 (38316): a promise and the owner's members together —
-                    // the members note leads to the plan with them, which keeps the promise too.
-                    membersSkipped
-                    ? MEMBERS_SKIPPED_NUDGE
-                    : bookMembersSkipped.length > 0
-                      ? membersInTheBookNudge(bookMembersSkipped)
-                      : promisedWithoutActing
-                        ? promiseGap === PromiseGap.Goal
-                          ? PROMISED_ACTION_NO_GOAL_NUDGE
-                          : PROMISED_ACTION_NUDGE
-                        : farFindUnplanned
-                          ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
-                          : rowsMissing.length > 0
-                            ? listRowsNudge(rowsMissing)
-                            : findsHeldBack
-                              ? FINDS_FIRST_NUDGE
-                              : foreignWord !== null
-                                ? foreignWordNudge(foreignWord)
-                                : CLIFFHANGER_NUDGE;
+          : claimedAHelperAskNobodyGot
+            ? HELPER_ASKED_NOBODY_NUDGE
+            : claimedASendThatDidNotHappen
+              ? PASSED_ON_NUDGE
+              : helperQuestionUnsent
+                ? HELPER_QUESTION_NUDGE
+                : instructionUnsent
+                  ? INSTRUCTION_UNSENT_NUDGE
+                  : answeredWithoutSearching
+                    ? SEARCH_FIRST_NUDGE
+                    : // The tester's 1150 (38316): a promise and the owner's members together —
+                      // the members note leads to the plan with them, which keeps the promise too.
+                      membersSkipped
+                      ? MEMBERS_SKIPPED_NUDGE
+                      : bookMembersSkipped.length > 0
+                        ? membersInTheBookNudge(bookMembersSkipped)
+                        : promisedWithoutActing
+                          ? promiseGap === PromiseGap.Goal
+                            ? PROMISED_ACTION_NO_GOAL_NUDGE
+                            : PROMISED_ACTION_NUDGE
+                          : farFindUnplanned
+                            ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
+                            : rowsMissing.length > 0
+                              ? listRowsNudge(rowsMissing)
+                              : findsHeldBack
+                                ? FINDS_FIRST_NUDGE
+                                : foreignWord !== null
+                                  ? foreignWordNudge(foreignWord)
+                                  : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
     (lateFileEvents.length > 0 ||
       claimedAnAskNobodyGot ||
       claimedARefusedAsk ||
+      claimedAHelperAskNobodyGot ||
       claimedASendThatDidNotHappen ||
       helperQuestionUnsent ||
       instructionUnsent ||
@@ -15859,6 +15875,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   MEMBERS_SKIPPED_NUDGE,
   FINDS_FIRST_NUDGE,
   ASK_REFUSED_THIS_RUN_NUDGE,
+  HELPER_ASKED_NOBODY_NUDGE,
 ]);
 
 /** A model-only note: one of the fixed ones, or the members note that names people. */
