@@ -19,13 +19,16 @@ export interface RouteToPerson {
 /** A pick stays good this long after the routes were put to the owner. */
 export const ROUTE_PICK_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-/** The model is told this instead of getting a card; it repeats task_main's own rule. */
+/**
+ * The model is told this instead of getting a card. #6304 (Misho's word, 24 Oct,
+ * on Misho's Claude's recommendation): a person several contacts lead to gets ONE
+ * card with all of them, not a question which one to start with.
+ */
 export const SEVERAL_ROUTES_LINE =
-  'ამ ადამიანამდე რამდენიმე თბილი გზა იპოვე, ამიტომ ამ ნაბიჯში გეგმის ბარათი არ კეთდება. ' +
-  'მფლობელს 2–4 მოკლე ხაზით უთხარი, რა იპოვე (შენი კონტაქტები, მეორე წრე, ვები), მერე ' +
-  'თითო ხაზზე თითო გზა, ხუთამდე: შუამავლის სრული სახელი და ერთი მიზეზი. ჰკითხე, რომლით ' +
-  'დავიწყოთ, და გზები ღილაკებად მიეცი. მისი არჩევანი თანხმობაა: მაშინ გეგმას იმავე ნაბიჯში ' +
-  'შესთავაზებ და დაამტკიცებ.';
+  'ამ ადამიანამდე რამდენიმე თბილი გზა იპოვე, გეგმაში კი მხოლოდ ნაწილია. ' +
+  'ერთი გეგმის ბარათი გააკეთე და people_to_involve-ში ჩართე ყველა, ვინც მას იცნობს — ' +
+  'ბარათი თავად აჩვენებს ორ ჯგუფს (Netai-ზე / არა Netai-ზე). ჯერ 2–4 მოკლე ხაზით უთხარი, ' +
+  'რა იპოვე. არ ჰკითხო, რომლით დავიწყოთ: მფლობელი ერთი დადასტურებით ყველას ჰკითხავს.';
 
 /** The routes a person search returned: each found person through each contact who knows them. */
 export function routesFromFound(found: readonly FoundThroughBridge[]): RouteToPerson[] {
@@ -67,9 +70,10 @@ function firstLinksByPerson(routes: readonly RouteToPerson[]): Map<string, Set<s
 }
 
 /**
- * The person this plan goes to through one of several routes, or null: the
- * plan asks somebody who is a first link to a person this run reached by two
- * or more different contacts.
+ * The person this plan goes to through only SOME of several routes, or null:
+ * the plan asks a first link to a person this run reached by two or more
+ * different contacts, and leaves another of them out. #6304 (Misho, 24 Oct):
+ * a plan that asks them all is the one card with every way in, and goes through.
  */
 export function personWithSeveralRoutes(
   planPhones: readonly string[],
@@ -77,7 +81,9 @@ export function personWithSeveralRoutes(
 ): string | null {
   const asked = new Set(planPhones.map(phoneDigits).filter((digits) => digits !== ''));
   for (const [person, links] of firstLinksByPerson(routes)) {
-    if (links.size > 1 && [...links].some((digits) => asked.has(digits))) return person;
+    if (links.size < 2) continue;
+    const askedLinks = [...links].filter((digits) => asked.has(digits)).length;
+    if (askedLinks > 0 && askedLinks < links.size) return person;
   }
   return null;
 }
