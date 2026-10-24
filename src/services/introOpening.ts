@@ -158,8 +158,9 @@ export function forwardedRequestOpening(
       );
     default:
       return (
-        `გამარჯობა! **${geoName(forwarderName, 'gen')} ასისტენტი** ${geoName(requesterName, 'gen')} ` +
-        `სახელით გთხოვს, ${requesterName} გააცნო **${geoName(targetName, 'dat')}**.` +
+        // #6634 / D590 (Giorgi, Misho's yes): the approved helper text, first person, no „…-ის სახელით".
+        `დამიკავშირდა **${geoName(forwarderName, 'gen')} ასისტენტი**, ${geoName(requesterName, 'dat')} ` +
+        `აინტერესებს, იცნობ თუ არა **${geoName(targetName, 'dat')}** და შეძლებ თუ არა დააკავშირო.` +
         about('რაზეა საქმე:') +
         `\n\nდაეხმარები? 🤝`
       );
@@ -173,8 +174,8 @@ export function forwardedRequestPush(
   targetName: string,
 ): string {
   return (
-    `${geoName(forwarderName, 'gen')} ასისტენტი ${geoName(requesterName, 'gen')} სახელით გთხოვს, ` +
-    `${requesterName} გააცნო ${geoName(targetName, 'dat')}. გახსენი Netai.`
+    `დამიკავშირდა ${geoName(forwarderName, 'gen')} ასისტენტი, ${geoName(requesterName, 'dat')} ` +
+    `აინტერესებს, იცნობ თუ არა ${geoName(targetName, 'dat')} და შეძლებ თუ არა დააკავშირო. გახსენი Netai.`
   );
 }
 

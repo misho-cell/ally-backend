@@ -35,7 +35,10 @@ describe('the owner’s request a link passes on', () => {
 
   it('opens by naming whose assistant passed it on, for whom, and the owner’s reason', () => {
     const ka = forwardedRequestOpening('ka', 'ლაშა', 'ანა', 'ეკა', 'ბუღალტერი სჭირდება');
-    expect(ka).toContain('სახელით გთხოვს');
+    // #6634 / D590: first person, never „…-ის სახელით".
+    expect(ka).toContain('დამიკავშირდა **ლაშას ასისტენტი**');
+    expect(ka).toContain('იცნობ თუ არა **ეკას** და შეძლებ თუ არა დააკავშირო');
+    expect(ka).not.toContain('სახელით');
     expect(ka).toContain('რაზეა საქმე: ბუღალტერი სჭირდება');
     expect(ka).toContain('დაეხმარები? 🤝');
 
@@ -47,6 +50,8 @@ describe('the owner’s request a link passes on', () => {
   });
 
   it('says the same in the push', () => {
-    expect(forwardedRequestPush('ლაშა', 'ანა', 'ეკა')).toContain('სახელით გთხოვს');
+    const push = forwardedRequestPush('ლაშა', 'ანა', 'ეკა');
+    expect(push).toContain('დამიკავშირდა ლაშას ასისტენტი');
+    expect(push).not.toContain('სახელით');
   });
 });
