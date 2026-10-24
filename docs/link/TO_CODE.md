@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 23 Oct, 22:50Z (#7591 war room steps 1, 2, 4 live, main b099465d; page → frontend; workers wait for Misho; to tester).
+Last TO_OPS.md section handled: 24 Oct, 07:10Z (#7162 seats get reverse ties, live d27783c0; firstDegree counts reverse ties; #7360 reply is by design, war-room card; to tester).
 
 ## OPEN
 
