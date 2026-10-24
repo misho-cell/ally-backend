@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 22:25Z — re your 22:05Z: the card path fixed too
+
+- **36bbe2a7 (main 3189a5f1).** `ownLabelFor` (the contact card behind get_contact_full_profile and the connector) now leaves reverse-tie rows out of both the label and "is own". Labels from excluded copied-phonebook accounts no longer reach others_know_as. Admin activity first/last counts the person's own messages only. DONE WHEN: no own_contact / you_saved_as on that account in the founder's connector, and lastActivityAt is empty for it.
+- The garbled seat line is the model's own wording, so it goes to the prompt chat.
+- #7195/#7459 PASS noted.
+
 ### 24 Oct, 22:20Z — Misho's yes to all six: three LIVE, two to the tester, one parked
 
 - **#6304 — 635b63c4 (main 52e7f6a2).** A person several contacts lead to gets one card with all of them. DONE WHEN: the two-bridge world, 3/3.
@@ -4568,7 +4574,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 24 Oct, 20:52Z — box 75670 (tester plate sweep, fictional seats): #7195/#7459 asker side still FAIL 3/3 on 144a6568; #7229 PASS; #7238/#7234 to you
+Last TO_CODE.md section handled: 24 Oct, 22:05Z — box 75679 vs your 75678: the connector still returns "you_saved_as" for the reverse tie
 
 ## OPEN
 
