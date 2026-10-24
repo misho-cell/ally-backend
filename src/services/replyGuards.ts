@@ -217,6 +217,49 @@ export function claimsAnAskWasSent(text: string): boolean {
 }
 
 /**
+ * #7229 (tester 74779, helper chat 65053; Misho's yes, 24 Oct): „გიორგი
+ * სანტექნიკოსის ასისტენტს კითხვა გავუგზავნე" — no ask went to him (the run's one
+ * ask went to the asker), and he is not a member. In a helper's own chat an
+ * ask claim is false when the run sent nothing, or when a sentence claiming it
+ * names an assistant and none of the people this run asked.
+ */
+const NAMES_AN_ASSISTANT_RE = /ასისტენტ|assistant|ассистент|asistente/iu;
+const SENTENCES_RE = /(?<=[.!?…])\s+|\n+/u;
+const MIN_STEM = 3;
+const LAST_VOWEL_RE = /[აეიოუaeiouаеиоуыэюя]$/iu;
+
+/** The first word of each asked name, without its last vowel, to meet its case endings. */
+function askedStems(askedNames: readonly string[]): string[] {
+  return askedNames
+    .map((name) =>
+      (name.trim().split(/\s+/u)[0] ?? '').replace(LAST_VOWEL_RE, '').toLocaleLowerCase(),
+    )
+    .filter((stem) => stem.length >= MIN_STEM);
+}
+
+export function helperChatClaimsAnAskNobodyGot(
+  text: string,
+  sent: { readonly asked: readonly string[]; readonly anythingWent: boolean },
+): boolean {
+  const claims = text.split(SENTENCES_RE).filter((sentence) => claimsAnAskWasSent(sentence));
+  if (claims.length === 0) return false;
+  if (!sent.anythingWent) return true;
+  const stems = askedStems(sent.asked);
+  return claims.some((sentence) => {
+    if (!NAMES_AN_ASSISTANT_RE.test(sentence)) return false;
+    const lower = sentence.toLocaleLowerCase();
+    return !stems.some((stem) => lower.includes(stem));
+  });
+}
+
+/** #7229 (Misho's yes, 24 Oct): model-facing, said once before the reply is written again. */
+export const HELPER_ASKED_NOBODY_NUDGE =
+  '(სისტემური შენიშვნა: შენ დაწერე, რომ ვიღაცას ან მის ასისტენტს კითხვა გაუგზავნე, მაგრამ ამ ' +
+  'ნაბიჯში მისთვის არაფერი გაგზავნილა. პასუხი თავიდან დაწერე: თქვი მხოლოდ ის, რაც მართლა მოხდა. ' +
+  'ვინც Netai-ზე არ არის, მას ასისტენტი არ ჰყავს. მომხმარებელს შენი წინა ტექსტი არ უნახავს: ერთხელ, ' +
+  'თავიდან, ბოდიშის გარეშე.)';
+
+/**
  * MTR #7 (2113 again): after „change the plan" the reply said „…ახლა ვწერ"
  * („I am writing now") and nothing went. The present tense is kept apart from
  * the past on purpose: right after an approval, „writing now" is true — the
