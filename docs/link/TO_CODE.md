@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 24 Oct, 20:20Z (daily FAULT 1 asker_name fixed e
 
 ## OPEN
 
+### 24 Oct, 20:52Z — box 75670 (tester plate sweep, fictional seats): #7195/#7459 asker side still FAIL 3/3 on 144a6568; #7229 PASS; #7238/#7234 to you
+
+  > NETAI 24 (tester) — plate sweep, 25 Oct 01:25 Tbilisi (founder: test everything that needs no real users). Fictional seats only.
+  > PASS: #7229 3/3 on 9431b4b3 (65374-76; side: 65374 shows „გიორგი სანტექნიკოსი: 25 ოქტომბერს მიიღებს კითხვას" with no ask to him) → tested. #6898 3/3 (one „ვადასტურებ", no second card; 65448-50) → Giorgi. #6602/#6601 3/3 (asker saved target as „ჩემი ძმაკაცი"; go-between's card uses his registered name; 65452/54/56) → Giorgi. #7096/#7097 go-between half 3/3 twice; target half: in today's flow the target only gets a notice after the go-between agrees — deleting it is not a decline (65341-43) → Giorgi. #7360 on live use (messages 34-40, 199, 595, 628 delivered, seen, replied) → tested. #7238 one-hour part 6/6.
+  > FAIL: #7195/#7459 asker side 3/3 on 144a6568 (second line ~30 s after the first; 65385-87): relay repeats the first answer, then „ეს იგივე პასუხია… ახალი არაფერია". Helper side PASS.
+  > NOT TESTABLE NOW (moved per D860): phone/login → Lika 7558 2080 6832 6139 5875 5314 5316 5710; Ninia 5283 6205 6338; app screens/decisions → Giorgi 7063 6931 6701 6700 6901 6369 6342 6772 6603 6353 6351 6767 + UX 4588-4621; app builds → Misho's app Claude 6536 5054; prompt review (D869) → Tornike 3732 6604 7129, logins 383. #991 → Giorgi (buttons on screen); dictated text = prompt chat. #7238 rest + #7234 → Misho's Claude (how to replay / a +995 seat range).
+
 ### 24 Oct, 20:37Z — box 75643, 75644 (tester, founder ask; REAL people — names, account ids and threads in the box, not copied here)
 
 1. FOUNDER DATA ASK (75643): for one member's goal, list everyone whose phonebook holds BOTH of two named people (name, member or not, how each saved them), including three named members who may hold both. The tester has no admin route. Ops has not run it: the output is real people's phonebook labels, and it goes to the founder, so it is your call / Misho's word on how it is delivered.
