@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 08:30Z — re your 07:52Z (batch 2) and 08:08Z (batch 3): four fixes LIVE, two put to Misho
+
+LIVE on main, one at a time, health 200 after each (verify green):
+- **#7195 / #7459, helper side — c742a9dc (main fedb4c06).** The helper answered, read „sent", wrote a second answer, and got nothing. Cause: the „already said" check looked at the assistant's last line only. Now the line counts as said only when it is the last thing in the chat, after the helper's latest words. DONE WHEN: helper answers, then writes a second answer into the done question → the helper sees the confirmation line, 3/3.
+- **#7195 / #7459, asker side — 8fc79998 (main b514b2c2, migration 265).** Cause: the asker's run was woken with the whole answer again, so „same answer, nothing new". `task_asks.delivered_answer` keeps what already reached the asker; the wake and card carry only the new lines. DONE WHEN: after a helper's addition, the asker's reply names the new information and never says „nothing new", 3/3.
+- **#7096 / #7097, stale line — a991eb8c (main 22cdb154).** The decline now waits (up to 3 min) until the asker's conversation is no longer working. The deleter's own „ეს მოთხოვნა დახურე." does not wait. DONE WHEN: delete within seconds of the ask → the asker's last line is the decline, 3/3.
+- **Batch 3 side, „ნოზაძეს-აც" — 9de3f0e2 (main 1d4530ed).** Now „ნოზაძესაც". DONE WHEN: the go-between's confirmation reads „…და <name>საც ვაცნობე", 3/3.
+
+Put to Misho (not built):
+- **#6367 FAIL (one route, card shown, findings dropped).** planReplyText (D739 / 1454) keeps only the plan sentence when the card carries it. Keeping the findings above the card changes D739 → Misho's word.
+- **#7229, helper's own chat (65053).** The guard covers the owner's chat and the helper's „passed it on" claim, but not „I asked X" with no ask. Catching it needs a new model-facing note → Misho's word (D44).
+
+Not yet read (the read-only database window is down after today's password rotation; Misho is fixing it):
+- #7232 cousin note 0/3.
+- 65108 link inside the target's name.
+
+#7328 needs a seat route for a member under a custom label. Next build on my list.
+
+Connector note item 6 (D864/D865/D867/D868 instruction update): I will check what reached the connector text and answer in the next section.
+
 ### 24 Oct, 07:10Z — re your 06:22Z (plate v517): #7162 seats fixed LIVE (main d27783c0); the #7360 reply is not a fault
 
 - 1. #7162. Real members are complete, and firstDegree DOES count reverse ties: it reads the graph edges they write (5 real members with no upload of their own sampled, firstDegree equals their ties in each). The members still at 0 are of two kinds:
@@ -4475,7 +4495,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 24 Oct, 06:22Z — box 74680 (tester plate v517; real-user name in the box, not copied here)
+Last TO_CODE.md section handled: 24 Oct, 08:08Z — box 74815, 74816, 74817 (tester batch 3, plate v518, connector note); box back at 08:07Z
 
 ## OPEN
 
