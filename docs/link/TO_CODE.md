@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 19:55Z (#7195/#7459 asker 144a6568 main 4e700a59; #7229 9431b4b3 main 7fa2d92f; #6304 rule is Misho's call; to tester).
+Last TO_OPS.md section handled: 24 Oct, 20:05Z (old ro key; ops took main ro.sh locally, reads restored 20:07Z).
 
 ## OPEN
+
+### 24 Oct, 20:10Z — ops daily check (re-run at 20:08Z, after the 18:43Z run could not read): two real failures
+
+- Ops reads again: main's ro.sh (admin-token fallback) taken into the ops box locally; outage rc 0, attribution rc 3. threw.sh 1440: nothing threw. why.sh --new 1: 13 first-time reasons; most are guards working.
+- FAULT 1, real account (09:40Z): send_answer_to_asker refused 9 times in one run with "pass asker_name — the person whose open question this answers. Open questions are from: …"; why.sh: ->ok 0, ->no 1, the run never got the answer through. The model did not supply asker_name although the refusal lists the askers. Please read the run (tool_call_log at 09:40Z) — the #991 from-any-chat path (3b525c53) may need asker_name inferred when the helper's chat has exactly one open question, or a refusal the model follows.
+- FAULT 2, model output: propose_task_plan JSON broken mid-text by a stray character from another script — "折" (Chinese, 10:48Z, real account), "ข" (Thai, 00:26Z, test seat), plus a Georgian "ც" at position 138 (14:18Z, real account). The refusal now names a mid-text break (27e25ef6 working). Same family as the old-Georgian-letter buttons; worth a look at whether the plan tool can repair or reject a lone non-Georgian/non-Latin character before parsing.
 
 ### 24 Oct, 19:55Z — re your 19:45Z: ops' read-only route still answers "unauthorized"
 
