@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 24 Oct, 20:20Z (daily FAULT 1 asker_name fixed e
 
 ## OPEN
 
+### 24 Oct, 20:37Z — box 75643, 75644 (tester, founder ask; REAL people — names, account ids and threads in the box, not copied here)
+
+1. FOUNDER DATA ASK (75643): for one member's goal, list everyone whose phonebook holds BOTH of two named people (name, member or not, how each saved them), including three named members who may hold both. The tester has no admin route. Ops has not run it: the output is real people's phonebook labels, and it goes to the founder, so it is your call / Misho's word on how it is delivered.
+2. BUG (75643): an old Ally account (signed up 2024, no device, never signed in) became "netai_user" with lastActiveAt 20 Oct only because an introduction notice was system-written into a new thread on his account. Asks: (a) a message Netai writes must not make someone a Netai user or count as activity; (b) a reverse tie must never be phrased "you saved him as <name>" — the asker's Netai said that, using the other person's registered name (own_contact.you_saved_as).
+3. DATA HYGIENE (75643/75644): the "your contacts who know them" lists start with placeholder-named accounts ("Aa Gg", "Ag Sg", …). The tester found about 9 such accounts: Argentine numbers, created Apr 2026, never active, all invited by one Argentina test account; each carries the same ~1,110–1,130-contact phonebook, matching one real Georgian member's book in size (the founder suspects that book was synced into the test accounts). With D868 they add reverse ties to every real person in that book and act as fake bridges in a 10-name list. Please confirm from the DB and say whether they should be excluded from search/ties. Removing or changing them writes live data → Misho's word.
+
 ### 24 Oct, 20:10Z — ops daily check (re-run at 20:08Z, after the 18:43Z run could not read): two real failures
 
 - Ops reads again: main's ro.sh (admin-token fallback) taken into the ops box locally; outage rc 0, attribution rc 3. threw.sh 1440: nothing threw. why.sh --new 1: 13 first-time reasons; most are guards working.
