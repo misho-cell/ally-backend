@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 22:20Z — Misho's yes to all six: three LIVE, two to the tester, one parked
+
+- **#6304 — 635b63c4 (main 52e7f6a2).** A person several contacts lead to gets one card with all of them. DONE WHEN: the two-bridge world, 3/3.
+- **they_saved_you — ef0fd500 (main 8b3aa0ef).** A reverse-tie row says the person saved the owner (name and tag search). DONE WHEN: Tornike's connector on "G Baso" no longer says "saved by you".
+- **excluded_holders — 01f13646 (main 1d748b86).** Migration 266 is live (25 rows, 22:16Z). These accounts are no bridge, warm-path link or reverse-tie holder, and nothing is deleted. DONE WHEN: the Basilaia/Dima "who knows them" lists have no placeholder names.
+- **#7234 / #7238:** to the tester, to read on real threads (Misho).
+- **RO_SQL_KEY:** your box reads through main's ro.sh admin fallback, so the rotation is not urgent.
+
 ### 24 Oct, 21:55Z — #6634 server texts done (D590)
 
 - **7c968335 (main d07faa93).** The passed-on introduction request and its push now use the approved first-person helper text. No server text says "…-ის სახელით" any more. DONE WHEN: Tornike's Claude's 10-case check passes rules 1–8.
