@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { wroteInAThread } from './netaiMembership';
 import { isStaffUser } from './staff';
 import { fictionalTestAccountIds } from './testSeatTokens';
 import {
@@ -433,7 +434,7 @@ async function accountFactsForPhones(phones: string[]): Promise<Map<string, Acco
                SELECT 1 FROM "UserAlias" a WHERE a."contactId" = u.id LIMIT $2::int
              ) capped) AS own_contacts,
             (SELECT COUNT(*) FROM threads t WHERE t.user_id = u.id) AS opens,
-            (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+            (${wroteInAThread('u.id')}
              OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
              OR u.subscription_status = ANY($3::text[])) AS netai_user
      FROM "UserPhone" up
@@ -1815,7 +1816,7 @@ function socialProofBasis(): SocialProofBasis {
  */
 async function socialProofHolderIds(): Promise<number[]> {
   const basis = socialProofBasis();
-  const netaiClause = `(EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+  const netaiClause = `(${wroteInAThread('u.id')}
          OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
          OR u.subscription_status = ANY($1::text[]))`;
   const result = await query<{ id: number }>(
@@ -1914,7 +1915,7 @@ async function gatePassablePool(holderIds: number[]): Promise<{ phone: string; l
                regexp_replace(p.phone, '\\D', '', 'g')
          ${
            OLD_ALLY_IN_GATE_POOL
-             ? `AND (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+             ? `AND (${wroteInAThread('u.id')}
                   OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
                   OR u.subscription_status = ANY($5::text[]))`
              : ''

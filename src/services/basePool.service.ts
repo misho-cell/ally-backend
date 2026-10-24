@@ -1,4 +1,5 @@
 import { backgroundQuery, query } from '../db/postgres/client';
+import { wroteInAThread } from './netaiMembership';
 
 /**
  * Ticket 19: the pool is the whole base, not our phonebooks.
@@ -95,7 +96,7 @@ export async function walkBaseOnce(): Promise<WalkResult> {
     `WITH batch AS (
        SELECT u.id, u."createdAt" AS registered_at,
               NULLIF(TRIM(u.name), '') AS label,
-              (EXISTS (SELECT 1 FROM threads t WHERE t.user_id = u.id)
+              (${wroteInAThread('u.id')}
                OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = u.id::text)
                OR u.subscription_status = ANY($3::text[])) AS opened
        FROM "User" u

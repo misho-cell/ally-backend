@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { wroteInAThread } from './netaiMembership';
 import {
   accountDetailsFor,
   fetchAccountStates,
@@ -25,7 +26,7 @@ const PATH_QUERY_TIMEOUT_MS = 8_000;
  * three-step read walks every account's phonebook. membersOnly checks again.
  */
 export const IS_MEMBER_SQL = (userId: string, statusesParam: string): string => `(
-  EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${userId})
+  ${wroteInAThread(userId)}
   OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = ${userId}::text)
   OR EXISTS (SELECT 1 FROM "User" u WHERE u.id = ${userId}
               AND u.subscription_status = ANY(${statusesParam}::text[])))`;

@@ -96,7 +96,8 @@ export async function listUsers(
   }>(
     `SELECT u.id, u.name, u.city, u.subscription_status,
             u."createdAt" AS created_at,
-            (SELECT MAX(c.created_at) FROM conversations c WHERE c.user_id = u.id) AS last_active,
+            (SELECT MAX(c.created_at) FROM conversations c
+              WHERE c.user_id = u.id AND c.role = 'user' AND c.kind = 'message') AS last_active,
             (SELECT COUNT(*) FROM "UserAlias" ua WHERE ua."contactId" = u.id)       AS contacts_count,
             ARRAY(SELECT phone FROM "UserPhone" up WHERE up."userId" = u.id ORDER BY phone) AS phones
      FROM "User" u
