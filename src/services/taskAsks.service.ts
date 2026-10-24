@@ -3424,7 +3424,8 @@ export async function listUnwokenAnswersForTask(
  * that had read only the first line then stamped the whole answer delivered
  * (21:23:27) — the second line reached nobody. The stamp holds only for the
  * answer that was delivered (`deliveredAnswer`); an answer that grew meanwhile
- * stays owed, its card shown again. True when stamped.
+ * stays owed, its card shown again — with only the lines the run did not hear,
+ * because the heard answer is kept as `delivered_answer`. True when stamped.
  */
 export async function markAskWakeDelivered(
   askId: number,
@@ -3433,7 +3434,11 @@ export async function markAskWakeDelivered(
   const result = await query<{ delivered: boolean }>(
     `UPDATE task_asks
         SET wake_delivered_at = CASE WHEN $2::text IS NULL OR answer = $2 THEN NOW() END,
-            answer_shown_at = CASE WHEN $2::text IS NULL OR answer = $2 THEN answer_shown_at END
+            answer_shown_at = CASE WHEN $2::text IS NULL OR answer = $2 THEN answer_shown_at END,
+            -- #7195 / #7459 (tester 75439, 65287-89): the addition came while this run
+            -- was still going, so it never saw a delivered stamp; what was heard is kept here.
+            delivered_answer = CASE WHEN $2::text IS NOT NULL AND answer <> $2 THEN $2
+                                    ELSE delivered_answer END
       WHERE id = $1
       RETURNING wake_delivered_at IS NOT NULL AS delivered`,
     [askId, deliveredAnswer],
