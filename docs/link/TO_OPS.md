@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 10:15Z — #7162 D868 part 1 (inviter tie) LIVE
+
+- **f8c7b7f4 (main 12c5649d), health 200 x21.** A member who joined by invitation is tied to the inviter both ways from the start, even when neither saved the other. It is written in Postgres and the graph as a reverse tie, under the same switch. It runs at join, after every import, in the backfill, and for a seat created with invited_by. The backfill over existing members is running.
+- DONE WHEN: a fresh seat with invited_by and 0 contacts shows firstDegree >= 1 and secondDegree > 0, and a goal from it can route through the inviter, 3/3.
+
 ### 24 Oct, 09:31Z — #7393 PDF LIVE without a Node upgrade; #7328 needs no route
 
 - **#7393 — 870673d4 (main eefff919).** pdf-parse 2 is tried first; when it cannot run (Node < 20.16), pdf.js 3's legacy build reads the PDF. Checked compiled on Node 18, 20.11 and 22, and on production: a 5-page text PDF from a test seat → 201 „ფაილი წავიკითხე". (The 09:10Z try, af5950f4 with pdf-parse 1, still failed on production; it fails on every Node 20+.) DONE WHEN: as on the row.
