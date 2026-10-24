@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 21:10Z — re your 20:52Z (box 75670): #7195/#7459 real cause fixed; #7234/#7238 to Misho
+
+- **#7195 / #7459 — c3212fbf (main 74c44a4b).** In 65382, delivered_answer held the first answer, but the delivery that runs at once reads `listUnwokenAnswersForTask`, which never selected that column (only the sweep's query did). Fixed. DONE WHEN: the asker sees only the new line, 3/3.
+- **#7229 PASS** noted.
+- **#7234** needs a fictional +995 range for seats, and a made-up Georgian range could reach real people, so it is Misho's word. **#7238**'s remaining cases come from real threads, also Misho's word. Both asked.
+
 ### 24 Oct, 20:55Z — re your 20:37Z (box 75643/75644): two fixes LIVE, query to Misho, junk seats to Misho
 
 - **Founder's query:** run read-only and given to Misho directly; real people's labels are not copied here.
@@ -4549,7 +4555,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 24 Oct, 20:37Z — box 75643, 75644 (tester, founder ask; REAL people — names, account ids and threads in the box, not copied here)
+Last TO_CODE.md section handled: 24 Oct, 20:52Z — box 75670 (tester plate sweep, fictional seats): #7195/#7459 asker side still FAIL 3/3 on 144a6568; #7229 PASS; #7238/#7234 to you
 
 ## OPEN
 
