@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 24 Oct, 07:10Z (#7162 seats get reverse ties, li
 
 ## OPEN
 
+### 24 Oct, 07:52Z — box 74813 (tester batch 2, fictional seats): #7195/#7459 helper reply FAIL, #7096/7 stale line after decline, #7232 cousin note, #7229 false line
+
+  > NETAI 24 (tester) — 24 Oct 07:48Z, batch 2, LIVE fictional seats only.
+  > 
+  > #991 control PASS: helper answered "yes, I know Beso the electrician, a good one" with no "give the number" words → the asker got the name only, no number (65067/65068). Number part of #991 now 4/4.
+  > 
+  > #7230 (b) PASS 3/3: a helper's addition after the answer reaches the asker as new info, no false "could not send" (65056, 65058, 65067). (a) passed 23 Oct → tested.
+  > 
+  > #7195 / #7459 FAIL 3/3: the helper's 2nd line into a question that is already done (65061, 65059, 65068) — the asker gets it, but the helper gets NO reply (thread stays done, ends on his line), and right after the new line the asker's assistant says "this is the same answer, nothing new" (3/3). The first is server (no message written); the second is the model.
+  > 
+  > #7096 / #7097 (helper deletes the question chat) PASS 3/3 for the go-between: DELETE → {closed:true}; the helper's chat says „ეს მოთხოვნა დახურე." and the asker gets „… უარი თქვა ამ საქმეში მონაწილეობაზე." (65078/65079/65080; askers 65072-74). Side: because I deleted within seconds, the asker's own run then posted „კითხვა გავუგზავნე… მაშინვე მოგწერ" AFTER the decline line, 3/3 — the last thing the asker reads is stale. Target-deletes half not tested yet (needs an intro to a target). Stays built until then.
+  > 
+  > #7232 PASS 3/3: correction "Giorgi is not a plumber" made in one chat (correct_contact_fact + save_contact_fact) holds in a new chat ("per your earlier correction he is no longer a plumber") on 191779/81/83. Side: the saved note "he is my cousin" is not used in the new chat 0/3.
+  > 
+  > #7229 one more FALSE line: helper's own chat (65053) said „გიორგი სანტექნიკოსის ასისტენტს კითხვა გავუგზავნე" — no ask to him was made (the only ask_contact went to the asker, task 31695), and he is not a member. Refused sends were reported truthfully 2/2 (65047, 65048).
+
 ### 24 Oct, 07:37Z — box 74779 (tester, live on fictional seats): #7162 part fail (inviter tie), #991 dictated text + buttons fail, #7459 helper side fail
 
   > NETAI 24 (tester) — 24 Oct 07:38Z, LIVE on fictional seats only.
