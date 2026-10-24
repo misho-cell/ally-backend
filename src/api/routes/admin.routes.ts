@@ -369,6 +369,7 @@ import { FOLLOW_UP_IN_CONVERSATION_FLAG } from '../../services/sharedRequestThre
 import { confirmedWarmTieSql } from '../../services/chorusCap';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { adminReadOnlyQuery } from './roQuery.routes';
+import { RoUrlStatus, roUrlStatus } from '../../services/roUrlStatus.service';
 
 const RO_SQL_WINDOW_MS = 60_000;
 const RO_SQL_PER_WINDOW = 30;
@@ -427,6 +428,24 @@ adminRouter.post(
   '/ro-sql',
   rateLimit({ windowMs: RO_SQL_WINDOW_MS, max: RO_SQL_PER_WINDOW }),
   adminReadOnlyQuery,
+);
+
+// What is wrong with DATABASE_RO_URL, without showing any of it (24 Oct).
+adminRouter.get(
+  '/ro-sql/status',
+  rateLimit({ windowMs: RO_SQL_WINDOW_MS, max: RO_SQL_PER_WINDOW }),
+  async (_req: Request, res: Response<ApiResponse<RoUrlStatus>>, next: NextFunction) => {
+    try {
+      const status = await roUrlStatus(process.env.DATABASE_RO_URL, {
+        host: process.env.POSTGRES_HOST,
+        port: process.env.POSTGRES_PORT,
+        database: process.env.POSTGRES_DB,
+      });
+      res.status(200).json({ success: true, data: status });
+    } catch (err) {
+      next(err);
+    }
+  },
 );
 
 // App flags an admin may flip from the console. Whitelist on purpose — a typo
