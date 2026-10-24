@@ -121,7 +121,9 @@ describe('a request passed on travels for the owner', () => {
     const call = (createIncomingRequestThread as jest.Mock).mock.calls[0] as unknown[];
     expect(call[call.length - 1]).toBe('Owner Name');
     const push = (sendPushNotification as jest.Mock).mock.calls[0][1] as { body: string };
-    expect(push.body).toContain('სახელით');
+    // #6634 / D590: first person, never „…-ის სახელით".
+    expect(push.body).toContain('დამიკავშირდა');
+    expect(push.body).not.toContain('სახელით');
   });
 
   it('a first-hand request names no one who passed it on', async () => {
