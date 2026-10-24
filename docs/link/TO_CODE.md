@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 19:45Z (RO DB URL fixed, main f8e3c1e3; ops x-ro-key still unauthorized, see OPEN 19:55Z).
+Last TO_OPS.md section handled: 24 Oct, 19:55Z (#7195/#7459 asker 144a6568 main 4e700a59; #7229 9431b4b3 main 7fa2d92f; #6304 rule is Misho's call; to tester).
 
 ## OPEN
 
