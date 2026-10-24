@@ -737,7 +737,7 @@ export function introMediatorFollowUp(
     case 'es':
       return `¡Gracias! Le he dado a ${requesterName} el contacto de ${targetName}${told(` y también he avisado a ${targetName}`)}. A partir de aquí siguen ellos.`;
     default:
-      return `მადლობა! ${geoName(requesterName, 'dat')} გადავეცი ${geoName(targetName, 'gen')} კონტაქტი${told(` და ${geoName(targetName, 'dat')}-აც ვაცნობე`)}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`;
+      return `მადლობა! ${geoName(requesterName, 'dat')} გადავეცი ${geoName(targetName, 'gen')} კონტაქტი${told(` და ${geoName(targetName, 'dat')}აც ვაცნობე`)}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`;
   }
 }
 

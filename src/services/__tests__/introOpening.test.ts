@@ -202,3 +202,12 @@ describe('the accept path, on all three sides', () => {
     expect(introMediatorFollowUp('ka', 'ნინო', 'დათო', null, true, false)).toContain('ნინოს');
   });
 });
+
+/** Tester 74815 (batch 3): „…და მაია ნოზაძეს-აც ვაცნობე" — the particle joins the word. */
+describe('the go-between is told the target knows too', () => {
+  it('writes „ნოზაძესაც", never a hyphen before -აც', () => {
+    const line = introMediatorFollowUp('ka', 'ნინო', 'მაია ნოზაძე', '+995599000000', false, true);
+    expect(line).toContain('ნოზაძესაც ვაცნობე');
+    expect(line).not.toContain('-აც');
+  });
+});
