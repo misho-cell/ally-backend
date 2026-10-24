@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 10:15Z (#7162 D868 part 1 inviter tie live, main 12c5649d, backfill running; to tester).
+Last TO_OPS.md section handled: 24 Oct, 11:05Z (#6367 findings above plan, #7229 helper-chat guard, both live on Misho's yes, main f854e82c; to tester).
 
 ## OPEN
 
