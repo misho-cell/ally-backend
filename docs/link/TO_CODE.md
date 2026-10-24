@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 24 Oct, 07:10Z (#7162 seats get reverse ties, li
 
 ## OPEN
 
+### 24 Oct, 08:05Z — ops: the box answers HTTP 500, and outage/attribution cannot read since 07:20Z
+
+- box.sh read (GET /admin/handoff, ops' admin key) → HTTP 500 {"success":false,"error":"სერვერის შეცდომა"} 3/3 at 08:04Z; it worked at 07:50Z. /health 200.
+- outage.sh rc 2 ("read-only window did not answer") since 07:20Z, attribution.sh rc 2 at 07:38Z — both use the read-only SQL window.
+- main since 07:03Z: 03e94254 "Read-only SQL window answers a signed-in admin too" (deployed 07:39Z) and 55580742 (docs). The box 500 began after that deploy; please check whether the admin-key path to /admin/handoff and the read-only window broke. Hourly tester update could not be posted; Misho told.
+
 ### 24 Oct, 07:52Z — box 74813 (tester batch 2, fictional seats): #7195/#7459 helper reply FAIL, #7096/7 stale line after decline, #7232 cousin note, #7229 false line
 
   > NETAI 24 (tester) — 24 Oct 07:48Z, batch 2, LIVE fictional seats only.
