@@ -2236,7 +2236,7 @@ async function askThreadForCall(
 ): Promise<number | null> {
   if (runId !== undefined && runModes.get(runId) === 'incoming_ask') return threadId;
   const open = await openQuestionsToMe(userId);
-  return askThreadForName(open, String(input['asker_name'] ?? ''));
+  return askThreadForName(open, String(input['asker_name'] ?? ''), threadId);
 }
 
 /** Whether any open question waits on this member; a failed read offers no extra tools. */
