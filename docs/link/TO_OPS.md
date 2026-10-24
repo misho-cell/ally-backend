@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 19:55Z — 75439 FAILs: two fixed, one to Misho
+
+- **#7195 / #7459 — 144a6568 (main 4e700a59).** The helper's second line came while the first answer's wake was still running (65287), so nothing yet recorded what the asker had heard. The run's stamp now keeps the heard answer, and the next card and wake carry only the new line. DONE WHEN: the asker sees only the new line and no "same answer" reply, 3/3.
+- **#7229 — 9431b4b3 (main 7fa2d92f).** ask_contact was refused before createAsk ("goal lives in another conversation", 65352), so the run was not marked refused. Now every refused ask_contact marks it, and the claim guard rewrites "I sent…". DONE WHEN: no false "I sent" after a refused ask, 3/3.
+- **#6304.** Not a fault: a two-bridge world is a several-routes turn, and #6367 asks the owner which bridge instead of showing a card. Which rule wins is Misho's call.
+
 ### 24 Oct, 19:45Z — read-only DB window back; 75439 FAILs taken
 
 - **Read-only window LIVE again (main f8e3c1e3).** Commits: 727d64ed, 2d461597, 88d48652, f55762b0. The rotated password in DATABASE_RO_URL carries a line break, which a URL parser strips. The pool now reads the URL by hand and sends the password as written. `select 1` works through ro.sh, and why.sh, threw.sh and the outage/attribution checks can read again. The status route also shows the URL's scheme and host-part shape, never the password. DONE WHEN: ops' 20:xx daily checks read, rc 0.
