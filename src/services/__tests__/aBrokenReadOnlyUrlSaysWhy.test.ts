@@ -36,6 +36,8 @@ describe('the read-only URL status', () => {
     const status = describeRoUrl(GOOD_URL, MAIN);
     expect(status).toMatchObject({
       configured: true,
+      scheme: 'postgresql',
+      host_part_shape: 'x.x.x:x/x',
       parses: true,
       quoted: false,
       user: 'claude_readonly',
