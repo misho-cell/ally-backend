@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/postgres/client';
 import { allFictionalNumbers, FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { saveSeatGraph } from './seatGraph.service';
+import { tieSavedMembersToSaver } from './reverseTies.service';
 import { adjustTestAccountTokens } from './tokenWallet.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
 import { grantWhateverFreePeriodIsOwed } from './auth.service';
@@ -68,6 +69,8 @@ export interface NewTestSeat {
   readonly tokens: number;
   /** How many of the phonebook's contacts reached the graph the second circle reads. */
   readonly graph_edges: number;
+  /** #7162: how many held seats now have this seat as a tie, as after a real upload. */
+  readonly reverse_ties: number;
 }
 
 /**
@@ -516,6 +519,7 @@ export async function createTestSeat(
     console.error(`[test-seat] ${userId}: graph edges not written:`, (err as Error).message);
     return 0;
   });
+  const reverseTies = await tieSavedMembersToSaver(Number(userId), [...phonebook.keys()]);
   const balance =
     tokens === 0
       ? 0
@@ -530,7 +534,14 @@ export async function createTestSeat(
   console.log(
     `[test-seat] ${createdBy} created ${seatName} (${userId}) on a free fictional number, ${saved} contact(s), ${graphEdges} graph edge(s), ${balance} token(s) — ${why}`,
   );
-  return { userId, name: seatName, phone, tokens: balance, graph_edges: graphEdges };
+  return {
+    userId,
+    name: seatName,
+    phone,
+    tokens: balance,
+    graph_edges: graphEdges,
+    reverse_ties: reverseTies,
+  };
 }
 
 /**

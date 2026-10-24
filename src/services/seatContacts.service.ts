@@ -2,6 +2,7 @@ import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { query } from '../db/postgres/client';
 import { mirrorSeatGraph, parseSeatLabels, saveSeatGraph } from './seatGraph.service';
 import { updateTask } from './taskStore.service';
+import { tieSavedMembersToSaver } from './reverseTies.service';
 
 /**
  * §60 — PUT A MADE-UP, TAGGED CONTACT INTO A TEST SEAT'S PHONEBOOK.
@@ -45,7 +46,7 @@ export interface SeatContact {
 }
 
 export type AddContactResult =
-  | { ok: true; contact: SeatContact; graph_edges: number | null }
+  | { ok: true; contact: SeatContact; graph_edges: number | null; reverse_ties: number }
   | { ok: false; refusal: ContactRefusal; detail?: string };
 
 /**
@@ -173,10 +174,13 @@ export async function addSeatContact(
     saveSeatGraph(String(seatUserId), new Map([[phone, cleanName]])),
   );
   parseSeatLabels(String(seatUserId));
+  // #7162: a seat saved here gets this seat as a tie, as a real upload does.
+  const reverseTies = await tieSavedMembersToSaver(seatUserId, [phone]);
   return {
     ok: true,
     contact: { seat: seatUserId, phone, name: cleanName, tag: cleanTag },
     graph_edges: graphEdges,
+    reverse_ties: reverseTies,
   };
 }
 

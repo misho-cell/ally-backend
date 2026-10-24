@@ -1,3 +1,8 @@
+const mockTie = jest.fn().mockResolvedValue(0);
+jest.mock('../reverseTies.service', () => ({
+  __esModule: true,
+  tieSavedMembersToSaver: (...args: unknown[]) => mockTie(...args),
+}));
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
 import { readFileSync } from 'fs';
@@ -140,7 +145,10 @@ describe('what it writes when it accepts', () => {
       ok: true,
       contact: { seat: 172101, phone: '+12025550150', name: 'Tinatin R', tag: 'arci' },
       graph_edges: 0,
+      reverse_ties: 0,
     });
+    // #7162: a seat saved here gets this seat as a tie, as after a real upload.
+    expect(mockTie).toHaveBeenCalledWith(172101, ['+12025550150']);
     const written = mockQuery.mock.calls
       .map(([sql]) => String(sql))
       .filter((s) => s.includes('INSERT'));

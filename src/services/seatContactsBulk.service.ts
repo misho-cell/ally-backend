@@ -7,6 +7,7 @@ import {
   removeSeatGraph,
   saveSeatGraph,
 } from './seatGraph.service';
+import { tieSavedMembersToSaver } from './reverseTies.service';
 
 /**
  * §60 IN BULK — ROW 321 ON A SEAT, WITHOUT WAITING FOR GIORGI.
@@ -35,7 +36,13 @@ export interface BulkContactIn {
 export type BulkRefusal = ContactRefusal | 'empty' | 'too_many' | 'duplicate_phone';
 
 export type BulkResult =
-  | { ok: true; seat: number; added: number; graph_edges: number | null }
+  | {
+      ok: true;
+      seat: number;
+      added: number;
+      graph_edges: number | null;
+      reverse_ties: number;
+    }
   | { ok: false; refusal: BulkRefusal; index?: number; detail?: string };
 
 interface Clean {
@@ -124,7 +131,15 @@ export async function addSeatContactsBulk(
     saveSeatGraph(String(seatUserId), new Map(clean.map((c) => [c.phone, c.name]))),
   );
   parseSeatLabels(String(seatUserId));
-  return { ok: true, seat: seatUserId, added: clean.length, graph_edges: graphEdges };
+  // #7162: every seat saved here gets this seat as a tie, as a real upload does.
+  const reverseTies = await tieSavedMembersToSaver(seatUserId, phones);
+  return {
+    ok: true,
+    seat: seatUserId,
+    added: clean.length,
+    graph_edges: graphEdges,
+    reverse_ties: reverseTies,
+  };
 }
 
 /**
