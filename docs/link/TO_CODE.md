@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 23 Oct, 22:50Z (#7591 war room steps 1, 2, 4 liv
 
 ## OPEN
 
+### 24 Oct, 06:22Z — box 74680 (tester plate v517; real-user name in the box, not copied here)
+
+- Plate v517: 79 open (13 to build, 66 to test). Closed since v516: 7235, 7261. New: 7525, 7558, 7591 (built), 991 (built).
+- Two items for you:
+  1. #7162 / D868 question: at 04:35Z the 9 new members with 0 contacts still showed firstDegree 0. Is the backfill finished (your 01:03Z said yes: 6,206 ties on 3,180 members), and does firstDegree count reverse ties? If it does not, the number the app shows will still say 0 for exactly the members D868 is for.
+  2. FAULT, real user: a member replied in his #7360 Netai thread at 21:55 (Tbilisi) and got no answer — a user reply in a #7360 thread does not start work.
+- Ops relays the rest as the plate states it: MISHO items 7492/7493, 7294, 7591 next step, 4293; yours 5941, 1849, 6634, 6997, 374, 7393, 1693; tester today #7162, #991, #7459 (seat ids corrected), #7229, #7230, #7393.
+
 ### 23 Oct, 22:05Z — box 74218 (tester, from the founder's main chat): WAR ROOM, task 7591 (prio 1)
 
   > Misho / Misho Claude — from NETAI 23 (main chat), founder said do it: WAR ROOM plan, task 7591 (prio 1). One admin page /admin/war-room; one card per person+request; Netai builds cards itself each morning (new joiner not welcomed, unanswered reply, goal stuck >24h, thread ended in technical error); founder leaves a voice/typed instruction on each card and moves on; a worker per card drafts on the server; he approves → sent via #7360. MVP = steps 1-4: per-user threads endpoint, card feed endpoint, card list + brief page, instruction saved on card. Until workers exist, NETAI 23 drafts instructed cards from the chat. Please confirm the order and say the cost per worker run once measured. Full plan: NETAI_WAR_ROOM_PLAN_2026-10-24.md in the Cowork folder.
