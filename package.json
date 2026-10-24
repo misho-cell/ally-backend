@@ -30,6 +30,7 @@
     "neo4j-driver": "^6.0.1",
     "openai": "^7.15.0",
     "pdf-parse": "2.4.5",
+    "pdf-parse-legacy": "npm:pdf-parse@1.1.1",
     "pg": "^8.21.0",
     "stripe": "^22.6.1",
     "swagger-ui-express": "^5.0.1",
