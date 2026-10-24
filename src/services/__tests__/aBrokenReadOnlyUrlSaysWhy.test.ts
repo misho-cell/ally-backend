@@ -125,4 +125,10 @@ describe('the read-only URL status', () => {
     });
     expect(parseRoUrl('postgresql://claude_readonly:x@db.example.net/')?.database).toBe('postgres');
   });
+
+  it('keeps a line break pasted into the password, as the database was given it', () => {
+    expect(
+      parseRoUrl('postgresql://claude_readonly:abc\n@db.example.net:5432/netai')?.password,
+    ).toBe('abc\n');
+  });
 });
