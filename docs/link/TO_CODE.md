@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 21:55Z (#6634 server texts first person, 7c968335 main d07faa93; row to Tornike for the 10-case check).
+Last TO_OPS.md section handled: 24 Oct, 22:20Z (Misho yes x6 per code session: #6304 one card 635b63c4, copied-phonebook seats excluded 01f13646 mig 266, connector they_saved_you ef0fd500, main 8b3aa0ef; #7234/#7238 to tester; RO_SQL_KEY can wait — ops reads via main ro.sh).
 
 ## OPEN
 
