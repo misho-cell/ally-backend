@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { REVERSE_TIE_SOURCE } from './reverseTieSource';
 import { getSession } from '../db/neo4j/client';
 import { getCompositeKeysForUsers } from './neo4j.keys';
 
@@ -18,7 +19,7 @@ import { getCompositeKeysForUsers } from './neo4j.keys';
  * search can see.
  */
 export const REVERSE_TIES_FLAG = 'reverse_ties';
-export const REVERSE_TIE_SOURCE = 'reverse_tie';
+export { REVERSE_TIE_SOURCE };
 
 const TIE_QUERY_TIMEOUT_MS = 8_000;
 /** A member saved in more phonebooks than this is a public figure; the first ones are enough. */

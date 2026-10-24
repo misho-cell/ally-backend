@@ -11,6 +11,7 @@ import {
 import { getExcludedPhones } from '../block.service';
 import { boundaryExclusionsFor } from '../askBoundary.service';
 import { normalizePhone } from '../phone';
+import { REVERSE_TIE_SOURCE } from '../reverseTieSource';
 import { claimWords, correctionsMatching } from '../factCorrections.service';
 import { isDisplayableTag } from './getContactFullProfile';
 import { collapseMergedPhones } from './mergedIdentities';
@@ -138,9 +139,15 @@ const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
  * seat's own name, saved first, and „ლევანი ტესტიძე", saved after. MAX picked the first by
  * alphabet, so the owner searched for Levani and was shown a name she never typed. Her
  * LATEST label is the one she knows the person by.
+ *
+ * Tester 75643 (real account, 24 Oct): a reverse tie — the row the server writes
+ * when someone who saved the owner joins — carries that person's REGISTERED name,
+ * and it read as the owner's own label: „you have him saved as …", which the
+ * owner never typed. It is not her words, so it is not a label here.
  */
 export const LATEST_OWN_LABEL = `(array_agg(NULLIF(TRIM(ua.alias), '') ORDER BY ua.id DESC)
-            FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL))[1]`;
+            FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL
+                      AND ua.source IS DISTINCT FROM '${REVERSE_TIE_SOURCE}'))[1]`;
 
 export const DISPLAY_NAME = `COALESCE(
           ${LATEST_OWN_LABEL},

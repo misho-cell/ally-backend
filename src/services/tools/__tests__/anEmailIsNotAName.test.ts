@@ -103,7 +103,7 @@ describe('an email is not a label either', () => {
 describe('the owner’s latest label', () => {
   it('is read newest first, empty labels skipped', () => {
     expect(LATEST_OWN_LABEL).toContain('ORDER BY ua.id DESC');
-    expect(LATEST_OWN_LABEL).toContain("FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL)");
+    expect(LATEST_OWN_LABEL).toContain("FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL");
     expect(DISPLAY_NAME).toContain(LATEST_OWN_LABEL);
   });
 });
