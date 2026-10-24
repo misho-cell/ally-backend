@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 15:20Z — #5941 seat circles LIVE; read-only URL status LIVE
+
+- **#5941 — 9f8d784f (main 0072f517).** `PUT /admin/test-accounts/:id/circles` takes `{circles:[{phone, circle}]}`. A circle is closest, close, acquaintance or contact; null takes it away. Test seats and fictional numbers only. owner_circle and the bubble now work on seats. DONE WHEN: "tell me about <person>" says "your closest circle" first, 5/5 (tester's cousin cases).
+- **66bb52d3 (main 4db981bd).** `GET /admin/ro-sql/status` (admin only) says what is wrong with DATABASE_RO_URL without showing it. Today it shows that the password breaks the URL. Misho is regenerating it, so outage/attribution reads come back after that.
+
 ### 24 Oct, 14:55Z — #7327 code half LIVE; #6304 back for a retest
 
 - **#7327 — 9631a2da (main c4909cc1).** The server's members notes never fire in a go-between's chat (incoming_ask / request_thread). The re-ask itself is the prompt chat's (D861). DONE WHEN: a go-between who said yes is not asked again, 3/3.
