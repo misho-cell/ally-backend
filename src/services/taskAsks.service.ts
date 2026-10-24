@@ -2429,6 +2429,8 @@ async function addedAfterDelivery(askId: number, text: string): Promise<boolean>
   const result = await query<{ id: number }>(
     `UPDATE task_asks
         SET answer = answer || E'\n' || $2,
+            -- #7195 / #7459 retest: what the asker already heard, so the wake carries only the rest.
+            delivered_answer = CASE WHEN wake_delivered_at IS NOT NULL THEN answer ELSE delivered_answer END,
             wake_delivered_at = NULL,
             -- #6865 retest: the card shows again, with the line that came later.
             answer_shown_at = NULL
@@ -3353,6 +3355,8 @@ export interface UnwokenAnswer {
   id: number;
   task_id: number;
   answer: string | null;
+  /** #7195 / #7459 retest: the answer as it last reached the asker, before an addition. */
+  delivered_answer?: string | null;
   from_name: string | null;
   task_status: string | null;
   /** A goal opened through the connector has no thread — nothing to wake INTO. */
@@ -3372,7 +3376,8 @@ export interface UnwokenAnswer {
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
 export async function listUnwokenAnswers(limit: number): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
-    `SELECT ta.id, ta.task_id, ta.answer, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name, t.status AS task_status,
+    `SELECT ta.id, ta.task_id, ta.answer, ta.delivered_answer,
+            ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name, t.status AS task_status,
             t.thread_id AS task_thread_id, ta.ask_thread_id
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id

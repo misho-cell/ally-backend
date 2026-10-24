@@ -1,4 +1,5 @@
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
+import { unheardAnswerOf } from './answerAddition';
 import { randomUUID } from 'crypto';
 import { releaseDueHeldAsks } from './heldAsks.service';
 import { answerOnlySaysNo, noteQuietAfterDecline } from './quietSystemRun';
@@ -679,7 +680,7 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
   if (await conversationIsBusy(taskId, owed[0].task_thread_id)) return 0;
   const arrived = await Promise.all(
     owed.map(async (ask) => ({
-      answer: ask.answer ?? '',
+      answer: unheardAnswerOf(ask),
       fromName: ask.from_name,
       // D648: an answer is the helper's meaning in the assistant's words, never a quotation.
       verbatim: false,
