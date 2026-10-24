@@ -15,6 +15,11 @@ messages in their name.
 
 ---
 
+## 24 October, 00:12Z — LIVE (#7591): every war-room route your page calls is in production
+
+Production main 9189d082 (since 23 Oct 23:24Z), health 200: `GET /admin/users/:id/threads`, `GET /admin/war-room/cards`, `PATCH /admin/war-room/cards/:id` (instruction / draft / status), `POST /admin/war-room/cards/:id/send`, and `sent_text` on every card. First live read: 60 cards. The page can go to `main`.
+
+
 ## 23 October, 23:55Z — re your 23:20Z and 23:40Z (#7591): sent_text added; the mic; your JSON reading is right
 
 - **`{{ }}` was my slip** (a template escape that leaked into the doc); it is fixed above. Plain JSON, exactly as you send it: `{ "text": "..." }`, or an empty body to send the draft.
