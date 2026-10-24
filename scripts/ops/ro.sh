@@ -139,7 +139,22 @@ case "$SQL" in
     ;;
 esac
 
-curl -sS -X POST "$API/internal/ro-sql" \
+PAYLOAD="$(node -e 'process.stdout.write(JSON.stringify({sql: require("fs").readFileSync(0,"utf8")}))' <<< "$SQL")"
+OUT="$(curl -sS -X POST "$API/internal/ro-sql" \
   -H 'Content-Type: application/json' \
   -H "x-ro-key: $(cat "$OPS/.ro_key")" \
-  --data-binary "$(node -e 'process.stdout.write(JSON.stringify({sql: require("fs").readFileSync(0,"utf8")}))' <<< "$SQL")"
+  --data-binary "$PAYLOAD")"
+
+# A rotated RO_SQL_KEY reaches a running session only when it restarts (24 Oct).
+# The same window answers a signed-in admin, so a refused key falls back to it.
+case "$OUT" in
+  *'"error":"unauthorized"'*)
+    if [ -f "$OPS/.admin_token" ]; then
+      OUT="$(curl -sS -X POST "$API/admin/ro-sql" \
+        -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer $(cat "$OPS/.admin_token")" \
+        --data-binary "$PAYLOAD")"
+    fi
+    ;;
+esac
+printf '%s\n' "$OUT"

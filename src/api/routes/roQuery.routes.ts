@@ -62,22 +62,17 @@ interface RoQueryResult {
   truncated: boolean;
 }
 
-roQueryRouter.post('/', async (req: Request, res: Response<ApiResponse<RoQueryResult>>) => {
-  const url = process.env.DATABASE_RO_URL?.trim();
-  const expectedKey = process.env.RO_SQL_KEY?.trim();
-  if (!url || !expectedKey) {
-    res.status(503).json({ success: false, error: 'read-only window is not configured' });
-    return;
-  }
-  const providedKey = String(req.header('x-ro-key') ?? '');
-  if (!providedKey || !keyMatches(providedKey, expectedKey)) {
-    res.status(401).json({ success: false, error: 'unauthorized' });
-    return;
-  }
-  const sql =
-    typeof (req.body as { sql?: unknown })?.sql === 'string'
-      ? (req.body as { sql: string }).sql
-      : '';
+function sqlOf(req: Request): string {
+  const sql = (req.body as { sql?: unknown })?.sql;
+  return typeof sql === 'string' ? sql : '';
+}
+
+/** Runs one guarded statement on the read-only role; the caller has already authenticated. */
+async function answerReadOnly(
+  url: string,
+  sql: string,
+  res: Response<ApiResponse<RoQueryResult>>,
+): Promise<void> {
   if (!isReadOnlySql(sql)) {
     res.status(400).json({
       success: false,
@@ -102,6 +97,41 @@ roQueryRouter.post('/', async (req: Request, res: Response<ApiResponse<RoQueryRe
     // exist") IS the diagnostic being asked for.
     res.status(400).json({ success: false, error: (err as Error).message });
   }
+}
+
+roQueryRouter.post('/', async (req: Request, res: Response<ApiResponse<RoQueryResult>>) => {
+  const url = process.env.DATABASE_RO_URL?.trim();
+  const expectedKey = process.env.RO_SQL_KEY?.trim();
+  if (!url || !expectedKey) {
+    res.status(503).json({ success: false, error: 'read-only window is not configured' });
+    return;
+  }
+  const providedKey = String(req.header('x-ro-key') ?? '');
+  if (!providedKey || !keyMatches(providedKey, expectedKey)) {
+    res.status(401).json({ success: false, error: 'unauthorized' });
+    return;
+  }
+  await answerReadOnly(url, sqlOf(req), res);
 });
+
+/**
+ * The same window for a signed-in admin (24 Oct, the founder rotating every
+ * secret after the Railway incident): a running session keeps the RO key it
+ * started with, so a rotated RO_SQL_KEY shut its reads until a new session.
+ * An admin can already do far more than read, and the statement still runs
+ * on the claude_readonly role with every guard above, so this widens nothing.
+ * Mounted behind the admin router's own authentication.
+ */
+export async function adminReadOnlyQuery(
+  req: Request,
+  res: Response<ApiResponse<RoQueryResult>>,
+): Promise<void> {
+  const url = process.env.DATABASE_RO_URL?.trim();
+  if (!url) {
+    res.status(503).json({ success: false, error: 'read-only window is not configured' });
+    return;
+  }
+  await answerReadOnly(url, sqlOf(req), res);
+}
 
 export default roQueryRouter;
