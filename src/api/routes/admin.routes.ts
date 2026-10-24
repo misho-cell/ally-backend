@@ -370,6 +370,7 @@ import { confirmedWarmTieSql } from '../../services/chorusCap';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { adminReadOnlyQuery } from './roQuery.routes';
 import { RoUrlStatus, roUrlStatus } from '../../services/roUrlStatus.service';
+import { SeatCircleIn, setSeatCircles } from '../../services/seatCircles.service';
 
 const RO_SQL_WINDOW_MS = 60_000;
 const RO_SQL_PER_WINDOW = 30;
@@ -2955,6 +2956,47 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-contact-bulk-remove]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #5941 (D860): how close a test seat holds each made-up contact or other seat
+ * — closest, close, acquaintance or contact; null takes it away. Test seats and
+ * reserved fictional numbers only; all-or-nothing.
+ */
+adminRouter.put(
+  '/test-accounts/:id/circles',
+  param('id').isInt({ min: 1 }),
+  body('circles').isArray({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'circles must be a non-empty array' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { circles } = req.body as { circles: SeatCircleIn[] };
+    try {
+      const result = await setSeatCircles(seatId, circles);
+      if (!result.ok) {
+        res.status(400).json({
+          success: false,
+          error: result.refusal,
+          ...(result.index !== undefined && { index: result.index }),
+          ...(result.detail !== undefined && { detail: result.detail }),
+        });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-circles] admin ${(req as AuthenticatedRequest).user.userId} set ` +
+          `${result.set} and cleared ${result.cleared} circles on seat ${seatId}`,
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-circles]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
