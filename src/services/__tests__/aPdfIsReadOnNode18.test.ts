@@ -10,17 +10,28 @@ jest.mock('pdf-parse', () => ({
     }
   },
 }));
-jest.mock('pdf-parse-legacy/lib/pdf-parse.js', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockLegacy(...args),
+jest.mock('pdfjs-legacy/legacy/build/pdf.js', () => ({
+  getDocument: (...args: unknown[]) => ({ promise: mockLegacy(...args) }),
 }));
+
+/** A pdf.js document whose pages hold these lines. */
+function documentOf(pages: readonly string[]): unknown {
+  return {
+    numPages: pages.length,
+    getPage: (n: number) =>
+      Promise.resolve({
+        getTextContent: () => Promise.resolve({ items: [{ str: pages[n - 1] }] }),
+      }),
+    destroy: () => Promise.resolve(),
+  };
+}
 
 import { pdfText } from '../documentText';
 
 /**
  * #7393 retest (tester 73723, PDF FAIL 2/2): the server runs Node 18 and
- * pdf-parse 2 needs Node 20.16 („DOMMatrix is not defined"). The old reader
- * takes over when the current one cannot read.
+ * pdf-parse 2 needs Node 20.16 („DOMMatrix is not defined"). pdf.js 3's
+ * legacy build takes over when the current one cannot read.
  */
 beforeEach(() => {
   jest.resetAllMocks();
@@ -34,11 +45,11 @@ describe('a PDF on either runtime', () => {
     expect(mockLegacy).not.toHaveBeenCalled();
   });
 
-  it('is read by pdf-parse 1 when pdf-parse 2 cannot run (Node 18)', async () => {
+  it('is read by pdf.js 3 when pdf-parse 2 cannot run (Node 18, 20.11)', async () => {
     mockCurrent.mockRejectedValueOnce(new Error('DOMMatrix is not defined'));
-    mockLegacy.mockResolvedValueOnce({ text: 'Acme LLC, 2 vans\n', numpages: 1 });
-    await expect(pdfText(Buffer.from('%PDF'))).resolves.toBe('Acme LLC, 2 vans');
-    expect(mockLegacy).toHaveBeenCalledWith(expect.any(Buffer), { max: 100 });
+    mockLegacy.mockResolvedValueOnce(documentOf(['Acme LLC, 2 vans', 'Total 60000 GEL']));
+    await expect(pdfText(Buffer.from('%PDF'))).resolves.toBe('Acme LLC, 2 vans\nTotal 60000 GEL');
+    expect(mockLegacy).toHaveBeenCalledWith(expect.objectContaining({ isEvalSupported: false }));
   });
 
   it('fails the one upload when neither can read it', async () => {
