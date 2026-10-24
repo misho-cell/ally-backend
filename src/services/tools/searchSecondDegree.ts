@@ -18,6 +18,7 @@ import {
   NO_LINK_COLOURS,
 } from '../colourLinks';
 import { normalizePhone } from '../phone';
+import { notAnExcludedHolder } from '../excludedHolders.service';
 import { collapseMergedPhones } from './mergedIdentities';
 import { rolesFromLabels } from './labelEmployer';
 import { nameOnlyFromLabel } from '../labelReader.service';
@@ -1085,7 +1086,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       `WITH friend_users AS (
          SELECT up."userId", up.phone AS via_phone
          FROM "UserPhone" up
-         WHERE up.phone = ANY($2)
+         WHERE up.phone = ANY($2) AND ${notAnExcludedHolder('up."userId"')}
        ),
        -- Row 108. ONE scan over every bridge's rows, not one scan PER bridge.
        --

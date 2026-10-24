@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { REVERSE_TIE_SOURCE } from './reverseTieSource';
+import { notAnExcludedHolder } from './excludedHolders.service';
 import { getSession } from '../db/neo4j/client';
 import { getCompositeKeysForUsers } from './neo4j.keys';
 
@@ -48,7 +49,7 @@ export async function holdersOf(memberId: number): Promise<Holder[]> {
        JOIN "UserPhone" mine ON mine.phone = ua.phone AND mine."userId" = $1
        JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
        JOIN "UserPhone" hp ON hp."userId" = ua."contactId"
-      WHERE ua."contactId" <> $1
+      WHERE ua."contactId" <> $1 AND ${notAnExcludedHolder('ua."contactId"')}
       ORDER BY ua."contactId", hp.phone
       LIMIT $2`,
     [memberId, MAX_HOLDERS],

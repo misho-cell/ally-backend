@@ -16,6 +16,7 @@ import {
   NO_LINK_COLOURS,
 } from '../colourLinks';
 import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from './membership';
+import { excludedHolderPhones } from '../excludedHolders.service';
 
 /**
  * The warm-path walk to an IDENTIFIED target (Ticket 11 Task 10; D132, the
@@ -429,7 +430,11 @@ export async function findWarmPath(
     };
   }
 
-  const blocked = new Set((await getExcludedPhones(userId)).map(normalizePhone));
+  // Misho (24 Oct): an account that never vouches is never a link either.
+  const blocked = new Set([
+    ...(await getExcludedPhones(userId)).map(normalizePhone),
+    ...(await excludedHolderPhones()),
+  ]);
   // Middlemen only: the first key is the user, the last the target.
   const graphMiddles = rows.map((r) =>
     r.keys.slice(1, -1).map((k) => normalizePhone(primaryPhone(k))),
