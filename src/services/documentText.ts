@@ -24,11 +24,25 @@ async function pdfTextCurrent(buffer: Buffer): Promise<string> {
   }
 }
 
-/** Every page's text with pdf-parse 1 (its own pdf.js), which reads on Node 18. */
+/** Every page's text with pdf.js 3 (its legacy build), which reads on Node 16 and later. */
 async function pdfTextLegacy(buffer: Buffer): Promise<string> {
-  const { default: readPdf } = await import('pdf-parse-legacy/lib/pdf-parse.js');
-  const result = await readPdf(buffer, { max: MAX_PDF_PAGES });
-  return result.text.trim();
+  const pdfjs = await import('pdfjs-legacy/legacy/build/pdf.js');
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    disableFontFace: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+  }).promise;
+  try {
+    const pages: string[] = [];
+    for (let page = 1; page <= Math.min(doc.numPages, MAX_PDF_PAGES); page += 1) {
+      const content = await (await doc.getPage(page)).getTextContent();
+      pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+    }
+    return pages.join('\n').trim();
+  } finally {
+    await doc.destroy();
+  }
 }
 
 /**
@@ -39,10 +53,10 @@ async function pdfTextLegacy(buffer: Buffer): Promise<string> {
  * loaded it at startup never came up (every route 502 until the rollback).
  * A parser that cannot load now fails one upload, not the server.
  *
- * #7393 retest (tester 73723, PDF FAIL 2/2): the server runs Node 18, and
- * pdfjs 5 needs Node 20.16. Checked on a 5-page text PDF: pdf-parse 1 reads it
- * on Node 18 and fails on Node 22; pdf-parse 2 is the reverse. So the current
- * one is tried first and the old one reads when it cannot, on either runtime.
+ * #7393 retest (tester 73723, PDF FAIL 2/2): the server's Node is older than
+ * the 20.16 that pdfjs 5 needs. Checked on a 5-page text PDF: pdf.js 3's
+ * legacy build reads it on Node 18, 20.11 and 22. pdf-parse 2 is tried first,
+ * and pdf.js 3 reads when it cannot, on any of these runtimes.
  */
 export async function pdfText(buffer: Buffer): Promise<string> {
   try {
