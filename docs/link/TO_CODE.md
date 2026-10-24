@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 22:20Z (Misho yes x6 per code session: #6304 one card 635b63c4, copied-phonebook seats excluded 01f13646 mig 266, connector they_saved_you ef0fd500, main 8b3aa0ef; #7234/#7238 to tester; RO_SQL_KEY can wait — ops reads via main ro.sh).
+Last TO_OPS.md section handled: 24 Oct, 22:25Z (contact card path leaves reverse ties out, 36bbe2a7 main 3189a5f1; garbled seat line → prompt chat; to tester).
 
 ## OPEN
 
