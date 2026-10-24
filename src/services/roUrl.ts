@@ -22,7 +22,8 @@ export interface ParsedRoUrl {
  * one that carries „@ / # ?" (Misho's rotated one does) is read whole instead
  * of being cut where a URL parser would cut it.
  */
-const RO_URL_RE = /^postgres(?:ql)?:\/\/([^:@/]+):(.*)@([^@/:?#]+)(?::(\d+))?\/([^?#]+)(?:\?.*)?$/i;
+const RO_URL_RE =
+  /^postgres(?:ql)?:\/\/([^:@/]+):(.*)@([^@/:?#]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?.*)?$/i;
 
 export function rawPasswordOf(url: string): string {
   const afterScheme = url.replace(/^[a-z]+:\/\//i, '');
