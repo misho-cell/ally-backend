@@ -3,7 +3,7 @@ import { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/postgres/client';
 import { allFictionalNumbers, FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { saveSeatGraph } from './seatGraph.service';
-import { tieSavedMembersToSaver } from './reverseTies.service';
+import { tieMemberToHolders, tieSavedMembersToSaver } from './reverseTies.service';
 import { adjustTestAccountTokens } from './tokenWallet.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
 import { grantWhateverFreePeriodIsOwed } from './auth.service';
@@ -519,7 +519,10 @@ export async function createTestSeat(
     console.error(`[test-seat] ${userId}: graph edges not written:`, (err as Error).message);
     return 0;
   });
-  const reverseTies = await tieSavedMembersToSaver(Number(userId), [...phonebook.keys()]);
+  // D868 part 1: a seat that arrived by invitation is tied to its inviter, as a member is at join.
+  const reverseTies =
+    (await tieSavedMembersToSaver(Number(userId), [...phonebook.keys()])) +
+    (await tieMemberToHolders(Number(userId)));
   const balance =
     tokens === 0
       ? 0

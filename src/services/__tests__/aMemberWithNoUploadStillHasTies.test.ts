@@ -11,11 +11,13 @@ jest.mock('../neo4j.keys', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
+import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeysForUsers } from '../neo4j.keys';
 import {
   backfillReverseTies,
   REVERSE_TIE_SOURCE,
   tieMemberToHolders,
+  tieMemberToInviter,
   tieSavedMembersToSaver,
 } from '../reverseTies.service';
 
@@ -48,7 +50,14 @@ function switchOnWithHolders(): void {
   );
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.resetAllMocks();
+  // Reads the sequences below do not name answer empty: no inviter, nothing written.
+  mockQuery.mockResolvedValue(rows([]));
+  mockRun.mockResolvedValue({ records: [] });
+  mockClose.mockResolvedValue(undefined);
+  (getSession as jest.Mock).mockImplementation(() => ({ run: mockRun, close: mockClose }));
+});
 
 /**
  * #7162 (D868): 12 of 20 launch joiners uploaded nothing, so every search
@@ -147,5 +156,69 @@ describe('reverse ties', () => {
     mockQuery.mockRejectedValueOnce(new Error('down'));
 
     await expect(tieMemberToHolders(NEW_MEMBER)).rejects.toThrow('down');
+  });
+});
+
+/**
+ * D868 part 1 (#7162; tester 74779, INVITER TIE FAIL 3/3): the inviter is a
+ * first-degree tie from the moment of joining, both directions, even when
+ * neither has the other saved.
+ */
+describe('the inviter tie', () => {
+  const MEMBER_PHONE = '+995500000009';
+  const INVITER_PHONE = '+995500000001';
+
+  function anInvitedMember(inviter: number | null): void {
+    mockQuery.mockImplementation(((sql: string, params: unknown[]) => {
+      const text = String(sql);
+      if (text.includes('"inviterReferralUserId"')) return Promise.resolve(rows([{ inviter }]));
+      if (text.includes('FROM "User" u') && text.includes('JOIN "UserPhone" p')) {
+        const id = Number((params as unknown[])[0]);
+        return Promise.resolve(
+          rows(
+            id === NEW_MEMBER
+              ? [{ user_id: NEW_MEMBER, name: 'Nika', phone: MEMBER_PHONE }]
+              : [{ user_id: INVITER, name: 'Iro', phone: INVITER_PHONE }],
+          ),
+        );
+      }
+      if (text.includes('INSERT INTO "UserAlias"')) return Promise.resolve(rows([], 1));
+      return Promise.resolve(rows([]));
+    }) as never);
+    mockKeys.mockResolvedValue(
+      new Map([
+        [NEW_MEMBER, MEMBER_PHONE],
+        [INVITER, INVITER_PHONE],
+      ]),
+    );
+  }
+
+  it('writes the inviter into the member’s ties and the member into the inviter’s', async () => {
+    anInvitedMember(INVITER);
+
+    await expect(tieMemberToInviter(NEW_MEMBER)).resolves.toBe(2);
+
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO "UserAlias"'),
+    ) as [string, unknown[]][];
+    expect(inserts.map(([, p]) => p)).toEqual([
+      [NEW_MEMBER, [INVITER_PHONE], ['Iro'], REVERSE_TIE_SOURCE],
+      [INVITER, [MEMBER_PHONE], ['Nika'], REVERSE_TIE_SOURCE],
+    ]);
+    expect(mockRun).toHaveBeenCalledTimes(2);
+  });
+
+  it('writes nothing for a member who came without an invitation', async () => {
+    anInvitedMember(null);
+
+    await expect(tieMemberToInviter(NEW_MEMBER)).resolves.toBe(0);
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  it('is part of every tie at join, even when nobody has the member saved', async () => {
+    anInvitedMember(INVITER);
+    mockQuery.mockImplementationOnce((() => Promise.resolve(rows([{ enabled: true }]))) as never);
+
+    await expect(tieMemberToHolders(NEW_MEMBER)).resolves.toBe(2);
   });
 });
