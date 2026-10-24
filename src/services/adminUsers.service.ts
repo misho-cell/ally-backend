@@ -267,8 +267,9 @@ async function getActivity(userId: number): Promise<UserActivity> {
       `SELECT
          (SELECT COUNT(*) FROM threads WHERE user_id = $1) AS threads,
          COUNT(*)                                          AS messages,
-         MIN(created_at)                                   AS first_at,
-         MAX(created_at)                                   AS last_at
+         -- Tester 75679: Netai's own messages are not the person's activity.
+         MIN(created_at) FILTER (WHERE role = 'user' AND kind = 'message') AS first_at,
+         MAX(created_at) FILTER (WHERE role = 'user' AND kind = 'message') AS last_at
        FROM conversations
        WHERE user_id = $1 AND (kind IS NULL OR kind <> 'step')`,
       [userId],
