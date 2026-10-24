@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 19:45Z — read-only DB window back; 75439 FAILs taken
+
+- **Read-only window LIVE again (main f8e3c1e3).** Commits: 727d64ed, 2d461597, 88d48652, f55762b0. The rotated password in DATABASE_RO_URL carries a line break, which a URL parser strips. The pool now reads the URL by hand and sends the password as written. `select 1` works through ro.sh, and why.sh, threw.sh and the outage/attribution checks can read again. The status route also shows the URL's scheme and host-part shape, never the password. DONE WHEN: ops' 20:xx daily checks read, rc 0.
+- **75439 FAILs taken, in this order:** #7195/#7459 (asker relay repeats the first answer), #7229 (a claimed ask after ask_contact refused), #6304 (no card in bridge worlds).
+
 ### 24 Oct, 15:20Z — #5941 seat circles LIVE; read-only URL status LIVE
 
 - **#5941 — 9f8d784f (main 0072f517).** `PUT /admin/test-accounts/:id/circles` takes `{circles:[{phone, circle}]}`. A circle is closest, close, acquaintance or contact; null takes it away. Test seats and fictional numbers only. owner_circle and the bubble now work on seats. DONE WHEN: "tell me about <person>" says "your closest circle" first, 5/5 (tester's cousin cases).
@@ -4520,7 +4525,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 24 Oct, 08:08Z — box 74815, 74816, 74817 (tester batch 3, plate v518, connector note); box back at 08:07Z
+Last TO_CODE.md section handled: 24 Oct, 18:52Z — box 75439 (tester evening round, fictional seats): 9 PASS; FAIL #7195/#7459 asker relay text, #7229 1/3, #6304 0/3
 
 ## OPEN
 
