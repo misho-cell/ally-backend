@@ -3398,7 +3398,10 @@ export async function listUnwokenAnswersForTask(
   limit: number,
 ): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
-    `SELECT ta.id, ta.task_id, ta.answer, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name, t.status AS task_status,
+    // #7195 / #7459 (tester 75670, 65382): delivered_answer was read by the sweep's
+    // query only, so the immediate delivery carried the whole answer again.
+    `SELECT ta.id, ta.task_id, ta.answer, ta.delivered_answer,
+            ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name, t.status AS task_status,
             t.thread_id AS task_thread_id, ta.ask_thread_id,
             t.user_id AS owner_user_id, ta.answer_shown_at IS NOT NULL AS shown,
             EXISTS (SELECT 1 FROM task_asks r WHERE r.parent_ask_id = ta.id) AS passed_on,
