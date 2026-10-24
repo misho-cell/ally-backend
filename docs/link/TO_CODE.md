@@ -9,6 +9,25 @@ Last TO_OPS.md section handled: 24 Oct, 07:10Z (#7162 seats get reverse ties, li
 
 ## OPEN
 
+### 24 Oct, 07:37Z — box 74779 (tester, live on fictional seats): #7162 part fail (inviter tie), #991 dictated text + buttons fail, #7459 helper side fail
+
+  > NETAI 24 (tester) — 24 Oct 07:38Z, LIVE on fictional seats only.
+  > 
+  > #7162 (D868) — PART PASS, PART FAIL.
+  > PASS 3/3 "someone holds your number": a new member with no phonebook gets firstDegree from every seat that holds him (worlds 191771/191775/191788 → 2 each); a seat that holds him gets secondDegree 1 through him (191772, 191776, 191789). Search uses it: the no-upload member finds the lawyer who holds him (2/2: threads 65045, 65051), and the other asker is routed to that lawyer THROUGH the no-upload member 3/3 (65046, 65050, 65052).
+  > FAIL 3/3 "the inviter is a first-degree tie from joining, both ways": seats made with invited_by (invitedBy shows correctly) get NO inviter tie. Control 191777 invited by 191774, nobody holds it → firstDegree 0/0. Inviters 191770/191774/191787 stay at firstDegree 1 (only their own contact). The new member's own assistant says so (65044): "your only first connection is Netai Test 24B; Levan Gelashvili [inviter] is not among your direct ties". Real joiners whose inviter never saved their number stay at 0 — D868 part 1 still to build. If the inviter tie is meant to come only from the real sign-up route, say so and give us a way to test it.
+  > Side: the no-upload member is told "you have him saved as a lawyer" — he saved nobody; it is the other side's label.
+  > 
+  > #991 (share a number from the owner's phonebook) — number PASS, dictated text FAIL.
+  > PASS 3/3: helper says "give him Giorgi's number" → the asker gets name + the right number (65056/65057/65058): inside the question (65061), from ANOTHER chat naming the asker (65054), and with two "Giorgi" contacts the helper picked one and only that number went (65059).
+  > FAIL (buttons): with two matches present_choices ran ok with both names, but the message has choices null — a typed question "which Giorgi…?", no buttons (65059).
+  > FAIL 2/2 dictated text: „Netai Test 24A2-ს ასე მისწერე: …" → treated as a message to the plumber, "Giorgi is not on Netai, could not send" (65054). Same with quotes in 65053 → create_task + ask_contact to the asker with a reworded 52-char question and yes/no buttons (task 31695), plus a false "I wrote to Giorgi's assistant" (Giorgi is not a member). Expected: the text goes to the asker as written.
+  > Not run yet: the control "no words → no number".
+  > 
+  > #7459 (helper answers twice) — FAIL 2/2 helper side. Second line „კიდევ ერთი რამ: გიორგი ორშაბათამდე დაკავებულია…" in the question chat (65061, 65059): the asker DOES get it ("დამატებით: … ორშაბათამდე"), but the helper gets no confirmation (thread ends on his line, status done), and the asker's assistant then adds "this is the same answer, nothing new" right after the new timing (65056, 65058).
+
+- Ops note: outage.sh has answered rc 2 ("read-only window did not answer") since 07:20Z while /health is 200; Misho told.
+
 ### 24 Oct, 06:22Z — box 74680 (tester plate v517; real-user name in the box, not copied here)
 
 - Plate v517: 79 open (13 to build, 66 to test). Closed since v516: 7235, 7261. New: 7525, 7558, 7591 (built), 991 (built).
