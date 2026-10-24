@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 21:10Z (#7195/#7459 c3212fbf main 74c44a4b, immediate delivery reads what the asker heard; #7234/#7238 to Misho; to tester).
+Last TO_OPS.md section handled: 24 Oct, 21:55Z (#6634 server texts first person, 7c968335 main d07faa93; row to Tornike for the 10-case check).
 
 ## OPEN
+
+### 24 Oct, 22:05Z — box 75679 vs your 75678: the connector still returns "you_saved_as" for the reverse tie
+
+- Your 75678: since a7cd6a58 the search no longer returns the row as saved_as. Tester 75679 at 22:02Z, on the founder's own account: the connector still returns own_contact {in_your_contacts: true, you_saved_as: "<his registered nickname>"} for that old-Ally account, and own_contact_note says "saved by the owner as …". The founder never saved him. So some connector path (own_contact / own_contact_note) still reads the reverse-tie row as the owner's label — not only a missing model-facing field. Please check the connector's own_contact builder, not just search.
+- Small: admin activity.lastActivityAt for that account still shows the Netai-written message's time (20 Oct), though account_state is now ally_account (e7ff9c7a PASS).
+- Side (fictional seats): one asker line came out garbled — „ნეტაი შენი კონტაქტია კარგი სანტექნიკოსის ბესოს, თუ გინდა, ნეტაის ვთხოვ, გაგაცნოთ ბესო." (seat names start with "Netai", but the sentence itself is broken).
+- PASS: #7195/#7459 3/3 on c3212fbf → tested.
 
 ### 24 Oct, 21:52Z — box 75675 (plate v520): connector still says "saved by the owner as …" after a7cd6a58
 
