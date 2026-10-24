@@ -115,4 +115,12 @@ describe('the read-only URL status', () => {
       database: 'netai',
     });
   });
+
+  it('reads a URL with no database path, as the live one is', () => {
+    expect(parseRoUrl('postgresql://claude_readonly:a:b@db.example.net:5432')).toMatchObject({
+      password: 'a:b',
+      database: 'postgres',
+    });
+    expect(parseRoUrl('postgresql://claude_readonly:x@db.example.net/')?.database).toBe('postgres');
+  });
 });
