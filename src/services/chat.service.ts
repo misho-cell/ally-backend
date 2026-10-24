@@ -6545,6 +6545,9 @@ function skippedTheMembersFound(
   return skippedThese(names, finalText, toolNamesUsed);
 }
 
+/** #7327: chats where the reader answers someone else's request — a question or an introduction. */
+const GO_BETWEEN_MODES: ReadonlySet<string> = new Set(['incoming_ask', 'request_thread']);
+
 /** How many of the owner's contacts on Netai the members note names. */
 const MEMBERS_IN_THE_BOOK_NAMED = 5;
 
@@ -15377,7 +15380,12 @@ async function runToolLoop(
   };
   // #6367: a turn that put several routes to the owner is not pushed to a card.
   const routesToChoose = runRoutesToChoose.has(runId);
+  // #7327 (Lia's case, Iro's side 64089): the members note fired in a go-between's
+  // chat and pushed a second, reversed question at someone who had already
+  // answered. Offering the reader's own contacts is for the reader's own goals.
+  const readersOwnRequest = !GO_BETWEEN_MODES.has(runModes.get(runId) ?? '');
   const membersSkipped =
+    readersOwnRequest &&
     !ownerAbsent &&
     !repeatsAnOpenGoal &&
     skippedTheMembersFound(runId, finalText, toolNamesUsed) &&
@@ -15400,6 +15408,7 @@ async function runToolLoop(
   // #960 (the tester's 1145): a goal run that never listed them — read from the phonebook.
   // The tester's 1149 (38116): a quick answer that saved the goal is a goal run too.
   const bookMembersSkipped =
+    readersOwnRequest &&
     !ownerAbsent &&
     !routesToChoose &&
     !promoted &&
