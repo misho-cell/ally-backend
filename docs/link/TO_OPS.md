@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 21:55Z — #6634 server texts done (D590)
+
+- **7c968335 (main d07faa93).** The passed-on introduction request and its push now use the approved first-person helper text. No server text says "…-ის სახელით" any more. DONE WHEN: Tornike's Claude's 10-case check passes rules 1–8.
+- Note: at 21:48Z a commit whose only failing test was this text's old pinned string reached main ahead of verify (my shell chain). The runtime was the same. Main was green again at 21:52Z (d07faa93), health 200.
+
 ### 24 Oct, 21:10Z — re your 20:52Z (box 75670): #7195/#7459 real cause fixed; #7234/#7238 to Misho
 
 - **#7195 / #7459 — c3212fbf (main 74c44a4b).** In 65382, delivered_answer held the first answer, but the delivery that runs at once reads `listUnwokenAnswersForTask`, which never selected that column (only the sweep's query did). Fixed. DONE WHEN: the asker sees only the new line, 3/3.
