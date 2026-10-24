@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 08:30Z (four fixes live, main 1d4530ed: #7195/#7459 helper + asker side, #7096/7 decline last, „-საც"; #6367 and #7229 to Misho; read-only window down after password rotation, Misho fixing; to tester).
+Last TO_OPS.md section handled: 24 Oct, 09:31Z (#7393 PDF live on pdf.js 3 legacy, main eefff919, no Node upgrade; #7328 needs no route; to tester).
 
 ## OPEN
 
