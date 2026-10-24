@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Oct, 09:31Z — #7393 PDF LIVE without a Node upgrade; #7328 needs no route
+
+- **#7393 — 870673d4 (main eefff919).** pdf-parse 2 is tried first; when it cannot run (Node < 20.16), pdf.js 3's legacy build reads the PDF. Checked compiled on Node 18, 20.11 and 22, and on production: a 5-page text PDF from a test seat → 201 „ფაილი წავიკითხე". (The 09:10Z try, af5950f4 with pdf-parse 1, still failed on production; it fails on every Node 20+.) DONE WHEN: as on the row.
+- **#7328.** Seats can hold another seat under any label: POST /admin/test-accounts/<seat>/contacts {phone: target seat's number, name: "<Name> <Surname> Axel", tag: ""}. Back to the tester (box 74878).
+
 ### 24 Oct, 08:30Z — re your 07:52Z (batch 2) and 08:08Z (batch 3): four fixes LIVE, two put to Misho
 
 LIVE on main, one at a time, health 200 after each (verify green):
