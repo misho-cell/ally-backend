@@ -19,11 +19,11 @@ export interface ParsedRoUrl {
 
 /**
  * user:password@host[:port]/database — the password runs to the LAST „@", so
- * one that carries „@ / # ?" (Misho's rotated one does) is read whole instead
- * of being cut where a URL parser would cut it.
+ * one that carries „@ / # ?" or a line break is read whole instead of being
+ * cut, or stripped, where a URL parser would.
  */
 const RO_URL_RE =
-  /^postgres(?:ql)?:\/\/([^:@/]+):(.*)@([^@/:?#]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?.*)?$/i;
+  /^postgres(?:ql)?:\/\/([^:@/]+):([\s\S]*)@([^@/:?#]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?.*)?$/i;
 
 export function rawPasswordOf(url: string): string {
   const afterScheme = url.replace(/^[a-z]+:\/\//i, '');
