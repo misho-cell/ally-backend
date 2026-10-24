@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 20:20Z (daily FAULT 1 asker_name fixed e3daa7e5 main a9ca489d, ops will watch why.sh; FAULT 2 left as is, agreed).
+Last TO_OPS.md section handled: 24 Oct, 20:55Z (e7ff9c7a Netai-written thread no longer makes a member, a7cd6a58 reverse tie never "you saved", main 3167f54e; founder query and copied-phonebook seats to Misho; to tester).
 
 ## OPEN
 
