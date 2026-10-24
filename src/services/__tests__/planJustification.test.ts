@@ -126,20 +126,30 @@ describe('withOnePlanSentence, any form of the verb', () => {
   });
 });
 
-/** 1454 (box 53296, 0 of 3 on 0165): nothing the model wrote before an introduction plan is kept. */
+/**
+ * 1454 (box 53296) and #6367 (Misho's yes, 24 Oct): the findings stay above an
+ * introduction plan; a match justification and a question before it go.
+ */
 describe('introPlanOnly', () => {
   const SERVER = 'სანდრო ახალგონის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
   const plan = { text: SERVER, names: ['სანდრო ახალგონი'] };
   const OWN =
     'სანდრო ახალგონის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ სანდრომ გაგაცნოს ქეთა ახალგონი.';
 
-  it('run 1: a sentence in new words before the plan goes', () => {
-    const reply = `თამთა ახალგონი ჯერ ვერსად ვიპოვე, არც შენს ქსელში და არც ვებში. ${OWN}\n\nდავიწყო?`;
-    expect(introPlanOnly(reply, plan)).toBe(`${OWN}\n\nდავიწყო?`);
+  it('#6367: what the run found stays above the plan', () => {
+    const found = 'თამთა ახალგონი ჯერ ვერსად ვიპოვე, არც შენს ქსელში და არც ვებში.';
+    const reply = `${found} ${OWN}\n\nდავიწყო?`;
+    expect(introPlanOnly(reply, plan)).toBe(`${found}\n\n${OWN}\n\nდავიწყო?`);
   });
 
-  it('run 2: the same as its own paragraph', () => {
-    const reply = `ნინუცა ახალგონი ნაპოვნია, ის ლიკას კონტაქტია.\n\n${OWN} დავიწყო?`;
+  it('#6367: a finding in its own paragraph stays too', () => {
+    const found = 'ნინუცა ახალგონი ნაპოვნია, ის ლიკას კონტაქტია.';
+    const reply = `${found}\n\n${OWN} დავიწყო?`;
+    expect(introPlanOnly(reply, plan)).toBe(`${found}\n\n${OWN} დავიწყო?`);
+  });
+
+  it('a sentence that only justifies the match still goes', () => {
+    const reply = `ბახვა შენი პირდაპირი კონტაქტია და ნეტაიზე წევრია. ${OWN} დავიწყო?`;
     expect(introPlanOnly(reply, plan)).toBe(`${OWN} დავიწყო?`);
   });
 
@@ -154,11 +164,14 @@ describe('introPlanOnly', () => {
   });
 
   it('is the server’s sentence when the reply has no plan sentence at all', () => {
-    expect(introPlanOnly('სანდრო შენი კონტაქტია. დავიწყო?', plan)).toBe(SERVER);
+    expect(introPlanOnly('სანდრო შენი კონტაქტია. დავიწყო?', plan)).toBe(
+      `სანდრო შენი კონტაქტია.\n\n${SERVER}`,
+    );
+    expect(introPlanOnly('დავიწყო?', plan)).toBe(SERVER);
   });
 
   it('a go-between written in another script is the server’s sentence', () => {
     const latin = { text: SERVER, names: ['❤️ Sandro'] };
-    expect(introPlanOnly(`ბლა. ${OWN}`, latin)).toBe(SERVER);
+    expect(introPlanOnly(`ბლა. ${OWN}`, latin)).toBe(`ბლა.\n\n${SERVER}`);
   });
 });

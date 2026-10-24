@@ -157,11 +157,16 @@ function isThePlanAlone(sentence: string, names: readonly string[]): boolean {
  * run put a sentence before the plan in new words („…ჯერ ვერსად ვიპოვე…",
  * „…ნაპოვნია, ის ლიკას კონტაქტია.") or merged one into the plan sentence
  * („…პირდაპირი კონტაქტია და ქეთას იცნობს, მისი ასისტენტს დაველაპარაკები…").
- * D739: an introduction plan is its one sentence and one question. So nothing
- * the model wrote before the plan sentence is kept. Its own plan sentence
- * stays when it is the plan alone, opening with the go-between as the
- * founder's example does; otherwise the server's sentence stands in its place. What follows the plan
- * sentence (the question) is left for the caller to settle.
+ * D739: an introduction plan is its one sentence and one question.
+ *
+ * #6367 (Misho's yes, 24 Oct; tester 74815, 65093/65094): with that rule the
+ * findings never showed — 18-20 searches and the owner read only „X-ის
+ * ასისტენტს დაველაპარაკები… დავიწყო?". What the run found stays above the plan
+ * now; a sentence that only justifies the match (two or more markers) still
+ * goes, and so does a question before the plan. The plan itself is unchanged:
+ * the model's own sentence when it is the plan alone, opening with the
+ * go-between as the founder's example does, otherwise the server's. What
+ * follows the plan sentence (the question) is left for the caller to settle.
  */
 export function introPlanOnly(reply: string, plan: IntroPlan): string {
   const sentences = reply
@@ -169,10 +174,45 @@ export function introPlanOnly(reply: string, plan: IntroPlan): string {
     .flatMap((paragraph) => paragraph.split(SENTENCE_SPLIT_RE))
     .map((sentence) => sentence.trim());
   const own = sentences.find((sentence) => PLAN_SENTENCE_RE.test(sentence));
-  if (own === undefined) return plan.text;
+  const findings = findingsBefore(own === undefined ? reply : reply.slice(0, reply.indexOf(own)));
+  const lead = findings === '' ? '' : `${findings}\n\n`;
+  if (own === undefined) return `${lead}${plan.text}`;
   const after = reply.slice(reply.indexOf(own) + own.length);
   const keepOwn = isThePlanAlone(own, plan.names) && !carriesANote(plan.text);
-  return `${keepOwn ? own : plan.text}${after}`;
+  return `${lead}${keepOwn ? own : plan.text}${after}`;
+}
+
+/**
+ * Not a finding: a stage direction about waiting or confirming („დამელოდე,
+ * სანამ დაადასტურებ.", box 53461) or the reason asked for again (the English
+ * reply's „…share why you would like to meet Bakhva…") — the plan asks those.
+ */
+const NOT_A_FINDING_RE =
+  /დამელოდ|დაელოდ|დამიდასტურ|დაადასტურ|რატომ\s+გინდა|მიზეზ|\bwait\b|\bconfirm|\bwhy\s+you\b|\breason\b|подожд|подтверд|почему\s+ты|espera|confirma|por\s+qué/iu;
+const HAS_A_WORD_RE = /\p{L}{2,}/u;
+
+function isAFinding(sentence: string): boolean {
+  return (
+    HAS_A_WORD_RE.test(sentence) &&
+    !sentence.endsWith('?') &&
+    !NOT_A_FINDING_RE.test(sentence) &&
+    !isAMatchJustification(sentence)
+  );
+}
+
+/** #6367: what the run found, without match justifications, stage directions or questions. */
+function findingsBefore(text: string): string {
+  const paragraphs = text
+    .split(/\n\s*\n/u)
+    .map((paragraph) =>
+      paragraph
+        .split(SENTENCE_SPLIT_RE)
+        .map((sentence) => sentence.trim())
+        .filter(isAFinding)
+        .join(' '),
+    )
+    .filter((paragraph) => paragraph !== '');
+  return paragraphs.join('\n\n');
 }
 
 /** A bracketed note after a name: a tie (#5479) or something the owner must know first. */
