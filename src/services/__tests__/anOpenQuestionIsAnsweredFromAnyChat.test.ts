@@ -31,4 +31,30 @@ describe('which open question an answer from another chat belongs to', () => {
   it('takes the only open question when no name is given', () => {
     expect(askThreadForName([open[0]], '')).toBe(63856);
   });
+
+  /** Ops 20:10Z (thread 62932): one asker, three open questions, nine refusals. */
+  const giorgi = [
+    { askThreadId: 62932, askerName: 'Giorgi Turashvili' },
+    { askThreadId: 62042, askerName: 'Giorgi Turashvili' },
+    { askThreadId: 60686, askerName: 'Giorgi Turashvili' },
+    { askThreadId: 62308, askerName: 'Salome Parkosadze' },
+  ];
+
+  it('answers the question of the chat the run is in', () => {
+    expect(askThreadForName(giorgi, '', 62042)).toBe(62042);
+    expect(askThreadForName(giorgi, 'Giorgi Turashvili', 62042)).toBe(62042);
+  });
+
+  it('follows another asker the owner names, even inside a question chat', () => {
+    expect(askThreadForName(giorgi, 'Salome', 62042)).toBe(62308);
+  });
+
+  it("takes one asker's newest question when they have several", () => {
+    expect(askThreadForName(giorgi, 'Giorgi Turashvili')).toBe(62932);
+  });
+
+  it('still refuses a name that fits two different askers', () => {
+    const two = [...giorgi, { askThreadId: 61000, askerName: 'Giorgi Beridze' }];
+    expect(askThreadForName(two, 'Giorgi')).toBeNull();
+  });
 });
