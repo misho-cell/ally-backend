@@ -28,6 +28,8 @@ import { withOwnContactByNumber } from './ownContactByNumber';
 import {
   DISPLAY_NAME,
   LATEST_OWN_LABEL,
+  ONLY_REVERSE_TIE,
+  theySavedYou,
   othersLabelsMatched,
   ownDisplayableTags,
 } from './searchByTag';
@@ -63,6 +65,7 @@ export interface NameRow {
   registered_name?: string | null;
   name: string | null;
   saved_as: string | null;
+  only_reverse_tie?: boolean | null;
   all_tags: string[];
   own_tags: string[] | null;
   employer: string | null;
@@ -106,6 +109,7 @@ function toRow(
     netai_subscriber: isSubscriberPhone(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
+    ...theySavedYou(row),
     ...registeredSpelling(row, isMemberPhone(accountStates, row.phone)),
     // Enrichment-computed edge category (family/close/professional/formal) —
     // lets the agent phrase how well the user knows this person. The numeric
@@ -192,6 +196,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
               MAX(NULLIF(TRIM(u.name), ''))        AS registered_name,
               ${DISPLAY_NAME} AS name,
               ${LATEST_OWN_LABEL} AS saved_as,
+              ${ONLY_REVERSE_TIE} AS only_reverse_tie,
               array_agg(DISTINCT ut.tag)           AS all_tags,
               array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
               MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
@@ -272,6 +277,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
            SELECT h.phone,
                   ${DISPLAY_NAME} AS name,
                   ${LATEST_OWN_LABEL} AS saved_as,
+                  ${ONLY_REVERSE_TIE} AS only_reverse_tie,
                   array_agg(DISTINCT ut.tag)           AS all_tags,
                   array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
                   MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
