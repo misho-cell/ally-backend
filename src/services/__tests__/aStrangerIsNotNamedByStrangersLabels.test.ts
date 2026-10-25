@@ -77,6 +77,21 @@ describe('a person found through several friends', () => {
     ]);
   });
 
+  /** #7630 (tester 75923, seat O3): one bridge on two numbers was offered as two close contacts. */
+  it('counts one account on two numbers as one friend', () => {
+    const { oneRowPerBridge } = jest.requireActual('../tools/searchSecondDegree') as {
+      oneRowPerBridge: <T extends { phone: string; user_id?: number }>(rows: readonly T[]) => T[];
+    };
+    const rows = [
+      { phone: '+12025550142', user_id: 7, saved_as: 'გურამ ნოზაძე' },
+      { phone: '+12025550143', user_id: 7, saved_as: 'გურამ ნოზაძე 2' },
+      { phone: '+12025550144', user_id: 8, saved_as: 'თამთა' },
+    ];
+    expect(oneRowPerBridge(rows).map((r) => r.saved_as)).toEqual(['გურამ ნოზაძე', 'თამთა']);
+    const source = readFileSync(join(__dirname, '..', 'tools', 'searchSecondDegree.ts'), 'utf8');
+    expect(source).toContain(`'user_id', fu."userId",`);
+  });
+
   it('is named by the label of the friend offered first, not the largest label', () => {
     const source = readFileSync(join(__dirname, '..', 'tools', 'searchSecondDegree.ts'), 'utf8');
     expect(source).toContain("'saved_as', NULLIF(TRIM(ua_t.alias), '')");

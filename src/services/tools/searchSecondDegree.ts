@@ -566,10 +566,19 @@ export function fewestSources(...counts: readonly (string | number | null)[]): n
  * MAX(alias) over every bridge picked the alphabetically last. Each bridge now
  * carries its own label; a bridge who saved the person twice is one bridge.
  */
-export function oneRowPerBridge<T extends { readonly phone: string }>(bridges: readonly T[]): T[] {
+/**
+ * #7630 (tester 75923, seat O3): a bridge the owner saved under two numbers —
+ * „გურამ ნოზაძე" and „გურამ ნოზაძე 2" — is one account, and was offered as two
+ * close contacts with „whose assistant shall we start with?". One account is
+ * one bridge, whichever of its numbers it came by.
+ */
+export function oneRowPerBridge<T extends { readonly phone: string; readonly user_id?: number }>(
+  bridges: readonly T[],
+): T[] {
   const seen = new Set<string>();
   return bridges.filter((bridge) => {
-    const key = phoneDigits(bridge.phone);
+    const key =
+      typeof bridge.user_id === 'number' ? `user:${bridge.user_id}` : phoneDigits(bridge.phone);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -1074,7 +1083,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       own_name: string | null;
       saved_label: string | null;
       via_names: string[] | null;
-      via_contacts: { name: string | null; phone: string; saved_as: string | null }[] | null;
+      via_contacts:
+        | { name: string | null; phone: string; user_id?: number; saved_as: string | null }[]
+        | null;
       employer: string | null;
       jobPosition: string | null;
       employer_sources: string | number | null;
@@ -1310,6 +1321,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               jsonb_agg(DISTINCT jsonb_build_object(
                 'name', COALESCE(ua_via.alias, u_via.name),
                 'phone', fu.via_phone,
+                'user_id', fu."userId",
                 'saved_as', NULLIF(TRIM(ua_t.alias), '')))                    AS via_contacts,
               COALESCE(MAX(NULLIF(TRIM(u_t.employer), '')),       MAX(fe.val)) AS employer,
               COALESCE(MAX(NULLIF(TRIM(u_t."jobPosition"), '')),  MAX(fj.val)) AS "jobPosition",
