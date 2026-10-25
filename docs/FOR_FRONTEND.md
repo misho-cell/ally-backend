@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 25 October, 18:30Z — #7724: the service worker says when a push arrived and when it was tapped
+
+The tester's engagement desk sent 13 newcomers two pushes each. Every delivery reads "sent 201" and nobody opened Netai. A 201 means Apple or Google took the push, not that the phone showed it, and today nothing tells us whether it did.
+
+Every push now carries one more field, `receipt` (32 hex characters), next to `title`, `body` and `url`. Please have the service worker post it back, with no login:
+
+```
+POST /notifications/receipt
+{ "receipt": "<the push's receipt>", "event": "received" }   // in the 'push' handler, after showNotification
+{ "receipt": "<the push's receipt>", "event": "clicked" }    // in 'notificationclick'
+```
+
+The answer is `204`, and also `204` for a receipt that names nothing. `400` means it is not a receipt or not an event. A failed post must never stop the notification itself, so wrap it in `event.waitUntil(fetch(...).catch(() => {}))`. The admin's push panel (`/admin/users/:id/push`) now shows `received_at` and `clicked_at` beside each delivery.
+
+The `live` on a subscription there is not about the subscription's health. It means that device has Netai open right now, so a reply was not pushed to it. A dead subscription is removed when Apple or Google answer 404 or 410.
+
+---
+
 ## 25 October, 17:00Z — Misho: everyone gets their own list. These open board rows are yours
 
 Nothing below needs a new route from me. Each one is open on the board with the app's half missing.

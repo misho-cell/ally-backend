@@ -18,7 +18,7 @@ describe('a push to a device', () => {
 
   it('records what the push service answered when it accepted', () => {
     expect(source).toContain(
-      "await recordDelivery(userId, row.endpoint, 'sent', result.statusCode, null);",
+      "await recordDelivery(userId, row.endpoint, 'sent', result.statusCode, null, receipt);",
     );
   });
 });

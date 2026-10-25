@@ -7165,7 +7165,9 @@ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
         [userId],
       ),
       query(
-        `SELECT status, status_code, error, RIGHT(endpoint, 12) AS endpoint_tail, created_at
+        `SELECT status, status_code, error, RIGHT(endpoint, 12) AS endpoint_tail, created_at,
+                -- #7724: when the phone showed it and when it was tapped; null = no word back.
+                received_at, clicked_at
          FROM push_deliveries WHERE user_id = $1
          ORDER BY created_at DESC LIMIT 50`,
         [userId],
