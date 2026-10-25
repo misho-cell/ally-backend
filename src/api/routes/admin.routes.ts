@@ -372,6 +372,7 @@ import { adminReadOnlyQuery } from './roQuery.routes';
 import { RoUrlStatus, roUrlStatus } from '../../services/roUrlStatus.service';
 import { SeatCircleIn, setSeatCircles } from '../../services/seatCircles.service';
 import { SeatExclusion, setSeatExcluded } from '../../services/excludedHolders.service';
+import { addSeatPhone } from '../../services/seatPhones.service';
 
 const RO_SQL_WINDOW_MS = 60_000;
 const RO_SQL_PER_WINDOW = 30;
@@ -2998,6 +2999,39 @@ adminRouter.put(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-circles]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * Tester 75919 (#7630): give a test seat a second reserved fictional number,
+ * so one person on two numbers can be tested.
+ */
+adminRouter.post(
+  '/test-accounts/:id/phones',
+  param('id').isInt({ min: 1 }),
+  body('phone').isString().notEmpty(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'phone is required' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    try {
+      const result = await addSeatPhone(seatId, String(req.body.phone));
+      if (!result.ok) {
+        res.status(400).json({ success: false, error: result.refusal });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-phones] admin ${(req as AuthenticatedRequest).user.userId} added a number to seat ${seatId}`,
+      );
+      res.status(201).json({ success: true, data: { seat: result.seat, phones: result.phones } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-phones]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
