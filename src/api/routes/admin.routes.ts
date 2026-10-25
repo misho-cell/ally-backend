@@ -58,6 +58,7 @@ import { randomUUID } from 'crypto';
 import { MAX_RECOUNT_OWNERS, recountFamilyBatch } from '../../services/familyRecount.service';
 import {
   MAX_NETAI_CHOICE_CHARS,
+  MAX_CLIENT_MSG_ID_CHARS,
   MAX_NETAI_CHOICES,
   MAX_NETAI_MESSAGE_CHARS,
   netaiMessagesTo,
@@ -91,7 +92,7 @@ import {
   withdrawUnconfirmedPendingAsks,
 } from '../../services/unconfirmedChorusAsks.service';
 import { NextFunction, Router, Request, Response } from 'express';
-import { body, param, query as queryParam, validationResult } from 'express-validator';
+import { body, header, param, query as queryParam, validationResult } from 'express-validator';
 import {
   buildWarRoomCards,
   CARD_STATUSES,
@@ -4604,8 +4605,10 @@ adminRouter.post(
  * user's „Netai" conversation, with a push. The text goes exactly as written;
  * up to four buttons; the user's reply comes back on the GET below.
  *
- *   POST /admin/users/:id/netai-messages { text, choices?: string[] }
+ *   POST /admin/users/:id/netai-messages { text, choices?: string[], client_msg_id? }
+ *     (or the header Idempotency-Key)
  *   201 { message_id, thread_id, new_thread, person, test_seat }
+ *   200 { …the same, repeated: true } — this key was sent before; nothing sent now (#7725)
  *   400 bad text or buttons · 404 no such (or a deleted) account
  */
 adminRouter.post(
@@ -4614,13 +4617,24 @@ adminRouter.post(
   body('text').isString().trim().isLength({ min: 1, max: MAX_NETAI_MESSAGE_CHARS }),
   body('choices').optional().isArray({ max: MAX_NETAI_CHOICES }),
   body('choices.*').isString().trim().isLength({ min: 1, max: MAX_NETAI_CHOICE_CHARS }),
+  body('client_msg_id')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: MAX_CLIENT_MSG_ID_CHARS }),
+  header('idempotency-key')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: MAX_CLIENT_MSG_ID_CHARS }),
   async (req: Request, res: Response) => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
         success: false,
         error:
           `text must be 1-${MAX_NETAI_MESSAGE_CHARS} chars; choices at most ` +
-          `${MAX_NETAI_CHOICES} buttons of 1-${MAX_NETAI_CHOICE_CHARS} chars.`,
+          `${MAX_NETAI_CHOICES} buttons of 1-${MAX_NETAI_CHOICE_CHARS} chars; a key at most ` +
+          `${MAX_CLIENT_MSG_ID_CHARS} chars.`,
       });
       return;
     }
@@ -4633,18 +4647,23 @@ adminRouter.post(
         res.status(404).json({ success: false, error: 'No such account, or it was deleted.' });
         return;
       }
+      const key =
+        (req.body as { client_msg_id?: string }).client_msg_id?.trim() ||
+        req.get('idempotency-key')?.trim() ||
+        null;
       const sent = await sendNetaiMessage({
         userId,
         text: text.trim(),
         choices: (choices ?? []).map((c) => c.trim()),
         sentBy: admin,
+        clientMsgId: key,
       });
       // Who and where, never the words: the text is on the admin GET.
       // eslint-disable-next-line no-console
       console.log(
         `[netai-message] admin ${admin} sent ${sent.id} to ${userId} in thread ${sent.threadId}`,
       );
-      res.status(201).json({
+      res.status(sent.repeated === true ? 200 : 201).json({
         success: true,
         data: {
           message_id: sent.id,
@@ -4652,6 +4671,7 @@ adminRouter.post(
           new_thread: sent.newThread,
           person: recipient.name,
           test_seat: recipient.testSeat,
+          ...(sent.repeated === true && { repeated: true }),
         },
       });
     } catch (error) {
