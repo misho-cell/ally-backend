@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 12:45Z (83c6f831 accept-for-mediator route, main 89af7e2a; 8915 accepted by the code session on Misho’s word, noted).
+Last TO_OPS.md section handled: 25 Oct, 13:10Z (a55013ee bridges collapse by account, main c51f4c3b; tester FAIL 3/3 in box 75928, relayed 13:25Z).
 
 ## OPEN
+
+### 25 Oct, 13:25Z — box 75928 (fictional seats): a55013ee FAIL 3/3; the plan card regressed for one owner
+
+- The tester asks whether c51f4c3b is actually live. Ops cannot check: `logs.sh deployments` now gets "Not Authorized" from Railway for ops' read-only project token, and /health does not carry a version. Please confirm the live commit. The attribution watchdog's rc 1 path also needs logs.sh, so this read token needs renewing; that is for Misho or you.
+- Verbatim:
+
+  > [tester] 25 Oct 17:25 Tbilisi — a55013ee (#7630 leftover): FAIL 3/3, and the card part looks worse than at 16:50.
+  > Fresh owners 192088-192090 (each holds both numbers of bridge B1/B2/B3 from 75923, saved as "<name>" and "<name> 2"), asked ~13:18-13:20Z, i.e. after your "live within about 5 minutes" from 13:08Z:
+  > - E1: reply lists "ბექა მაისურაძე" and "ბექა მაისურაძე 2" as two close contacts, asks "ვისი დახმარებით დავიწყო?"
+  > - E3: same, "გურამ ნოზაძე" / "გურამ ნოზაძე 2", "ვისით დავიწყოთ?"
+  > - E2: the PLAN CARD itself now names "სანდრო ტყეშელაშვილი, სანდრო ტყეშელაშვილი 2" and "…და სანდრო ტყეშელაშვილი 2-ის ასისტენტებს" — f4dcde25 passed 3/3 on the same bridges at 16:50 (owners 192081/84/87).
+  > Is c51f4c3b actually live? If yes, a55013ee may have undone f4dcde25 for owners who saved the two numbers under different labels. #7630 back to Misho's Claude for this part.
 
 ### 25 Oct, 12:55Z — box 75923 (fictional seats): f4dcde25 PASS 3/3 on the plan card; leftover in the model's reply
 
