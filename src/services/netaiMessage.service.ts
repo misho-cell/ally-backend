@@ -21,18 +21,25 @@ export const MAX_NETAI_CHOICE_CHARS = 60;
 const PUSH_BODY_CHARS = 120;
 const NETAI_QUERY_TIMEOUT_MS = 5_000;
 const MAX_LISTED = 50;
+/** The advisory-lock space for Netai's own sends (the second key is the user). */
+const NETAI_SEND_LOCK = 7725;
+export const MAX_CLIENT_MSG_ID_CHARS = 100;
 
 export interface NetaiMessageInput {
   readonly userId: number;
   readonly text: string;
   readonly choices: readonly string[];
   readonly sentBy: string;
+  /** #7725: the caller's own key; the same key for the same person is one message. */
+  readonly clientMsgId?: string | null;
 }
 
 export interface SentNetaiMessage {
   readonly id: number;
   readonly threadId: number;
   readonly newThread: boolean;
+  /** True when this key was sent before: the earlier message, and nothing sent now. */
+  readonly repeated?: boolean;
 }
 
 export interface NetaiMessageRow {
@@ -95,9 +102,30 @@ async function newNetaiThread(client: PoolClient, userId: number): Promise<numbe
   return result.rows[0].id;
 }
 
+/** The message this key already sent to this person, if any. */
+async function sentUnderKey(
+  client: PoolClient,
+  userId: number,
+  key: string,
+): Promise<SentNetaiMessage | null> {
+  // One send per person at a time, so two calls with one key cannot both pass the check.
+  await client.query('SELECT pg_advisory_xact_lock($1::int, $2::int)', [NETAI_SEND_LOCK, userId]);
+  const found = await client.query<{ id: number; thread_id: number }>(
+    `SELECT id, thread_id FROM netai_messages WHERE user_id = $1 AND client_msg_id = $2 LIMIT 1`,
+    [userId, key],
+  );
+  const row = found.rows[0];
+  return row === undefined
+    ? null
+    : { id: row.id, threadId: row.thread_id, newThread: false, repeated: true };
+}
+
 /** Thread, conversation row and record in one transaction: all of them, or none. */
 async function writeNetaiMessage(input: NetaiMessageInput): Promise<SentNetaiMessage> {
   return withTransaction(async (client) => {
+    const key = input.clientMsgId ?? null;
+    const earlier = key === null ? null : await sentUnderKey(client, input.userId, key);
+    if (earlier !== null) return earlier;
     const existing = await existingNetaiThread(client, input.userId);
     const threadId = existing ?? (await newNetaiThread(client, input.userId));
     const choices = input.choices.length > 0 ? JSON.stringify(input.choices) : null;
@@ -108,10 +136,10 @@ async function writeNetaiMessage(input: NetaiMessageInput): Promise<SentNetaiMes
     );
     await client.query(`UPDATE threads SET updated_at = NOW() WHERE id = $1`, [threadId]);
     const saved = await client.query<{ id: number }>(
-      `INSERT INTO netai_messages (user_id, thread_id, body, choices, sent_by)
-       VALUES ($1, $2, $3, $4::jsonb, $5)
+      `INSERT INTO netai_messages (user_id, thread_id, body, choices, sent_by, client_msg_id)
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6)
        RETURNING id`,
-      [input.userId, threadId, input.text, choices, input.sentBy],
+      [input.userId, threadId, input.text, choices, input.sentBy, key],
     );
     return { id: saved.rows[0].id, threadId, newThread: existing === null };
   });
@@ -126,6 +154,7 @@ export function netaiPushBody(text: string): string {
 /** Writes the message, then tells the user's open app and rings the phone. */
 export async function sendNetaiMessage(input: NetaiMessageInput): Promise<SentNetaiMessage> {
   const sent = await writeNetaiMessage(input);
+  if (sent.repeated === true) return sent;
   const userId = String(input.userId);
   if (sent.newThread) {
     emitThreadCreated(userId, {
