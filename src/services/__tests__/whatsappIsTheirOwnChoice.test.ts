@@ -37,9 +37,11 @@ describe('the WhatsApp choice', () => {
     await expect(hasWhatsappConsent(USER)).resolves.toBe(false);
   });
 
-  it('sends nothing while the switch is off, without reading anything', async () => {
+  it('sends nothing while the switch is off, reading only the switch', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ enabled: false }] });
     await expect(tellInWhatsapp(USER, 'hi', null)).resolves.toBe(WhatsAppOutcome.Off);
-    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(mockQuery.mock.calls[0][0]).toContain('FROM app_flags');
   });
 
   it('sends nothing to a person who has not chosen it', async () => {

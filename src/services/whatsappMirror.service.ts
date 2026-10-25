@@ -57,7 +57,7 @@ export async function mirrorToWhatsapp(
   reading: boolean,
   now: Date = new Date(),
 ): Promise<void> {
-  if (!whatsappChannelOn() || reading) return;
+  if (reading || !(await whatsappChannelOn())) return;
   const text = whatsappText(notice);
   const threadId = threadOfUrl(notice.url);
   try {
@@ -74,7 +74,7 @@ export async function mirrorToWhatsapp(
 
 /** Sends what waited for the morning. Returns how many went out. */
 export async function releaseHeldWhatsapp(): Promise<number> {
-  if (!whatsappChannelOn()) return 0;
+  if (!(await whatsappChannelOn())) return 0;
   const due = await query<{ id: number; user_id: number; text: string; thread_id: number | null }>(
     `UPDATE whatsapp_held SET sent_at = NOW()
       WHERE id IN (SELECT id FROM whatsapp_held

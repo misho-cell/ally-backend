@@ -51,13 +51,28 @@ describe('the WhatsApp welcome', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('is never sent while the channel is off or without a template', async () => {
-    delete process.env.WHATSAPP_WELCOME_TEMPLATE;
-    await expect(welcomeInWhatsapp(USER)).resolves.toBe(WelcomeStatus.NoTemplate);
+  it('is never sent while the channel is off', async () => {
     process.env.WHATSAPP_CHANNEL_ON = 'false';
+    mockQuery.mockResolvedValueOnce({ rows: [{ enabled: false }] });
     await expect(welcomeInWhatsapp(USER)).resolves.toBe(WelcomeStatus.ChannelOff);
-    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(mockQuery.mock.calls[0][0]).toContain('FROM app_flags');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('uses Netai’s own template unless a variable names another', async () => {
+    delete process.env.WHATSAPP_WELCOME_TEMPLATE;
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ recent: false }] })
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000000' }] })
+      .mockResolvedValue({ rows: [], rowCount: 1 });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ messages: [{ id: 'wamid.2' }] }),
+    });
+    await welcomeInWhatsapp(USER);
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body)).template.name).toBe('netai_welcome');
   });
 
   it('says it failed, without marking it sent, when WhatsApp refuses', async () => {

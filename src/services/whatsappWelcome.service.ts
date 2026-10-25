@@ -5,6 +5,7 @@ import {
   phoneOf,
   recordWhatsappMessage,
   sendTemplate,
+  welcomeTemplate,
   whatsappChannelOn,
 } from './whatsappChannel.service';
 
@@ -12,8 +13,9 @@ import {
  * Misho, 25 Oct (via the frontend): when a person turns WhatsApp on, Netai
  * writes to them there at once, so the conversation is open and can simply be
  * continued. A message Netai starts must be a template Meta approved, so the
- * welcome is one: WHATSAPP_WELCOME_TEMPLATE, its whole text written by Misho in
- * Meta, with no parameters. It goes once per person within WELCOME_REPEAT_DAYS,
+ * welcome is one: WELCOME_TEMPLATE (whatsappSetup creates it with the text
+ * Misho asked me to write, 25 Oct), or WHATSAPP_WELCOME_TEMPLATE, with no
+ * parameters. It goes once per person within WELCOME_REPEAT_DAYS,
  * so flipping the switch does not send a message each time.
  *
  * A choice made while the channel is off sends nothing, then or later: the
@@ -26,7 +28,6 @@ export enum WelcomeStatus {
   Sent = 'sent',
   ChannelOff = 'channel_off',
   AlreadySent = 'already_sent',
-  NoTemplate = 'no_template',
   NoPhone = 'no_phone',
   Failed = 'failed',
 }
@@ -53,14 +54,12 @@ async function markWelcomed(userId: number): Promise<void> {
 
 /** Sends the welcome to a person who has just turned WhatsApp on. Never throws. */
 export async function welcomeInWhatsapp(userId: number): Promise<WelcomeStatus> {
-  if (!whatsappChannelOn()) return WelcomeStatus.ChannelOff;
-  const template = process.env.WHATSAPP_WELCOME_TEMPLATE?.trim();
-  if (!template) return WelcomeStatus.NoTemplate;
+  if (!(await whatsappChannelOn())) return WelcomeStatus.ChannelOff;
   try {
     if (await welcomedRecently(userId)) return WelcomeStatus.AlreadySent;
     const phone = await phoneOf(userId);
     if (phone === null) return WelcomeStatus.NoPhone;
-    const wamid = await sendTemplate(phone, template, []);
+    const wamid = await sendTemplate(phone, welcomeTemplate(), []);
     await markWelcomed(userId);
     await recordWhatsappMessage(
       userId,

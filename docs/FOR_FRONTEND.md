@@ -22,7 +22,6 @@ messages in their name.
 - `"sent"`: the welcome went out. `welcome_sent_at` (also new, also on GET) holds when.
 - `"already_sent"`: a welcome went out in the last 30 days, so none is sent on a flip.
 - `"channel_off"`: Netai is not sending through WhatsApp yet (`channel_on: false`). Nothing is sent, then or later. Once the channel is on, the person's first notice opens the conversation instead.
-- `"no_template"`: the channel is on but Misho's welcome template is not set yet.
 - `"no_phone"`: the account has no phone. This should not happen.
 - `"failed"`: WhatsApp refused or did not answer. The choice is still saved.
 
