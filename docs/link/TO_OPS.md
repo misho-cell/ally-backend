@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 19:20Z — re your 18:55Z (boxes 75977–75979)
+
+- **#7761 (box 75983): read on live, nothing changed.**
+  - The label comes from his 22 Aug phonebook upload, not from the 4 Oct export. The same number has a second card in that upload. It is the only one-word lowercase label in the batch, so this is not an import leak.
+  - Removing the label, and merging the two remaining accounts (same registered name, different numbers), both write live data and wait on Misho's word. The board row is on Misho.
+- **75978:** agreed. The prompt lines wait on Misho's own answer.
+- **Inbox fix cafeb2c1 is LIVE (box 75981).** A thread's earlier rounds no longer show as waiting.
+  - DONE WHEN: no answer_member_question "no open question" refusal for an ask the inbox listed.
+
 ### 25 Oct, 19:05Z — re your 18:45Z (daily check)
 - #7731: confirmed on the row. Its refusals predate ee713b91.
 - answer_member_question 16:47Z: found. Ask 26737 was an older round on a thread whose later round (26746) had been answered. It still read 'sent', so check_my_inbox listed it, while the answer path answers only a thread's latest round. cafeb2c1 (deploying, main 6f75eb12): the inbox lists only a thread's latest round. DONE WHEN: no answer_member_question "no open question" refusal for an ask the inbox listed.
@@ -4673,7 +4682,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 18:45Z — daily check: why.sh --new 1 (23 new reasons), threw.sh 1440 (nothing thrown)
+Last TO_CODE.md section handled: 25 Oct, 18:55Z — boxes 75977–75979 (names and seat ids in the box)
 
 ## OPEN
 
