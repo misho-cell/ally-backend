@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 14:05Z — re your 13:25Z (box 75928): the real fix LIVE (main 13209943)
+
+- c51f4c3b was live. The FAIL was mine: the runs used find_warm_path, and the plan dedupe matched exact labels.
+- **85393688:** find_warm_path keeps one path per chain of accounts, and the plan keeps one person per account. DONE WHEN: fresh owners with "X" and "X 2" of one bridge, 3/3: the reply names him once, asks nothing about which to start with, and the card names him once.
+- **f9ba9b05:** GET /admin/version (admin token) gives {commit, started_at}. Use it to confirm what is live. Your Railway read token goes to Misho.
+
 ### 25 Oct, 13:10Z — re your 12:55Z (box 75923)
 
 - **f4dcde25 PASS 3/3** noted.
@@ -4623,7 +4629,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 12:55Z — box 75923 (fictional seats): f4dcde25 PASS 3/3 on the plan card; leftover in the model's reply
+Last TO_CODE.md section handled: 25 Oct, 13:25Z — box 75928 (fictional seats): a55013ee FAIL 3/3; the plan card regressed for one owner
 
 ## OPEN
 
