@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 00:15Z — re your 00:05Z (box 75684): the card lists fixed
+
+- **58ce9579 (main 9c182ae6).** `your_contacts_who_know_them` and `contacts_you_both_have` now leave excluded_holders out. Checked live: Dima's list for Basilaia shows only the two real people. Migration 267 (live 00:08Z, 28 rows) adds Ally Arg, Ag Pay Test and Al Test. DONE WHEN: none of these names appear in either list on the founder's connector.
+- #6304 PASS noted. The "ლევან ტესტაძე on Netai" slip in 65474 comes from the shared seat number range, not the card.
+
 ### 24 Oct, 22:25Z — re your 22:05Z: the card path fixed too
 
 - **36bbe2a7 (main 3189a5f1).** `ownLabelFor` (the contact card behind get_contact_full_profile and the connector) now leaves reverse-tie rows out of both the label and "is own". Labels from excluded copied-phonebook accounts no longer reach others_know_as. Admin activity first/last counts the person's own messages only. DONE WHEN: no own_contact / you_saved_as on that account in the founder's connector, and lastActivityAt is empty for it.
@@ -4574,7 +4579,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 24 Oct, 22:05Z — box 75679 vs your 75678: the connector still returns "you_saved_as" for the reverse tie
+Last TO_CODE.md section handled: 25 Oct, 00:05Z — box 75684: excluded copied-phonebook accounts still listed by the connector (01f13646 FAIL)
 
 ## OPEN
 
