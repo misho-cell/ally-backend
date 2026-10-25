@@ -312,7 +312,7 @@ import { withoutWithheldPeople } from './withoutWithheldPeople';
 import { keepNeverInvolved, keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
 import { mutualGroupsFor, plannedGoBetweensLabel } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.service';
-import { askStepsToKeepUnnamed } from './askCaptions';
+import { askStepNames, askStepsToKeepUnnamed } from './askCaptions';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
 import { REQUEST_THREAD_TYPE, answersTheRequestOnly } from './requestReferral';
@@ -12854,13 +12854,19 @@ async function processToolBlocks(
   // turn, after that result is in context.) Promise.all preserves result order.
   // #1694: an ask to a person with a boundary is never announced by name.
   const unnamed = shown ? await askStepsToKeepUnnamed(toolBlocks) : new Set<string>();
+  const askNames = shown ? await askStepNames(userId, toolBlocks) : new Map<string, string>();
   for (const block of toolBlocks) {
+    const clean = askNames.get(block.id);
+    const captionInput =
+      clean === undefined
+        ? (block.input as Record<string, unknown>)
+        : { ...(block.input as Record<string, unknown>), contact_name: clean };
     // Step captions follow the conversation's language (task 22 g/h) — the
     // Georgian map is the base, toolStepCaption overrides for en/ru/es.
     // Row 304: a call that carries a name or a query says it.
     const progressMsg = unnamed.has(block.id)
       ? genericStepCaption(runLang(runId))
-      : (namedStepCaption(block.name, block.input as Record<string, unknown>, runLang(runId)) ??
+      : (namedStepCaption(block.name, captionInput, runLang(runId)) ??
         toolStepCaption(block.name, runLang(runId)) ??
         TOOL_PROGRESS_MESSAGES[block.name] ??
         // 3368: every tool leaves a step, so every run that used one has steps.

@@ -1,4 +1,5 @@
 import { hasAnyAskBoundary } from './askBoundary.service';
+import { ownersLabel } from './instructedAsk';
 
 /**
  * #1694, the tester's 69059 (thread 61131): the owner read „✉️ writing to
@@ -49,4 +50,29 @@ export async function askStepsToKeepUnnamed(calls: readonly StepCall[]): Promise
     ),
   );
   return new Set(asks.filter((_, i) => closed[i]).map(({ id }) => id));
+}
+
+/**
+ * #7631 (tester 75971, thread 65775): „✉️ Writing to Sandro G.'s assistant…" —
+ * the step line named the person by the owner's raw label the model passed.
+ * Each ask step names its person as the owner's „sent" line does: the label's
+ * clean name, else the account's own. A failed read keeps what the model gave.
+ */
+export async function askStepNames(
+  userId: string,
+  calls: readonly StepCall[],
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  for (const call of calls) {
+    const phone = askedPhone(call);
+    if (phone === null) continue;
+    const typed = (call.input as { contact_name?: unknown } | null)?.contact_name;
+    try {
+      names.set(call.id, await ownersLabel(userId, phone, typeof typed === 'string' ? typed : ''));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[ask-caption] name not read, the given one kept:', (err as Error).message);
+    }
+  }
+  return names;
 }
