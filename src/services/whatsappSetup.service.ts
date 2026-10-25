@@ -93,12 +93,53 @@ async function tokenScopes(): Promise<GranularScope[]> {
     []) as GranularScope[];
 }
 
-/** The WhatsApp Business Account the token manages; null when it manages none. */
+function targetsOf(scopes: readonly GranularScope[], scope: string): string[] {
+  return [...(scopes.find((s) => s.scope === scope)?.target_ids ?? [])];
+}
+
+async function idsAt(path: string): Promise<string[]> {
+  const answer = await graph(path);
+  return ((answer.data ?? []) as { id?: string }[])
+    .map((row) => row.id ?? '')
+    .filter((id) => id !== '');
+}
+
+/** The business accounts of the token's businesses, owned or shared with them. */
+async function accountsOfBusinesses(businesses: readonly string[]): Promise<string[]> {
+  const lists = await Promise.all(
+    businesses.flatMap((b) => [
+      idsAt(`/${b}/owned_whatsapp_business_accounts?fields=id&limit=50`),
+      idsAt(`/${b}/client_whatsapp_business_accounts?fields=id&limit=50`).catch(() => []),
+    ]),
+  );
+  return [...new Set(lists.flat())];
+}
+
+/** The one of these accounts that holds Netai's sending number. */
+async function accountHoldingOurNumber(accounts: readonly string[]): Promise<string | null> {
+  const phoneId = process.env.WHATSAPP_PHONE_ID?.trim() ?? '';
+  for (const account of accounts) {
+    const phones = await idsAt(`/${account}/phone_numbers?fields=id&limit=50`);
+    if (phones.includes(phoneId)) return account;
+  }
+  return accounts.length === 1 ? accounts[0] : null;
+}
+
+/**
+ * The WhatsApp Business Account the token manages; null when none is found.
+ * A system user's token granted on the whole business names no account in its
+ * scopes (as on live, 25 Oct): then the business's accounts are read and the
+ * one holding WHATSAPP_PHONE_ID is taken.
+ */
 export async function businessAccountId(): Promise<string | null> {
   const fixed = process.env.WHATSAPP_WABA_ID?.trim();
   if (fixed) return fixed;
-  const managed = (await tokenScopes()).find((s) => s.scope === 'whatsapp_business_management');
-  return managed?.target_ids?.[0] ?? null;
+  const scopes = await tokenScopes();
+  const managed = targetsOf(scopes, 'whatsapp_business_management');
+  if (managed.length > 0) return accountHoldingOurNumber(managed);
+  const businesses = targetsOf(scopes, 'business_management');
+  if (businesses.length === 0) return null;
+  return accountHoldingOurNumber(await accountsOfBusinesses(businesses));
 }
 
 /** Where Netai's two templates stand in Meta. */
