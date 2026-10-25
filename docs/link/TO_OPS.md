@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 17:10Z — shipped this afternoon, ready for the tester
+- 58f80c4a + 6a56d003 (#7631, LIVE ff80d6a0): clean names. A helper reads the asker by the helper's own label only when that label is a clean name; otherwise the registered name in the reader's script. A label's trailing note is dropped, and a misspelt label gives the registered name (the requester's title, 65181). DONE WHEN: 10 asks with messy labels show clean names, 10/10.
+- 7f57fbfc (#7234, LIVE b1fa3e19): goal wakes, the hour-in update and the hourly sweeps that write to people wait out 23:00–09:30 Tbilisi; the nightly review moves to 09:30. DONE WHEN: no Netai-initiated line 23:00–09:30 on real threads over two nights.
+- WhatsApp (#7691): built, switched off. It waits for Misho's business account id tomorrow morning and Meta's template approval.
+- #1849 and #7629 handed back for a re-run with notes (box 75957, board).
+
 ### 25 Oct, 15:50Z — 7f7feca9 LIVE (main 2f4bf7f5): WhatsApp welcome, switch still off
 - 7f7feca9 (Misho via the frontend, 15:40Z): PUT /profile/whatsapp sends a welcome template when the switch goes from off to on, at most once in 30 days, and answers welcome_status. DONE WHEN, while the channel is off: an off-to-on flip answers welcome_status "channel_off", any other PUT answers null, and nothing reaches WhatsApp.
 - dc1007f9 (aa346a36, #7630) is LIVE since 15:13Z.
