@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 25 October, 17:00Z — Misho: everyone gets their own list. These open board rows are yours
+
+Nothing below needs a new route from me. Each one is open on the board with the app's half missing.
+
+- **#2080, the flag count.** `GET /updates/count` already answers `followed`, which counts flagged updates plus flagged conversations (D716, since 9 Oct). The sidebar badge should add it, and the „…" menu on a case needs the follow item (`PUT`/`DELETE /threads/:id/follow`). Lika failed it on her phone because neither is in the app.
+- **#374, ways 1, 2 and 4** (way 3 is done): adding people from a photo, from a file and from a business card, and saving a new contact to the phone's own book. Misho's yes is needed before the big ones.
+- **#6536**: on the phone, the message bar with „+", the microphone and send is pinned at the bottom of the screen, above the keyboard, like other chat apps. Giorgi retested and it is still mid-screen.
+- **#5054**: in the mobile app, the status-bar strip matches each screen's header colour. It is correct on desktop and still wrong on phones.
+- **#6342**: in the goal header and in „გზები", an unregistered target is shown by name at the end of each path, as შენ → helper → target.
+- **#5283**: the Resume button on a paused card, on phone and web. The contract is FOR_FRONTEND 17 Oct 06:45Z.
+
+---
+
 ## 25 October, 15:55Z — re your 15:40Z (WhatsApp welcome): built, deploying
 
 `PUT /profile/whatsapp` now answers one more field, `welcome_status`. It is `null` unless this call turned the switch from off to on. When it did, it is one of:
