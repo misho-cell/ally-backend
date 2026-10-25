@@ -13,6 +13,12 @@ import {
   recordAnswer,
 } from '../../services/partH.service';
 import { ApiResponse } from '../../types';
+import {
+  ConsentSource,
+  setWhatsappConsent,
+  whatsappConsentOf,
+} from '../../services/whatsappConsent.service';
+import { whatsappChannelOn } from '../../services/whatsappChannel.service';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { inviteLinkForScreen } from '../../services/referralLink.service';
@@ -552,6 +558,61 @@ profileRouter.patch(
 // see the migration comment for why not an object store.
 const MAX_AVATAR_BYTES = 300 * 1024;
 const ALLOWED_AVATAR_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+/**
+ * Misho, 25 Oct: Netai's messages in WhatsApp, by the person's own choice.
+ *   GET /profile/whatsapp                    → { opted_in, opted_in_at, opted_out_at, channel_on }
+ *   PUT /profile/whatsapp { opted_in: bool } → the same, after the change
+ * `channel_on` says whether Netai is sending through WhatsApp yet; a choice
+ * made before it is on is kept and holds the day it is.
+ */
+profileRouter.get(
+  '/whatsapp',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const consent = await whatsappConsentOf(userId);
+      res
+        .status(200)
+        .json({ success: true, data: { ...consent, channel_on: whatsappChannelOn() } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/whatsapp]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.put(
+  '/whatsapp',
+  authenticateJwt,
+  requireUserRole,
+  // A JSON true or false only: a string "true" would otherwise be saved as a no.
+  body('opted_in').custom((value: unknown) => typeof value === 'boolean'),
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'opted_in უნდა იყოს true ან false' });
+      return;
+    }
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const consent = await setWhatsappConsent(
+        userId,
+        req.body.opted_in === true,
+        ConsentSource.Profile,
+      );
+      res
+        .status(200)
+        .json({ success: true, data: { ...consent, channel_on: whatsappChannelOn() } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[PUT /profile/whatsapp]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 profileRouter.put(
   '/photo',

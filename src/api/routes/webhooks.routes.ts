@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { INVALID_SIGNATURE, processWebhookEvent } from '../../services/paddle.service';
 import { constructEvent, handleStripeEvent } from '../../services/stripe.service';
+import { handleWhatsappWebhook, signatureIsValid } from '../../services/whatsappInbound.service';
 
 const webhooksRouter = Router();
 
@@ -70,6 +71,48 @@ webhooksRouter.post('/stripe', async (req: Request, res: Response): Promise<void
     console.error(`[POST /webhooks/stripe] ${event.type} failed:`, err);
     res.status(500).json({ success: false, error: 'Webhook processing failed' });
   }
+});
+
+// WhatsApp (Misho, 25 Oct). Meta checks the address once with GET, answering
+// its challenge only when the verify token matches WHATSAPP_VERIFY_TOKEN.
+webhooksRouter.get('/whatsapp', (req: Request, res: Response): void => {
+  const expected = process.env.WHATSAPP_VERIFY_TOKEN;
+  const given = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (
+    !expected ||
+    req.query['hub.mode'] !== 'subscribe' ||
+    given !== expected ||
+    typeof challenge !== 'string'
+  ) {
+    res.status(403).json({ success: false, error: 'Verification failed' });
+    return;
+  }
+  res.status(200).type('text/plain').send(challenge);
+});
+
+// Every delivery is signed with the app secret over the raw body. It is
+// answered at once and handled afterwards: Meta retries a slow answer, and a
+// run takes longer than it waits. A repeat is dropped by the message's own id.
+webhooksRouter.post('/whatsapp', (req: Request, res: Response): void => {
+  const raw = req.body as Buffer;
+  const signature = req.headers['x-hub-signature-256'];
+  if (
+    !Buffer.isBuffer(raw) ||
+    !signatureIsValid(raw, typeof signature === 'string' ? signature : undefined)
+  ) {
+    res.status(401).json({ success: false, error: 'Invalid signature' });
+    return;
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(raw.toString('utf8'));
+  } catch {
+    res.status(400).json({ success: false, error: 'Invalid JSON' });
+    return;
+  }
+  res.status(200).json({ success: true });
+  void handleWhatsappWebhook(payload);
 });
 
 export default webhooksRouter;

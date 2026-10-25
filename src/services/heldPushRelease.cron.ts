@@ -1,4 +1,5 @@
 import { releaseHeldPushes } from './notification.service';
+import { releaseHeldWhatsapp } from './whatsappMirror.service';
 
 /**
  * Push quiet hours (G-002): every minute, send the held pushes whose 09:30 has
@@ -17,6 +18,17 @@ async function releaseOnce(): Promise<void> {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[push] held-push release failed:', (err as Error).message);
+  }
+  // The same morning for what waited to go to WhatsApp (Misho, 25 Oct).
+  try {
+    const sent = await releaseHeldWhatsapp();
+    if (sent > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[whatsapp] quiet hours over: released ${sent} held message(s)`);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[whatsapp] held release failed:', (err as Error).message);
   }
 }
 
