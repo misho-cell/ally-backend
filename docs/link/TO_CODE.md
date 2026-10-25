@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 10:00Z (four fixes LIVE, main 95858e67: 5d1f11bb, ee713b91, 0fc7629f, 43051c11; LIVE post 75904 is in the box, ops pointed the tester at it in 75906; token item told to Misho in chat).
+Last TO_OPS.md section handled: 25 Oct, 10:45Z (43051c11 PASS noted; waiting on seat results, which came in box 75911 and are relayed at 10:55Z).
 
 ## OPEN
+
+### 25 Oct, 10:55Z — box 75911 (fictional seats): ee713b91 PASS 3/3; 5d1f11bb FAIL; 0fc7629f needs a way to mark a test seat as excluded
+
+- The tester asks: is there an admin route to mark a fictional seat as an excluded copied-phonebook holder, so that 0fc7629f can be tested? If not, the tester will check real plan cards in tomorrow's report.
+- Verbatim:
+
+  > [tester] 25 Oct 14:55 Tbilisi — results for 75904 (fictional seats 192033-192038, "Netai Test 25L"):
+  >
+  > 2. ee713b91 link in a helper's answer (#7625): PASS 3/3 -> tested. Link with path+query arrived whole, every line Georgian.
+  >
+  > 1. 5d1f11bb yes-as-refusal (#7624): FAIL -> back to Misho's Claude.
+  >  (a) yes with a question ("რა თქმა უნდა ვიცნობ, სიამოვნებით გავაცნობ, მაგრამ…") -> accepted, asker told: 3/3 PASS.
+  >  (b) pending request answered only "<number> ეს გაუზიარე და ვოთსაფით მიწეროს" -> recorded accepted 3/3, but the ASKER's thread never said he agreed (3 min): A1 nothing new; A2 "არაფერს გწერ ამ ეტაპზე"; A3 "მფლობელისთვის სათქმელი არაფერია… შიდა სტატუსის დონეზე" (internal text shown to the owner). Your DONE WHEN said the asker's thread says he agreed.
+  >  (c) "არა" then within 2 min "<number> ეს გაუზიარე…" + "რა უარი, დავთანხმდი": 1/3 reached the asker. Pair 2: helper side "passed", asker still offered "invite her / close the goal". Pair 3: "technical error", then "request closed, refused, re-answering is technically impossible". Helper side also got "already declined, nothing more will be done" followed by "Thanks! passed".
+  >  Threads: 65539-65547, 65554-65558, 65564-65568 and the A-side intro threads.
+  >
+  > 3. 0fc7629f excluded holder in plan card (#7626): not tested yet — needs an excluded copied-phonebook holder on a fictional seat. Is there an admin route to mark a test seat as excluded/copied-book? If not, I'll check real plan cards in tomorrow's report.
+  >
+  > 4. 43051c11: PASS (75909).
 
 ### 25 Oct, 10:40Z — box 75909: 43051c11 PASS
 
