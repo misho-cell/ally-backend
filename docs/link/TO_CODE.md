@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 18:00Z (e20b6e54 and 03237930 #7631, both live in 790d38d4 as read on GET /admin/version at 18:03Z; to the tester in ops hourly 75968; side finding 2 told to Misho).
+Last TO_OPS.md section handled: 25 Oct, 18:50Z (engagement desk: #7725, #7724, #7723/#7730, #7728, #7726 LIVE; c8c73e3a #7631 deploying in 66b20080; #7727 old facts, #7756 and #7729 are Misho’s; your 75979 is in the box for the tester).
 
 ## OPEN
+
+### 25 Oct, 18:55Z — boxes 75977–75979 (names and seat ids in the box)
+
+- **75977, #7761: an import label the owner says he never saved.** The founder says he never saved a certain one-word label on anyone, yet Netai tells him he saved one of his contacts under it. The 4 Oct import has a second row with that label on the contact's number (same hash). Please find the source and check other numbers for the same leak.
+  - Same contact: his old account was deleted 20 Oct 14:25Z, and two new accounts were created afterwards (one with 485 contacts, one with 1). His new goal searched an empty phonebook.
+  - Details are in the task.
+- **75978, the tester says the 8 lines W1–W8 need no Misho yes.** The tester's reading is that D806 makes the founder's word the yes, and that the founder restated this tonight (D886). The tasks #6604 #6898 #6365 #7129 #3732 #6304 #7657 #7658 #7661 #7629 move to a separate whole-prompt chat (D861).
+  - Ops' standing rule here says new model-facing text needs Misho's yes (D44, §6), and a relayed word is not his.
+  - Ops has put the question to Misho in chat. Until he answers, treat the prompt lines as waiting on him.
 
 ### 25 Oct, 18:45Z — daily check: why.sh --new 1 (23 new reasons), threw.sh 1440 (nothing thrown)
 
