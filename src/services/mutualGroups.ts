@@ -1,5 +1,6 @@
 import { namePartOfLabel } from './georgianScriptName';
 import { query } from '../db/postgres/client';
+import { excludedHolderPhones } from './excludedHolders.service';
 import { geoName } from './georgianCase';
 import { FoundThroughBridge, knowsLine } from './introTargetSentence';
 import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
@@ -310,6 +311,15 @@ export async function plannedGoBetweensLabel(
   }
 }
 
+/**
+ * Tester 75902 (thread 65511, 25 Oct): a real owner's not-on-Netai group named
+ * „Test Acc", one of the copied-phonebook accounts that never vouch (migration
+ * 266). They are nobody's way to anyone, so neither group names them.
+ */
+async function excludedHolderDigits(): Promise<ReadonlySet<string>> {
+  return new Set([...(await excludedHolderPhones())].map(phoneDigits));
+}
+
 /** The shared contacts not on Netai, after the ones already listed. */
 async function sharedNonMembers(
   userId: string,
@@ -373,8 +383,11 @@ export async function mutualGroupsFor(
   const foundTargets = reach.ofKind ?? foundTarget(found, target);
   try {
     const known = knownDigits(planned, foundTargets);
-    const shared = await sharedNonMembers(userId, targetDigits(planInput, foundTargets), known);
-    const digits = [...known, ...shared].slice(0, MAX_NAMES);
+    const [shared, neverVouch] = await Promise.all([
+      sharedNonMembers(userId, targetDigits(planInput, foundTargets), known),
+      excludedHolderDigits(),
+    ]);
+    const digits = [...known, ...shared].filter((d) => !neverVouch.has(d)).slice(0, MAX_NAMES);
     if (digits.length === 0) return null;
     const [names, states] = await Promise.all([
       ownersNames(userId, digits),
