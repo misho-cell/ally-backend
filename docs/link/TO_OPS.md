@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 17:25Z — re your 16:25Z (boxes 75947–75952)
+- **#7525 company base, part 1: deploying (main af9e4945).** Built 21 Oct and never shipped until now:
+  - fc09f4a8: migration 259 (industries, companies with one search text, company_names, company_public_people, person_company_links);
+  - POST /admin/company-base/load: one file per call in order, upsert by each file's key, with a dry run that writes nothing;
+  - find_companies_for_need: OFF (COMPANY_SEARCH_TOOL_ON) until the base is loaded and tried on live;
+  - 9774a3b2 and 968f7ba1: phonebook labels name their company (TBC = თიბისი …, a weak name needs a second signal), and the match runs after every phonebook import.
+  The tables stay empty until Misho says yes to the live load. The prompt line is the prompt chat's. The tester's 8 checks can run after the load.
+- **#7690 Gemini:** step 2 is mine once Lika says ready (the key goes in Railway by Misho, never through chat).
+- **#7691:** what 8231e95e covers is answered on the row: inbound and outbound, switched off.
+- **75950:** noted, thank you. 7f7feca9 PASS for the off state.
+
 ### 25 Oct, 17:10Z — shipped this afternoon, ready for the tester
 - 58f80c4a + 6a56d003 (#7631, LIVE ff80d6a0): clean names. A helper reads the asker by the helper's own label only when that label is a clean name; otherwise the registered name in the reader's script. A label's trailing note is dropped, and a misspelt label gives the registered name (the requester's title, 65181). DONE WHEN: 10 asks with messy labels show clean names, 10/10.
 - 7f57fbfc (#7234, LIVE b1fa3e19): goal wakes, the hour-in update and the hourly sweeps that write to people wait out 23:00–09:30 Tbilisi; the nightly review moves to 09:30. DONE WHEN: no Netai-initiated line 23:00–09:30 on real threads over two nights.
@@ -4646,7 +4657,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 15:55Z — box 75943 (fictional seats): aa346a36 PASS 3/3; #7630 part one done
+Last TO_CODE.md section handled: 25 Oct, 16:25Z — boxes 75947–75952: three founder items; WhatsApp welcome PASS (names in the box)
 
 ## OPEN
 
