@@ -3,6 +3,7 @@ import { unheardAnswerOf } from './answerAddition';
 import { randomUUID } from 'crypto';
 import { releaseDueHeldAsks } from './heldAsks.service';
 import { answerOnlySaysNo, noteQuietAfterDecline } from './quietSystemRun';
+import { DEFAULT_PUSH_TIME_ZONE, isQuietHour } from './pushQuietHours';
 import {
   HeldAskOutcome,
   heldAsksSentNote,
@@ -161,7 +162,8 @@ const MAX_UNWOKEN_PER_SWEEP = 10;
 // Nightly review (the matcher, v1): quiet open tasks get one model-driven
 // re-check per night — new members/tags/facts since yesterday surface through
 // the same searches the task already knows how to run.
-const NIGHTLY_REVIEW_HOUR_UTC = 2; // 06:00 Tbilisi, after the enrichment window
+// #7234: 05:30 UTC is 09:30 Tbilisi, the end of quiet hours (it was 06:30, inside them).
+const NIGHTLY_REVIEW_HOUR_UTC = 5;
 const NIGHTLY_REVIEW_QUIET_HOURS = 20;
 const MAX_NIGHTLY_REVIEWS = 10;
 // How many due tasks one tick advances — engine runs share the model budget
@@ -983,7 +985,19 @@ export async function sweepGoalsUnsolvedAfterAnHour(): Promise<number> {
   return woken;
 }
 
+/**
+ * #7234 (tester, 25 Oct: Tornike's thread 63410, a scheduled check-in at 02:23
+ * Tbilisi): a run Netai starts on its own — a goal's wake, the hour-in update —
+ * waits out the quiet hours the pushes already keep (23:00–09:30 Tbilisi). The
+ * goals stay due and are taken on the first tick after; nothing is dropped. A
+ * reply to the owner's own message is not held: he is the one writing.
+ */
+export function ownRunsWait(now: Date = new Date()): boolean {
+  return isQuietHour(now, DEFAULT_PUSH_TIME_ZONE);
+}
+
 async function tick(): Promise<void> {
+  if (ownRunsWait()) return;
   await sweepGoalsUnsolvedAfterAnHour().catch((err: unknown) =>
     // eslint-disable-next-line no-console
     console.error('[task-engine] hour update sweep failed:', (err as Error).message),
@@ -2059,6 +2073,8 @@ export function startTaskTicker(): void {
    * the answer comes from a timestamp that outlives the container.
    */
   const runHourlySweeps = (): void => {
+    // #7234: reminders, widening and method changes write to people; not at night.
+    if (ownRunsWait()) return;
     void claimSweep(SWEEP_ASK_REMINDERS, REMINDER_CLAIM_WINDOW_MINUTES).then((due) => {
       if (!due) return;
       void sendDueAskReminders(MAX_REMINDERS_PER_SWEEP).catch((err) =>
