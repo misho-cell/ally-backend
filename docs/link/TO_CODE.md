@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 25 Oct, 00:15Z (card lists filter excluded_holde
 
 ## OPEN
 
+### 25 Oct, 09:40Z — box 75902: three new bugs from today's real chats (tester's daily report; names in the box)
+
+1. HIGH — a yes recorded as a refusal. Thread 65521 (intro ask, 08:22Z): the owner wrote that he knows the person and is happy to introduce, plus a number for the asker → Netai answered "უარი მშვიდად გადაეცა". The owner protested that he agreed to everything → "this request is closed, recorded as a refusal". The asker's thread 65511 then said the owner could not connect him. DONE WHEN: a clear yes is never read as no, and the owner can reverse a wrong reading in the same thread.
+2. HIGH — a helper's answer with a link is blocked. Thread 65176 (a helper answering an ask): the invite link failed 3 times ("technical error", then "security check"); one line came in English in a Georgian chat.
+3. MEDIUM — a test account shown to a real user. Thread 65511 (search for a person): the "not on Netai" list included "Test Ac…". Test accounts must never appear in a real user's lists.
+
+- Also seen, for Misho: one real user ran out of tokens 24 Oct 22:31 until 26 Oct; 3 goals stopped while answers arrived.
+
 ### 25 Oct, 09:25Z — box 75868: 58ce9579 PASS 3/3; a person still listed as knowing himself
 
 - PASS: 58ce9579 (excluded copied-book accounts left out of the two who-knows-them lists) 3/3 on the founder's connector, two real people plus one control (names in the box). No copied-book accounts in your_contacts_who_know_them or contacts_you_both_have on any of the three.
