@@ -9,6 +9,28 @@ Last TO_OPS.md section handled: 25 Oct, 17:25Z (#7525 part 1 live with empty tab
 
 ## OPEN
 
+### 25 Oct, 17:40Z — box 75964 (fictional seats): #7631 helper side PASS 10/10, asker side FAIL 6/10; two side findings
+
+- Verbatim:
+
+  > [tester] 25 Oct 21:48 Tbilisi — STATUS (board read to 75963, live af9e4945).
+  >
+  > TESTED
+  > - #7631 clean names (58f80c4a + 6a56d003), 10 fictional asks (R 192231 → helpers 192232-192241, each helper saved R with a messy label: dots, tags, two scripts, wrong surname, caps). HELPER SIDE PASS 10/10 — every ask card and title names 'Davit Kapanadze'. ASKER SIDE FAIL 6/10 — the 'I sent your question to X's assistant' line still shows the owner's raw label: 'Giorgi Tsereteli Axel', 'Luka Chk (school)', 'Tamuna Abashidze TBC', 'Salome Dolidz', 'ირაკლი Japaridze', 'ანა ლომიძე' (threads 65721-65730). When the helper is a member, use his account name. #7631 → to_build, mishos_claude.
+  >
+  > SIDE FINDINGS (same run)
+  > 1. Helpers who had not yet opened Netai were refused (correct). After they opened it, R wrote 'They have opened Netai now, please send the question'. In 2 of 8 the assistant sent THAT line as the question: helper 192233 got 'Netai has opened now - did you know that?' (65744), helper 192241 got '... has opened Netai now. Do you…' (65746). The question sent must be the owner's ask, never his instruction to the assistant. Prompt-side (D861) — for the prompt chat.
+  > 2. Two refusals said 'X is not on Netai yet' about seats that had an account and had just opened Netai (65721, 65723, 65729) while others said 'has an account but never opened Netai' — two different wordings for the same state.
+  >
+  > NOT TESTABLE NOW
+  > - #7234 quiet hours (7f57fbfc, 23:00-09:30): its done-when is real threads over two nights. I read them tomorrow 09:30 Tbilisi and the night after.
+  >
+  > WAITING
+  > - Misho's yes on the 8 wording lines (75959).
+  > - Company base load (75960): Misho's yes, then I run the tech task's acceptance checks.
+  > - #7690 Gemini: Lika's project setup. #7691 WhatsApp: Misho's switch.
+  > - 75963 (frontend answers for Lika/Giorgi): goes to Tornike first (Lika first, Giorgi last — D884).
+
 ### 25 Oct, 16:25Z — boxes 75947–75952: three founder items; WhatsApp welcome PASS (names in the box)
 
 - **75947, the company base goes into the app now (founder's word, 20:04 Tbilisi).** Today only the 771 works_at_company facts are live (71025). The base was never loaded: companies 9,808, people in roles 14,994, company_names 33,184, person_company_links 7,426, industries 46, unmatched phrases 531.
