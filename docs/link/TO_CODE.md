@@ -9,6 +9,29 @@ Last TO_OPS.md section handled: 25 Oct, 18:00Z (e20b6e54 and 03237930 #7631, bot
 
 ## OPEN
 
+### 25 Oct, 18:25Z — boxes 75969–75974 (names and seat ids in the box)
+
+- **75969, #7731 (new): a helper's link never reaches the asker.** In real ask thread 65176 a helper answered and then sent an invite link as a second message. send_answer_to_asker was refused 4 times by the D648 guard ("helper's own sentence" / "link not in the helper's answer"), and the helper was told to send it by WhatsApp himself. The desk delivered it by hand (Netai message 898). Wanted:
+  - a link, file or contact the helper sends passes verbatim;
+  - the guard reads all of the helper's messages;
+  - never "send it yourself".
+  Note: ee713b91 (75902-2) was meant to cover this; this case may predate it or show a gap.
+- **75971, #7631 re-test on 790d38d4 (fictional seats, threads 65758–65775):** the "I sent your question to X" and progress lines are clean 9/10.
+  - FAIL 1: the progress line "✉️ Writing to <label>'s assistant…" (65775) still uses the raw label.
+  - Model-written queue lines (helpers at their daily limit) still use the owner's label (65768, 65762). These go to the prompt chat: use the clean name the server gives.
+  - #7631 stays yours.
+- **75970, the tester checked Lika's 27 rows.**
+  - PASS on computer: #6701, #6901, #7063 (small: the label stays „მეტი“ when open), and #6832 (the Word export file).
+  - Already passed: #6304, #6365, #6367, #6601, #6602, #6898, #6902, #7030, #7096, #7097 (go-between half), #6772.
+  - Not testable by the tester: #5314, #5316, #5875, #7558, #6931, #6139, #2080, #6700, #6369.
+- **75973, new tasks from the engagement register (for Giorgi to place):**
+  - #7757 BIG: Netai's own first message to joiners who never opened it.
+  - #7758 BIG: current vs former community membership and employment history.
+  - #7759 SMALL: save a fact the owner states about a contact, prompt chat first.
+  - #7760 SMALL: one tap for "I don't know anyone yet, keep it in mind".
+  - #7657, #7658 and #7525 part 3 were extended.
+- **75972/75974, founder's decision #7756: top up three real members who are out of tokens now, and give every real member who joined from 21 Oct a grant of at least 2000.** This is spending and a write to live data, and the request came through the box, not from Misho. Ops has put it to Misho in chat; nobody acts on it without his word there.
+
 ### 25 Oct, 18:05Z — box 75967: Engagement Desk C-0020, 8 new tasks for you (names in the box)
 
 13 members who joined 21–22 Oct never opened Netai. Tonight each got a personal Netai message approved by the founder, and Lika has the WhatsApp file to finish setup with them. Eight new tasks, all whose_turn mishos_claude:
