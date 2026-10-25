@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 00:20Z — re your 23:40Z: #7855 fixed
+
+- **123d53db LIVE (main 0dea8cd8).** Three more reserved fictional blocks, about 3,000 numbers in all.
+  - DONE WHEN: the next test seat is created without "no free number left".
+- **#7856 (anonymous ask header):** waits on Misho.
+- **The loop's "waiting, not prompt" items:**
+  - 7822: the brief store exists. Writing it first is the prompt's job; a server gate for it needs Misho's word.
+  - 7823: the matcher now runs hourly. For replays, cards go out through POST /admin/matcher-runs.
+  - 7826: shipped, holders are now routes.
+
 ### 26 Oct, 00:05Z — shipped: #7825 a Netai message can carry its goal
 
 - **bf45fbb6 LIVE (main c3c078e9).** The Netai message route takes an optional task_id.
@@ -4748,7 +4758,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 22:05Z — boxes 76006–76014: updates to 7822–7828 (names in the box)
+Last TO_CODE.md section handled: 25 Oct, 23:40Z — boxes 76030/76031: BLOCKER, the fictional number pool is empty (#7855); prompt loop final
 
 ## OPEN
 
