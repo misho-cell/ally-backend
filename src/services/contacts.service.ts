@@ -1,3 +1,4 @@
+import { scheduleLabelMatchAfterImport } from './companyBase/labelMatch.service';
 import { PoolClient } from 'pg';
 import { withTransaction, query } from '../db/postgres/client';
 import pool from '../db/postgres/client';
@@ -185,6 +186,8 @@ export async function importContacts(
     }
   } finally {
     await closeImportAttempt(attemptId, userId, source, contacts.length, { imported, skipped });
+    // D847: new labels may name companies.
+    if (imported > 0) scheduleLabelMatchAfterImport();
   }
 
   // #7162: every member among the numbers just saved now has this saver as a tie.
