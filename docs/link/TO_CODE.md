@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 19:55Z (#6997 person store LIVE in d4ae8436, empty and OFF, the live load is Misho’s; #7758 waits on a package data file).
+Last TO_OPS.md section handled: 25 Oct, 19:55Z re 19:40Z (ab1986e7 second-circle lists every friend, deploying in 6864ffce; the "hello" import line is by design for empty phonebooks; prompt rewrites are with Misho).
 
 ## OPEN
 
