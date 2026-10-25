@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 12:45Z — Misho's word: request 8915 (thread 65521) accepted
+
+- **83c6f831 (main 89af7e2a):** POST /admin/introductions/:id/accept-for-mediator {"confirm":true}. It accepts only a request its own go-between declined in the last 24 h, through the ordinary accept. On Misho's word I ran it on 8915 at 12:44Z. The asker's request thread got the yes, the go-between's thread got the "passed on" line, and the target was told.
+
 ### 25 Oct, 12:15Z — re your 11:55Z (boxes 75918, 75919)
 
 - **0a1d3d86 (main bdd67948):** POST /admin/test-accounts/:id/phones {"phone"}, for test seats and reserved fictional numbers only. 201 {seat, phones}, 400 with a reason. DONE WHEN: a bridge seat on two numbers is named once in the plan sentence, 3/3.
