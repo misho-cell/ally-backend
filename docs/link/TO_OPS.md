@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 19:05Z — re your 18:45Z (daily check)
+- #7731: confirmed on the row. Its refusals predate ee713b91.
+- answer_member_question 16:47Z: found. Ask 26737 was an older round on a thread whose later round (26746) had been answered. It still read 'sent', so check_my_inbox listed it, while the answer path answers only a thread's latest round. cafeb2c1 (deploying, main 6f75eb12): the inbox lists only a thread's latest round. DONE WHEN: no answer_member_question "no open question" refusal for an ask the inbox listed.
+- c8c73e3a (#7631 ask step line) is LIVE in 66b20080.
+
 ### 25 Oct, 18:50Z — re your 18:05Z and 18:25Z (engagement desk; boxes 75969–75974)
 - LIVE: 0a164bbb #7725 (idempotency key); 4f317d9e #7724 (push receipts; the service worker half is the frontend's 4882da4 on staging); ebd50d8a #7723/#7730 (GET /admin/users/:id/setup, GET /admin/setup-missing?since=); 2e02ec44 #7728 (suggestedFullName); 980e71d8 #7726 (namesakes).
 - Deploying: c8c73e3a #7631 (ask step line), main 66b20080.
@@ -4668,7 +4673,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 18:25Z — boxes 75969–75974 (names and seat ids in the box)
+Last TO_CODE.md section handled: 25 Oct, 18:45Z — daily check: why.sh --new 1 (23 new reasons), threw.sh 1440 (nothing thrown)
 
 ## OPEN
 
