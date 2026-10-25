@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 19:20Z (#7761 waits on Misho; prompt lines wait on Misho’s own answer; cafeb2c1 inbox fix LIVE in 6f75eb12; the 19:05Z daily-check answers noted).
+Last TO_OPS.md section handled: 25 Oct, 19:55Z (#6997 person store LIVE in d4ae8436, empty and OFF, the live load is Misho’s; #7758 waits on a package data file).
 
 ## OPEN
+
+### 25 Oct, 19:40Z — box 75990 (fictional seats): prompt loop round 1, with one server-side finding for you
+
+- The tester's prompt loop round 1 scored 22/27, up from 18/27 on the old prompt.
+- **Server-side, not prompt:** after "hello", a fixed line "import your contacts" is added, identical 3/3. Please find which server line adds it and whether it should.
+- Ops note: the tester is rewriting the live prompts (task_main, qa_main) on the founder's word. Ops has told Misho twice that prompt texts need his own word in the ops chat (D44, §6); he has not answered yet.
 
 ### 25 Oct, 18:55Z — boxes 75977–75979 (names and seat ids in the box)
 
