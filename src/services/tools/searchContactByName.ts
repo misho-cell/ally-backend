@@ -22,7 +22,7 @@ import {
 import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions';
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
-import { collapseMergedPhones } from './mergedIdentities';
+import { collapseByPerson, collapseMergedPhones } from './mergedIdentities';
 import { searchDidNotFinish } from './searchDidNotFinish';
 import { withOwnContactByNumber } from './ownContactByNumber';
 import {
@@ -398,18 +398,26 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // 5908: an own contact found through other members' names on the number
     // says so — saved by the owner as …, known to the network as ….
     const named = await withOwnContactByNumber(userId, mapped, rawGroups);
+    // #7630 (tester 75937, G2): an account the owner saved under two numbers —
+    // „სანდრო ტყეშელაშვილი" and „სანდრო ტყეშელაშვილი 2" — came back as two
+    // contacts, and the run said both know the person sought. One account is
+    // one row, whatever names its numbers were saved under.
+    const byAccount = collapseByPerson(named, (row) => {
+      const account = accountDetailsFor(accountStates, String(row.phone)).user_id;
+      return account === null ? undefined : `user:${account}`;
+    });
     // Task 54: two member rows under ONE name must be tellable apart — attach
     // member_since / network_size / activity to every row in a duplicated name
     // group, so neither the user nor the assistant aims at the wrong twin.
-    await attachDuplicateDifferentiators(named, accountStates);
+    await attachDuplicateDifferentiators(byAccount.rows, accountStates);
     // Ticket 16 Task 23: the review's „one person" answers, finally read. The
     // differentiators above answer the same question for REGISTERED twins by
     // account id; this covers every pair a human confirmed, registered or not.
-    const merged = await collapseMergedPhones(named);
+    const merged = await collapseMergedPhones(byAccount.rows);
     return {
       found: true,
       count: merged.rows.length,
-      total: total - merged.collapsed,
+      total: total - byAccount.collapsed - merged.collapsed,
       results: merged.rows,
     };
   } catch (err) {
