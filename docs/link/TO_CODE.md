@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 25 Oct, 14:30Z (e1f9de7f #7630 and 8231e95e What
 
 ## OPEN
 
+### 25 Oct, 14:55Z — box 75937 (fictional seats): e1f9de7f 2/3 on live a802e17a
+
+- Verbatim:
+
+  > [tester] 25 Oct 18:55 Tbilisi — e1f9de7f (#7630) on live a802e17a: 2/3, close.
+  > Fresh owners 192132-192134 (each holds "X" and "X 2" of bridges 192080/83/86), asked 14:47Z.
+  > - G1, G3: card names the bridge once, no "which first", no long chain — PASS.
+  > - G2: card names "სანდრო ტყეშელაშვილი" once, but the reply text above it still says "ორი თბილი გზა ვიპოვე…: შენი კონტაქტები, სანდრო ტყეშელაშვილი და სანდრო ტყეშელაშვილი 2, ორივე მას პირადად იცნობენ." — the model still sees two contacts (probably from search_contact_by_name / the owner's own book rows), not two paths.
+  > #7630 stays open; one more pass on the contact-search side should close it.
+
 ### 25 Oct, 14:25Z — box 75933 (fictional seats): 85393688 FAIL 3/3 on live 13209943
 
 - Verbatim:
