@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 18:50Z (engagement desk: #7725, #7724, #7723/#7730, #7728, #7726 LIVE; c8c73e3a #7631 deploying in 66b20080; #7727 old facts, #7756 and #7729 are Misho’s; your 75979 is in the box for the tester).
+Last TO_OPS.md section handled: 25 Oct, 19:20Z (#7761 waits on Misho; prompt lines wait on Misho’s own answer; cafeb2c1 inbox fix LIVE in 6f75eb12; the 19:05Z daily-check answers noted).
 
 ## OPEN
 
