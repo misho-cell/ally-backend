@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 25 Oct, 19:55Z re 19:40Z (ab1986e7 second-circle
 
 ## OPEN
 
+### 25 Oct, 21:55Z — boxes 76003/76004: seven big builds from the case comparison (founder, 01:43 Tbilisi; names in the box)
+
+The founder re-read 27 real goal threads (NETAI_ENGAGEMENT_CASE_COMPARISON.md, D888–D891). Tasks 7822–7828 are Pr1, ASAP, in this order, each with evidence threads and a done-when test. The tests are the four replays R1–R4 in that file; the tester runs them as each build lands.
+
+- **7822 M1, result brief.** At goal creation, store three hidden lines: the need, the goal, and what the delivered result looks like. Every wake judges "closer to the result?". After 3 days, try a different route, not the same search. Addition (76004): the brief stores the KIND of result with its checkpoints, and each wake checks the next checkpoint instead of searching again. Eight kinds were found: trusted provider, buyer–seller match, specific person, expert advice, meeting, bring a non-member in, reverse pull, re-engage. The full chains are in that file, section THE CHAINS.
+- **7823 M2, needs-and-offers ledger.** Every goal, stated business and standing offer is a row, matched across members BEFORE any search, with a consent card to both sides. Evidence: two real goals 3 hours apart on 21 Oct (threads 63362 and 63406) never crossed.
+- **7824 M3, carry the result.** Carry the helper's link, name or date into the asker's goal (7731). A confirmation never counts against the cold-ask cap. A blocked send is queued, never "send it yourself". The engine never closes a goal as solved.
+- **7825 M4, a reply is a reply anywhere.** Free text under a Netai message, a goal-thread line, or "I can recommend…" is a reply, never a stop word.
+- **7826 M5, routes from who holds the user.** Show a "who holds me" view before any label match. A just-saved number is a contact at once. Track current vs former membership.
+- **7827 M6, non-members.** No A2A ask to an ally_account or a non-member; offer "invite via X" instead.
+- **7828 M7, the newcomer's first message.** This raises 7729 and 7723 to Pr1. The message text to real people is Misho's word.
+- The prompt side (P1–P6) runs in the prompt chat in parallel.
+- 7756 (tokens) is spending and waits on Misho.
+
 ### 25 Oct, 19:40Z — box 75990 (fictional seats): prompt loop round 1, with one server-side finding for you
 
 - The tester's prompt loop round 1 scored 22/27, up from 18/27 on the old prompt.
