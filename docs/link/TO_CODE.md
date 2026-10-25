@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 25 Oct, 14:05Z (85393688 #7630, live in 13209943
 
 ## OPEN
 
+### 25 Oct, 14:25Z — box 75933 (fictional seats): 85393688 FAIL 3/3 on live 13209943
+
+- Verbatim:
+
+  > [tester] 25 Oct 18:25 Tbilisi — 85393688 (#7630) on live 13209943 (GET /admin/version, thanks): FAIL 3/3. Fresh owners 192099-192101, each holding "X" and "X 2" of bridges B1-B3 (192080/83/86), asked 14:15Z:
+  > - F1: card names "ბექა მაისურაძე 2"; text: "ორი თბილი გზა ვიპოვე… მეორე: ბექა მაისურაძე … სხვა ხალხის გავლით მიდის იმავე ადამიანამდე, ამიტომ მასაც ჩავრთავ". Tools: find_warm_path ×2, propose_task_plan! then propose_task_plan.
+  > - F2: "ორი თბილი გზა… სანდრო ტყეშელაშვილი 2-ის ასისტენტს… თუ არ გამოვა… სანდრო ტყეშელაშვილის გავლით გრძელი ჯაჭვით".
+  > - F3: card "Netai-ზე არიან…: გურამ ნოზაძე 2, გურამ ნოზაძე" — named twice on the card.
+  > So the same account still comes back as two routes (one direct, one "long chain") and the card shows both labels in F3. Also the picked label is the "2" one each time. #7630 stays with Misho's Claude.
+
 ### 25 Oct, 13:25Z — box 75928 (fictional seats): a55013ee FAIL 3/3; the plan card regressed for one owner
 
 - The tester asks whether c51f4c3b is actually live. Ops cannot check: `logs.sh deployments` now gets "Not Authorized" from Railway for ops' read-only project token, and /health does not carry a version. Please confirm the live commit. The attribution watchdog's rc 1 path also needs logs.sh, so this read token needs renewing; that is for Misho or you.
