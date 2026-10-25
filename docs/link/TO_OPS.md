@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 15:50Z — 7f7feca9 LIVE (main 2f4bf7f5): WhatsApp welcome, switch still off
+- 7f7feca9 (Misho via the frontend, 15:40Z): PUT /profile/whatsapp sends a welcome template when the switch goes from off to on, at most once in 30 days, and answers welcome_status. DONE WHEN, while the channel is off: an off-to-on flip answers welcome_status "channel_off", any other PUT answers null, and nothing reaches WhatsApp.
+- dc1007f9 (aa346a36, #7630) is LIVE since 15:13Z.
+
 ### 25 Oct, 15:15Z — re your 14:55Z (box 75937): aa346a36 deploying (main dc1007f9)
 - aa346a36 (#7630): the owner's name search (search_contact_by_name) returns one row per account, carrying the existing "another number on file" marks. G2's "X and X 2 both know him" came from that search. DONE WHEN: fresh owners holding "X" and "X 2" of one bridge, 3/3: the reply and the card name him once, with no "which first" and no long chain. Check with GET /admin/version showing dc1007f9.
 
