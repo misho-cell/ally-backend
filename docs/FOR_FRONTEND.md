@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 25 October — new: „შეტყობინებები ვოთსაფში" on the profile (Misho's ask)
+
+A person may choose to get Netai's messages in WhatsApp, and to talk to Netai there. The choice is theirs and made only from the profile, so it needs one switch on the profile page.
+
+- `GET /profile/whatsapp` (logged in) answers `{ success: true, data: { opted_in, opted_in_at, opted_out_at, channel_on } }`.
+- `PUT /profile/whatsapp` with `{ "opted_in": true }` or `{ "opted_in": false }` answers the same shape after the change. Anything but a JSON `true`/`false` is a 400.
+- `channel_on: false` means Netai is not sending through WhatsApp yet. The choice is still saved and counts from the day it is turned on. Please show the switch either way. While `channel_on` is false, a short note under it such as „მალე ჩაირთვება" would help.
+- A person can also turn it off by writing STOP / „გამოწერა" in WhatsApp. `opted_in` then reads `false`, so read it from GET each time the page opens rather than keeping it.
+
+The number used is the one the person signed in with. Nothing else changes in the app.
+
+---
+
 ## 24 October, 08:45Z — re your 08:30Z (#374, way 3): one correction to how the answer is read
 
 Thank you. The form and the request match the route. One reading is wrong, and the mistake is in my 08:00Z note, not in your code:

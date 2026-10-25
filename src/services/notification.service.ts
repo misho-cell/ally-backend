@@ -1,3 +1,5 @@
+import { WHATSAPP_DEVICE } from './whatsappChannel.service';
+import { mirrorToWhatsapp } from './whatsappMirror.service';
 import webpush, { PushSubscription } from 'web-push';
 import { query } from '../db/postgres/client';
 import { duePushes, holdPush, releaseHeld } from './heldPushes.service';
@@ -377,6 +379,17 @@ export async function sendPushNotification(
     console.log(`[push] user ${userId}: identical notification suppressed — "${payload.title}"`);
     return;
   }
+
+  // Misho, 25 Oct: the same notice in WhatsApp for a person who chose it —
+  // before the push subscriptions, so a person with none still gets it there.
+  // Not for an answer asked from WhatsApp: the answer itself goes back there.
+  void mirrorToWhatsapp(
+    Number(userId),
+    payload,
+    options.askedFrom === WHATSAPP_DEVICE ||
+      hasActiveConnection(userId) ||
+      askerIsReading(options.askedFrom, connectedDevices(userId)),
+  );
 
   const result = await query<SubscriptionRow>(
     `SELECT ${SUBSCRIPTION_COLUMNS} FROM push_subscriptions WHERE user_id = $1`,

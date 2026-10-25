@@ -1,5 +1,6 @@
 import { onlyPlanButtons } from './cardButtons';
 import { choiceNotesFor } from './choiceNotes';
+import { deliverOwedWhatsappReply } from './whatsappReplies.service';
 import { EventEmitter } from 'events';
 import { Response } from 'express';
 import {
@@ -558,6 +559,8 @@ export function emitRunComplete(
     }),
   };
   publish(userId, { event: 'run_complete', threadId, runId, ...safe });
+  // Asked from WhatsApp: the same scrubbed answer goes back there.
+  void deliverOwedWhatsappReply(Number(userId), threadId, safe.reply, choices ?? []);
 }
 
 export interface AppendedMessagePayload {
@@ -626,4 +629,5 @@ export function emitRunError(
   message: string,
 ): void {
   publish(userId, { event: 'run_error', threadId, runId, message });
+  void deliverOwedWhatsappReply(Number(userId), threadId, message);
 }
