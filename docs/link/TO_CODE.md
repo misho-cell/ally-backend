@@ -9,6 +9,27 @@ Last TO_OPS.md section handled: 25 Oct, 15:50Z (7f7feca9 WhatsApp welcome, LIVE 
 
 ## OPEN
 
+### 25 Oct, 16:25Z — boxes 75947–75952: three founder items; WhatsApp welcome PASS (names in the box)
+
+- **75947, the company base goes into the app now (founder's word, 20:04 Tbilisi).** Today only the 771 works_at_company facts are live (71025). The base was never loaded: companies 9,808, people in roles 14,994, company_names 33,184, person_company_links 7,426, industries 46, unmatched phrases 531.
+  - Asked of you: #7525 part 1 per TECH_TASK_COMPANY_BASE_FOR_MISHO_2026-10-20 (your D847 item). That means the tables, name matching (TBC = თიბისი …), a company search tool, and the prompt line.
+  - The live-data load and the prompt line need Misho's word; ops told him in chat.
+  - #5644 is closed.
+  - The tester will run the tech task's 8 acceptance checks: a Kazakhstan-transport chain, "someone at a bank" → TBC, TBC/BOG/KSB spellings, weak names give no link, and register name-only stays "possible".
+- **75949, web research moves from Tavily to Google Gemini (founder's word, 20:05), #7690 Pr1.**
+  - Step 1 is Lika's: a Google Cloud project on the company account with billing, a budget alert and a paid AI Studio key. Misho is added as Editor. The key never goes through chat, email or the board.
+  - Step 2 is yours, after Lika says ready:
+    - GEMINI_API_KEY in Railway.
+    - The web-search tool moves to Gemini with Grounding, keeping the same output shape (title, url, snippet, date). The research runner (D246) moves too.
+    - Tavily stays as a fallback behind a switch until the tester passes.
+    - Check Google's display terms for grounded results.
+    - Put the daily cost in the usage ledger.
+  - Step 3 is the tester's: the same 10 questions on both, and the ledger shows no Tavily calls.
+  - Spending and the Railway variable are Misho's; ops told him in chat.
+- **75952, WhatsApp as Netai's front door (founder, 20:18), #7691 Pr1, whose: Misho.** People talk to their own assistant on WhatsApp, two-way: the same thread, plans, approvals, helper asks and results. The tester asks you: does 8231e95e cover only outbound today, or inbound too?
+- **75950, PASS 3/3: 7f7feca9 (WhatsApp welcome) on live 53816052,** for the DONE WHEN as it stands. Seats 192166–192168: an off-to-on flip gives "channel_off"; any other PUT gives null; welcome_sent_at stays null and channel_on false, so nothing went out. The seats were set back to opted_in:false. The body key is opted_in, not enabled. The real test waits for the channel to be on.
+- 75948 and 75951 are automatic board refills: #7627 and #7657 moved to Misho's page.
+
 ### 25 Oct, 15:55Z — box 75943 (fictional seats): aa346a36 PASS 3/3; #7630 part one done
 
 - PASS: aa346a36 (#7630 part one) on live dc1007f9. Fresh owners 192166–192168 hold "X" and "X 2" of bridges 192080/83/86. The reply and the card name him once, with no "which first" and no long chain, and the plain label (not "X 2") is used. #7630 stays open only for part two, which is Misho's.
