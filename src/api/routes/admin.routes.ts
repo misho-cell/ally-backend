@@ -62,6 +62,7 @@ import {
   MAX_NETAI_CHOICES,
   MAX_NETAI_MESSAGE_CHARS,
   netaiMessagesTo,
+  isOpenGoalOf,
   netaiRecipient,
   sendNetaiMessage,
 } from '../../services/netaiMessage.service';
@@ -4610,7 +4611,8 @@ adminRouter.post(
  * user's „Netai" conversation, with a push. The text goes exactly as written;
  * up to four buttons; the user's reply comes back on the GET below.
  *
- *   POST /admin/users/:id/netai-messages { text, choices?: string[], client_msg_id? }
+ *   POST /admin/users/:id/netai-messages { text, choices?: string[], client_msg_id?, task_id? }
+ *     task_id (#7825): the person's own open goal this message is about
  *     (or the header Idempotency-Key)
  *   201 { message_id, thread_id, new_thread, person, test_seat }
  *   200 { …the same, repeated: true } — this key was sent before; nothing sent now (#7725)
@@ -4632,6 +4634,7 @@ adminRouter.post(
     .isString()
     .trim()
     .isLength({ min: 1, max: MAX_CLIENT_MSG_ID_CHARS }),
+  body('task_id').optional().isInt({ min: 1 }),
   async (req: Request, res: Response) => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
@@ -4656,7 +4659,16 @@ adminRouter.post(
         (req.body as { client_msg_id?: string }).client_msg_id?.trim() ||
         req.get('idempotency-key')?.trim() ||
         null;
+      const rawTaskId = (req.body as { task_id?: unknown }).task_id;
+      const taskId = rawTaskId === undefined ? null : Number(rawTaskId);
+      if (taskId !== null && !(await isOpenGoalOf(taskId, userId))) {
+        res
+          .status(400)
+          .json({ success: false, error: 'task_id is not an open goal of this person.' });
+        return;
+      }
       const sent = await sendNetaiMessage({
+        taskId,
         userId,
         text: text.trim(),
         choices: (choices ?? []).map((c) => c.trim()),

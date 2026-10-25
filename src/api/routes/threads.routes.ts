@@ -119,6 +119,7 @@ import {
   recordNetaiReply,
   recordNetaiReplyElsewhere,
 } from '../../services/netaiMessage.service';
+import { wakeGoalWithNetaiReply } from '../../services/netaiReplyWake.service';
 import { queueResearchOnActivation } from '../../services/registrationResearch/registrationResearch.service';
 import { ApiResponse } from '../../types';
 
@@ -1179,6 +1180,8 @@ threadsRouter.post(
       if (await isNetaiThread(threadId)) {
         await keepUserMessage(userId, threadId, message);
         await recordNetaiReply(threadId, Number(userId), message);
+        // #7825: an answer to a message about a goal reaches that goal (switch: NETAI_REPLY_WAKES_GOAL).
+        void wakeGoalWithNetaiReply(threadId, Number(userId), message);
         // eslint-disable-next-line no-console
         console.log(`[netai-message] user ${userId} replied in thread ${threadId}`);
         res.status(200).json({ success: true, data: { kept: true, run: false } });

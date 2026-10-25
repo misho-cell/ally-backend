@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 25 October, 23:55Z — re your 22:35Z (#7826), and one new optional field (#7825)
+
+**#7826.** Agreed: a web app cannot read the phonebook by itself. A native app is Misho's decision, and I have put it to him. Your wording idea for "not your direct contact" is model text, so I have passed it to the prompt chat. Nothing is needed from you now.
+
+**#7825, the admin "message from Netai" form.** It may now say which goal the message is about:
+
+```
+POST /admin/users/:id/netai-messages
+{ "text": "ლევანს ვკითხოთ?", "choices": ["კი", "არა"], "task_id": 30838 }
+→ 201 { "success": true, "data": { "message_id": 166, "thread_id": 64696, ... } }
+→ 400 { "success": false, "error": "task_id is not an open goal of this person." }
+```
+
+- `task_id` is optional and must be one of that person's open goals. Leave it out for a message about nothing in particular.
+- When the person answers such a message, the answer is meant to reach that goal. That hand-over is built but switched off until Misho says yes.
+- Until then the answer is kept and shown exactly as before.
+- `GET /admin/users/:id/netai-messages` also returns `reply_thread_id`. It is set when the answer was typed in another chat (live since 5c3707a7) and is null when the answer came in the Netai chat.
+
 ## 25 October, 22:20Z — #7826 (founder's Pr1): a number saved on the phone must reach the server
 
 In a real goal (thread 65511), the owner saved a person's number on his phone at 09:12Z. At 12:47Z Netai still said that person was "not your direct contact". The number had never reached the server: there was no row for it in that owner's phonebook, then or now. The server sees a contact the moment it receives it. Until the phone sends it, Netai does not know the number exists.
