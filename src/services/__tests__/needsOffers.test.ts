@@ -41,18 +41,34 @@ describe('the needs-to-offers matcher (1699)', () => {
   it('a pair is written only when reachable, never twice, never within 90 days of a decline', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [offer] });
     mockQuery.mockResolvedValueOnce({ rows: [goal] });
+    mockQuery.mockResolvedValueOnce({ rows: [] });
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 99 }] });
     await expect(proposeMatches()).resolves.toBe(1);
-    const sql = String(mockQuery.mock.calls[2][0]);
-    expect(sql).toContain('WHERE EXISTS (SELECT 1 FROM reach)');
+    const sql = String(mockQuery.mock.calls[3][0]);
+    expect(sql).toContain('WHERE ($6::boolean OR EXISTS (SELECT 1 FROM reach))');
     expect(sql).toContain("m.state = 'declined'");
     expect(sql).toContain('ON CONFLICT (need_goal_id, offer_id) DO NOTHING');
-    expect(mockQuery.mock.calls[2][1]).toEqual([1, 10, 20, 5, 90]);
+    expect(mockQuery.mock.calls[3][1]).toEqual([1, 10, 20, 5, 90, false]);
   });
 
-  it('runs once a night, in its hour', () => {
+  it('two members of the same community reach each other without holding each other (#7823)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [offer] });
+    mockQuery.mockResolvedValueOnce({ rows: [goal] });
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { user_id: 10, phone: '+995500000010', group: 'Axel', name: 'A', all_aliases: [] },
+        { user_id: 20, phone: '+995500000020', group: 'Axel', name: 'B', all_aliases: [] },
+      ],
+    });
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 99 }] });
+    await expect(proposeMatches()).resolves.toBe(1);
+    expect(String(mockQuery.mock.calls[2][0])).toContain("f.field_type = 'member_of'");
+    expect(mockQuery.mock.calls[3][1]).toEqual([1, 10, 20, 5, 90, true]);
+  });
+
+  it('runs once an hour (#7823: a need and an offer meet the same hour)', () => {
     expect(isMatchHour(new Date('2026-10-09T02:10:00Z'), null)).toBe(true);
-    expect(isMatchHour(new Date('2026-10-09T02:40:00Z'), '2026-10-09')).toBe(false);
-    expect(isMatchHour(new Date('2026-10-09T03:10:00Z'), null)).toBe(false);
+    expect(isMatchHour(new Date('2026-10-09T02:40:00Z'), '2026-10-09T02')).toBe(false);
+    expect(isMatchHour(new Date('2026-10-09T03:10:00Z'), '2026-10-09T02')).toBe(true);
   });
 });
