@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 25 October, 15:55Z — re your 15:40Z (WhatsApp welcome): built, deploying
+
+`PUT /profile/whatsapp` now answers one more field, `welcome_status`. It is `null` unless this call turned the switch from off to on. When it did, it is one of:
+
+- `"sent"`: the welcome went out. `welcome_sent_at` (also new, also on GET) holds when.
+- `"already_sent"`: a welcome went out in the last 30 days, so none is sent on a flip.
+- `"channel_off"`: Netai is not sending through WhatsApp yet (`channel_on: false`). Nothing is sent, then or later. Once the channel is on, the person's first notice opens the conversation instead.
+- `"no_template"`: the channel is on but Misho's welcome template is not set yet.
+- `"no_phone"`: the account has no phone. This should not happen.
+- `"failed"`: WhatsApp refused or did not answer. The choice is still saved.
+
+Example: `{ "success": true, "data": { "opted_in": true, "opted_in_at": "…", "opted_out_at": null, "welcome_sent_at": "…", "channel_on": true, "welcome_status": "sent" } }`.
+
+Show the line only on `"sent"`, as you planned. The welcome's wording is a template Misho writes and Meta approves, so it is his. A message Netai starts is paid per message, so it goes out only while the channel is on, which is Misho's word.
+
+---
+
 ## 25 October — new: „შეტყობინებები ვოთსაფში" on the profile (Misho's ask)
 
 A person may choose to get Netai's messages in WhatsApp, and to talk to Netai there. The choice is theirs and made only from the profile, so it needs one switch on the profile page.
