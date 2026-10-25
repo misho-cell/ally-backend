@@ -52,6 +52,8 @@ export interface NetaiMessageRow {
   readonly seen_at: string | null;
   readonly reply: string | null;
   readonly replied_at: string | null;
+  /** #7825: the chat the answer was typed in, when it was not the Netai chat. */
+  readonly reply_thread_id: number | null;
 }
 
 export interface NetaiRecipient {
@@ -219,10 +221,42 @@ export async function recordNetaiReply(
   );
 }
 
+/**
+ * #7825 (founder 26 Oct): four real answers to a Netai message were typed in
+ * another chat — the goal thread, the main chat — and the message kept
+ * reply = null, so the team never saw them (Keti 63385, Merab 63431). The
+ * first line a person types anywhere within a day of a Netai message still
+ * waiting for an answer is that answer, marked with the chat it came in.
+ * Best-effort: the line itself is already stored and run as usual.
+ */
+const REPLY_ELSEWHERE_WINDOW_HOURS = 24;
+
+export async function recordNetaiReplyElsewhere(
+  threadId: number,
+  userId: number,
+  reply: string,
+): Promise<boolean> {
+  const result = await query<{ id: number }>(
+    `UPDATE netai_messages
+        SET reply = $3, replied_at = NOW(), reply_thread_id = $1,
+            seen_at = COALESCE(seen_at, NOW())
+      WHERE id = (SELECT id FROM netai_messages
+                   WHERE user_id = $2 AND reply IS NULL AND thread_id <> $1
+                     AND sent_at > NOW() - make_interval(hours => $4)
+                   ORDER BY sent_at DESC
+                   LIMIT 1)
+      RETURNING id`,
+    [threadId, userId, reply, REPLY_ELSEWHERE_WINDOW_HOURS],
+    NETAI_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
+}
+
 /** What Netai sent this user, newest first, with when it was seen and what came back. */
 export async function netaiMessagesTo(userId: number): Promise<readonly NetaiMessageRow[]> {
   const result = await query<NetaiMessageRow>(
-    `SELECT id, thread_id, body, choices, sent_by, sent_at, seen_at, reply, replied_at
+    `SELECT id, thread_id, body, choices, sent_by, sent_at, seen_at, reply, replied_at,
+            reply_thread_id
        FROM netai_messages
       WHERE user_id = $1
       ORDER BY sent_at DESC
