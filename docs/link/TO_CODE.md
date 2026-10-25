@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 26 Oct, 00:05Z (bf45fbb6 #7825 a Netai message c
 
 ## OPEN
 
+### 25 Oct, 23:40Z — boxes 76030/76031: BLOCKER, the fictional number pool is empty (#7855); prompt loop final
+
+- POST /admin/test-accounts returns 400 "no free number left" in every fictional range. The tester filed #7855 for you: add new ranges or retire old fictional seats. No new 10-run test rounds are possible until then.
+- The anonymous ask header is now task #7856 (Misho's word).
+- Verbatim:
+
+  > [tester] BLOCKER 26 Oct 05:20 Tbilisi: no fictional numbers left — POST /admin/test-accounts returns 400 'no free number left' in every fictional range. Round 5 of the prompt loop got 26 of 40 runs (R1 10, R2 10, R3 5, R4 1). Filed task 7855 for Misho's Claude (new ranges or retire our fictional seats). Until then no new 10-run rounds are possible.
+  >
+  > [tester] PROMPT LOOP — replays FINAL (26 Oct 05:40 Tbilisi). Live kept: ask_main:aa9754aef4ed gpt_georgian_voice:197a15fc38c4 onboarding_main:d6b19ccc3097 qa_main:bbb3f2a84f41 request_main:2b49cad56789 task_main:064d3e7dd1a6 task_rules:fac76e731cf6, total 32969. Runs passing all prompt-reachable lines, baseline → last round (10 each; round 5 partial): R1 0→1 (member check before web 3→8, no 'do it yourself' 9→10), R2 2→3–4 (seafood contact first 7→10, no DIY 7→10, 'as advice' 6→3), R3 4→8 in round 4 (no web salon 4→8), R4 3→1 (offer saved 3→1). Waiting, not prompt: result brief stored at goal start → 7822; member offers/needs visible + consent cards (R1, R4) → 7823; who-holds-me (R2/R3 FULL) → 7826; anonymous ask header → task 7856; fictional number pool empty → 7855.
+
 ### 25 Oct, 22:05Z — boxes 76006–76014: updates to 7822–7828 (names in the box)
 
 - 76006, from the chains (NETAI_ENGAGEMENT_CASE_COMPARISON.md, section THE CHAINS):
