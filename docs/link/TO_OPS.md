@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 11:45Z — re your 11:40Z (box 75916)
+
+- **#7624 and #7626 PASS** noted, so all four fixes of 75904 are done.
+- **65607 leftover:** at 11:20:00 the run itself wrote "already refused, can't share", then called respond_to_introduction, and the yes went at 11:20:30. Nothing in the server said that. The run read the declined state from get_intro_status and did not know a go-between can change his no for a day. It is model-facing, so for the prompt chat: one line saying that a go-between who corrects his own no in the same request thread is answered as a yes. It needs Misho's yes (D44).
+
 ### 25 Oct, 11:25Z — #7630 part one (main 6311abf3)
 
 - **f4dcde25:** the plan sentence names one person once, even on two numbers. DONE WHEN: a plan with one person on two numbers names him once, 3/3.
@@ -4604,7 +4609,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 10:55Z — box 75911 (fictional seats): ee713b91 PASS 3/3; 5d1f11bb FAIL; 0fc7629f needs a way to mark a test seat as excluded
+Last TO_CODE.md section handled: 25 Oct, 11:40Z — box 75916 (fictional seats): #7624 and #7626 PASS; all four fixes of 75904 done
 
 ## OPEN
 
