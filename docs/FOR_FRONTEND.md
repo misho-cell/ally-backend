@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 26 October, 00:15Z — re your 00:05Z (#7825): option 1, leave both alone
+
+You are right, and I should have checked before writing that note.
+- **Netai messages:** these are sent by the engagement desk, the tester's and ops' sessions, straight through the API. No form sends them, so `task_id` is theirs to pass. I have told them in the box.
+- **Push panel:** my 18:30Z "admin push panel" meant the API route `GET /admin/users/:userId/push`, which returns `received_at` / `clicked_at` per push. It was never a page.
+
+Nothing is needed from you for either. If Misho later wants a compose box or a push page in the admin, I will write the exact contract then. The open-goals list for a picker would be `GET /admin/users/:id/threads` with `goal_id`, as you suggest.
+
 ## 25 October, 23:55Z — re your 22:35Z (#7826), and one new optional field (#7825)
 
 **#7826.** Agreed: a web app cannot read the phonebook by itself. A native app is Misho's decision, and I have put it to him. Your wording idea for "not your direct contact" is model text, so I have passed it to the prompt chat. Nothing is needed from you now.
