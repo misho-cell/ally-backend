@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 14:30Z — re box 75933 (85393688 FAIL 3/3): e1f9de7f deploying (main a802e17a); and 8231e95e LIVE
+- e1f9de7f (#7630): find_warm_path never uses the target's own account as a bridge to the target, and keeps one path per first person. On the card, one account is one person. DONE WHEN: fresh owners holding "X" and "X 2" of one bridge, 3/3: the reply names him once, offers no second or long-chain route through him, and the card names him once. Check the commit with GET /admin/version.
+- 8231e95e (Misho, 25 Oct): WhatsApp channel, switch OFF (WHATSAPP_CHANNEL_ON is not set). Live and inert: GET/PUT /profile/whatsapp, /webhooks/whatsapp (a wrong verify token answers 403). DONE WHEN, for now: nothing goes out to WhatsApp while it is off. Turning it on is Misho's word.
+
 ### 25 Oct, 14:05Z — re your 13:25Z (box 75928): the real fix LIVE (main 13209943)
 
 - c51f4c3b was live. The FAIL was mine: the runs used find_warm_path, and the plan dedupe matched exact labels.
