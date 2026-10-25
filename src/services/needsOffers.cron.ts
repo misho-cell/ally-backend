@@ -2,15 +2,18 @@ import { deliverDueCards, expireMatches } from './matchFlow.service';
 import { proposeMatches } from './needsOffers.service';
 
 /**
- * 1699 (A16): the matcher runs once a night, at 02:00 UTC (06:00 in Tbilisi),
- * with the goal wakes. Checked every hour; one run per UTC day per process.
+ * 1699 (A16): the matcher proposes pairs. #7823 (founder 26 Oct): a need and an
+ * offer stated three hours apart must meet the same hour, not the next night,
+ * so it runs every hour. It only proposes; the cards still go once a day, at
+ * their own hour.
  */
 const CHECK_EVERY_MS = 60 * 60 * 1000;
-const MATCH_HOUR_UTC = 2;
+/** The date and the hour of an ISO time: 2026-10-26T02. */
+const HOUR_KEY_CHARS = 13;
 /** 1699 part 2: cards go at 08:00 UTC — noon in Tbilisi; nobody is woken by a match. */
 const CARD_HOUR_UTC = 8;
 
-let lastRunDay: string | null = null;
+let lastRunHour: string | null = null;
 let lastCardDay: string | null = null;
 
 /** Should the cards go now? Once, in their hour, per UTC day. */
@@ -18,10 +21,14 @@ export function isCardHour(now: Date, lastDay: string | null): boolean {
   return now.getUTCHours() === CARD_HOUR_UTC && lastDay !== now.toISOString().slice(0, 10);
 }
 
-/** Should the matcher run now? Once, in its hour, per UTC day. */
-export function isMatchHour(now: Date, lastDay: string | null): boolean {
-  const today = now.toISOString().slice(0, 10);
-  return now.getUTCHours() === MATCH_HOUR_UTC && lastDay !== today;
+/** The UTC hour a run belongs to, as YYYY-MM-DDTHH. */
+export function runHourOf(now: Date): string {
+  return now.toISOString().slice(0, HOUR_KEY_CHARS);
+}
+
+/** Should the matcher run now? Once per UTC hour. */
+export function isMatchHour(now: Date, lastHour: string | null): boolean {
+  return lastHour !== runHourOf(now);
 }
 
 export function startNeedsOffersMatcher(): void {
@@ -39,8 +46,8 @@ export function startNeedsOffersMatcher(): void {
           console.error('[matcher] cards failed:', (err as Error).message),
         );
     }
-    if (!isMatchHour(now, lastRunDay)) return;
-    lastRunDay = now.toISOString().slice(0, 10);
+    if (!isMatchHour(now, lastRunHour)) return;
+    lastRunHour = runHourOf(now);
     void proposeMatches()
       .then((n) => {
         // eslint-disable-next-line no-console
@@ -48,7 +55,7 @@ export function startNeedsOffersMatcher(): void {
       })
       .catch((err: unknown) =>
         // eslint-disable-next-line no-console
-        console.error('[matcher] night run failed:', (err as Error).message),
+        console.error('[matcher] run failed:', (err as Error).message),
       );
   };
   setInterval(tick, CHECK_EVERY_MS).unref();

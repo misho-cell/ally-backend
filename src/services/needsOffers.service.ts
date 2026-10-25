@@ -1,6 +1,8 @@
 import { query } from '../db/postgres/client';
 import { fieldFits, placeFits } from './fieldPlaces';
 import { deliverDueCards } from './matchFlow.service';
+import { rosterMembers } from './roster.service';
+import { AXEL_GROUP } from './axelExport/axelData';
 
 /**
  * 1699 (A16, D679/D680): two members — one with a need, one who said he is
@@ -88,11 +90,27 @@ async function activeOffers(scope: MemberScope): Promise<ActiveOffer[]> {
 }
 
 /**
- * Can the need's owner reach the offer's owner — in his own phonebook, or
- * through one of his contacts who is a member and holds him? A pair declined
- * in the last 90 days, or already matched on this goal, is not proposed.
+ * #7823 (M2, founder 26 Oct; #7658): a shared community is a direct tie. Two
+ * Axel members needed and offered the same thing three hours apart and never
+ * crossed (threads 63362, 63406), because neither held the other. The roster
+ * is read once per run.
  */
-async function proposeIfReachable(goal: OpenGoal, offer: ActiveOffer): Promise<boolean> {
+async function communityMemberIds(): Promise<ReadonlySet<number>> {
+  const members = await rosterMembers(AXEL_GROUP);
+  return new Set(members.map((m) => m.user_id).filter((id): id is number => id !== null));
+}
+
+/**
+ * Can the need's owner reach the offer's owner — in his own phonebook, through
+ * one of his contacts who is a member and holds him, or as a fellow member of
+ * the same community? A pair declined in the last 90 days, or already matched
+ * on this goal, is not proposed.
+ */
+async function proposeIfReachable(
+  goal: OpenGoal,
+  offer: ActiveOffer,
+  sameCommunity: boolean,
+): Promise<boolean> {
   const result = await query<{ id: number }>(
     `WITH offer_phones AS (
        SELECT phone FROM "UserPhone" WHERE "userId" = $3::int
@@ -109,28 +127,30 @@ async function proposeIfReachable(goal: OpenGoal, offer: ActiveOffer): Promise<b
      )
      INSERT INTO matches (need_goal_id, need_user_id, offer_id, offer_user_id)
      SELECT $1, $2::int, $4, $3::int
-      WHERE EXISTS (SELECT 1 FROM reach)
+      WHERE ($6::boolean OR EXISTS (SELECT 1 FROM reach))
         AND NOT EXISTS (
           SELECT 1 FROM matches m
            WHERE m.need_user_id = $2::int AND m.offer_user_id = $3::int AND m.state = 'declined'
              AND m.created_at > NOW() - make_interval(days => $5))
      ON CONFLICT (need_goal_id, offer_id) DO NOTHING
      RETURNING id`,
-    [goal.id, goal.user_id, offer.user_id, offer.id, DECLINED_PAIR_QUIET_DAYS],
+    [goal.id, goal.user_id, offer.user_id, offer.id, DECLINED_PAIR_QUIET_DAYS, sameCommunity],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.length > 0;
 }
 
-/** One night's proposals; the number written. A failed pair is logged and the rest go on. */
+/** One run's proposals; the number written. A failed pair is logged and the rest go on. */
 export async function proposeMatches(scope: MemberScope = null): Promise<number> {
   const offers = await activeOffers(scope);
   if (offers.length === 0) return 0;
   const pairs = surePairs(await openGoals(scope), offers);
+  const community = await communityMemberIds();
   let proposed = 0;
   for (const { goal, offer } of pairs) {
+    const sameCommunity = community.has(goal.user_id) && community.has(offer.user_id);
     try {
-      if (await proposeIfReachable(goal, offer)) proposed += 1;
+      if (await proposeIfReachable(goal, offer, sameCommunity)) proposed += 1;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn(`[matcher] goal ${goal.id} × offer ${offer.id}:`, (err as Error).message);
