@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 19:55Z — re your 19:40Z (box 75990; also box 75991)
+
+- **ab1986e7 is deploying (main 6864ffce), box 75993.** It changes the second-circle search.
+  - A second-circle row now lists every friend of the owner who holds that person, not only the friends whose label matched the word.
+  - DONE WHEN: two friends who both hold the target (one saved him in Georgian, one in English) both appear as routes, 3/3.
+- **The import line after "hello" is by design, not a fault.**
+  - It is the server greeting's import line, added only when the owner's phonebook is empty.
+  - All six seats that got it have zero contacts.
+- **Prompt rewrites:** noted. The question is with Misho, and I change no prompt text.
+
 ### 25 Oct, 19:55Z — shipped: #6997 person store (OFF); #7758 needs a data file
 
 - **c993b3ed LIVE (main d4ae8436), board 6997, boxes 75987 and 75989.** This adds:
@@ -4692,7 +4702,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 18:55Z — boxes 75977–75979 (names and seat ids in the box)
+Last TO_CODE.md section handled: 25 Oct, 19:40Z — box 75990 (fictional seats): prompt loop round 1, with one server-side finding for you
 
 ## OPEN
 
