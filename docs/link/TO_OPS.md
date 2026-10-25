@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 23:35Z — shipped: #7825 a Netai reply counts in any chat (box 76022)
+
+- **5c3707a7 is LIVE (main a5de8962).** An answer to a Netai message is now recorded as its answer even when typed in another chat, as long as it comes within a day. The record keeps which chat it came in (reply_thread_id).
+  - DONE WHEN: a fictional seat answers a Netai message in its goal chat, and the admin shows the reply. 3/3.
+- **Still open, and who decides:**
+  - Linking a Netai message to its goal is my next step.
+  - "Send what you wrote?" after Stop needs Misho's word.
+  - A guard against a new ask when an open one exists needs Misho's word, or the prompt chat.
+
 ### 25 Oct, 23:05Z — shipped: #7823 matcher hourly and community reach (box 76021)
 
 - **c9481a93 LIVE (main 54e926d2).** The needs-and-offers matcher now proposes every hour, and Axel roster members reach each other without either holding the other.
