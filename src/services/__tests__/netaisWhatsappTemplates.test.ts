@@ -12,6 +12,7 @@ beforeEach(() => {
   fetchMock.mockReset();
   global.fetch = fetchMock as unknown as typeof fetch;
   process.env.WHATSAPP_TOKEN = 'token';
+  process.env.WHATSAPP_PHONE_ID = 'phone-1';
   delete process.env.WHATSAPP_WABA_ID;
 });
 
@@ -36,7 +37,29 @@ describe("Netai's WhatsApp templates", () => {
         },
       }),
     );
+    fetchMock.mockResolvedValueOnce(answer({ data: [{ id: 'phone-1' }] }));
     await expect(businessAccountId()).resolves.toBe('77');
+  });
+
+  it('finds it through the business when the token names no account (live, 25 Oct)', async () => {
+    process.env.WHATSAPP_PHONE_ID = 'phone-1';
+    fetchMock
+      .mockResolvedValueOnce(
+        answer({
+          data: {
+            granular_scopes: [
+              { scope: 'business_management', target_ids: ['900'] },
+              { scope: 'whatsapp_business_management' },
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(answer({ data: [{ id: '70' }, { id: '71' }] }))
+      .mockResolvedValueOnce(answer({ data: [] }))
+      .mockResolvedValueOnce(answer({ data: [{ id: 'phone-9' }] }))
+      .mockResolvedValueOnce(answer({ data: [{ id: 'phone-1' }] }));
+    await expect(businessAccountId()).resolves.toBe('71');
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/900/owned_whatsapp_business_accounts');
   });
 
   it('submits only the templates Meta does not have yet', async () => {
