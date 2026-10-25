@@ -373,6 +373,7 @@ import { RoUrlStatus, roUrlStatus } from '../../services/roUrlStatus.service';
 import { SeatCircleIn, setSeatCircles } from '../../services/seatCircles.service';
 import { SeatExclusion, setSeatExcluded } from '../../services/excludedHolders.service';
 import { addSeatPhone } from '../../services/seatPhones.service';
+import { acceptDeclinedForMediator } from '../../services/introduction.service';
 
 const RO_SQL_WINDOW_MS = 60_000;
 const RO_SQL_PER_WINDOW = 30;
@@ -2999,6 +3000,42 @@ adminRouter.put(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-circles]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * Misho's word, 25 Oct: a request the go-between declined by our mistake is
+ * accepted as his yes. `confirm: true` is required; one request per call.
+ */
+adminRouter.post(
+  '/introductions/:id/accept-for-mediator',
+  param('id').isInt({ min: 1 }),
+  body('confirm').equals('true'),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'confirm must be true' });
+      return;
+    }
+    const requestId = Number(req.params.id);
+    try {
+      const outcome = await acceptDeclinedForMediator(requestId);
+      if (!outcome.ok) {
+        res.status(outcome.code === 'not_found' ? 404 : 409).json({
+          success: false,
+          error: outcome.code ?? 'conflict',
+        });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[intro-admin] admin ${(req as AuthenticatedRequest).user.userId} accepted request ${requestId} for its mediator`,
+      );
+      res.status(200).json({ success: true, data: { request: requestId, status: outcome.status } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[intro-admin]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

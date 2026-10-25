@@ -562,7 +562,7 @@ export async function introStillAwaitedOnThread(
 export type IntroChannel = 'direct' | 'via_mediator';
 
 export type IntroductionAction = 'accept' | 'decline' | 'snooze';
-export type ResolveSource = 'chat' | 'button';
+export type ResolveSource = 'chat' | 'button' | 'admin';
 
 export interface ResolveOutcome {
   ok: boolean;
@@ -1700,4 +1700,28 @@ async function withdrawRequests(
     console.error(`[intro] could not withdraw requests for ${what}:`, (err as Error).message);
     return 0;
   }
+}
+
+/**
+ * Misho, 25 Oct (thread 65521): the go-between's yes was recorded as a no by a
+ * guard that was wrong (fixed in 5d1f11bb), and on Misho's word that request is
+ * turned into the yes it was. Only a request the go-between himself declined,
+ * inside the same window his own correction has; it goes through the ordinary
+ * accept, so the asker hears it like any other.
+ */
+export async function acceptDeclinedForMediator(requestId: number): Promise<ResolveOutcome> {
+  const found = await query<{ mediator_user_id: number | null; mediator_response: string | null }>(
+    `SELECT mediator_user_id, mediator_response FROM introduction_requests
+      WHERE id = $1 AND status = 'declined' AND responded_by_user_id = mediator_user_id
+      LIMIT 1`,
+    [requestId],
+  );
+  const row = found.rows[0];
+  if (row === undefined || row.mediator_user_id === null) {
+    return { ok: false, code: 'not_found', error: ERR_NOT_FOUND };
+  }
+  return resolveIntroductionRequest(String(row.mediator_user_id), { requestId }, 'accept', {
+    source: 'admin',
+    ...(row.mediator_response !== null && { response: row.mediator_response }),
+  });
 }
