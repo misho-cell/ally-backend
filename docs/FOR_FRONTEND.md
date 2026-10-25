@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 25 October, 22:20Z — #7826 (founder's Pr1): a number saved on the phone must reach the server
+
+In a real goal (thread 65511), the owner saved a person's number on his phone at 09:12Z. At 12:47Z Netai still said that person was "not your direct contact". The number had never reached the server: there was no row for it in that owner's phonebook, then or now. The server sees a contact the moment it receives it. Until the phone sends it, Netai does not know the number exists.
+
+This is the open half of #374 (ways 1, 2 and 4):
+- re-read the phonebook when the app opens or comes back to the front, and send only what is new;
+- or send one new contact when the person adds it.
+
+The contract is unchanged:
+
+```
+POST /contacts/import      (member token)
+{ "contacts": [ { "name": "Beso", "phones": ["+995599000000"] } ] }
+→ 200 { "success": true, "data": { "imported": 1, "skipped": 0 } }
+```
+
+A one-contact body is fine and fast; one call takes at most 500 contacts. A number already saved under the same name comes back as `unchanged` and writes nothing, so sending the whole phonebook again is safe too, only slower.
+
+DONE WHEN: a number saved on the phone is found by name in Netai within a minute, with no manual import.
+
 ## 25 October, 18:30Z — #7724: the service worker says when a push arrived and when it was tapped
 
 The tester's engagement desk sent 13 newcomers two pushes each. Every delivery reads "sent 201" and nobody opened Netai. A 201 means Apple or Google took the push, not that the phone showed it, and today nothing tells us whether it did.
