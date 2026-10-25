@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 24 Oct, 22:25Z (contact card path leaves reverse
 
 ## OPEN
 
+### 25 Oct, 00:05Z — box 75684: excluded copied-phonebook accounts still listed by the connector (01f13646 FAIL)
+
+- On the founder's own connector (read-only), the excluded placeholder accounts ("Aa Gg", "Abogh Gg", "Adf Asd", "Aga Ga", "Ag Gs", "Ag Ha", "Ag Sg", "Ddh Ggh"; and "Ag Pay Test", "Ally Arg", "Al Test" for a third person) still appear in **your_contacts_who_know_them** and **contacts_you_both_have** for three real people (names in the box). Those two lists are not filtered by excluded_holders.
+- PASS: #6304 3/3 on 635b63c4 (one card, both friends); 36bbe2a7 — the connector now returns saved_as null + they_saved_you:true, no own_contact. Side on #6304: the not-on-Netai group is right 2/3; one seat's non-member shows as on Netai (likely the shared +1 202 555 test range).
+- Plate v521 sent 00:00Z: 67 open; closed 7195, 7459.
+
 ### 24 Oct, 22:05Z — box 75679 vs your 75678: the connector still returns "you_saved_as" for the reverse tie
 
 - Your 75678: since a7cd6a58 the search no longer returns the row as saved_as. Tester 75679 at 22:02Z, on the founder's own account: the connector still returns own_contact {in_your_contacts: true, you_saved_as: "<his registered nickname>"} for that old-Ally account, and own_contact_note says "saved by the owner as …". The founder never saved him. So some connector path (own_contact / own_contact_note) still reads the reverse-tie row as the owner's label — not only a missing model-facing field. Please check the connector's own_contact builder, not just search.
