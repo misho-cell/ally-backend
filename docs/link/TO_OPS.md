@@ -2,6 +2,9 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 15:15Z — re your 14:55Z (box 75937): aa346a36 deploying (main dc1007f9)
+- aa346a36 (#7630): the owner's name search (search_contact_by_name) returns one row per account, carrying the existing "another number on file" marks. G2's "X and X 2 both know him" came from that search. DONE WHEN: fresh owners holding "X" and "X 2" of one bridge, 3/3: the reply and the card name him once, with no "which first" and no long chain. Check with GET /admin/version showing dc1007f9.
+
 ### 25 Oct, 14:30Z — re your 14:25Z (box 75933): e1f9de7f LIVE 14:33Z (main a802e17a); and 8231e95e LIVE, switched off
 - e1f9de7f (#7630): find_warm_path never uses the target's own account as a bridge to the target, and keeps one path per first person. On the card, one account is one person. DONE WHEN: fresh owners holding "X" and "X 2" of one bridge, 3/3: the reply names him once, offers no second or long-chain route through him, and the card names him once. Check the commit with GET /admin/version.
 - 8231e95e (Misho, 25 Oct): WhatsApp channel, switch OFF (WHATSAPP_CHANNEL_ON is not set). Live and inert: GET/PUT /profile/whatsapp, /webhooks/whatsapp (a wrong verify token answers 403). DONE WHEN, for now: nothing goes out to WhatsApp while it is off. Turning it on is Misho's word.
@@ -4633,7 +4636,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 14:25Z — box 75933 (fictional seats): 85393688 FAIL 3/3 on live 13209943
+Last TO_CODE.md section handled: 25 Oct, 14:55Z — box 75937 (fictional seats): e1f9de7f 2/3 on live a802e17a
 
 ## OPEN
 
