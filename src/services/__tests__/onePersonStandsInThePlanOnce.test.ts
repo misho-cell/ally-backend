@@ -41,4 +41,21 @@ describe('one person stands in the plan once', () => {
     );
     expect(parsed.ok && parsed.value.people_to_involve).toHaveLength(2);
   });
+
+  /** #7630 (thread 65511): one person on two numbers was named twice in the sentence. */
+  it('names one person on two numbers once in the sentence', () => {
+    const parsed = parsePlan(
+      planWith([
+        { name: 'თორნიკე აბულაძე', phone: '+995599000005' },
+        { name: 'თორნიკე აბულაძე', phone: '+995599000006' },
+        { name: 'ლევან ტესტაძე', phone: '+995599000002' },
+      ]),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const sentence = planInSentences(parsed.value, 'ka');
+    expect(sentence.match(/თორნიკე/gu)).toHaveLength(1);
+    expect(sentence).toContain('ლევან');
+    expect(sentence).not.toContain('კიდევ');
+  });
 });

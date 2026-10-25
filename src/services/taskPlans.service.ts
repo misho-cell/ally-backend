@@ -1265,9 +1265,25 @@ function notAnAssistantToAsk(person: PlanPerson): boolean {
   return person.reach === 'not_member' || person.reach === 'never_opened';
 }
 
+/**
+ * #7630 (tester's daily report, thread 65511): „თორნიკე აბულაძის (შენი ახლო
+ * ადამიანი), თორნიკე აბულაძის (შენი ახლო ადამიანი)" — one person on two numbers
+ * read as two. The sentence names each person once.
+ */
+function eachPersonOnce(people: readonly PlanPerson[]): PlanPerson[] {
+  const seen = new Set<string>();
+  return people.filter((p) => {
+    const key = p.name.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
   const words = PLAN_SENTENCES[language];
-  const shown = plan.people_to_involve.slice(0, MAX_PEOPLE_SHOWN);
+  const everyone = eachPersonOnce(plan.people_to_involve);
+  const shown = everyone.slice(0, MAX_PEOPLE_SHOWN);
   /**
    * #7235 reopened (founder, thread 63992): old Ally accounts who do not know
    * Netai exists were named among „the assistants I will talk to", with a small
@@ -1283,7 +1299,7 @@ export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): s
     name: p.name,
     note: personNote(p, language),
   }));
-  const hiddenPeople = plan.people_to_involve.length - MAX_PEOPLE_SHOWN;
+  const hiddenPeople = everyone.length - MAX_PEOPLE_SHOWN;
   if (hiddenPeople > 0)
     people.push({ name: PLAN_MORE_PEOPLE[language](hiddenPeople), note: '', asIs: true });
   // D561 (Tornike, 1 October): the plan the owner reads no longer says when
