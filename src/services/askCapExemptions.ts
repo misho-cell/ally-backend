@@ -14,7 +14,7 @@
  * NOT PER-ACCOUNT. Both caps are environment variables read once at boot:
  *
  *   MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY = 2   new questions from everybody
- *   RELAY_MESSAGES_PER_PERSON_PER_DAY    = 4   messages inside one live exchange
+ *   RELAY_MESSAGES_PER_PERSON_PER_DAY    = 2   messages inside one live exchange (#7233)
  *
  * so raising either raises it for every real person in the base at the same
  * time. That is what the cap exists to prevent and it is not a thing to do for

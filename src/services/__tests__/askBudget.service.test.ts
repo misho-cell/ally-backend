@@ -134,6 +134,16 @@ describe('checkFollowUpBudget — a relayed conversation may continue (ticket 9 
     expect(params).toEqual(['42', 7, 3]);
   });
 
+  it('counts only what was sent since the helper last answered (#7824)', async () => {
+    mockQuery.mockResolvedValue(rows([{ count: '0' }]) as never);
+
+    expect(await checkFollowUpBudget('42', 7, 3)).toEqual({ allowed: true });
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain('SELECT MAX(answered_at) FROM task_asks');
+    expect(sql).toContain("'-infinity'::timestamptz");
+  });
+
   it('stops at the day’s cap, and the reason says which cap it was', async () => {
     mockQuery.mockResolvedValue(
       rows([{ count: String(RELAY_MESSAGES_PER_PERSON_PER_DAY) }]) as never,

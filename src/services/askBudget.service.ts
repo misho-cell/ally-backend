@@ -281,17 +281,25 @@ export async function checkAskBudget(
  * the one-growth-ask-per-conversation floor — those exist to stop a user
  * spraying the network with cold questions, and a reply to a reply is the
  * opposite of that. What it does spend is the person's own patience, so it is
- * capped per person, per goal, per day (ticket 9 task 12).
+ * capped per person, per goal, per day (ticket 9 task 12) — counted from their
+ * last answer, since answering them back spends none of it (#7824).
  */
 export async function checkFollowUpBudget(
   fromUserId: string,
   toUserId: number,
   taskId: number,
 ): Promise<AskBudgetOutcome> {
+  // #7824 (b), founder 26 Oct: a message that answers the helper's own reply is
+  // a confirmation, not patience spent — only what was sent since their last
+  // answer counts (Dachi's Thursday choice was refused as a third ask, 64747).
   const sentToday = await query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM task_asks
      WHERE from_user_id = $1::int AND to_user_id = $2 AND task_id = $3
-       AND created_at > NOW() - INTERVAL '24 hours'`,
+       AND created_at > NOW() - INTERVAL '24 hours'
+       AND created_at > COALESCE(
+             (SELECT MAX(answered_at) FROM task_asks
+               WHERE from_user_id = $1::int AND to_user_id = $2 AND task_id = $3),
+             '-infinity'::timestamptz)`,
     [fromUserId, toUserId, taskId],
     BUDGET_QUERY_TIMEOUT_MS,
   );
