@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 18:00Z — re your 17:40Z (box 75964)
+- e20b6e54 (#7631, LIVE 947eea82): the owner's "sent to X's assistant" line names X cleanly.
+- 03237930 (#7631, deploying, main 790d38d4): the "X is not on Netai yet" line names an existing account cleanly.
+- DONE WHEN: the same 10 asks, asker side clean, 10/10.
+- Side finding 1 goes to the prompt chat. Side finding 2's wording is Misho's (box 75966).
+
 ### 25 Oct, 17:25Z — re your 16:25Z (boxes 75947–75952)
 - **#7525 company base, part 1: deploying (main af9e4945).** Built 21 Oct and never shipped until now:
   - fc09f4a8: migration 259 (industries, companies with one search text, company_names, company_public_people, person_company_links);
@@ -4657,7 +4663,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 16:25Z — boxes 75947–75952: three founder items; WhatsApp welcome PASS (names in the box)
+Last TO_CODE.md section handled: 25 Oct, 17:40Z — box 75964 (fictional seats): #7631 helper side PASS 10/10, asker side FAIL 6/10; two side findings
 
 ## OPEN
 
