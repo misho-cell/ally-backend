@@ -46,6 +46,14 @@ const SAYS_YES_TO_INTRODUCE =
   /(გავაცნ|გაგაცნ|გაცნობს|დავაკავშირ|დაგაკავშირ|შევაკავშირ|(^|[^\p{L}])(კი|დიახ|ოკ|ოკეი|ok|okay|yes|sure)([^\p{L}]|$))/iu;
 
 /**
+ * Tester 75902 (thread 65521, 25 Oct): the go-between wrote the person's number
+ * and „ეს გაუზიარე ლაშას და ვოთსაფით მიწეროს" — share this with the asker, let
+ * him write on WhatsApp — and it was answered as a refusal. A line that hands a
+ * number over is the yes itself, whoever it says to tell.
+ */
+const HANDS_OVER_A_NUMBER = /\+?\d(?:[\s().-]?\d){6,}/u;
+
+/**
  * True when the mediator's line, on a pending incoming introduction request,
  * tells the owner to ask somebody else: that run answers the request and nothing else.
  */
@@ -59,6 +67,12 @@ export async function answersTheRequestOnly(
   }
   // An order to ask somebody else, not refersSomebody: its recommendation words
   // („დაგაკავშირებ") are how a mediator says yes to an introduction.
-  if (contactInstructionIn(line) === null || SAYS_YES_TO_INTRODUCE.test(line)) return false;
+  if (
+    contactInstructionIn(line) === null ||
+    SAYS_YES_TO_INTRODUCE.test(line) ||
+    HANDS_OVER_A_NUMBER.test(line)
+  ) {
+    return false;
+  }
   return requestIsPending(requestId);
 }
