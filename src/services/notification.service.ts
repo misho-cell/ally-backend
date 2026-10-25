@@ -1,5 +1,6 @@
 import { WHATSAPP_DEVICE } from './whatsappChannel.service';
 import { mirrorToWhatsapp } from './whatsappMirror.service';
+import { randomBytes } from 'crypto';
 import webpush, { PushSubscription } from 'web-push';
 import { query } from '../db/postgres/client';
 import { duePushes, holdPush, releaseHeld } from './heldPushes.service';
@@ -74,10 +75,21 @@ export const PAYMENT_PUSH_URL = '/profile';
 /** §100: one statement on one person's rows. */
 const PUSH_DELETE_TIMEOUT_MS = 5_000;
 
+/** A push's receipt is random and unguessable: it is the only thing the service worker holds. */
+const RECEIPT_BYTES = 16;
+const RECEIPT_RE = /^[0-9a-f]{32}$/u;
+const RECEIPT_QUERY_TIMEOUT_MS = 3_000;
+
 export interface NotificationPayload {
   title: string;
   body: string;
   url?: string;
+  /**
+   * #7724: one push's own receipt. The service worker posts it back to
+   * POST /notifications/receipt when the phone receives the push and when the
+   * person taps it; set per device by deliverToDevice, never by a caller.
+   */
+  receipt?: string;
 }
 
 export interface PushOptions {
@@ -197,17 +209,19 @@ async function recordDelivery(
   status: 'sent' | 'failed' | 'skipped' | 'held',
   statusCode: number | null,
   error: string | null,
+  receipt: string | null = null,
 ): Promise<void> {
   try {
     await query(
-      `INSERT INTO push_deliveries (user_id, endpoint, status, status_code, error)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO push_deliveries (user_id, endpoint, status, status_code, error, receipt)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         userId,
         endpoint,
         status,
         statusCode,
         error === null ? null : error.slice(0, MAX_DELIVERY_ERROR_CHARS),
+        receipt,
       ],
     );
   } catch (err) {
@@ -503,17 +517,18 @@ async function deliverToDevice(
     keys: { p256dh: row.p256dh, auth: row.auth },
   };
   const label = endpointLabel(row.endpoint);
+  const receipt = randomBytes(RECEIPT_BYTES).toString('hex');
   try {
     const result = await webpush.sendNotification(
       subscription,
-      JSON.stringify(payload),
+      JSON.stringify({ ...payload, receipt }),
       PUSH_SEND_OPTIONS,
     );
     // eslint-disable-next-line no-console
     console.log(
       `[push] user ${userId}: sent via ${label} status=${result.statusCode} url=${payload.url ?? '-'}`,
     );
-    await recordDelivery(userId, row.endpoint, 'sent', result.statusCode, null);
+    await recordDelivery(userId, row.endpoint, 'sent', result.statusCode, null, receipt);
     return DeviceOutcome.Sent;
   } catch (err) {
     const statusCode = (err as { statusCode?: number }).statusCode;
@@ -635,4 +650,29 @@ export async function deleteUnidentifiedPushSubscriptions(userId: string): Promi
     PUSH_DELETE_TIMEOUT_MS,
   );
   return result.rowCount ?? 0;
+}
+
+export enum PushReceiptEvent {
+  Received = 'received',
+  Clicked = 'clicked',
+}
+
+/**
+ * #7724: the phone says it showed (or the person tapped) one push. True when
+ * the receipt named a delivery; the first time of each event is kept.
+ */
+export async function recordPushReceipt(
+  receipt: string,
+  event: PushReceiptEvent,
+): Promise<boolean> {
+  if (!RECEIPT_RE.test(receipt)) return false;
+  const result = await query(
+    `UPDATE push_deliveries
+        SET received_at = COALESCE(received_at, NOW()),
+            clicked_at = CASE WHEN $2 THEN COALESCE(clicked_at, NOW()) ELSE clicked_at END
+      WHERE receipt = $1`,
+    [receipt, event === PushReceiptEvent.Clicked],
+    RECEIPT_QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
 }

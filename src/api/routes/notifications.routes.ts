@@ -6,11 +6,14 @@ import {
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
+import { rateLimit } from '../middleware/rateLimit.middleware';
 import {
   savePushSubscription,
   deletePushSubscription,
   getVapidPublicKey,
+  PushReceiptEvent,
   PushSubscriptionPayload,
+  recordPushReceipt,
 } from '../../services/notification.service';
 import {
   recordNotificationState,
@@ -20,6 +23,44 @@ import {
 import { ApiResponse } from '../../types';
 
 const notificationsRouter = Router();
+
+const RECEIPT_WINDOW_MS = 60_000;
+const RECEIPTS_PER_WINDOW = 120;
+
+/**
+ * #7724 (tester's engagement desk C-0020): a push the provider took (201) is
+ * not a push the phone showed. The service worker posts the push's own receipt
+ * back when the push arrives and when it is tapped:
+ *
+ *   POST /notifications/receipt { receipt, event: "received" | "clicked" }
+ *   204 — recorded, or a receipt that names nothing (nothing to tell a stranger)
+ *   400 — not a receipt or not an event
+ *
+ * ⚠️ ABOVE THE LOGIN, on purpose: a service worker has no session. The receipt
+ * is a random 128-bit value sent only inside that one push, so it is the
+ * proof; it opens nothing and reveals nothing.
+ */
+notificationsRouter.post(
+  '/receipt',
+  rateLimit({ windowMs: RECEIPT_WINDOW_MS, max: RECEIPTS_PER_WINDOW }),
+  body('receipt').isString().isLength({ min: 1, max: 64 }),
+  body('event').isIn(Object.values(PushReceiptEvent)),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'receipt and event are required' });
+      return;
+    }
+    try {
+      const { receipt, event } = req.body as { receipt: string; event: PushReceiptEvent };
+      await recordPushReceipt(receipt, event);
+      res.status(204).end();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /notifications/receipt]', (err as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 notificationsRouter.use(authenticateJwt, requireUserRole);
 
