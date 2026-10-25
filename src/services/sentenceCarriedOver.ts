@@ -1,3 +1,5 @@
+import { withoutLinks } from './answerFacts';
+
 /**
  * D648 (the founder, box 37654): no quotation in either direction. The tester's
  * 1154 found the gap the whole-line checks left: one sentence of a message,
@@ -31,7 +33,7 @@ const SENTENCE_END_RE = /(?<=[.!?…;])\s+|\n+/u;
 const NOISE_RE = /[^\p{L}\p{N}]+/gu;
 
 function wordsOf(text: string): string[] {
-  return text.toLowerCase().replace(NOISE_RE, ' ').trim().split(' ').filter(Boolean);
+  return withoutLinks(text).toLowerCase().replace(NOISE_RE, ' ').trim().split(' ').filter(Boolean);
 }
 
 /** How many of `sentence`'s words, in order, a stretch of `sent` from `start` takes with nothing added. */

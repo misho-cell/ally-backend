@@ -1,4 +1,5 @@
 import { geoName } from './georgianCase';
+import { withoutLinks } from './answerFacts';
 
 // Ticket 6, task 22 (g)/(h): the run's FIXED strings — step lines, the
 // working/failure lines, the status captions — must follow the conversation's
@@ -45,8 +46,14 @@ function scriptWords(text: string): { georgian: number; cyrillic: number; latin:
   return out;
 }
 
+/**
+ * Tester 75902 (thread 65176, 25 Oct): a Georgian helper pasted an invite link
+ * on its own, and the run answered „Working on it…" and a whole line in
+ * English — the link's „invite", „preview", „whatsapp" counted as English
+ * words. A link says nothing about which language its sender speaks.
+ */
 export function detectRunLanguage(text: string): RunLanguage {
-  const words = scriptWords(text);
+  const words = scriptWords(withoutLinks(text));
   const script = Math.max(words.georgian, words.cyrillic);
   if (script > 0 && script >= words.latin) {
     return words.georgian >= words.cyrillic ? 'ka' : 'ru';
@@ -241,7 +248,7 @@ const MIN_LATIN_CHARS_TO_SWITCH = 25;
  */
 /** Does this line say which language it is in? A script, or a sentence of Latin. */
 export function carriesLanguage(text: string): boolean {
-  const trimmed = text.trim();
+  const trimmed = withoutLinks(text).trim();
   return SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH;
 }
 
@@ -252,7 +259,7 @@ export function languageOfConversation(
   /** What to keep when nothing in the conversation says otherwise. */
   fallback: RunLanguage = 'en',
 ): RunLanguage {
-  const trimmed = latest.trim();
+  const trimmed = withoutLinks(latest).trim();
   if (SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) {
     return detectRunLanguage(trimmed);
   }
@@ -263,9 +270,9 @@ export function languageOfConversation(
   // Georgian, and got every relay in Georgian with a Georgian „translation".
   // The comment above promised „Ok in an English thread finds English behind
   // it"; now it does. Newest evidence first, whichever kind it is.
-  const spoken = earlier.find(
-    (text) => SIGNAL.test(text) || text.trim().length >= MIN_LATIN_CHARS_TO_SWITCH,
-  );
+  const spoken = earlier
+    .map(withoutLinks)
+    .find((text) => SIGNAL.test(text) || text.trim().length >= MIN_LATIN_CHARS_TO_SWITCH);
   if (spoken !== undefined) return detectRunLanguage(spoken);
   // Enough Latin to be a sentence is evidence; a word or an empty turn is not.
   if (trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) return detectRunLanguage(trimmed);

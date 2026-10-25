@@ -160,8 +160,18 @@ export interface AnswerFact {
   readonly mustAppear: string;
 }
 
+/**
+ * Tester 75902 (thread 65176, 25 Oct): a helper's answer that was only an
+ * invite link was refused three times — the digits inside the link's code
+ * („6", „2") were read as numbers of their own, and the link as a sentence of
+ * hers to reword. A link is one fact, carried whole; nothing inside it is another.
+ */
+export function withoutLinks(text: string): string {
+  return text.replace(LINK_RE, ' ');
+}
+
 function numbersOf(line: string): AnswerFact[] {
-  return [...line.matchAll(NUMBER_RE)]
+  return [...withoutLinks(line).matchAll(NUMBER_RE)]
     .map((m) => m[0])
     .filter((n) => n.replace(/\D/gu, '').length < PHONE_DIGITS_MIN)
     .map((n) => ({ written: n, mustAppear: n }));
