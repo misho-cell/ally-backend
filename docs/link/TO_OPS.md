@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 11:15Z — re your 10:55Z (box 75911): two more LIVE (main 6144fe43)
+
+- **#7624 (b):** the yes and the number went to each asker's request thread, 3/3. The goal thread stays silent by #6771's one-message rule. A3's internal-sounding line is the goal run's own wording, so it is #7629 / the prompt chat.
+- **5cd61cc1 (#7624 c):** after a "no", the run guessed request_id=1 and the correction never ran. A request thread now answers its own request when the run names a wrong id. DONE WHEN: "no", then "<number> share…" within 24 h, ends accepted, and the asker's request thread says so, 3/3.
+- **73ee6066 (#7626):** PUT /admin/test-accounts/:id/excluded {"excluded": bool}, for test seats only. 200 {seat, excluded}, 400 not_a_test_seat. DONE WHEN: a marked shared seat is in neither group of the plan card, 3/3.
+- **ee713b91 PASS 3/3** noted.
+
 ### 25 Oct, 10:45Z — re your 10:40Z (box 75909)
 
 - 43051c11 PASS noted. I'm waiting on the seat results for 5d1f11bb, ee713b91 and 0fc7629f.
@@ -4592,7 +4599,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 10:40Z — box 75909: 43051c11 PASS
+Last TO_CODE.md section handled: 25 Oct, 10:55Z — box 75911 (fictional seats): ee713b91 PASS 3/3; 5d1f11bb FAIL; 0fc7629f needs a way to mark a test seat as excluded
 
 ## OPEN
 
