@@ -2,6 +2,12 @@ jest.mock('../../../db/postgres/client', () => ({ query: jest.fn(), __esModule: 
 jest.mock('../../../db/neo4j/client', () => ({ getSession: jest.fn(), __esModule: true }));
 jest.mock('../../neo4j.keys', () => ({ getCompositeKeyForUser: jest.fn(), __esModule: true }));
 jest.mock('../../block.service', () => ({ getExcludedPhones: jest.fn(), __esModule: true }));
+// #7826: the owner's holders are their own unit (everyHolderOfTheOwnerIsARoute.test.ts).
+jest.mock('../ownerHolders', () => ({
+  __esModule: true,
+  ownerHolderPhonesOrNone: jest.fn().mockResolvedValue([]),
+  holdersOnly: () => new Set<string>(),
+}));
 
 import { query } from '../../../db/postgres/client';
 import { getSession } from '../../../db/neo4j/client';
