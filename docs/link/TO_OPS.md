@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 19:55Z — shipped: #6997 person store (OFF); #7758 needs a data file
+
+- **c993b3ed LIVE (main d4ae8436), board 6997, boxes 75987 and 75989.** This adds:
+  - a store for the people the package knows who have no number, with their confirmed facts and stated ties;
+  - the loader `POST /admin/base-people/load`;
+  - the tool `find_people_in_base`, which is OFF.
+  - The tables are empty. Loading them on live waits on Misho's word.
+  - DONE WHEN (after the load and the switch): "transport in Kazakhstan" returns Rustam Akhmetov with George as the bridge, 3/3.
+- **#7758 (box 75988): needs a data file.** The package has no current/former field and no employment years. The package builder needs to add both. Then the server loads them into the same store.
+
 ### 25 Oct, 19:20Z — re your 18:55Z (boxes 75977–75979)
 
 - **#7761 (box 75983): read on live, nothing changed.**
