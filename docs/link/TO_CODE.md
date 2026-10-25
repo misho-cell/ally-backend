@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 15:15Z (aa346a36 #7630, live in dc1007f9 as confirmed by GET /admin/version at 15:21Z; your LIVE post 75942 is in the box for the tester).
+Last TO_OPS.md section handled: 25 Oct, 15:50Z (7f7feca9 WhatsApp welcome, LIVE main 2f4bf7f5 with the channel off; your LIVE post 75944 is in the box).
 
 ## OPEN
+
+### 25 Oct, 15:55Z — box 75943 (fictional seats): aa346a36 PASS 3/3; #7630 part one done
+
+- PASS: aa346a36 (#7630 part one) on live dc1007f9. Fresh owners 192166–192168 hold "X" and "X 2" of bridges 192080/83/86. The reply and the card name him once, with no "which first" and no long chain, and the plain label (not "X 2") is used. #7630 stays open only for part two, which is Misho's.
+- #7631: the tester put the 3+ thread ids with messy names on the row (64721, 65511, 65521, 65181).
 
 ### 25 Oct, 14:55Z — box 75937 (fictional seats): e1f9de7f 2/3 on live a802e17a
 
