@@ -94,7 +94,7 @@ describe('registration research run', () => {
 
   it('records a failure with what was spent, and never throws', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Nino', city: null }] } as never)
+      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Nino Satsdeli', city: null }] } as never)
       .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
       .mockResolvedValue({ rows: [], rowCount: 1 } as never);
     mockSearch.mockRejectedValueOnce(new Error('search down'));
@@ -102,6 +102,17 @@ describe('registration research run', () => {
     const failed = mockQuery.mock.calls.find((c) => sqlOf(c).includes('SET status = $2'));
     expect(failed?.[1]?.[1]).toBe('failed');
     expect(failed?.[1]?.[5]).toBe('search down');
+  });
+
+  it('never searches a single-word name nobody saved in full (#7726)', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Giorgi', city: null }] } as never)
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
+      .mockResolvedValue({ rows: [], rowCount: 1 } as never);
+    expect(await researchNextUser(false)).toBe(true);
+    expect(mockSearch).not.toHaveBeenCalled();
+    const done = mockQuery.mock.calls.find((c) => sqlOf(c).includes('SET status = $2'));
+    expect(done?.[1]?.[5]).toBe('single-word name: no public search');
   });
 
   it('closes a user with no name or number without searching', async () => {

@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { checkedAgainst, identityFor } from './identity';
 import { fetchPage, webSearch } from '../tools/webSearch';
 import { Extracted, extractFacts, extractResearch, PersonGiven, ReadText } from './extract';
 import { LIST_PEOPLE_ON, newUserAsKnown, storeListedPeople } from './listedPeople';
@@ -227,12 +228,18 @@ export async function researchNextUser(
       await finish(person.userId, 'done', counts, 'no name or number to research');
       return true;
     }
-    const given = { name: person.name, city: person.city };
+    const identity = await identityFor(person.userId, person.name);
+    if (identity.searchName === null) {
+      // #7726: a single-word name finds namesakes, never the person.
+      await finish(person.userId, 'done', counts, 'single-word name: no public search');
+      return true;
+    }
+    const given = { name: identity.searchName, city: person.city };
     const gathered = await gather(given);
     counts.searches = gathered.searches;
     counts.pages = gathered.pages;
     const found = await extracted(person.userId, given, gathered.texts, withListedPeople);
-    const facts = factsToStore(found.facts);
+    const facts = checkedAgainst(factsToStore(found.facts), identity.words);
     counts.facts = await storeFacts(person.phones, facts);
     const newUser = newUserAsKnown(person.phones[0], person.name, facts);
     counts.listed = await storeListedPeople(found.listed, newUser);
