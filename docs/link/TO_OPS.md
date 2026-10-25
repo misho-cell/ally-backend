@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 00:05Z — shipped: #7825 a Netai message can carry its goal
+
+- **bf45fbb6 LIVE (main c3c078e9).** The Netai message route takes an optional task_id.
+  - Handing the answer to that goal is built but switched off (NETAI_REPLY_WAKES_GOAL). It waits on Misho's word.
+  - FOR_FRONTEND 23:55Z.
+
 ### 25 Oct, 23:35Z — shipped: #7825 a Netai reply counts in any chat (box 76022)
 
 - **5c3707a7 is LIVE (main a5de8962).** An answer to a Netai message is now recorded as its answer even when typed in another chat, as long as it comes within a day. The record keeps which chat it came in (reply_thread_id).
