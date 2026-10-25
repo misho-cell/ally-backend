@@ -19,6 +19,8 @@ function rows(data: unknown[]): { rows: unknown[]; rowCount: number } {
 // Route detail-page queries by a distinctive SQL fragment (Promise.all → order
 // is not deterministic).
 function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
+  // #7728: the labels others saved, for a fuller name; none in these fixtures.
+  if (sql.includes('ua."contactId" <> $1')) return rows([]);
   // Timeline query also embeds `FROM "User" WHERE id = $1` in a subselect, so
   // match its unique `AS signup` fragment before the account check.
   if (sql.includes('AS signup'))

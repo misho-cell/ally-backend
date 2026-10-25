@@ -379,6 +379,8 @@ export interface AnswerStatsRow {
 
 export interface UserProfile {
   account: UserAccount;
+  /** #7728: a fuller name from others' labels, when the registered one is a single word or lower case. */
+  suggestedFullName?: string | null;
   /** Absent only when the block itself failed, which the diagnostics then name. */
   usage?: UserUsage;
   /** Absent only when the block itself failed, which the diagnostics then name. */

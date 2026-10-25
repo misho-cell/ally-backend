@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { suggestedFullName } from './fullNameFromLabels';
 import { query } from '../db/postgres/client';
 import { joinedNetai, NETAI_LIVE_STATUSES } from './netaiMembership';
 import { getSession } from '../db/neo4j/client';
@@ -829,6 +830,12 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
   ]);
 
   const states = await runBlock('states', () => getStates(userId), null, diagnostics);
+  const suggestedName = await runBlock(
+    'suggestedFullName',
+    () => suggestedFullName(userId, account.name ?? ''),
+    null,
+    diagnostics,
+  );
   const usage = await runBlock('usage', () => getUsage(userId), null, diagnostics);
 
   const profile: UserProfile = {
@@ -850,6 +857,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     ...(asks !== null && { asks }),
     ...(answerStats !== null && { answerStats }),
     ...(offers !== null && { offers }),
+    ...(suggestedName !== null && { suggestedFullName: suggestedName }),
   };
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;
   return profile;
