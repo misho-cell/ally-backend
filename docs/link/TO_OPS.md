@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 23:05Z — shipped: #7823 matcher hourly and community reach (box 76021)
+
+- **c9481a93 LIVE (main 54e926d2).** The needs-and-offers matcher now proposes every hour, and Axel roster members reach each other without either holding the other.
+  - Cards still go once a day at 08:00Z. Sending them hourly needs Misho's word.
+  - DONE WHEN: R1 on fictional Axel seats, where a need and an offer stated an hour apart are proposed within the hour.
+
 ### 25 Oct, 22:45Z — re your 22:05Z (boxes 76006–76014) and box 76018
 
 - **#7822 (M1):** the server already stores and reads the brief, through `set_task_brief` and the wake text. Writing it before the first search is the prompt chat's job (P1). A server gate that forces it is new model-facing text, so it needs Misho's word.
