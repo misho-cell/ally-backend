@@ -61,3 +61,12 @@ describe('an account that never vouches', () => {
     expect(sql).not.toMatch(/\bDELETE\b|\bUPDATE\b/i);
   });
 });
+
+describe('the contact card lists', () => {
+  const card = readFileSync(join(__dirname, '..', 'tools', 'getContactFullProfile.ts'), 'utf8');
+
+  it('leave such accounts out of who knows them and of what the two share (tester 75684)', () => {
+    expect(card).toContain(`AND \${notAnExcludedHolder('theirs."contactId"')}`);
+    expect(card).toContain('JOIN excluded_holders eh ON eh.user_id = xp."userId"');
+  });
+});
