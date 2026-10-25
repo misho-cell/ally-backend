@@ -192,6 +192,26 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     expect(text).not.toContain('მოიწვევ');
   });
 
+  it('says one account once under the two names the owner saved it by (75933, F3)', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        { digits: '995500000001', alias: 'გურამ ნოზაძე 2' },
+        { digits: '995500000002', alias: 'გურამ ნოზაძე' },
+      ],
+    } as never);
+    (fetchAccountStates as jest.Mock).mockResolvedValue(
+      new Map([
+        ['995500000001', { user_id: 7 }],
+        ['995500000002', { user_id: 7 }],
+      ]),
+    );
+    const plan = { routes: [{ introduction: { via_phone: '+995500000001', to_name: 'თემური' } }] };
+    const found = [{ name: 'თემური', viaPhones: ['+995500000002'] }];
+    const text = await mutualGroupsFor('171', plan, found, 'ka');
+    expect(text).toContain(': გურამ ნოზაძე 2');
+    expect(text).not.toContain('გურამ ნოზაძე 2, გურამ ნოზაძე');
+  });
+
   it('draws the groups when the plan names its go-betweens but no introduction (61547)', async () => {
     mockQuery.mockResolvedValue({
       rows: [

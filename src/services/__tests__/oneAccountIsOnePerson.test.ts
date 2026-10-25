@@ -10,7 +10,7 @@ jest.mock('../tools/membership', () => ({
 
 import { fetchAccountStates } from '../tools/membership';
 import { onePersonPerAccount } from '../taskPlans.service';
-import { onePathPerChainOfAccounts, WarmPath } from '../tools/findWarmPath';
+import { onePathPerFirstBridge, WarmPath } from '../tools/findWarmPath';
 import { AccountDetails } from '../tools/membership';
 
 const mockStates = fetchAccountStates as jest.Mock;
@@ -50,13 +50,14 @@ describe('one account is one person', () => {
     warn.mockRestore();
   });
 
+  const bridge = (phone: string, name: string): WarmPath['bridges'][number] => ({
+    phone,
+    name,
+    is_member: true,
+    account_state: 'netai_user' as const,
+  });
+
   it('is one warm path, the best ranked kept', () => {
-    const bridge = (phone: string, name: string) => ({
-      phone,
-      name,
-      is_member: true,
-      account_state: 'netai_user' as const,
-    });
     const paths: WarmPath[] = [
       { hops: 2, relayable: true, bridges: [bridge('+12025550142', 'ბექა მაისურაძე')] },
       { hops: 2, relayable: true, bridges: [bridge('+12025550143', 'ბექა მაისურაძე 2')] },
@@ -67,9 +68,40 @@ describe('one account is one person', () => {
       ['12025550143', details(7)],
       ['12025550144', details(8)],
     ]);
-    expect(onePathPerChainOfAccounts(paths, states).map((p) => p.bridges[0].name)).toEqual([
-      'ბექა მაისურაძე',
-      'თამთა',
+    expect(
+      onePathPerFirstBridge(paths, states, '+12025550199').map((p) => p.bridges[0].name),
+    ).toEqual(['ბექა მაისურაძე', 'თამთა']);
+  });
+
+  it('drops a longer chain through someone already reached directly (tester 75933, F1/F2)', () => {
+    const paths: WarmPath[] = [
+      { hops: 2, relayable: true, bridges: [bridge('+12025550143', 'ბექა მაისურაძე 2')] },
+      {
+        hops: 3,
+        relayable: true,
+        bridges: [bridge('+12025550142', 'ბექა მაისურაძე'), bridge('+12025550144', 'თამთა')],
+      },
+    ];
+    const states = new Map([
+      ['12025550142', details(7)],
+      ['12025550143', details(7)],
+      ['12025550144', details(8)],
     ]);
+    expect(onePathPerFirstBridge(paths, states, '+12025550199')).toHaveLength(1);
+  });
+
+  it('never makes the target’s own second number a bridge to the target', () => {
+    const paths: WarmPath[] = [
+      { hops: 2, relayable: true, bridges: [bridge('+12025550143', 'ბექა მაისურაძე 2')] },
+      { hops: 2, relayable: true, bridges: [bridge('+12025550144', 'თამთა')] },
+    ];
+    const states = new Map([
+      ['12025550142', details(7)],
+      ['12025550143', details(7)],
+      ['12025550144', details(8)],
+    ]);
+    expect(
+      onePathPerFirstBridge(paths, states, '+12025550142').map((p) => p.bridges[0].name),
+    ).toEqual(['თამთა']);
   });
 });

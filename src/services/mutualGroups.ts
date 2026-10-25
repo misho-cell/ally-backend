@@ -333,20 +333,33 @@ async function sharedNonMembers(
   return shared.filter((d) => !isMemberPhone(states, d));
 }
 
-/** The owner's names, each said once; a name on Netai under any number counts as on Netai. */
+/**
+ * The owner's names, each person said once; on Netai under any number counts
+ * as on Netai. Tester 75933 (F3): one account the owner saved under two
+ * numbers, „გურამ ნოზაძე" and „გურამ ნოზაძე 2", is one person, named by the
+ * first number listed (the plan's own go-between comes first). One name
+ * under two numbers stays one name, as before.
+ */
 function contactsOnce(
   digits: readonly string[],
   names: ReadonlyMap<string, string>,
   states: Map<string, AccountDetails>,
 ): MutualContact[] {
-  const byName = new Map<string, MutualContact>();
+  const byPerson = new Map<string, MutualContact>();
   for (const d of digits) {
     const name = names.get(d);
     if (name === undefined) continue;
-    const onNetai = isMemberPhone(states, d) || byName.get(name)?.onNetai === true;
-    byName.set(name, { name, onNetai });
+    const userId = states.get(d)?.user_id;
+    const account = typeof userId === 'number' ? userId : null;
+    const sameName = [...byPerson].find(([, contact]) => contact.name === name)?.[0];
+    const key =
+      (account !== null && byPerson.has(`user:${account}`) ? `user:${account}` : sameName) ??
+      (account === null ? `name:${name}` : `user:${account}`);
+    const earlier = byPerson.get(key);
+    const onNetai = isMemberPhone(states, d) || earlier?.onNetai === true;
+    byPerson.set(key, { name: earlier?.name ?? name, onNetai });
   }
-  return [...byName.values()];
+  return [...byPerson.values()];
 }
 
 /** The plan's go-betweens first, then everyone the run found knowing the target. */

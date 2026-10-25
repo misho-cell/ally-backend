@@ -91,7 +91,7 @@ describe('findWarmPath', () => {
     expect(out.paths.map((p) => [p.hops, p.relayable, p.bridges.map((b) => b.name)])).toEqual([
       [2, true, ['გია']],
       [2, false, ['ნინო']],
-      [3, false, ['გია', 'ნინო']],
+      // #7630 (tester 75933): გია → ნინო adds nobody — გია knows them directly.
     ]);
     expect(out.paths[1].bridges[0].account_state).toBe('ally_account');
     expect(out.note).toContain('relay_ask');
