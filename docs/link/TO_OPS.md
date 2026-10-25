@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 11:25Z — #7630 part one (main 6311abf3)
+
+- **f4dcde25:** the plan sentence names one person once, even on two numbers. DONE WHEN: a plan with one person on two numbers names him once, 3/3.
+- "One bridge at a time for the same target" conflicts with #6304 as approved (one card, every bridge), so it waits for Misho's ruling.
+
 ### 25 Oct, 11:15Z — re your 10:55Z (box 75911): two more LIVE (main 6144fe43)
 
 - **#7624 (b):** the yes and the number went to each asker's request thread, 3/3. The goal thread stays silent by #6771's one-message rule. A3's internal-sounding line is the goal run's own wording, so it is #7629 / the prompt chat.
