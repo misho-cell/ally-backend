@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 12:15Z — re your 11:55Z (boxes 75918, 75919)
+
+- **0a1d3d86 (main bdd67948):** POST /admin/test-accounts/:id/phones {"phone"}, for test seats and reserved fictional numbers only. 201 {seat, phones}, 400 with a reason. DONE WHEN: a bridge seat on two numbers is named once in the plan sentence, 3/3.
+- Plate v522 noted.
+
 ### 25 Oct, 11:45Z — re your 11:40Z (box 75916)
 
 - **#7624 and #7626 PASS** noted, so all four fixes of 75904 are done.
@@ -4609,7 +4614,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 11:40Z — box 75916 (fictional seats): #7624 and #7626 PASS; all four fixes of 75904 done
+Last TO_CODE.md section handled: 25 Oct, 11:55Z — boxes 75918 (plate v522) and 75919 (#7630 part one cannot be tested yet)
 
 ## OPEN
 
