@@ -133,3 +133,18 @@ describe('the helper’s voice', () => {
     expect(missingFacts('ვაკეში ვცხოვრობ.', 'ვაკეში ცხოვრობს.')).toEqual([]);
   });
 });
+
+/** Tester 75902 (thread 65176): an answer that was an invite link, refused three times. */
+describe('a link the helper sends', () => {
+  const link = 'https://app.example.com/invite?t=x6nuzcvcm6tsq2mudq&preview=whatsapp';
+
+  it('goes whole, and is not a sentence of hers to reword', () => {
+    expect(sentenceCarriedOver(link, `აი, ბმული: ${link}`)).toBeNull();
+  });
+
+  it('is one fact: the digits inside it are not numbers of their own', () => {
+    expect(factsAdded(link, 'გაქვს ბმული?', `გამოგზავნა ბმული: ${link}`)).toEqual([]);
+    expect(missingFacts(link, `გამოგზავნა ბმული: ${link}`)).toEqual([]);
+    expect(missingFacts(link, 'გამოგზავნა ბმული.')).toEqual([link]);
+  });
+});

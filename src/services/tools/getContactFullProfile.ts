@@ -188,6 +188,10 @@ export async function contactsWhoKnowThem(
           AND NULLIF(TRIM(own.alias), '') IS NOT NULL
           -- Tester 75684 (Misho, 24 Oct): an account that never vouches knows nobody here.
           AND ${notAnExcludedHolder('theirs."contactId"')}
+          -- Tester 75868 (25 Oct): his own account, holding his own number, is not
+          -- somebody who knows him.
+          AND NOT EXISTS (SELECT 1 FROM "UserPhone" self
+                           WHERE self."userId" = theirs."contactId" AND self.phone = $2)
         LIMIT $3`,
       [userId, phone, MAX_MUTUAL],
       MUTUAL_QUERY_TIMEOUT_MS,
@@ -225,6 +229,9 @@ export async function contactsYouBothHave(
           AND NOT EXISTS (SELECT 1 FROM "UserPhone" xp
                            JOIN excluded_holders eh ON eh.user_id = xp."userId"
                           WHERE xp.phone = theirs.phone)
+          -- Tester 75868: nor is the member himself one of the contacts the two share.
+          AND NOT EXISTS (SELECT 1 FROM "UserPhone" self
+                           WHERE self."userId" = up."userId" AND self.phone = theirs.phone)
         LIMIT $3`,
       [userId, phone, MAX_MUTUAL],
       MUTUAL_QUERY_TIMEOUT_MS,

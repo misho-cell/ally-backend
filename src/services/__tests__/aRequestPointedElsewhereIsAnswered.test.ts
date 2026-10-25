@@ -54,6 +54,22 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
+  /** Tester 75902 (thread 65521): the number and „share this with Lasha" was answered as a no. */
+  it('leaves a line that hands a number over to the run', async () => {
+    const handOver = 'ეს გაუზიარე ლაშას და ვოთსაფით მიწეროს';
+    pending(true);
+    await expect(answersTheRequestOnly('incoming_request', REQUEST_ID, handOver)).resolves.toBe(
+      true,
+    );
+    mockQuery.mockReset();
+    for (const number of ['+1 202 555 0142', '2025550142', '202-555-0142']) {
+      await expect(
+        answersTheRequestOnly('incoming_request', REQUEST_ID, `${number} ${handOver}`),
+      ).resolves.toBe(false);
+    }
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it('is only the incoming introduction request', async () => {
     await expect(answersTheRequestOnly('regular', REQUEST_ID, POINTED_ELSEWHERE[0])).resolves.toBe(
       false,

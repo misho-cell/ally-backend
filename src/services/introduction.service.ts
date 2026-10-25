@@ -1280,6 +1280,19 @@ export async function pendingIntroInMediatorThread(
   return result.rows[0]?.id ?? null;
 }
 
+/**
+ * Tester 75902 (thread 65521, 25 Oct): the go-between's yes was recorded as a
+ * no, he wrote „I never refused, I agreed to everything", and was told the
+ * request was closed. The same go-between may turn his own no into a yes for a
+ * day after it; the asker then hears the yes like any other. A no stays final
+ * for anyone else, and a yes is never turned back into a no.
+ */
+const REVERSAL_WINDOW_HOURS = 24;
+
+function isReversalToYes(status: string, action: IntroductionAction): boolean {
+  return status === 'declined' && action === 'accept';
+}
+
 export async function resolveIntroductionRequest(
   mediatorUserId: string,
   target: { requestId?: number; requestRef?: string },
@@ -1325,7 +1338,7 @@ export async function resolveIntroductionRequest(
 
   const newStatus = action === 'accept' ? 'accepted' : 'declined';
   if (req.status === newStatus) return { ok: true, already: true, status: newStatus };
-  if (req.status !== 'pending') {
+  if (req.status !== 'pending' && !isReversalToYes(req.status, action)) {
     return { ok: false, code: 'conflict', status: req.status, error: ERR_ALREADY_ANSWERED };
   }
 
@@ -1422,7 +1435,11 @@ export async function resolveIntroductionRequest(
                AND regexp_replace(ua.phone, '\\D', '', 'g') = $6::text
              LIMIT 1)
          )
-     WHERE id = $3 AND status = 'pending'
+     WHERE id = $3
+       AND (status = 'pending'
+            OR (status = 'declined' AND $1 = 'accepted'
+                AND responded_by_user_id = $4::int
+                AND responded_at > NOW() - make_interval(hours => $7::int)))
      RETURNING target_phone`,
     [
       newStatus,
@@ -1431,6 +1448,7 @@ export async function resolveIntroductionRequest(
       mediatorUserId,
       action === 'accept' ? channel : null,
       resolvedFromMediator,
+      REVERSAL_WINDOW_HOURS,
     ],
   );
   if ((updated.rowCount ?? 0) === 0) {

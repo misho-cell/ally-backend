@@ -194,7 +194,8 @@ describe('resolveIntroductionRequest', () => {
     // The list is asserted whole, deliberately: this file's own history is a
     // parameter list that shifted under a change and took an `integer = text`
     // P0 with it.
-    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7', 'direct', null]);
+    // The seventh is the window a go-between's own no may still become a yes (75902).
+    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7', 'direct', null, 24]);
     expect(mockPush).toHaveBeenCalledWith(
       '9',
       expect.objectContaining({ title: expect.any(String) }),
@@ -254,6 +255,43 @@ describe('resolveIntroductionRequest', () => {
     expect(out.ok).toBe(false);
     expect(out.code).toBe('conflict');
     expect(out.status).toBe('accepted');
+  });
+
+  /** Tester 75902 (thread 65521): „I never refused, I agreed to everything" — and the request was closed. */
+  it("turns the go-between's own recent no into a yes, and the asker hears the yes", async () => {
+    setup({ request: { ...REQUEST_ROW, status: 'declined' } });
+    mockThreads.mockResolvedValue([
+      { id: 11, user_id: 7, type: 'incoming_request' },
+      { id: 12, user_id: 9, type: 'outgoing_request' },
+    ] as never);
+
+    const out = await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', {
+      source: 'chat',
+    });
+
+    expect(out).toEqual({ ok: true, status: 'accepted' });
+    const update = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('UPDATE introduction_requests'),
+    );
+    // Only his own no, only for a day, and only towards a yes.
+    expect(update?.[0]).toContain("status = 'declined' AND $1 = 'accepted'");
+    expect(update?.[0]).toContain('responded_by_user_id = $4::int');
+    expect(update?.[0]).toContain('make_interval(hours => $7::int)');
+    expect(mockPush).toHaveBeenCalledWith('9', expect.anything());
+    const asker = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
+    expect(asker?.[3]).not.toContain('ვერ შეძლო');
+  });
+
+  it('never turns a no back for anyone else, or after the day', async () => {
+    setup({ request: { ...REQUEST_ROW, status: 'declined' }, updateCount: 0 });
+
+    const out = await resolveIntroductionRequest('7', { requestId: 5 }, 'accept', {
+      source: 'chat',
+    });
+
+    expect(out.ok).toBe(false);
+    expect(out.code).toBe('conflict');
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('reports the conflict when a simultaneous answer wins the race', async () => {

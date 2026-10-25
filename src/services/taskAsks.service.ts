@@ -3160,11 +3160,16 @@ const OWN_LINE_LOOKBACK = 6;
 const MAX_OWN_LINE_CHARS = 1000;
 
 /**
- * The helper's own last line in the ask thread, or '' when there is none to
- * hold the answer to. D648: it is no longer sent in place of the assistant's
- * wording (the #34 restore is gone); it is what the facts are checked against.
+ * The helper's own lines in the ask thread since their assistant last spoke,
+ * oldest first, or '' when there are none to hold the answer to. D648: they are
+ * no longer sent in place of the assistant's wording (the #34 restore is gone);
+ * they are what the facts are checked against.
+ *
+ * Tester 75902 (thread 65176, 25 Oct): the helper sent the invite link, then
+ * „გაუგზავნე შენით, შეგიძლია?" — and only that last line was read, so the link
+ * looked like something her assistant had added, and every send was refused.
  */
-async function helpersOwnLine(askThreadId: number): Promise<string> {
+export async function helpersOwnLine(askThreadId: number): Promise<string> {
   const result = await query<{ role: string; content: string }>(
     `SELECT role, content FROM conversations
       WHERE thread_id = $1 AND kind = 'message' AND TRIM(content) <> ''
@@ -3172,7 +3177,14 @@ async function helpersOwnLine(askThreadId: number): Promise<string> {
     [askThreadId, OWN_LINE_LOOKBACK],
     ASK_QUERY_TIMEOUT_MS,
   );
-  const own = result.rows.find((r) => r.role === 'user')?.content.trim() ?? '';
+  // Their latest run of lines, past any line the assistant wrote after it.
+  const from = result.rows.findIndex((r) => r.role === 'user');
+  const rest = from < 0 ? [] : result.rows.slice(from);
+  const end = rest.findIndex((r) => r.role !== 'user');
+  const own = (end < 0 ? rest : rest.slice(0, end))
+    .map((r) => r.content.trim())
+    .reverse()
+    .join('\n');
   return own.length > MAX_OWN_LINE_CHARS ? '' : own;
 }
 

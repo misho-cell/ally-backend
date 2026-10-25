@@ -69,4 +69,9 @@ describe('the contact card lists', () => {
     expect(card).toContain(`AND \${notAnExcludedHolder('theirs."contactId"')}`);
     expect(card).toContain('JOIN excluded_holders eh ON eh.user_id = xp."userId"');
   });
+
+  it('never list the person as knowing himself, nor as a contact he shares (tester 75868)', () => {
+    expect(card).toContain('WHERE self."userId" = theirs."contactId" AND self.phone = $2)');
+    expect(card).toContain('WHERE self."userId" = up."userId" AND self.phone = theirs.phone)');
+  });
 });

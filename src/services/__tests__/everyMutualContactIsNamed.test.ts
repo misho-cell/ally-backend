@@ -6,9 +6,14 @@ jest.mock('../tools/membership', () => ({
   fetchAccountStates: jest.fn(),
   isMemberPhone: (states: Map<string, string>, phone: string) => states.get(phone) === 'netai_user',
 }));
+jest.mock('../excludedHolders.service', () => ({
+  __esModule: true,
+  excludedHolderPhones: jest.fn(),
+}));
 
 import { query } from '../../db/postgres/client';
 import { fetchAccountStates } from '../tools/membership';
+import { excludedHolderPhones } from '../excludedHolders.service';
 import { mutualGroupsFor, mutualGroupsText, namesTheTarget } from '../mutualGroups';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -16,6 +21,7 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 beforeEach(() => {
   mockQuery.mockReset();
   (fetchAccountStates as jest.Mock).mockReset();
+  (excludedHolderPhones as jest.Mock).mockResolvedValue(new Set());
 });
 
 /** #6304 (Giorgi, G-111: the template approved as written). */
@@ -62,6 +68,24 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     expect(await mutualGroupsFor('171', plan, found, 'ka')).toContain(
       'ვკითხავ: ლიკა\n• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: თორნიკე',
     );
+  });
+
+  /** Tester 75902 (thread 65511): „Test Acc", a copied-phonebook account, in a real owner's group. */
+  it('names no account that never vouches, in either group', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        { digits: '995500000001', alias: 'ლიკა' },
+        { digits: '995500000002', alias: 'Test Acc' },
+      ],
+    } as never);
+    (fetchAccountStates as jest.Mock).mockResolvedValue(new Map([['995500000001', 'netai_user']]));
+    (excludedHolderPhones as jest.Mock).mockResolvedValue(new Set(['+995500000002']));
+    const plan = { routes: [{ introduction: { via_phone: 'p1', to_name: 'თემური' } }] };
+    const found = [{ name: 'თემური', viaPhones: ['+995500000001', '+995500000002'] }];
+    const groups = await mutualGroupsFor('171', plan, found, 'ka');
+    expect(groups).toContain('ვკითხავ: ლიკა');
+    expect(groups).not.toContain('Test Acc');
+    expect(groups).not.toContain('Netai-ზე არ არიან');
   });
 
   it('finds the target under the other spelling the search found him by (69134)', async () => {
