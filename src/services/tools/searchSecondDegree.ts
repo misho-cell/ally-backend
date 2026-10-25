@@ -24,6 +24,7 @@ import { rolesFromLabels } from './labelEmployer';
 import { nameOnlyFromLabel } from '../labelReader.service';
 import { foldedLower, toMtavruli } from './georgianCase';
 import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
+import { withEveryHolder } from './everyHolder';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -1462,8 +1463,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     mark('sql');
 
-    const rows = result.rows.filter((r) => !isExcluded(r.phone));
-    if (rows.length === 0) {
+    const found = result.rows.filter((r) => !isExcluded(r.phone));
+    if (found.length === 0) {
       console.log(
         `[second-degree] ${phaseLine(marks, Date.now() - began)} | ` +
           `patterns ${n} phones ${friendPhones.length} rows 0 inflight ${inflightAtStart} ` +
@@ -1471,6 +1472,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       );
       return { found: false, reason: 'no_matches' };
     }
+    // Tester 75991: every friend who holds a found person is a route, not only the one whose word matched.
+    const rows = await withEveryHolder(userId, friendPhones, found);
+    mark('holders');
 
     // The user's own "not this person, for this" decisions ride along here
     // too — Beso Ortoidze was excluded for intros and re-offered 40 minutes
