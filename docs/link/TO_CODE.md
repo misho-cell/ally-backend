@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 25 Oct, 10:00Z (four fixes LIVE, main 95858e67: 
 
 ## OPEN
 
+### 25 Oct, 10:25Z — box 75907: tester put today's report and the use-case register on the plate (names in the box)
+
+- Already fixed and live (95858e67), now on the plate as #7624 (yes read as refusal), #7625 (helper's link blocked), #7626 (test account in a real user's list).
+- For Misho: #7627 P1 (one real user out of tokens until 26 Oct) and #7628 P2 (an owner's explicit ask against the 2-in-24h cap; Misho to rule).
+- New for the code session:
+  - #7629 P2: contradictory "couldn't send" / "sent" lines in the same thread (two users).
+  - #7630 P2: the same person asked by several routes at once (one target; one go-between on two numbers).
+  - #7631 P3: raw labels or misspelt names shown to users.
+- Recurrences on existing tasks: #991 (a user told to send numbers himself, 12:13 Tbilisi) and #7234 (an English line in a Georgian chat).
+- Use-case register, things Netai should do itself. Prompt lines need Misho's yes (D806):
+  - #7657 P1: deliver a result, not a public list (research → long list → warm paths).
+  - #7658 P2: route quality. No off-topic close friends as bridges; the bridge can deliver; seniority fits the ask; a shared community counts as a direct tie.
+  - #7659 P2: pacing. One message per bridge; nothing new until the last one is seen; a reply inside the goal thread counts.
+  - #7660 P2: close the loop with both sides the same day; never leave "couldn't send" as the last line.
+  - #7661 P3: re-open a declined ask in a new chat; word expert asks as a consultation.
+
 ### 25 Oct, 09:40Z — box 75902: three new bugs from today's real chats (tester's daily report; names in the box)
 
 1. HIGH — a yes recorded as a refusal. Thread 65521 (intro ask, 08:22Z): the owner wrote that he knows the person and is happy to introduce, plus a number for the asker → Netai answered "უარი მშვიდად გადაეცა". The owner protested that he agreed to everything → "this request is closed, recorded as a refusal". The asker's thread 65511 then said the owner could not connect him. DONE WHEN: a clear yes is never read as no, and the owner can reverse a wrong reading in the same thread.
