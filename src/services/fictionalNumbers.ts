@@ -67,6 +67,16 @@ const RANGES: readonly FictionalRange[] = [
   { prefix: '+44118496', digits: 4, from: 0, to: 999 },
   { prefix: '+44141496', digits: 4, from: 0, to: 999 },
   { prefix: '+44151496', digits: 4, from: 0, to: 999 },
+  /**
+   * Blocks fifteen to seventeen, 26 Oct: „no free number left" in all fourteen
+   * (tester box 76030, #7855; the prompt loop's replays stopped). Ofcom's
+   * no-area drama range 01632 960000–960999, Cardiff's 029 2018 0000–0999 and
+   * the non-geographic 0306 999 0000–0999 — reserved for fiction like the
+   * rest; numbers are ours to decide (§110).
+   */
+  { prefix: '+441632', digits: 6, from: 960000, to: 960999 },
+  { prefix: '+442920180', digits: 3, from: 0, to: 999 },
+  { prefix: '+443069990', digits: 3, from: 0, to: 999 },
 ];
 
 function slotText(range: FictionalRange, slot: number): string {
