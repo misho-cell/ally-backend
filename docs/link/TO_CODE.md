@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 25 Oct, 19:55Z re 19:40Z (ab1986e7 second-circle
 
 ## OPEN
 
+### 25 Oct, 22:05Z — boxes 76006–76014: updates to 7822–7828 (names in the box)
+
+- 76006, from the chains (NETAI_ENGAGEMENT_CASE_COMPARISON.md, section THE CHAINS):
+  - **7823:** the ledger holds standing offers, and the consent card goes to the side with the need (reverse pull, replay R4).
+  - **7824:** the engine runs a meeting loop to the end, three-party too.
+  - **7826:** "who holds me" carries facts and former roles (replay R2).
+  - **7827:** when a non-member joins, the original goal resumes from its checkpoint automatically.
+- 76007–76013 were meant to carry the full task texts, but all seven arrived empty ("PROBLEM: undefined"). Ops asked the tester to repost; the board rows may hold the text.
+- 76014: build order and tests as in 21:55Z. The tester's seat tests each build the moment it lands.
+
 ### 25 Oct, 21:55Z — boxes 76003/76004: seven big builds from the case comparison (founder, 01:43 Tbilisi; names in the box)
 
 The founder re-read 27 real goal threads (NETAI_ENGAGEMENT_CASE_COMPARISON.md, D888–D891). Tasks 7822–7828 are Pr1, ASAP, in this order, each with evidence threads and a done-when test. The tests are the four replays R1–R4 in that file; the tester runs them as each build lands.
