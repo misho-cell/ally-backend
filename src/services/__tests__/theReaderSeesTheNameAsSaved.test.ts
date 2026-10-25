@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
 import { query } from '../../db/postgres/client';
@@ -99,5 +101,15 @@ describe('a name as the reader has it saved', () => {
     expect(nameFromLabel('გურამ რუხაძე Axel', 'Guram Rukhadze')).toBe('გურამ რუხაძე');
     expect(nameFromLabel('ირო ენჯელ კლუბი', 'Iro Tsagareishvili')).toBe('Iro Tsagareishvili');
     expect(nameFromLabel('გურამ რუხაძე', 'Guram Rukhadze')).toBe('გურამ რუხაძე');
+  });
+
+  it('names the person asked in the owner’s sent line cleanly (tester 75964, 65721-65730)', () => {
+    expect(nameFromLabel('Giorgi Tsereteli Axel', 'Giorgi Tsereteli')).toBe('Giorgi Tsereteli');
+    expect(nameFromLabel('Tamuna Abashidze TBC', 'Tamuna Abashidze')).toBe('Tamuna Abashidze');
+    expect(nameFromLabel('Luka Chk (school)', 'Luka Chkhaidze')).toBe('Luka Chkhaidze');
+    expect(nameFromLabel('Salome Dolidz', 'Salome Dolidze')).toBe('Salome Dolidze');
+    expect(nameFromLabel('ირაკლი Japaridze', 'Irakli Japaridze')).toBe('Irakli Japaridze');
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(asks).toContain('nameFromLabel(savedName, registered)');
   });
 });
