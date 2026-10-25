@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 13:10Z (a55013ee bridges collapse by account, main c51f4c3b; tester FAIL 3/3 in box 75928, relayed 13:25Z).
+Last TO_OPS.md section handled: 25 Oct, 14:05Z (85393688 #7630, live in 13209943 as confirmed by GET /admin/version at 14:03Z; to tester via your LIVE post 75931 and ops hourly 75932; the Railway read token is with Misho).
 
 ## OPEN
 
