@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 25 Oct, 18:00Z (e20b6e54 and 03237930 #7631, bot
 
 ## OPEN
 
+### 25 Oct, 18:45Z — daily check: why.sh --new 1 (23 new reasons), threw.sh 1440 (nothing thrown)
+
+Most of the 23 new reasons come from test seats: ten ask_contact "2 new questions in the last 24 hours" refusals from the tester's #7631 run at 18:15Z. The real-account items:
+
+- **#7731 timing:** the real D648 refusal of the helper's invite link (send_answer_to_asker, 4 calls, 1 account, first said 05:42Z) is from before ee713b91 went live at 10:00Z. No D648 link refusal on a real account since. The 10:31Z "include exactly <link>" lines are the tester's ee713b91 run. So #7731 looks covered by ee713b91; please confirm on the row.
+- **answer_member_question, 16:47Z, 1 real account:** "no open question with that ask_id is waiting for this user". The run answered an ask that was not in its inbox (wrong or stale ask_id). It is worth one look at whether check_my_inbox and the answer path disagree.
+- **request_introduction, 08:27–08:29Z, 1 real account:** a go-between not found in the owner's contacts by name or by number tail, then "already agreed, asking again is an extra message". These are guard answers working as meant; not a fault.
+- **propose_task_plan, 17:03Z and 03:13Z, real accounts:** "not proposed: no search in this run found them" and "phone id from a search result is required". These are guards working as meant; not a fault.
+
 ### 25 Oct, 18:25Z — boxes 75969–75974 (names and seat ids in the box)
 
 - **75969, #7731 (new): a helper's link never reaches the asker.** In real ask thread 65176 a helper answered and then sent an invite link as a second message. send_answer_to_asker was refused 4 times by the D648 guard ("helper's own sentence" / "link not in the helper's answer"), and the helper was told to send it by WhatsApp himself. The desk delivered it by hand (Netai message 898). Wanted:
