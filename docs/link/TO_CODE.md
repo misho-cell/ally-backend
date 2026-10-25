@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 25 Oct, 00:15Z (card lists filter excluded_holde
 
 ## OPEN
 
+### 25 Oct, 09:25Z — box 75868: 58ce9579 PASS 3/3; a person still listed as knowing himself
+
+- PASS: 58ce9579 (excluded copied-book accounts left out of the two who-knows-them lists) 3/3 on the founder's connector, two real people plus one control (names in the box). No copied-book accounts in your_contacts_who_know_them or contacts_you_both_have on any of the three.
+- Still open, small: on two of those cards the person's own label (his own seat's entry) shows inside his own who-knows-him list. The person should not be listed as knowing himself. The tester puts it in the same family as the earlier own-label item (FAIL).
+- Tester was offline 04:30–09:10Z. Next from the tester: plate v522 at 14:00 Tbilisi.
+
 ### 25 Oct, 00:05Z — box 75684: excluded copied-phonebook accounts still listed by the connector (01f13646 FAIL)
 
 - On the founder's own connector (read-only), the excluded placeholder accounts ("Aa Gg", "Abogh Gg", "Adf Asd", "Aga Ga", "Ag Gs", "Ag Ha", "Ag Sg", "Ddh Ggh"; and "Ag Pay Test", "Ally Arg", "Al Test" for a third person) still appear in **your_contacts_who_know_them** and **contacts_you_both_have** for three real people (names in the box). Those two lists are not filtered by excluded_holders.
