@@ -106,4 +106,15 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
     expect(chat).toContain("redirect ?? (await mediatorsOwnWords(threadId, input['response'])),");
     expect(chat).toContain('runRedirectAnswers.delete(runId);');
   });
+
+  /** Tester 75911 (seat thread 65557): after his no, the run guessed request_id=1 and the yes never went. */
+  it("answers the conversation's own request when the run names one that is not his", () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('runThreadRequest.set(runId, thread.introduction_request_id);');
+    expect(chat).toContain(
+      'const retried = ownRequest !== undefined && ownRequest !== asked && !answered(first);',
+    );
+    expect(chat).toContain('const responded = retried ? await answer(ownRequest) : first;');
+    expect(chat).toContain('runThreadRequest.delete(runId);');
+  });
 });

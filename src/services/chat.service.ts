@@ -315,7 +315,7 @@ import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.servic
 import { askStepsToKeepUnnamed } from './askCaptions';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
-import { answersTheRequestOnly } from './requestReferral';
+import { REQUEST_THREAD_TYPE, answersTheRequestOnly } from './requestReferral';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
@@ -6251,6 +6251,17 @@ const runFoundFurtherOut = new Map<string, string[]>();
  * whatever the model passed — and part 2 tells the owner who was suggested.
  */
 const runRedirectAnswers = new Map<string, string>();
+/**
+ * Tester 75911 (seat thread 65557, 25 Oct): the go-between said „no", then gave
+ * the number and „I never refused". His no had taken the request out of the
+ * run's list, so the run guessed request_id=1 and the yes never went. A request
+ * conversation belongs to one request: an id that is not his is answered as it.
+ */
+const runThreadRequest = new Map<string, number>();
+
+function answered(result: object): boolean {
+  return (result as { success?: unknown }).success === true;
+}
 /** #6074: the names this run's list_my_contacts returned, for a file the owner asked for. */
 const runListedContacts = new Map<string, string[]>();
 
@@ -10015,6 +10026,7 @@ function clearRunState(runId: string): void {
   runRoutesToChoose.delete(runId);
   runFoundFurtherOut.delete(runId);
   runRedirectAnswers.delete(runId);
+  runThreadRequest.delete(runId);
   runListedContacts.delete(runId);
   runServerSentLines.delete(runId);
   forgetNamesAsked(runId);
@@ -10565,14 +10577,25 @@ async function executeToolCall(
     }
     case 'respond_to_introduction': {
       const redirect = runId === undefined ? undefined : runRedirectAnswers.get(runId);
-      // D709: no channel from the model — the server picks how they are connected.
-      const responded = await respondToIntroduction(
-        userId,
-        input['request_id'] as number,
-        redirect === undefined ? (input['accepted'] as boolean) : false,
-        redirect ?? (await mediatorsOwnWords(threadId, input['response'])),
+      const ownRequest = runId === undefined ? undefined : runThreadRequest.get(runId);
+      const answer = async (requestId: number): Promise<object> =>
+        // D709: no channel from the model — the server picks how they are connected.
+        respondToIntroduction(
+          userId,
+          requestId,
+          redirect === undefined ? (input['accepted'] as boolean) : false,
+          redirect ?? (await mediatorsOwnWords(threadId, input['response'])),
+        );
+      const asked = input['request_id'] as number;
+      const first = await answer(asked);
+      const retried = ownRequest !== undefined && ownRequest !== asked && !answered(first);
+      const responded = retried ? await answer(ownRequest) : first;
+      await noteMediatorCloseOnScreen(
+        runId,
+        threadId,
+        retried ? ownRequest : input['request_id'],
+        responded,
       );
-      await noteMediatorCloseOnScreen(runId, threadId, input['request_id'], responded);
       return responded;
     }
     case 'get_intro_status': {
@@ -17579,6 +17602,9 @@ export async function processChat(
     (await answersTheRequestOnly(thread.type, thread.introduction_request_id, userMessage));
   // #5249 (68874): that answer is the mediator's no with a suggestion — never a yes.
   if (requestAnswerOnly) runRedirectAnswers.set(runId, userMessage);
+  if (thread.type === REQUEST_THREAD_TYPE && typeof thread.introduction_request_id === 'number') {
+    runThreadRequest.set(runId, thread.introduction_request_id);
+  }
   const runTools =
     !ownerAbsent && isReminderRequestOnly(userMessage)
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)

@@ -43,3 +43,45 @@ export async function excludedHolderPhones(now: number = Date.now()): Promise<Re
 export function forgetExcludedHolders(): void {
   cached = null;
 }
+
+const TEST_SEAT_REASON = 'test_seat';
+
+export enum SeatExclusion {
+  Set = 'set',
+  Cleared = 'cleared',
+  NotATestSeat = 'not_a_test_seat',
+}
+
+/**
+ * Tester 75911 (25 Oct): the plan card's groups leave excluded holders out
+ * (0fc7629f), and testing that needs one on a fictional seat. A test seat — and
+ * only a test seat — may be made one, or no longer one. Real accounts change by
+ * migration alone.
+ */
+export async function setSeatExcluded(
+  seatUserId: number,
+  excluded: boolean,
+): Promise<SeatExclusion> {
+  const seat = await query<{ user_id: number }>(
+    'SELECT user_id FROM test_seats WHERE user_id = $1 LIMIT 1',
+    [seatUserId],
+    EXCLUDED_QUERY_TIMEOUT_MS,
+  );
+  if (seat.rows.length === 0) return SeatExclusion.NotATestSeat;
+  if (excluded) {
+    await query(
+      `INSERT INTO excluded_holders (user_id, reason) VALUES ($1, $2)
+       ON CONFLICT (user_id) DO NOTHING`,
+      [seatUserId, TEST_SEAT_REASON],
+      EXCLUDED_QUERY_TIMEOUT_MS,
+    );
+  } else {
+    await query(
+      'DELETE FROM excluded_holders WHERE user_id = $1 AND reason = $2',
+      [seatUserId, TEST_SEAT_REASON],
+      EXCLUDED_QUERY_TIMEOUT_MS,
+    );
+  }
+  forgetExcludedHolders();
+  return excluded ? SeatExclusion.Set : SeatExclusion.Cleared;
+}
