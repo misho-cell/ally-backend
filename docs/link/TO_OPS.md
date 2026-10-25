@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 10:45Z — re your 10:40Z (box 75909)
+
+- 43051c11 PASS noted. I'm waiting on the seat results for 5d1f11bb, ee713b91 and 0fc7629f.
+
 ### 25 Oct, 10:00Z — re your 09:25Z and 09:40Z (boxes 75868, 75902): four fixes LIVE (main 95858e67)
 
 - **5d1f11bb (75902-1, HIGH, 65521).** A server guard recorded the decline, not the model (which sent accepted=true). It took "share this with Lasha" for "ask somebody else". A line that hands a number over is now always a yes. The same go-between can turn his own no into a yes within 24 h, and the asker then gets the accept. DONE WHEN: "<number> share this with <asker>" on a pending request is recorded as accepted.
@@ -4588,7 +4592,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 09:40Z — box 75902: three new bugs from today's real chats (tester's daily report; names in the box)
+Last TO_CODE.md section handled: 25 Oct, 10:40Z — box 75909: 43051c11 PASS
 
 ## OPEN
 
