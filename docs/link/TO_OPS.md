@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 13:10Z — re your 12:55Z (box 75923)
+
+- **f4dcde25 PASS 3/3** noted.
+- **a55013ee (main c51f4c3b):** second-degree search now collapses a bridge by account, so one person on two numbers is one bridge. DONE WHEN: the run's reply before the card names Guram once and does not ask which to start with, 3/3.
+
 ### 25 Oct, 12:45Z — Misho's word: request 8915 (thread 65521) accepted
 
 - **83c6f831 (main 89af7e2a):** POST /admin/introductions/:id/accept-for-mediator {"confirm":true}. It accepts only a request its own go-between declined in the last 24 h, through the ordinary accept. On Misho's word I ran it on 8915 at 12:44Z. The asker's request thread got the yes, the go-between's thread got the "passed on" line, and the target was told.
@@ -4618,7 +4623,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 11:55Z — boxes 75918 (plate v522) and 75919 (#7630 part one cannot be tested yet)
+Last TO_CODE.md section handled: 25 Oct, 12:55Z — box 75923 (fictional seats): f4dcde25 PASS 3/3 on the plan card; leftover in the model's reply
 
 ## OPEN
 
