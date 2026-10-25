@@ -28,6 +28,8 @@ const APP_ONLY: Readonly<Record<string, string>> = {
   record_who_helped: '5446 (D792, D797): owner-only, in-app first; the connector catches up later',
   find_companies_for_need:
     'D847: OFF until tried on live; joins the connector with its prompt line',
+  find_people_in_base:
+    '6997: OFF until the store is loaded on live; joins the connector with its prompt line',
   list_offers: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
   delete_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
   present_choices: 'renders tappable UI buttons — meaningless outside the app',

@@ -391,6 +391,10 @@ import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
 import { cancelOneAsk } from '../../services/taskAsks.service';
 import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
+import {
+  BasePeoplePart,
+  loadBasePeoplePart,
+} from '../../services/basePeople/basePeopleLoad.service';
 import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
 import {
   FixtureOutcome,
@@ -8320,6 +8324,52 @@ adminRouter.post('/company-base/load', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/company-base/load]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * 6997 — the person store (people with no number too, and the ties the Axel
+ * package states). One file per call, in order: people (people.csv, then
+ * cela_people.csv), ties (stated_ties.csv), facts (facts.csv). person_numbers_csv
+ * lets the server find the numbers of the people the file names. Upserts by each
+ * row's key; a dry run counts and writes nothing. The live load is Misho's word.
+ *
+ *   200  { part, dry_run, rows_in_file, people_written, people_with_number, rows_written, skipped }
+ *   400  unknown part, missing csv or dry_run, or a file over the size bound
+ *   500  the load did not run
+ */
+const BASE_PEOPLE_PARTS: ReadonlySet<string> = new Set(Object.values(BasePeoplePart));
+
+adminRouter.post('/base-people/load', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { part, csv, dry_run: dryRun } = body;
+  const numbers = body.person_numbers_csv ?? '';
+  if (
+    typeof part !== 'string' ||
+    !BASE_PEOPLE_PARTS.has(part) ||
+    typeof csv !== 'string' ||
+    typeof numbers !== 'string' ||
+    csv.length > MAX_AXEL_CSV_CHARS ||
+    numbers.length > MAX_AXEL_CSV_CHARS ||
+    typeof dryRun !== 'boolean'
+  ) {
+    res.status(400).json({
+      success: false,
+      error:
+        'part (people | ties | facts), csv (text) and dry_run (true or false) are required; ' +
+        'person_numbers_csv (text) is optional',
+    });
+    return;
+  }
+  try {
+    res.status(200).json({
+      success: true,
+      data: await loadBasePeoplePart(part as BasePeoplePart, csv, dryRun, numbers),
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/base-people/load]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
   }
 });
