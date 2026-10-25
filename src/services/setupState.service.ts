@@ -199,3 +199,69 @@ export async function setupFunnel(): Promise<FunnelRow[]> {
   );
   return result.rows;
 }
+
+const MAX_LISTED_PEOPLE = 200;
+
+export interface PersonMissingSteps {
+  readonly user_id: number;
+  readonly name: string | null;
+  readonly joined_at: string;
+  readonly done_count: number;
+  /** Counted steps neither the server saw nor any gadget marked done, with what the gadgets said. */
+  readonly missing: readonly { readonly step: SetupStep; readonly said: StepStatus | null }[];
+}
+
+export interface SetupMissingReport {
+  readonly people: readonly PersonMissingSteps[];
+  /** Per counted step, how many of these people have it done. */
+  readonly done_by_step: Readonly<Record<SetupStep, number>>;
+  readonly total_people: number;
+}
+
+/** What the gadgets said about one step, the latest first; null when none said anything. */
+function saidAbout(devices: readonly DeviceSetup[], step: SetupStep): StepStatus | null {
+  return devices.find((d) => d.steps[step] !== undefined)?.steps[step] ?? null;
+}
+
+function missingOf(state: SetupState): PersonMissingSteps['missing'] {
+  return COUNTED_SETUP_STEPS.filter(
+    (step) => !state.server[step] && !state.devices.some((d) => d.steps[step] === StepStatus.Done),
+  ).map((step) => ({ step, said: saidAbout(state.devices, step) }));
+}
+
+/**
+ * #7723 / #7730 (tester's engagement desk C-0020, 25 Oct): who joined since a
+ * day, and which setup steps each still lacks — fictional seats left out — with
+ * how many have each step done (the share with contacts is the daily report's).
+ */
+export async function setupMissingSince(since: string): Promise<SetupMissingReport> {
+  const people = await query<{ id: number; name: string | null; joined_at: string }>(
+    `SELECT u.id, NULLIF(TRIM(u.name), '') AS name, u."createdAt" AS joined_at
+       FROM "User" u
+      WHERE u."createdAt" >= $1::date AND u."deletedAt" IS NULL
+        AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
+      ORDER BY u."createdAt"
+      LIMIT $2`,
+    [since, MAX_LISTED_PEOPLE],
+    QUERY_TIMEOUT_MS,
+  );
+  const rows: PersonMissingSteps[] = [];
+  const doneBy = Object.fromEntries(COUNTED_SETUP_STEPS.map((s) => [s, 0])) as Record<
+    SetupStep,
+    number
+  >;
+  for (const p of people.rows) {
+    const state = await setupState(p.id);
+    const missing = missingOf(state);
+    for (const step of COUNTED_SETUP_STEPS)
+      if (!missing.some((m) => m.step === step)) doneBy[step] += 1;
+    rows.push({
+      user_id: p.id,
+      name: p.name,
+      joined_at: p.joined_at,
+      done_count: state.done_count,
+      missing,
+    });
+  }
+  return { people: rows, done_by_step: doneBy, total_people: rows.length };
+}

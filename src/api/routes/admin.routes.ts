@@ -403,7 +403,7 @@ import {
 } from '../../services/seatFixtures.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
 import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
-import { setupFunnel } from '../../services/setupState.service';
+import { setupFunnel, setupMissingSince, setupState } from '../../services/setupState.service';
 import { appBuildsInUse } from '../../services/deviceFingerprint.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
@@ -8588,6 +8588,54 @@ adminRouter.get('/app-builds', async (_req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.error('[app-builds]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Could not read the app builds' });
+  }
+});
+
+const SETUP_SINCE_RE = /^\d{4}-\d{2}-\d{2}$/u;
+
+/**
+ * #7723 (tester's engagement desk C-0020): one person's setup — install,
+ * notifications, contacts, freshness, connector — as the server sees it and
+ * as each of their gadgets said (done / failed / later, with when).
+ *   GET /admin/users/:id/setup → { done_count, total, started_at, server, devices }
+ */
+adminRouter.get(
+  '/users/:id/setup',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be an account id.' });
+      return;
+    }
+    try {
+      res.status(200).json({ success: true, data: await setupState(Number(req.params.id)) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin setup]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not read the setup' });
+    }
+  },
+);
+
+/**
+ * #7723 / #7730: everyone who joined since a day (YYYY-MM-DD), fictional seats
+ * left out, with the steps each still lacks and how many have each step done.
+ *   GET /admin/setup-missing?since=2026-10-21
+ *   → { people: [{ user_id, name, joined_at, done_count, missing: [{ step, said }] }],
+ *       done_by_step: { install, notifications, contacts, freshness, connector }, total_people }
+ */
+adminRouter.get('/setup-missing', async (req: Request, res: Response) => {
+  const since = String(req.query.since ?? '');
+  if (!SETUP_SINCE_RE.test(since)) {
+    res.status(400).json({ success: false, error: 'since must be a day, YYYY-MM-DD' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await setupMissingSince(since) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[setup-missing]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the setup list' });
   }
 });
 
