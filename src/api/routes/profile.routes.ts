@@ -19,6 +19,7 @@ import {
   whatsappConsentOf,
 } from '../../services/whatsappConsent.service';
 import { whatsappChannelOn } from '../../services/whatsappChannel.service';
+import { WelcomeStatus, welcomeInWhatsapp } from '../../services/whatsappWelcome.service';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { inviteLinkForScreen } from '../../services/referralLink.service';
@@ -562,7 +563,9 @@ const ALLOWED_AVATAR_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 /**
  * Misho, 25 Oct: Netai's messages in WhatsApp, by the person's own choice.
  *   GET /profile/whatsapp                    → { opted_in, opted_in_at, opted_out_at, channel_on }
- *   PUT /profile/whatsapp { opted_in: bool } → the same, after the change
+ *   PUT /profile/whatsapp { opted_in: bool } → the same, after the change,
+ *     with `welcome_status` (see whatsappWelcome) when the switch went from
+ *     off to on, null otherwise
  * `channel_on` says whether Netai is sending through WhatsApp yet; a choice
  * made before it is on is kept and holds the day it is.
  */
@@ -598,14 +601,16 @@ profileRouter.put(
     }
     try {
       const userId = Number((req as AuthenticatedRequest).user.userId);
-      const consent = await setWhatsappConsent(
-        userId,
-        req.body.opted_in === true,
-        ConsentSource.Profile,
-      );
-      res
-        .status(200)
-        .json({ success: true, data: { ...consent, channel_on: whatsappChannelOn() } });
+      const optedIn = req.body.opted_in === true;
+      const before = await whatsappConsentOf(userId);
+      const changed = await setWhatsappConsent(userId, optedIn, ConsentSource.Profile);
+      const turnedOn = optedIn && !before.opted_in;
+      const welcome = turnedOn ? await welcomeInWhatsapp(userId) : null;
+      const consent = welcome === WelcomeStatus.Sent ? await whatsappConsentOf(userId) : changed;
+      res.status(200).json({
+        success: true,
+        data: { ...consent, channel_on: whatsappChannelOn(), welcome_status: welcome },
+      });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[PUT /profile/whatsapp]', err);

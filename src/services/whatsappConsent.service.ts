@@ -17,13 +17,20 @@ export interface WhatsAppConsent {
   readonly opted_in: boolean;
   readonly opted_in_at: string | null;
   readonly opted_out_at: string | null;
+  /** When Netai's welcome went out in WhatsApp; null when it never has. */
+  readonly welcome_sent_at: string | null;
 }
 
-const NEVER_CHOSEN: WhatsAppConsent = { opted_in: false, opted_in_at: null, opted_out_at: null };
+const NEVER_CHOSEN: WhatsAppConsent = {
+  opted_in: false,
+  opted_in_at: null,
+  opted_out_at: null,
+  welcome_sent_at: null,
+};
 
 export async function whatsappConsentOf(userId: number): Promise<WhatsAppConsent> {
   const result = await query<WhatsAppConsent>(
-    `SELECT opted_in, opted_in_at, opted_out_at FROM whatsapp_consent WHERE user_id = $1 LIMIT 1`,
+    `SELECT opted_in, opted_in_at, opted_out_at, welcome_sent_at FROM whatsapp_consent WHERE user_id = $1 LIMIT 1`,
     [userId],
     QUERY_TIMEOUT_MS,
   );
@@ -45,7 +52,7 @@ export async function setWhatsappConsent(
        opted_out_at = CASE WHEN EXCLUDED.opted_in THEN whatsapp_consent.opted_out_at ELSE NOW() END,
        source       = EXCLUDED.source,
        updated_at   = NOW()
-     RETURNING opted_in, opted_in_at, opted_out_at`,
+     RETURNING opted_in, opted_in_at, opted_out_at, welcome_sent_at`,
     [userId, optedIn, source],
     QUERY_TIMEOUT_MS,
   );

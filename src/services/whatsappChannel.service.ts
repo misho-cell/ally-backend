@@ -103,7 +103,7 @@ export async function lastThreadWeWroteAbout(userId: number): Promise<number | n
   return result.rows[0]?.thread_id ?? null;
 }
 
-async function phoneOf(userId: number): Promise<string | null> {
+export async function phoneOf(userId: number): Promise<string | null> {
   const result = await query<{ phone: string }>(
     `SELECT phone FROM "UserPhone" WHERE "userId" = $1 ORDER BY id LIMIT 1`,
     [userId],
@@ -158,7 +158,12 @@ async function sendText(phone: string, text: string): Promise<string> {
   });
 }
 
-async function sendNotifyTemplate(phone: string, text: string, template: string): Promise<string> {
+/** An approved template, with its body's parameters in order (none for a fixed text). */
+export async function sendTemplate(
+  phone: string,
+  template: string,
+  parameters: readonly string[],
+): Promise<string> {
   return postToGraph({
     to: phone.replace(/^\+/u, ''),
     type: 'template',
@@ -167,9 +172,17 @@ async function sendNotifyTemplate(phone: string, text: string, template: string)
       language: {
         code: process.env.WHATSAPP_NOTIFY_TEMPLATE_LANG?.trim() || DEFAULT_TEMPLATE_LANGUAGE,
       },
-      components: [
-        { type: 'body', parameters: [{ type: 'text', text: asTemplateParameter(text) }] },
-      ],
+      ...(parameters.length > 0 && {
+        components: [
+          {
+            type: 'body',
+            parameters: parameters.map((text) => ({
+              type: 'text',
+              text: asTemplateParameter(text),
+            })),
+          },
+        ],
+      }),
     },
   });
 }
@@ -211,7 +224,7 @@ export async function tellInWhatsapp(
     }
     const template = process.env.WHATSAPP_NOTIFY_TEMPLATE?.trim();
     if (!template) return WhatsAppOutcome.NoTemplate;
-    const wamid = await sendNotifyTemplate(phone, text, template);
+    const wamid = await sendTemplate(phone, template, [text]);
     await recordWhatsappMessage(
       userId,
       WhatsAppDirection.Out,
