@@ -579,7 +579,7 @@ profileRouter.get(
       const consent = await whatsappConsentOf(userId);
       res
         .status(200)
-        .json({ success: true, data: { ...consent, channel_on: whatsappChannelOn() } });
+        .json({ success: true, data: { ...consent, channel_on: await whatsappChannelOn() } });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[GET /profile/whatsapp]', err);
@@ -609,7 +609,7 @@ profileRouter.put(
       const consent = welcome === WelcomeStatus.Sent ? await whatsappConsentOf(userId) : changed;
       res.status(200).json({
         success: true,
-        data: { ...consent, channel_on: whatsappChannelOn(), welcome_status: welcome },
+        data: { ...consent, channel_on: await whatsappChannelOn(), welcome_status: welcome },
       });
     } catch (err) {
       // eslint-disable-next-line no-console

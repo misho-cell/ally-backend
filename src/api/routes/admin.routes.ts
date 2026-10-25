@@ -1,3 +1,5 @@
+import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
+import { createNetaiTemplates, whatsappSetupState } from '../../services/whatsappSetup.service';
 import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
   authorForLogin,
@@ -495,6 +497,8 @@ const MANAGED_APP_FLAGS = [
   // #5875 (D831): no WhatsApp code to a number with no invitation. Off until
   // the app sends the invitation code with request-otp.
   OTP_INVITE_GATE_FLAG,
+  // Misho, 25 Oct: Netai's messages in WhatsApp, for the people who chose it.
+  WHATSAPP_CHANNEL_FLAG,
 ] as const;
 
 /**
@@ -3055,6 +3059,48 @@ adminRouter.post(
       // eslint-disable-next-line no-console
       console.error('[intro-admin]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * Misho, 25 Oct („შენით დაამატე ტექსტი … და ჩართე"): Netai's two WhatsApp
+ * templates, read and created from here. GET says where each stands in Meta's
+ * review; POST {confirm:true} submits the missing ones. Neither shows a token
+ * or a number.
+ */
+adminRouter.get('/whatsapp', async (_req: Request, res: Response) => {
+  try {
+    const state = await whatsappSetupState();
+    res
+      .status(200)
+      .json({ success: true, data: { ...state, channel_on: await whatsappChannelOn() } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[whatsapp-admin]', (error as Error).message);
+    res.status(502).json({ success: false, error: (error as Error).message });
+  }
+});
+
+adminRouter.post(
+  '/whatsapp/templates',
+  body('confirm').equals('true'),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'confirm must be true' });
+      return;
+    }
+    try {
+      const state = await createNetaiTemplates();
+      // eslint-disable-next-line no-console
+      console.log(
+        `[whatsapp-admin] admin ${(req as AuthenticatedRequest).user.userId} submitted Netai's templates`,
+      );
+      res.status(200).json({ success: true, data: state });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[whatsapp-admin]', (error as Error).message);
+      res.status(502).json({ success: false, error: (error as Error).message });
     }
   },
 );

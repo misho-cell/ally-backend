@@ -6,22 +6,28 @@ import { hasWhatsappConsent } from './whatsappConsent.service';
  * here:
  *
  *   1. Only for a person who chose it (whatsappConsent) and only while the
- *      switch WHATSAPP_CHANNEL_ON is "true" — sending costs money and reaches
- *      real people, so it is on only by Misho's word.
+ *      channel is on: the admin flag `whatsapp_channel`, or WHATSAPP_CHANNEL_ON
+ *      "true" — sending costs money and reaches real people, so it is on only
+ *      by Misho's word.
  *   2. WhatsApp's own rule: free text only inside the 24 hours after the
  *      person last wrote to us; outside it, only an approved template
- *      (WHATSAPP_NOTIFY_TEMPLATE) may open the conversation.
+ *      (NOTIFY_TEMPLATE, or WHATSAPP_NOTIFY_TEMPLATE) may open the conversation.
  *   3. Every message, in or out, is recorded without its text, so a reply to
  *      one of ours finds the conversation it belongs to.
  */
 const QUERY_TIMEOUT_MS = 4_000;
-const GRAPH_URL = 'https://graph.facebook.com/v19.0';
+export const GRAPH_URL = 'https://graph.facebook.com/v19.0';
 const WINDOW_HOURS = 24;
 /** WhatsApp's own limit for a text body. */
 const MAX_TEXT_CHARS = 4_096;
 /** A template parameter: one line, no tabs, at most 1,024 characters. */
 const MAX_TEMPLATE_PARAM_CHARS = 1_000;
-const DEFAULT_TEMPLATE_LANGUAGE = 'ka';
+export const TEMPLATE_LANGUAGE = 'ka';
+/** The templates whatsappSetup creates in Meta; a Railway variable may name others. */
+export const NOTIFY_TEMPLATE = 'netai_notify';
+export const WELCOME_TEMPLATE = 'netai_welcome';
+export const WHATSAPP_CHANNEL_FLAG = 'whatsapp_channel';
+const FLAG_TTL_MS = 30_000;
 /** The device a line typed in WhatsApp is posted from, so its answer is not mirrored back as a notice. */
 export const WHATSAPP_DEVICE = 'whatsapp';
 
@@ -36,8 +42,38 @@ export enum WhatsAppKind {
   Reply = 'reply',
 }
 
-export function whatsappChannelOn(): boolean {
-  return process.env.WHATSAPP_CHANNEL_ON?.trim() === 'true';
+let channelFlag: { readonly enabled: boolean; readonly readAt: number } | null = null;
+
+async function channelFlagOn(): Promise<boolean> {
+  const now = Date.now();
+  if (channelFlag !== null && now - channelFlag.readAt < FLAG_TTL_MS) return channelFlag.enabled;
+  try {
+    const result = await query<{ enabled: boolean }>(
+      'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
+      [WHATSAPP_CHANNEL_FLAG],
+      QUERY_TIMEOUT_MS,
+    );
+    channelFlag = { enabled: result.rows[0]?.enabled === true, readAt: now };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[whatsapp] channel flag not read:', (err as Error).message);
+    return false;
+  }
+  return channelFlag.enabled;
+}
+
+/** Is Netai sending through WhatsApp? Read at most every half minute; fails towards no. */
+export async function whatsappChannelOn(): Promise<boolean> {
+  return process.env.WHATSAPP_CHANNEL_ON?.trim() === 'true' || (await channelFlagOn());
+}
+
+/** The approved template that carries a notice: a Railway variable, else Netai's own. */
+export function notifyTemplate(): string {
+  return process.env.WHATSAPP_NOTIFY_TEMPLATE?.trim() || NOTIFY_TEMPLATE;
+}
+
+export function welcomeTemplate(): string {
+  return process.env.WHATSAPP_WELCOME_TEMPLATE?.trim() || WELCOME_TEMPLATE;
 }
 
 export async function recordWhatsappMessage(
@@ -170,7 +206,7 @@ export async function sendTemplate(
     template: {
       name: template,
       language: {
-        code: process.env.WHATSAPP_NOTIFY_TEMPLATE_LANG?.trim() || DEFAULT_TEMPLATE_LANGUAGE,
+        code: process.env.WHATSAPP_NOTIFY_TEMPLATE_LANG?.trim() || TEMPLATE_LANGUAGE,
       },
       ...(parameters.length > 0 && {
         components: [
@@ -192,7 +228,6 @@ export enum WhatsAppOutcome {
   Off = 'off',
   NoConsent = 'no_consent',
   NoPhone = 'no_phone',
-  NoTemplate = 'no_template',
   Failed = 'failed',
 }
 
@@ -206,7 +241,7 @@ export async function tellInWhatsapp(
   text: string,
   threadId: number | null,
 ): Promise<WhatsAppOutcome> {
-  if (!whatsappChannelOn()) return WhatsAppOutcome.Off;
+  if (!(await whatsappChannelOn())) return WhatsAppOutcome.Off;
   try {
     if (!(await hasWhatsappConsent(userId))) return WhatsAppOutcome.NoConsent;
     const phone = await phoneOf(userId);
@@ -222,9 +257,7 @@ export async function tellInWhatsapp(
       );
       return WhatsAppOutcome.Sent;
     }
-    const template = process.env.WHATSAPP_NOTIFY_TEMPLATE?.trim();
-    if (!template) return WhatsAppOutcome.NoTemplate;
-    const wamid = await sendTemplate(phone, template, [text]);
+    const wamid = await sendTemplate(phone, notifyTemplate(), [text]);
     await recordWhatsappMessage(
       userId,
       WhatsAppDirection.Out,

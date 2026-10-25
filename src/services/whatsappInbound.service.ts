@@ -170,7 +170,7 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
 
 /** Every message of one webhook delivery, one after another. Never throws. */
 export async function handleWhatsappWebhook(payload: unknown): Promise<void> {
-  if (!whatsappChannelOn()) return;
+  if (!(await whatsappChannelOn())) return;
   for (const message of inboundMessagesOf(payload)) {
     try {
       await handleInboundMessage(message);
