@@ -1,4 +1,5 @@
 import { isDeceasedOrBlockedFor } from './block.service';
+import { nameFromLabel } from './readerSavedName';
 import { factsAround, questionWithFacts } from './instructedFacts';
 import { query } from '../db/postgres/client';
 import {
@@ -70,17 +71,25 @@ const NOT_ON_NETAI_REASONS: ReadonlySet<string> = new Set([
 
 /** The owner's own label for this number; the words they typed when there is none. */
 export async function ownersLabel(userId: string, phone: string, typed: string): Promise<string> {
-  const result = await query<{ alias: string }>(
-    `SELECT TRIM(alias) AS alias FROM "UserAlias"
-      WHERE "contactId" = $1::int
+  const result = await query<{ alias: string; registered: string | null }>(
+    `SELECT TRIM(ua.alias) AS alias,
+            (SELECT NULLIF(TRIM(u.name), '') FROM "UserPhone" up JOIN "User" u ON u.id = up."userId"
+              WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+                AND u."deletedAt" IS NULL
+              LIMIT 1) AS registered
+       FROM "UserAlias" ua
+      WHERE ua."contactId" = $1::int
         -- 45155: the name search returns digits only; the stored number may carry „+".
-        AND regexp_replace(phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
-        AND NULLIF(TRIM(alias), '') IS NOT NULL
-      ORDER BY LENGTH(TRIM(alias)) DESC LIMIT 1`,
+        AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+        AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+      ORDER BY LENGTH(TRIM(ua.alias)) DESC LIMIT 1`,
     [userId, phone],
     LABEL_QUERY_TIMEOUT_MS,
   );
-  return result.rows[0]?.alias ?? typed;
+  const row = result.rows[0];
+  if (row === undefined) return typed;
+  // #7631 (tester 75964, 65721/65729): „Nika B. (gym)" for an account that exists.
+  return typeof row.registered === 'string' ? nameFromLabel(row.alias, row.registered) : row.alias;
 }
 
 /** The one phone these typed words name; null for none or several. */
