@@ -395,6 +395,7 @@ import {
   BasePeoplePart,
   loadBasePeoplePart,
 } from '../../services/basePeople/basePeopleLoad.service';
+import { withdrawAsksOnNonMembers } from '../../services/asksOnNonMembers.service';
 import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
 import {
   FixtureOutcome,
@@ -8325,6 +8326,29 @@ adminRouter.post('/company-base/load', async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/company-base/load]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * #7827 — asks still open on people who never typed in Netai (sent before
+ * #7235). A dry run counts them; a real run withdraws them, on Misho's word.
+ *
+ *   200  { dry_run, open_asks, people, goals, withdrawn }
+ *   400  dry_run missing
+ *   500  nothing was changed
+ */
+adminRouter.post('/asks/withdraw-non-members', async (req: Request, res: Response) => {
+  const dryRun = (req.body as Record<string, unknown> | undefined)?.dry_run;
+  if (typeof dryRun !== 'boolean') {
+    res.status(400).json({ success: false, error: 'dry_run (true or false) is required' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await withdrawAsksOnNonMembers(dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/asks/withdraw-non-members]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The sweep did not run; nothing was changed' });
   }
 });
 
