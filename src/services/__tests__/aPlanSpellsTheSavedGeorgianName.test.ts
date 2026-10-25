@@ -37,7 +37,7 @@ describe('a name in a Georgian plan', () => {
   it('is applied to a Georgian plan only', () => {
     const plans = readFileSync(join(__dirname, '..', 'taskPlans.service.ts'), 'utf8');
     expect(plans).toContain(
-      "const spelled = language === 'ka' ? await withSavedSpelling(userId, allowed) : allowed;",
+      "const spelled = language === 'ka' ? await withSavedSpelling(userId, once) : once;",
     );
   });
 });

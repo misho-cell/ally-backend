@@ -1,3 +1,4 @@
+import { accountDetailsFor, fetchAccountStates } from './tools/membership';
 import { notOnNetaiLine } from './mutualGroups';
 import { georgianScriptName } from './georgianScriptName';
 import { query } from '../db/postgres/client';
@@ -418,6 +419,30 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
  * could not be audited. The version now moves at the PROPOSAL; the yes binds
  * the version it was given.
  */
+/**
+ * #7630 (tester 75928, owner 192089): the owner saved one bridge as „სანდრო
+ * ტყეშელაშვილი" and „სანდრო ტყეშელაშვილი 2", two numbers of one account, and
+ * the plan card named both. One account is one person in the plan, whichever
+ * number and label it came by; the first stays. A failed read changes nothing.
+ */
+export async function onePersonPerAccount(people: readonly PlanPerson[]): Promise<PlanPerson[]> {
+  try {
+    const states = await fetchAccountStates(people.map((p) => p.phone));
+    const seen = new Set<number>();
+    return people.filter((p) => {
+      const account = accountDetailsFor(states, p.phone).user_id;
+      if (account === null) return true;
+      if (seen.has(account)) return false;
+      seen.add(account);
+      return true;
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[plan] accounts not read, people kept as named:', (err as Error).message);
+    return [...people];
+  }
+}
+
 export async function proposeTaskPlan(
   userId: string,
   taskId: number,
@@ -459,7 +484,8 @@ export async function proposeTaskPlan(
     taskId,
   );
   const allowed = await withoutRuledOut(userId, withinBoundaries, boundarySubject);
-  const spelled = language === 'ka' ? await withSavedSpelling(userId, allowed) : allowed;
+  const once = await onePersonPerAccount(allowed);
+  const spelled = language === 'ka' ? await withSavedSpelling(userId, once) : once;
   const withReach = await withOwnerTies(userId, await withReachability(userId, spelled));
   const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
   // Row 140 returns plan_approved_at as well: whether this GOAL has ever had

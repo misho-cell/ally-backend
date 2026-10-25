@@ -369,7 +369,7 @@ describe('the plan drops her, whichever tool named her', () => {
     const fn = plans.slice(at, at + 3000);
 
     expect(fn.indexOf('withoutAskBoundaries')).toBeLessThan(
-      fn.indexOf('withSavedSpelling(userId, allowed)'),
+      fn.indexOf('withSavedSpelling(userId, once)'),
     );
   });
 

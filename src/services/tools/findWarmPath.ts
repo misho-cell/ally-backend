@@ -15,7 +15,13 @@ import {
   LinkPair,
   NO_LINK_COLOURS,
 } from '../colourLinks';
-import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from './membership';
+import {
+  AccountDetails,
+  accountStateFor,
+  fetchAccountStates,
+  isMemberPhone,
+  AccountState,
+} from './membership';
 import { excludedHolderPhones } from '../excludedHolders.service';
 
 /**
@@ -375,6 +381,30 @@ export function withColourWhy(
   return why === null ? path : { ...path, bridges: [{ ...first, colour_why: why }, ...rest] };
 }
 
+/**
+ * #7630 (tester 75928, owners 192088 and 192090): a bridge saved under two
+ * numbers — „ბექა მაისურაძე" and „ბექა მაისურაძე 2" — came back as two paths,
+ * and the run asked whose help to start with. Paths through the same accounts
+ * are one path; the first, already the best ranked, stays.
+ */
+export function onePathPerChainOfAccounts(
+  paths: readonly WarmPath[],
+  states: ReadonlyMap<string, AccountDetails>,
+): WarmPath[] {
+  const seen = new Set<string>();
+  return paths.filter((path) => {
+    const key = path.bridges
+      .map((b) => {
+        const account = states.get(phoneDigits(b.phone))?.user_id;
+        return typeof account === 'number' ? `user:${account}` : `phone:${phoneDigits(b.phone)}`;
+      })
+      .join('>');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export async function findWarmPath(
   userId: string,
   targetPhoneRaw: string,
@@ -480,8 +510,9 @@ export async function findWarmPath(
     // stay ahead of relayable on purpose: a one-hop bridge who is not on Netai
     // is still the user's own contact, whom they can simply write to.
     .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable));
+  const distinct = onePathPerChainOfAccounts(reached, states);
   const [bridgeOrdered, links] = await Promise.all([
-    inBridgeOrder(reached, goalText, userId),
+    inBridgeOrder(distinct, goalText, userId),
     coloursOfFirstLinks(userId, reached, targetPhone),
   ]);
   // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
