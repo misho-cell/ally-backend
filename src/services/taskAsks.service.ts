@@ -1,7 +1,7 @@
 import { netaiMember } from './netaiMembership';
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
-import { nameAsReaderSaved } from './readerSavedName';
+import { nameAsReaderSaved, nameFromLabel } from './readerSavedName';
 import { MAX_RELAYS_IN_A_CHAIN, relaysBefore } from './relayChain';
 export { MAX_RELAYS_IN_A_CHAIN } from './relayChain';
 import { ownerWordsAnswerNote } from './ownerWordsAnswer';
@@ -1317,9 +1317,11 @@ async function createAskNow(
   const member = await query<{
     userId: number;
     name: string | null;
+    registered: string | null;
     subscriptionStatus: string | null;
   }>(
     `SELECT up."userId", ${nameAsSavedBySql('$2::int', 'up."userId"')} AS name,
+            NULLIF(TRIM(u.name), '') AS registered,
             u.subscription_status AS "subscriptionStatus"
      FROM "UserPhone" up JOIN "User" u ON u.id = up."userId"
      WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
@@ -1338,7 +1340,12 @@ async function createAskNow(
     };
   }
   const toUserId = member.rows[0].userId;
-  const toName = member.rows[0].name ?? 'კონტაქტი';
+  // #7631 (tester 75964, threads 65721-65730): the owner's „sent" line read his
+  // raw label („Giorgi Tsereteli Axel", „Salome Dolidz"); a member is named by
+  // the label's clean name, else by the account's own.
+  const savedName = member.rows[0].name ?? 'კონტაქტი';
+  const registered = member.rows[0].registered;
+  const toName = typeof registered === 'string' ? nameFromLabel(savedName, registered) : savedName;
 
   // Person-level opt-out (ticket 4, item 00) — checked HERE, at send time, and
   // ahead of every other rule: a refusal to be contacted is about the person,
