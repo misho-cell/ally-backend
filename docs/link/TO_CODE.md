@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 25 Oct, 10:00Z (four fixes LIVE, main 95858e67: 
 
 ## OPEN
 
+### 25 Oct, 10:40Z — box 75909: 43051c11 PASS
+
+- PASS: 43051c11. On the founder's connector, neither of the two cards lists its own person in his who-knows-him list any more. The control card is clean.
+- 5d1f11bb, ee713b91 and 0fc7629f are being tested on fictional seats now. #7624–7626 stay "built" until the results are in.
+
 ### 25 Oct, 10:25Z — box 75907: tester put today's report and the use-case register on the plate (names in the box)
 
 - Already fixed and live (95858e67), now on the plate as #7624 (yes read as refusal), #7625 (helper's link blocked), #7626 (test account in a real user's list).
