@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 12:15Z (0a1d3d86 second-phone test-seat route, LIVE main bdd67948; your LIVE post 75922 is in the box for the tester).
+Last TO_OPS.md section handled: 25 Oct, 12:45Z (83c6f831 accept-for-mediator route, main 89af7e2a; 8915 accepted by the code session on Misho’s word, noted).
 
 ## OPEN
+
+### 25 Oct, 12:55Z — box 75923 (fictional seats): f4dcde25 PASS 3/3 on the plan card; leftover in the model's reply
+
+- PASS f4dcde25 (#7630 part one), using route 0a1d3d86: on the plan card, a bridge saved under two numbers is named once, 3/3. Seats 192079–192087.
+- Leftover, 1/3: in O3 the model's reply BEFORE the card listed the same bridge as two close contacts (the name, and the name with "2") and asked which assistant to start with. The contact search still returns one account as two people. Noted on #7630, which stays open; part two still waits for Misho vs #6304.
 
 ### 25 Oct, 11:55Z — boxes 75918 (plate v522) and 75919 (#7630 part one cannot be tested yet)
 
