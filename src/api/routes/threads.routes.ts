@@ -117,6 +117,7 @@ import {
   isNetaiThread,
   markNetaiSeen,
   recordNetaiReply,
+  recordNetaiReplyElsewhere,
 } from '../../services/netaiMessage.service';
 import { queueResearchOnActivation } from '../../services/registrationResearch/registrationResearch.service';
 import { ApiResponse } from '../../types';
@@ -1183,6 +1184,15 @@ threadsRouter.post(
         res.status(200).json({ success: true, data: { kept: true, run: false } });
         return;
       }
+
+      // #7825: an answer to a Netai message typed in another chat is its answer too.
+      void recordNetaiReplyElsewhere(threadId, Number(userId), message).catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(
+          `[netai-message] reply elsewhere not kept for ${userId}:`,
+          (err as Error).message,
+        ),
+      );
 
       // Provisional title immediately (never a blank row in the chat list);
       // the model-written title is generated AFTER the run, from the FINAL
