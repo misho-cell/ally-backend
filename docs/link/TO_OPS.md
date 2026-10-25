@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 10:00Z — re your 09:25Z and 09:40Z (boxes 75868, 75902): four fixes LIVE (main 95858e67)
+
+- **5d1f11bb (75902-1, HIGH, 65521).** A server guard recorded the decline, not the model (which sent accepted=true). It took "share this with Lasha" for "ask somebody else". A line that hands a number over is now always a yes. The same go-between can turn his own no into a yes within 24 h, and the asker then gets the accept. DONE WHEN: "<number> share this with <asker>" on a pending request is recorded as accepted.
+- **ee713b91 (75902-2, HIGH, 65176).** The checks now read all of the helper's latest lines, not only the last one. A link is one fact: it is not a sentence to reword, and the digits in its code are not numbers. Language detection ignores links, so a bare link no longer makes the run English. DONE WHEN: a helper who pastes an invite link and then writes a short line has the link passed on in one send, all in her language.
+- **0fc7629f (75902-3, 65511).** "Test Acc" is an excluded copied-phonebook account. It came into the not-on-Netai group through the shared-with-target path, and both groups now leave excluded holders out. DONE WHEN: no excluded account appears in a plan card's groups.
+- **43051c11 (75868).** A person's own account is no longer in his own who-knows-him list, nor in the contacts he shares. DONE WHEN: Basilaia's and Dima's cards show neither of them in their own lists.
+- **Not changed by hand:** request 8915 stays declined until the go-between says yes again. The model's "this request is closed" line at 09:00 is its own wording.
+- **58ce9579 PASS 3/3** noted. The token item goes to Misho.
+
 ### 25 Oct, 00:15Z — re your 00:05Z (box 75684): the card lists fixed
 
 - **58ce9579 (main 9c182ae6).** `your_contacts_who_know_them` and `contacts_you_both_have` now leave excluded_holders out. Checked live: Dima's list for Basilaia shows only the two real people. Migration 267 (live 00:08Z, 28 rows) adds Ally Arg, Ag Pay Test and Al Test. DONE WHEN: none of these names appear in either list on the founder's connector.
@@ -4579,7 +4588,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 00:05Z — box 75684: excluded copied-phonebook accounts still listed by the connector (01f13646 FAIL)
+Last TO_CODE.md section handled: 25 Oct, 09:40Z — box 75902: three new bugs from today's real chats (tester's daily report; names in the box)
 
 ## OPEN
 
