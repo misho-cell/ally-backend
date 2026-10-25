@@ -50,6 +50,8 @@ export interface TemplateState {
 export interface WhatsAppSetupState {
   readonly account_found: boolean;
   readonly templates: readonly TemplateState[];
+  /** When no account is found: the permissions the token carries, by name only. */
+  readonly token_scopes?: readonly string[];
 }
 
 interface GraphAnswer {
@@ -84,22 +86,28 @@ interface GranularScope {
   readonly target_ids?: readonly string[];
 }
 
+async function tokenScopes(): Promise<GranularScope[]> {
+  const t = encodeURIComponent(token());
+  const answer = await graph(`/debug_token?input_token=${t}&access_token=${t}`);
+  return ((answer.data as { granular_scopes?: GranularScope[] } | undefined)?.granular_scopes ??
+    []) as GranularScope[];
+}
+
 /** The WhatsApp Business Account the token manages; null when it manages none. */
 export async function businessAccountId(): Promise<string | null> {
   const fixed = process.env.WHATSAPP_WABA_ID?.trim();
   if (fixed) return fixed;
-  const t = encodeURIComponent(token());
-  const answer = await graph(`/debug_token?input_token=${t}&access_token=${t}`);
-  const scopes = ((answer.data as { granular_scopes?: GranularScope[] } | undefined)
-    ?.granular_scopes ?? []) as GranularScope[];
-  const managed = scopes.find((s) => s.scope === 'whatsapp_business_management');
+  const managed = (await tokenScopes()).find((s) => s.scope === 'whatsapp_business_management');
   return managed?.target_ids?.[0] ?? null;
 }
 
 /** Where Netai's two templates stand in Meta. */
 export async function whatsappSetupState(): Promise<WhatsAppSetupState> {
   const account = await businessAccountId();
-  if (account === null) return { account_found: false, templates: [] };
+  if (account === null) {
+    const scopes = (await tokenScopes()).map((s) => s.scope ?? '').filter((s) => s !== '');
+    return { account_found: false, templates: [], token_scopes: scopes };
+  }
   const answer = await graph(
     `/${account}/message_templates?fields=name,status,category,language&limit=100`,
   );
