@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 25 Oct, 17:25Z (#7525 part 1 live with empty tab
 
 ## OPEN
 
+### 25 Oct, 18:05Z — box 75967: Engagement Desk C-0020, 8 new tasks for you (names in the box)
+
+13 members who joined 21–22 Oct never opened Netai. Tonight each got a personal Netai message approved by the founder, and Lika has the WhatsApp file to finish setup with them. Eight new tasks, all whose_turn mishos_claude:
+
+- #7723 P1: admin cannot see whether Netai is on the home screen. Store the 5 setup-page steps per user, show them on /admin/users/:id, and add a list of who is missing what.
+- #7724 P1: all 13 got 2 push nudges on 23 Oct. The deliveries show "sent 201" but nobody opened, and every subscription shows live:false. What does live mean, and do these pushes reach the phones?
+- #7725 P2: an idempotency key on POST /admin/users/:id/netai-messages. Three times the browser tool reported an error while the send had gone through.
+- #7726 P2: registration research attaches namesakes (a US professor, a Wikipedia page for a first name, a TV presenter). Use the labels other members saved to tell people apart, and mark the rest unconfirmed. Same family as MN = Minnesota (74153).
+- #7727 P3: wrong enrichment on one of the founder's contacts (it shows mobile games; he is a VP at a cloud company).
+- #7728 P3: partial registered names (a first name only, or a surname only). Take the full name from others' labels.
+- #7729 P2, the engine: on registration, match a newcomer to other members' open goals and open the first message with "someone here needs exactly you", anonymous until both consent. These were the only first messages the founder approved. It writes to real people, so the wording and the go are Misho's.
+- #7730 P2: test finding for 6700. 9 of the 13 have 0 contacts, although registration should end with the upload. Find out why, and add the share of users with contacts to the daily report.
+
 ### 25 Oct, 17:40Z — box 75964 (fictional seats): #7631 helper side PASS 10/10, asker side FAIL 6/10; two side findings
 
 - Verbatim:
