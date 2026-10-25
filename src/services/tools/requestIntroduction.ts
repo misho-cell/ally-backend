@@ -73,12 +73,14 @@ async function findMediatorPhone(
   return { phone: result.rows[0].phone, displayName: result.rows[0].display_name };
 }
 
+const NO_NAME = 'Netai-ს მომხმარებელი';
+
 async function getRequesterName(userId: string): Promise<string> {
   const result = await query<{ name: string | null }>(
     `SELECT name FROM "User" WHERE id = $1 LIMIT 1`,
     [userId],
   );
-  return result.rows[0]?.name ?? 'Netai-ს მომხმარებელი';
+  return result.rows[0]?.name ?? NO_NAME;
 }
 
 const MEDIATOR_LOOKUP_TIMEOUT_MS = 5_000;
@@ -622,7 +624,12 @@ async function requestIntroductionInner(
     mediatorUserId,
     // #6767: every line of this request is the mediator's, so the asker is named as he saved her.
     requesterName: await nameAsReaderSaved(mediatorUserId, Number(requesterUserId), requesterName),
-    mediatorDisplayName: phoneResult.displayName ?? mediatorName,
+    // #7631: the requester's own label for the mediator, as a clean name (65181).
+    mediatorDisplayName: await nameAsReaderSaved(
+      Number(requesterUserId),
+      mediatorUserId,
+      await getRequesterName(String(mediatorUserId)),
+    ).then((name) => (name === NO_NAME ? (phoneResult.displayName ?? mediatorName) : name)),
     targetName,
     mediatorTargetName: isDirect
       ? targetName

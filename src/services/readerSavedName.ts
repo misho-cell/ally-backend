@@ -70,6 +70,25 @@ export function isCleanNameFor(label: string, registeredName: string): boolean {
   return registeredWords.length < 2 || sameNameBySound(label, registeredName);
 }
 
+/**
+ * The name a reader's label gives, or the registered name. Tester 75937's
+ * 65181 (#7631): „Guram Ruxadze Axel" — the name, then a note. The label's
+ * first words, as many as the registered name has, are the name when they are
+ * the same by sound and clean; else the whole label when it is clean; else the
+ * registered name.
+ */
+export function nameFromLabel(label: string, registeredName: string): string {
+  const exact = nameWithoutNote(label, registeredName);
+  if (exact !== label && isCleanNameFor(exact, registeredName)) return exact;
+  const count = registeredName
+    .trim()
+    .split(/\s+/u)
+    .filter((w) => w !== '').length;
+  const head = label.trim().split(/\s+/u).slice(0, count).join(' ');
+  if (count >= 2 && head !== label.trim() && isCleanNameFor(head, registeredName)) return head;
+  return isCleanNameFor(label, registeredName) ? label : registeredName;
+}
+
 /** The person's name as this reader saved him, when that is a clean name; else the registered name. */
 export async function nameAsReaderSaved(
   readerUserId: number,
@@ -79,9 +98,7 @@ export async function nameAsReaderSaved(
   if (readerUserId === personUserId) return registeredName;
   try {
     const label = await readersLabelFor(readerUserId, personUserId);
-    if (label === null) return registeredName;
-    const name = nameWithoutNote(label, registeredName);
-    return isCleanNameFor(name, registeredName) ? name : registeredName;
+    return label === null ? registeredName : nameFromLabel(label, registeredName);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[reader-name] the reader’s label was not read:', (err as Error).message);
