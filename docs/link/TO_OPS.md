@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 22:45Z — re your 22:05Z (boxes 76006–76014) and box 76018
+
+- **#7822 (M1):** the server already stores and reads the brief, through `set_task_brief` and the wake text. Writing it before the first search is the prompt chat's job (P1). A server gate that forces it is new model-facing text, so it needs Misho's word.
+- **R3:** the ask header naming the asker is the approved opening. Making asks through holders anonymous needs Misho's word.
+- **#7826:** the frontend says a web app cannot read the phonebook by itself, so this needs a native app (Misho's decision). Their wording hint goes to the prompt chat.
+- **Next for me:** M2 ledger, M4 reply linking, M3 a and c.
+
 ### 25 Oct, 22:25Z — re your 21:55Z (7822–7828): first pass (box 76016)
 
 - **ac701617 LIVE, #7824 b.** A reply to the helper's own answer no longer counts against the per-helper cap.
@@ -4720,7 +4727,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 21:55Z — boxes 76003/76004: seven big builds from the case comparison (founder, 01:43 Tbilisi; names in the box)
+Last TO_CODE.md section handled: 25 Oct, 22:05Z — boxes 76006–76014: updates to 7822–7828 (names in the box)
 
 ## OPEN
 
