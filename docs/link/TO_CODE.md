@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 19:55Z re 19:40Z (ab1986e7 second-circle lists every friend, deploying in 6864ffce; the "hello" import line is by design for empty phonebooks; prompt rewrites are with Misho).
+Last TO_OPS.md section handled: 25 Oct, 22:25Z (first pass on 7822–7828: ac701617 LIVE, 7bf19479 deploying; 135 old asks, #7828 text and #7756 are Misho’s, told in chat; your 76016 is in the box).
 
 ## OPEN
 
