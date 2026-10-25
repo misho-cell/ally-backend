@@ -384,25 +384,41 @@ export function withColourWhy(
 /**
  * #7630 (tester 75928, owners 192088 and 192090): a bridge saved under two
  * numbers — „ბექა მაისურაძე" and „ბექა მაისურაძე 2" — came back as two paths,
- * and the run asked whose help to start with. Paths through the same accounts
- * are one path; the first, already the best ranked, stays.
+ * and the run asked whose help to start with. Tester 75933 (owners 192099-101):
+ * it also came back as a direct path and a „long chain" through the same first
+ * person, and as a path to him through his own second number. So:
+ *   - the target's own account is never a bridge to the target;
+ *   - one path per first person: the best ranked stays, and a longer chain
+ *     through someone already reached directly adds nobody.
  */
-export function onePathPerChainOfAccounts(
+export function onePathPerFirstBridge(
   paths: readonly WarmPath[],
   states: ReadonlyMap<string, AccountDetails>,
+  targetPhone: string,
 ): WarmPath[] {
+  const accountOf = (phone: string): string => {
+    const account = states.get(phoneDigits(phone))?.user_id;
+    return typeof account === 'number' ? `user:${account}` : `phone:${phoneDigits(phone)}`;
+  };
+  const target = accountOf(targetPhone);
   const seen = new Set<string>();
   return paths.filter((path) => {
-    const key = path.bridges
-      .map((b) => {
-        const account = states.get(phoneDigits(b.phone))?.user_id;
-        return typeof account === 'number' ? `user:${account}` : `phone:${phoneDigits(b.phone)}`;
-      })
-      .join('>');
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const accounts = path.bridges.map((b) => accountOf(b.phone));
+    const [first] = accounts;
+    if (first === undefined || accounts.includes(target) || seen.has(first)) return false;
+    seen.add(first);
     return true;
   });
+}
+
+function noPathWithin(maxHops: number): WarmPathOutcome {
+  return {
+    found: false,
+    reason: 'no_path_within_hops',
+    note:
+      `No warm path of up to ${maxHops} hops leads to this person (or every path runs through ` +
+      'somebody the user has blocked). The routes left: an invite, or the user writing directly.',
+  };
 }
 
 export async function findWarmPath(
@@ -473,15 +489,7 @@ export async function findWarmPath(
     graphMiddles,
     await memberChainsTo(userId, targetPhone),
   ).filter((bridges) => bridges.every((p) => !blocked.has(p)));
-  if (candidates.length === 0) {
-    return {
-      found: false,
-      reason: 'no_path_within_hops',
-      note:
-        `No warm path of up to ${maxHops} hops leads to this person (or every path runs through ` +
-        'somebody the user has blocked). The routes left: an invite, or the user writing directly.',
-    };
-  }
+  if (candidates.length === 0) return noPathWithin(maxHops);
 
   const phones = [...new Set([targetPhone, ...candidates.flat()])];
   const [names, states] = await Promise.all([namesFor(userId, phones), fetchAccountStates(phones)]);
@@ -510,7 +518,8 @@ export async function findWarmPath(
     // stay ahead of relayable on purpose: a one-hop bridge who is not on Netai
     // is still the user's own contact, whom they can simply write to.
     .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable));
-  const distinct = onePathPerChainOfAccounts(reached, states);
+  const distinct = onePathPerFirstBridge(reached, states, targetPhone);
+  if (distinct.length === 0) return noPathWithin(maxHops);
   const [bridgeOrdered, links] = await Promise.all([
     inBridgeOrder(distinct, goalText, userId),
     coloursOfFirstLinks(userId, reached, targetPhone),
