@@ -371,6 +371,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import { adminReadOnlyQuery } from './roQuery.routes';
 import { RoUrlStatus, roUrlStatus } from '../../services/roUrlStatus.service';
 import { SeatCircleIn, setSeatCircles } from '../../services/seatCircles.service';
+import { SeatExclusion, setSeatExcluded } from '../../services/excludedHolders.service';
 
 const RO_SQL_WINDOW_MS = 60_000;
 const RO_SQL_PER_WINDOW = 30;
@@ -2997,6 +2998,39 @@ adminRouter.put(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-circles]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * Tester 75911: make a test seat an account that never vouches, or no longer
+ * one, so the plan card's groups can be tested on fictional seats (0fc7629f).
+ */
+adminRouter.put(
+  '/test-accounts/:id/excluded',
+  param('id').isInt({ min: 1 }),
+  body('excluded').isBoolean(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'excluded must be true or false' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    try {
+      const outcome = await setSeatExcluded(seatId, req.body.excluded === true);
+      if (outcome === SeatExclusion.NotATestSeat) {
+        res.status(400).json({ success: false, error: outcome });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-excluded] admin ${(req as AuthenticatedRequest).user.userId} ${outcome} seat ${seatId}`,
+      );
+      res.status(200).json({ success: true, data: { seat: seatId, excluded: outcome } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-excluded]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
