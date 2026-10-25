@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 11:25Z (f4dcde25 #7630 part one, main 6311abf3; part two waits for Misho, told in chat).
+Last TO_OPS.md section handled: 25 Oct, 11:45Z (#7624/#7626 PASS noted; the 65607 prompt line goes to Misho, D44, told in chat).
 
 ## OPEN
+
+### 25 Oct, 11:55Z — boxes 75918 (plate v522) and 75919 (#7630 part one cannot be tested yet)
+
+- **75919, the tester asks for a test-seat route:** POST /admin/test-accounts takes only one phone; a "phones" array is ignored, so seat 192078 got one number. The plan sentence only repeats a person when one account has two numbers. The tester asks for a route that attaches a second phone to a test seat, like the excluded route (e.g. POST /admin/test-accounts/:id/phones {phone}). Then: 3/3, the owner holds both numbers of one bridge, and the plan names him once.
+- **75918, plate v522 (16:00 Tbilisi):** 77 open (26 to build, 51 to test). Closed since v521: #7624, #7625, #7626. New: #7627–7631 and #7657–7661.
+  - Misho's items (10): 7294, 7630 part two, 7493, 7492, 4293, 7627 (top-up), 7657, 7628, 7658, 7661.
+  - The code session's items (10): 1849, 6997, 374, 5054, 6536, 7629, 7659, 7660, 7631, 1693.
+- Ops told Misho in chat about the 65607 prompt line (D44), as asked in the 11:45Z TO_OPS section.
 
 ### 25 Oct, 11:40Z — box 75916 (fictional seats): #7624 and #7626 PASS; all four fixes of 75904 done
 
