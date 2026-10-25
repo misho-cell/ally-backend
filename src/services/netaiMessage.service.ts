@@ -32,6 +32,8 @@ export interface NetaiMessageInput {
   readonly sentBy: string;
   /** #7725: the caller's own key; the same key for the same person is one message. */
   readonly clientMsgId?: string | null;
+  /** #7825: the goal this message is about, so the answer can reach it. */
+  readonly taskId?: number | null;
 }
 
 export interface SentNetaiMessage {
@@ -138,10 +140,10 @@ async function writeNetaiMessage(input: NetaiMessageInput): Promise<SentNetaiMes
     );
     await client.query(`UPDATE threads SET updated_at = NOW() WHERE id = $1`, [threadId]);
     const saved = await client.query<{ id: number }>(
-      `INSERT INTO netai_messages (user_id, thread_id, body, choices, sent_by, client_msg_id)
-       VALUES ($1, $2, $3, $4::jsonb, $5, $6)
+      `INSERT INTO netai_messages (user_id, thread_id, body, choices, sent_by, client_msg_id, task_id)
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)
        RETURNING id`,
-      [input.userId, threadId, input.text, choices, input.sentBy, key],
+      [input.userId, threadId, input.text, choices, input.sentBy, key, input.taskId ?? null],
     );
     return { id: saved.rows[0].id, threadId, newThread: existing === null };
   });
@@ -179,6 +181,16 @@ export async function sendNetaiMessage(input: NetaiMessageInput): Promise<SentNe
     console.warn(`[netai-message] ${sent.id}: push not sent:`, (err as Error).message);
   });
   return sent;
+}
+
+/** #7825: is this an open goal of this person's? A message is linked only to its own owner's goal. */
+export async function isOpenGoalOf(taskId: number, userId: number): Promise<boolean> {
+  const result = await query<{ found: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM tasks WHERE id = $1 AND user_id = $2::text AND status = 'open') AS found`,
+    [taskId, userId],
+    NETAI_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.found === true;
 }
 
 /** True when this conversation is the user's „Netai" one. */
