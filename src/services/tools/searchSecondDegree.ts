@@ -25,6 +25,7 @@ import { nameOnlyFromLabel } from '../labelReader.service';
 import { foldedLower, toMtavruli } from './georgianCase';
 import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
 import { withEveryHolder } from './everyHolder';
+import { holdersOnly, ownerHolderPhonesOrNone } from './ownerHolders';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -764,6 +765,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // own phonebook is the same list the graph mirrors; read it when the
     // mirror is empty.
     if (friendKeys.length === 0) friendKeys = await phonebookPhones(userId);
+    // #7826: the members who hold the owner are routes too, marked as such.
+    const holderPhones = await ownerHolderPhonesOrNone(userId, userPhones);
+    const heldBy = holdersOnly(
+      holderPhones,
+      friendKeys.flatMap((k) => k.split('-')),
+    );
+    friendKeys = [...friendKeys, ...holderPhones];
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
     const blockedPhones = await getExcludedPhones(userId, tagQuery);
@@ -1663,6 +1671,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               knows_them_as: nameOnlyFromLabel(bridge.saved_as ?? null),
             }),
             is_member: isMemberPhone(accountStates, bridge.phone),
+            // #7826: not in the owner's phonebook — this member has the owner saved.
+            ...(heldBy.has(phoneDigits(bridge.phone)) && { holds_you: true }),
             ...(tie ? { owner_tie: tie } : {}),
             ...(why !== null ? { colour_why: why } : {}),
           };
