@@ -58,10 +58,26 @@ describe('a name as the reader has it saved', () => {
     );
   });
 
-  it('keeps a label that is not the registered name followed by a note', async () => {
+  it('is the registered name when the label is another surname (#7631)', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ alias: 'ირო ბიძაშვილი ნათია' }] });
     await expect(nameAsReaderSaved(READER, PERSON, 'Iro Tsagareishvili')).resolves.toBe(
-      'ირო ბიძაშვილი ნათია',
+      'Iro Tsagareishvili',
+    );
+  });
+
+  it('is the registered name for a label with a dot, two scripts or a misspelt surname (#7631)', async () => {
+    for (const alias of ['ლაშა Kurashvili.', 'ლაშა იურაშვილი', 'Lasha K. (Axel)']) {
+      mockQuery.mockResolvedValueOnce({ rows: [{ alias }] });
+      await expect(nameAsReaderSaved(READER, PERSON, 'Lasha Kurashvili')).resolves.toBe(
+        'Lasha Kurashvili',
+      );
+    }
+  });
+
+  it('keeps the reader’s clean Georgian spelling of the registered name (#6767)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ alias: 'ლაშა ქურაშვილი' }] });
+    await expect(nameAsReaderSaved(READER, PERSON, 'Lasha Kurashvili')).resolves.toBe(
+      'ლაშა ქურაშვილი',
     );
   });
 

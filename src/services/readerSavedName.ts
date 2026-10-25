@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { withoutAllyWord } from './georgianScriptName';
 import { nameKey } from './tools/transliterate';
+import { sameNameBySound } from './sameNameBySound';
 
 /**
  * #6767 (Giorgi, 20 Oct): a person is named the way the READER has him saved —
@@ -46,7 +47,30 @@ export function nameWithoutNote(label: string, registeredName: string): string {
   return nameKey(head.join(' ')) === registered.join(' ') ? head.join(' ') : label;
 }
 
-/** The person's name as this reader saved him; the registered name when he did not, or the read failed. */
+/** Letters of either script, a space, a hyphen or an apostrophe — nothing a name does not have. */
+const NAME_ONLY_RE = /^[\p{L}\s'’-]+$/u;
+const GEORGIAN_RE = /[\u10A0-\u10FF]/u;
+const LATIN_RE = /[A-Za-z]/u;
+
+/**
+ * #7631 (Misho's list, 25 Oct; tester's threads 65521 and 64721): the helper read
+ * „ლაშა Kurashvili.-ის ასისტენტი" and „ლაშა იურაშვილი" for Lasha Kurashvili — the
+ * reader's label as typed, a dot, two scripts, a wrong surname. The reader's label
+ * names the person only when it is a clean name: letters only, one script, and
+ * the registered name by sound when that has a surname. Otherwise the registered
+ * name, which the caller writes in the reader's script.
+ */
+export function isCleanNameFor(label: string, registeredName: string): boolean {
+  if (!NAME_ONLY_RE.test(label)) return false;
+  if (GEORGIAN_RE.test(label) && LATIN_RE.test(label)) return false;
+  const registeredWords = registeredName
+    .trim()
+    .split(/\s+/u)
+    .filter((w) => w !== '');
+  return registeredWords.length < 2 || sameNameBySound(label, registeredName);
+}
+
+/** The person's name as this reader saved him, when that is a clean name; else the registered name. */
 export async function nameAsReaderSaved(
   readerUserId: number,
   personUserId: number,
@@ -55,7 +79,9 @@ export async function nameAsReaderSaved(
   if (readerUserId === personUserId) return registeredName;
   try {
     const label = await readersLabelFor(readerUserId, personUserId);
-    return label === null ? registeredName : nameWithoutNote(label, registeredName);
+    if (label === null) return registeredName;
+    const name = nameWithoutNote(label, registeredName);
+    return isCleanNameFor(name, registeredName) ? name : registeredName;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[reader-name] the reader’s label was not read:', (err as Error).message);
