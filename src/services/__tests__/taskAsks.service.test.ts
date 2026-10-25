@@ -1371,6 +1371,14 @@ describe('getPendingAsksForUser', () => {
     expect(sql).toContain("status = 'sent'");
     expect(params).toEqual(['501']);
   });
+
+  it('lists only the latest round of a thread, as the answer path answers (ops 25 Oct, ask 26737)', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    await getPendingAsksForUser('501');
+    expect(String(mockQuery.mock.calls[0][0])).toContain(
+      'ta.id = (SELECT MAX(t2.id) FROM task_asks t2 WHERE t2.ask_thread_id = ta.ask_thread_id)',
+    );
+  });
 });
 
 describe('cancelAsksForTask', () => {

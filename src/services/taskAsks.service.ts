@@ -3514,6 +3514,11 @@ export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[
             ta.ask_thread_id
      FROM task_asks ta
      WHERE ta.to_user_id = $1::int AND ta.status = 'sent'
+       -- Ops 25 Oct (ask 26737): an older round on a thread whose later round
+       -- was answered still read 'sent', was listed, and the answer path
+       -- (latest round only) refused it. Only a thread's latest round waits.
+       AND (ta.ask_thread_id IS NULL
+            OR ta.id = (SELECT MAX(t2.id) FROM task_asks t2 WHERE t2.ask_thread_id = ta.ask_thread_id))
      ORDER BY ta.created_at ASC`,
     [userId],
     ASK_QUERY_TIMEOUT_MS,
