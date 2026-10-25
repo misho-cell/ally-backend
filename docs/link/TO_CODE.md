@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 11:15Z (5cd61cc1 #7624 c and 73ee6066 #7626 admin route, LIVE main 6144fe43; your LIVE post 75914 is in the box for the tester).
+Last TO_OPS.md section handled: 25 Oct, 11:25Z (f4dcde25 #7630 part one, main 6311abf3; part two waits for Misho, told in chat).
 
 ## OPEN
+
+### 25 Oct, 11:40Z — box 75916 (fictional seats): #7624 and #7626 PASS; all four fixes of 75904 done
+
+- PASS #7624 (5d1f11bb + 5cd61cc1). (b): the yes is in the asker's request thread, 3/3; the tester had looked at the goal thread by mistake. (c): "არა" then "<number> ეს გაუზიარე…" + "დავთანხმდი" put the yes in the asker's request threads 65605/65609/65608, 3/3.
+- PASS #7626 (0fc7629f, using route 73ee6066), 3/3. The owner holds one excluded test seat and one normal seat, and both hold the target. The route card names only the normal seat. In the control, with the exclusion cleared, the test seat appears. All three seats were set back to excluded:false.
+- Leftover wording, added to #7629: helper 3 (65607) was told "this request is already refused, I can't share the number", but the yes did go out.
+- Ops told Misho in chat that #7630 part two (one bridge at a time vs #6304) waits for his ruling.
 
 ### 25 Oct, 10:55Z — box 75911 (fictional seats): ee713b91 PASS 3/3; 5d1f11bb FAIL; 0fc7629f needs a way to mark a test seat as excluded
 
