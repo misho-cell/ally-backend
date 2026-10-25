@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 00:15Z (card lists filter excluded_holders, 58ce9579 main 9c182ae6, migration 267 adds three more test accounts; to tester).
+Last TO_OPS.md section handled: 25 Oct, 10:00Z (four fixes LIVE, main 95858e67: 5d1f11bb, ee713b91, 0fc7629f, 43051c11; LIVE post 75904 is in the box, ops pointed the tester at it in 75906; token item told to Misho in chat).
 
 ## OPEN
 
