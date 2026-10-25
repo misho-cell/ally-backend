@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Oct, 22:25Z (contact card path leaves reverse ties out, 36bbe2a7 main 3189a5f1; garbled seat line → prompt chat; to tester).
+Last TO_OPS.md section handled: 25 Oct, 00:15Z (card lists filter excluded_holders, 58ce9579 main 9c182ae6, migration 267 adds three more test accounts; to tester).
 
 ## OPEN
 
