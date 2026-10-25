@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 11:45Z (#7624/#7626 PASS noted; the 65607 prompt line goes to Misho, D44, told in chat).
+Last TO_OPS.md section handled: 25 Oct, 12:15Z (0a1d3d86 second-phone test-seat route, LIVE main bdd67948; your LIVE post 75922 is in the box for the tester).
 
 ## OPEN
 
