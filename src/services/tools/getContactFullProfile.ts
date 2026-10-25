@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { notAnExcludedHolder } from '../excludedHolders.service';
 import { getContactInsight } from '../insights.service';
 import { getVisibleFacts, VisibleFact, VisibleFactsResult } from '../contactFacts.service';
 import { MemberOwnWork, memberOwnWork } from '../memberCard.service';
@@ -185,6 +186,8 @@ export async function contactsWhoKnowThem(
          JOIN "UserAlias" own ON own."contactId" = $1::int AND own.phone = up.phone
         WHERE theirs.phone = $2 AND theirs."contactId" <> $1::int
           AND NULLIF(TRIM(own.alias), '') IS NOT NULL
+          -- Tester 75684 (Misho, 24 Oct): an account that never vouches knows nobody here.
+          AND ${notAnExcludedHolder('theirs."contactId"')}
         LIMIT $3`,
       [userId, phone, MAX_MUTUAL],
       MUTUAL_QUERY_TIMEOUT_MS,
@@ -218,6 +221,10 @@ export async function contactsYouBothHave(
          JOIN "UserAlias" own    ON own."contactId" = $1::int AND own.phone = theirs.phone
         WHERE up.phone = $2 AND up."userId" <> $1::int
           AND NULLIF(TRIM(own.alias), '') IS NOT NULL
+          -- Tester 75684: nor is one of them a contact the two have in common.
+          AND NOT EXISTS (SELECT 1 FROM "UserPhone" xp
+                           JOIN excluded_holders eh ON eh.user_id = xp."userId"
+                          WHERE xp.phone = theirs.phone)
         LIMIT $3`,
       [userId, phone, MAX_MUTUAL],
       MUTUAL_QUERY_TIMEOUT_MS,
