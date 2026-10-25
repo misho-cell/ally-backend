@@ -1,7 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
 import { query } from '../../db/postgres/client';
-import { nameAsReaderSaved } from '../readerSavedName';
+import { nameAsReaderSaved, nameFromLabel } from '../readerSavedName';
 
 const mockQuery = query as jest.Mock;
 const READER = 11;
@@ -91,5 +91,13 @@ describe('a name as the reader has it saved', () => {
       'Giorgi Turashvili',
     );
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('drops a note after the name, and a misspelt name for the registered one (#7631, 65181)', () => {
+    expect(nameFromLabel('Guram Ruxadze Axel', 'Guram Rukhadze')).toBe('Guram Rukhadze');
+    expect(nameFromLabel('Guram Rukhadze Axel', 'Guram Rukhadze')).toBe('Guram Rukhadze');
+    expect(nameFromLabel('გურამ რუხაძე Axel', 'Guram Rukhadze')).toBe('გურამ რუხაძე');
+    expect(nameFromLabel('ირო ენჯელ კლუბი', 'Iro Tsagareishvili')).toBe('Iro Tsagareishvili');
+    expect(nameFromLabel('გურამ რუხაძე', 'Guram Rukhadze')).toBe('გურამ რუხაძე');
   });
 });
