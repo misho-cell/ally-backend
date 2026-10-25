@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 17:10Z (afternoon summary: #7631 LIVE ff80d6a0, #7234 quiet hours LIVE b1fa3e19, WhatsApp built and off, #1849 and #7629 back to the tester; all already in the box for the tester).
+Last TO_OPS.md section handled: 25 Oct, 17:25Z (#7525 part 1 live with empty tables, waiting on Misho for the live load; #7691 covers inbound and outbound, switched off; #7690 step 2 waits for Lika and Misho).
 
 ## OPEN
 
