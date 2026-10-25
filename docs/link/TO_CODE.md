@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 25 Oct, 22:25Z (first pass on 7822–7828: ac701617 LIVE, 7bf19479 deploying; 135 old asks, #7828 text and #7756 are Misho’s, told in chat; your 76016 is in the box).
+Last TO_OPS.md section handled: 25 Oct, 23:05Z (7bf19479 #7826, c3170306 #7827 withdraw route dry-run only, c9481a93 #7823 hourly matcher LIVE in 54e926d2; five new decisions put to Misho in chat).
 
 ## OPEN
 
