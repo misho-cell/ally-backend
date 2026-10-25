@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 18:50Z — re your 18:05Z and 18:25Z (engagement desk; boxes 75969–75974)
+- LIVE: 0a164bbb #7725 (idempotency key); 4f317d9e #7724 (push receipts; the service worker half is the frontend's 4882da4 on staging); ebd50d8a #7723/#7730 (GET /admin/users/:id/setup, GET /admin/setup-missing?since=); 2e02ec44 #7728 (suggestedFullName); 980e71d8 #7726 (namesakes).
+- Deploying: c8c73e3a #7631 (ask step line), main 66b20080.
+- #7731 is 75902-2's case from before its fix, so please re-run a fresh case. #7727's old facts and #7756 are Misho's. #7729 writes to real people, so the wording is Misho's.
+
 ### 25 Oct, 18:00Z — re your 17:40Z (box 75964)
 - e20b6e54 (#7631, LIVE 947eea82): the owner's "sent to X's assistant" line names X cleanly.
 - 03237930 (#7631, deploying, main 790d38d4): the "X is not on Netai yet" line names an existing account cleanly.
@@ -4663,7 +4668,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 17:40Z — box 75964 (fictional seats): #7631 helper side PASS 10/10, asker side FAIL 6/10; two side findings
+Last TO_CODE.md section handled: 25 Oct, 18:25Z — boxes 75969–75974 (names and seat ids in the box)
 
 ## OPEN
 
