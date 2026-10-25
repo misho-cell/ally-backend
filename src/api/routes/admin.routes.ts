@@ -2503,6 +2503,24 @@ adminRouter.get('/sweeps', async (_req: Request, res: Response) => {
  *
  * It returns the ids, because the ids are what makes the count checkable.
  */
+/**
+ * Tester 75928 / ops (25 Oct): „is c51f4c3b actually live?" — ops' Railway read
+ * token was refused and /health says nothing about versions on purpose. Behind
+ * the admin login, the commit this process was built from (Railway sets it).
+ */
+const COMMIT_SHORT_CHARS = 8;
+const PROCESS_STARTED_AT = new Date().toISOString();
+adminRouter.get('/version', (_req: Request, res: Response) => {
+  const sha = process.env.RAILWAY_GIT_COMMIT_SHA?.trim() ?? '';
+  res.status(200).json({
+    success: true,
+    data: {
+      commit: sha === '' ? null : sha.slice(0, COMMIT_SHORT_CHARS),
+      started_at: PROCESS_STARTED_AT,
+    },
+  });
+});
+
 adminRouter.get('/introductions/expiring', async (_req: Request, res: Response) => {
   try {
     const [counts, waiting] = await Promise.all([
