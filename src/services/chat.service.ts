@@ -336,6 +336,7 @@ import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath } from './tools/findWarmPath';
 import { findCompaniesForNeed } from './tools/findCompaniesForNeed';
+import { findPeopleInBase } from './tools/findPeopleInBase';
 import { withOldAllyColours } from './tools/withOldAllyColours';
 import { optOutFromAsks, resumeAsks, isOptedOutFromAsks } from './askOptOut.service';
 import { saveContactExclusion, removeContactExclusion } from './tools/contactExclusions';
@@ -4161,6 +4162,34 @@ const FIND_COMPANIES_FOR_NEED_TOOL: AnthropicTool = {
       need: { type: 'string', description: "The need in the user's words, any language." },
       country: { type: 'string', description: 'Optional: the country, in English.' },
       city: { type: 'string', description: 'Optional: the city, in English.' },
+    },
+    required: ['need'],
+  },
+};
+
+/**
+ * 6997 — the person store's search: people the research base knows, with no
+ * number too, each with who can reach them. OFF until the store is loaded on
+ * live (Misho's word) and tried there; the prompt line is the prompt chat's.
+ */
+export const BASE_PEOPLE_TOOL_ON = false;
+
+const FIND_PEOPLE_IN_BASE_TOOL: AnthropicTool = {
+  name: 'find_people_in_base',
+  description:
+    'People the research base knows who do what the user needs, including people with no ' +
+    'number in anyone\u2019s phonebook (CELA fellows abroad, people found on the web). Use for a ' +
+    'kind of person, not a name ("someone in transport in Kazakhstan"). Write the need in ' +
+    'English with its synonyms and the place ("transport logistics cargo freight Kazakhstan"). ' +
+    'Returns each person with confirmed facts and known_by: the people tied to them who have a ' +
+    'number, the user and his own contacts first.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      need: {
+        type: 'string',
+        description: 'The need in English words, synonyms and place included.',
+      },
     },
     required: ['need'],
   },
@@ -12481,6 +12510,8 @@ async function executeToolCall(
       );
     case 'search_roster':
       return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
+    case 'find_people_in_base':
+      return findPeopleInBase(userId, String(input['need'] ?? ''));
     case 'find_companies_for_need':
       return findCompaniesForNeed(
         userId,
@@ -16321,6 +16352,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   SEARCH_ROSTER_TOOL,
   FIND_WARM_PATH_TOOL,
   ...(COMPANY_SEARCH_TOOL_ON ? [FIND_COMPANIES_FOR_NEED_TOOL] : []),
+  ...(BASE_PEOPLE_TOOL_ON ? [FIND_PEOPLE_IN_BASE_TOOL] : []),
   GET_COUNTRY_CHANNELS_TOOL,
   GET_NETAI_INFO_TOOL,
   GET_MY_TOKEN_BALANCE_TOOL,
