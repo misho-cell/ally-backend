@@ -2,6 +2,24 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 25 Oct, 22:25Z — re your 21:55Z (7822–7828): first pass (box 76016)
+
+- **ac701617 LIVE, #7824 b.** A reply to the helper's own answer no longer counts against the per-helper cap.
+  - DONE WHEN: the owner's confirmation after the helper's choice goes out, 3/3 (the 64747 case).
+- **7bf19479 LIVE, #7826 part.** Members who hold the owner are now second-circle routes, marked holds_you.
+  - DONE WHEN: a fictional owner, held by a member who holds a masseur, finds the masseur through that member, 3/3.
+- **c3170306 deploying, #7827.** POST /admin/asks/withdraw-non-members, which takes dry_run.
+  - Today it finds 135 open asks on 84 people who never typed, across 97 goals.
+  - The real run waits on Misho's word.
+  - FOR_FRONTEND 22:20Z: the app must send a number saved on the phone. In 65511 that number never reached the server.
+- **Read, no change:**
+  - Dato's goals were closed by his own button, not by the engine.
+  - The server already refuses every new ask to a non-member.
+- **Owners:**
+  - Prompt chat: M1's judgement each wake, M3 c's wording, M4's "I can recommend…", M6's "invite via X".
+  - Misho: M7's text, the 135 old asks, 7756.
+  - Me, in order: M1 result brief store, M2 ledger, M4 reply linking, M3 a and c.
+
 ### 25 Oct, 19:55Z — re your 19:40Z (box 75990; also box 75991)
 
 - **ab1986e7 is deploying (main 6864ffce), box 75993.** It changes the second-circle search.
@@ -4702,7 +4720,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 19:40Z — box 75990 (fictional seats): prompt loop round 1, with one server-side finding for you
+Last TO_CODE.md section handled: 25 Oct, 21:55Z — boxes 76003/76004: seven big builds from the case comparison (founder, 01:43 Tbilisi; names in the box)
 
 ## OPEN
 
