@@ -460,13 +460,12 @@ describe('two rows under one name', () => {
     const result = (await searchContactByName('42', 'Tornike Abuladze')) as Record<string, unknown>;
     const results = result.results as Array<Record<string, unknown>>;
 
-    expect(results).toHaveLength(2);
-    for (const r of results) {
-      expect(r.duplicate_name).toBe(true);
-      expect(r.same_person).toBe(true);
-      expect(String(r.same_person_hint)).toContain('One person with 2 numbers');
-      expect(r.differentiator).toBeUndefined();
-    }
+    // #7630 (tester 75937): one account is one row, saying it has another number.
+    expect(results).toHaveLength(1);
+    expect(results[0].also_known_numbers).toBe(1);
+    expect(String(results[0].same_person_note)).toContain('never ask which one is meant');
+    expect(results[0].differentiator).toBeUndefined();
+    expect(result.total).toBe(1);
   });
 
   it('two different people under one name each carry a differentiator that is not the number', async () => {

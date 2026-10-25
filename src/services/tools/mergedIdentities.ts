@@ -69,6 +69,39 @@ export interface CollapseOutcome<T> {
 }
 
 /**
+ * Rows that `personOf` says are one person fold into the first of them, which
+ * carries the count and the note. A row with no person stays as it is.
+ */
+export function collapseByPerson<T extends MergeablePhoneRow>(
+  rows: readonly T[],
+  personOf: (row: T) => string | undefined,
+): CollapseOutcome<T> {
+  const keptByPerson = new Map<string, T>();
+  const out: T[] = [];
+  let collapsed = 0;
+  for (const row of rows) {
+    const personId = personOf(row);
+    if (personId === undefined) {
+      out.push(row);
+      continue;
+    }
+    const kept = keptByPerson.get(personId);
+    if (kept === undefined) {
+      keptByPerson.set(personId, row);
+      out.push(row);
+      continue;
+    }
+    // The same person, a second number. The count goes up; the number does
+    // not travel — the assistant may never see one it was not handed.
+    kept.also_known_numbers = Number(kept.also_known_numbers ?? 0) + 1;
+    kept.same_person_note =
+      'This person has another number on file, already counted here — never two rows, never ask which one is meant.';
+    collapsed += 1;
+  }
+  return { rows: out, collapsed };
+}
+
+/**
  * Collapse rows that are one person into the first of them. Order is kept, so
  * whatever ranking the caller applied still holds.
  */
@@ -82,30 +115,7 @@ export async function collapseMergedPhones<T extends MergeablePhoneRow>(
     const byPhone = await personIdsForPhones(rows.map(phoneOf));
     if (byPhone.size === 0) return { rows, collapsed: 0 };
 
-    const keptByPerson = new Map<string, T>();
-    const out: T[] = [];
-    let collapsed = 0;
-    for (const row of rows) {
-      const personId = byPhone.get(phoneOf(row));
-      if (personId === undefined) {
-        out.push(row);
-        continue;
-      }
-      const kept = keptByPerson.get(personId);
-      if (kept === undefined) {
-        keptByPerson.set(personId, row);
-        out.push(row);
-        continue;
-      }
-      // The same person, a second number. The count goes up; the number does
-      // not travel — the assistant may never see one it was not handed.
-      const marks = kept as MergeablePhoneRow;
-      marks.also_known_numbers = Number(marks.also_known_numbers ?? 0) + 1;
-      marks.same_person_note =
-        'This person has another number on file, already counted here — never two rows, never ask which one is meant.';
-      collapsed += 1;
-    }
-    return { rows: out, collapsed };
+    return collapseByPerson(rows, (row) => byPhone.get(phoneOf(row)));
   } catch (err) {
     // A search must never fail because the merge table could not be read.
     // eslint-disable-next-line no-console

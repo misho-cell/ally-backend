@@ -12,6 +12,9 @@ import { fetchAccountStates } from '../tools/membership';
 import { onePersonPerAccount } from '../taskPlans.service';
 import { onePathPerFirstBridge, WarmPath } from '../tools/findWarmPath';
 import { AccountDetails } from '../tools/membership';
+import { collapseByPerson } from '../tools/mergedIdentities';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const mockStates = fetchAccountStates as jest.Mock;
 
@@ -103,5 +106,25 @@ describe('one account is one person', () => {
     expect(
       onePathPerFirstBridge(paths, states, '+12025550142').map((p) => p.bridges[0].name),
     ).toEqual(['თამთა']);
+  });
+
+  it('is one row in the owner’s name search, the best ranked kept (tester 75937, G2)', () => {
+    const rows = [
+      { name: 'სანდრო ტყეშელაშვილი', phone: '+12025550142' },
+      { name: 'სანდრო ტყეშელაშვილი 2', phone: '+12025550143' },
+      { name: 'თამთა', phone: '+12025550144' },
+    ];
+    const accounts = new Map([
+      ['+12025550142', 'user:7'],
+      ['+12025550143', 'user:7'],
+    ]);
+    const out = collapseByPerson(rows, (row) => accounts.get(row.phone));
+    expect(out.collapsed).toBe(1);
+    expect(out.rows.map((r) => r.name)).toEqual(['სანდრო ტყეშელაშვილი', 'თამთა']);
+    expect(out.rows[0].also_known_numbers).toBe(1);
+
+    const search = readFileSync(join(__dirname, '..', 'tools', 'searchContactByName.ts'), 'utf8');
+    expect(search).toContain('const byAccount = collapseByPerson(named, (row) => {');
+    expect(search).toContain('collapseMergedPhones(byAccount.rows)');
   });
 });
