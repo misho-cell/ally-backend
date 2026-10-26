@@ -1,5 +1,10 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
-import { RestoreOutcome, restoreDeletedAccount } from '../../services/accountRestore.service';
+import {
+  PhoneRepair,
+  repairRestoredPhone,
+  RestoreOutcome,
+  restoreDeletedAccount,
+} from '../../services/accountRestore.service';
 import { MAX_LABEL_ROWS, removeImportedLabels } from '../../services/labelRemoval.service';
 import { DraftOutcome, writeCardDraft } from '../../services/warRoomDraft.service';
 import { recheckStoredResearch } from '../../services/registrationResearch/factRecheck.service';
@@ -1742,6 +1747,43 @@ adminRouter.post('/research-facts/recheck', async (req: Request, res: Response) 
     res.status(500).json({ success: false, error: 'The re-check did not finish' });
   }
 });
+
+// #7761: a restored account gets back the number the outside deletion rewrote.
+//   POST /admin/users/:id/restore-phone { dry_run: boolean }
+// 200 { outcome: repaired | nothing_to_repair, retired_user_id } · 409 number_in_use
+// (another account that used Netai holds it; nothing changed) · 400 bad body.
+adminRouter.post(
+  '/users/:id/restore-phone',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    const dryRun = (req.body as Record<string, unknown> | undefined)?.dry_run;
+    if (!validationResult(req).isEmpty() || typeof dryRun !== 'boolean') {
+      res
+        .status(400)
+        .json({ success: false, error: 'Pass a numeric id and dry_run (true or false).' });
+      return;
+    }
+    try {
+      const userId = Number(req.params.id);
+      const result = await repairRestoredPhone(userId, dryRun);
+      if (result.outcome === PhoneRepair.NumberInUse) {
+        res.status(409).json({ success: false, error: result.outcome });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[admin restore-phone] account ${userId}: ${result.outcome}${dryRun ? ' (dry run)' : ''}`,
+      );
+      res
+        .status(200)
+        .json({ success: true, data: { user_id: userId, dry_run: dryRun, ...result } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin restore-phone]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 // #7888: app sessions for many people at once, for the founder's onboarding list.
 //   GET /admin/app-sessions?user_ids=501,118509   → [{ user_id, sessions_7d, minutes_7d,

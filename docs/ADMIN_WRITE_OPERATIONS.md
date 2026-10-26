@@ -6418,3 +6418,10 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who:** not deleted, not a test seat, and on Netai (a thread, a search, or a live subscription): 128 accounts, 61 under 2000 at the read (619 among them).
 - **What:** per account `POST /admin/users/:id/tokens { "tokens": 2000 - balance, "note": "founder ruling: every account on Netai at 2000 — 26 Oct" }`. Nobody lowered, nobody above 2000 by this.
 - **Undo:** the same call negated per account; amounts are in each account's token history under that note.
+
+## 66 · #7761: GIORGI TURASHVILI'S RESTORED ACCOUNT GETS ITS NUMBER BACK (26 Oct ~22:30Z)
+
+- **Who authorises:** row #7761 („tell us whether these are one person — merge"), done under Misho's standing rule of 26 Oct; it completes the restore of 118509 (Misho's yes, 26 Oct).
+- **Why:** the deletion outside Netai (20 Oct 14:25Z) rewrote 118509's number as „<number>_DELETED_<n>"; sign-in matches digits only, so his number opened 190086, an empty account the old Ally app created four minutes later (485 contacts, no thread, never typed).
+- **What:** `POST /admin/users/118509/restore-phone {"dry_run": false}` after a dry run, in one transaction: 190086's number → „<number>_MERGED_118509", 190086 soft-deleted; 118509's number → the bare number. 190286 (a different number, 3 contacts, used today) is left as it is.
+- **Undo:** 118509's number back to „<number>_DELETED_<n>" (the suffix is in this run's log line), 190086's number back to the bare number and its deletedAt cleared.
