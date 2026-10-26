@@ -1802,11 +1802,13 @@ const SAVE_OFFER_TOOL: AnthropicTool = {
   name: 'save_offer',
   description:
     'The owner said what they are OPEN TO — „if anyone needs hospitality in Adjara, I am ' +
-    'interested", „yes to any Axel member asking about logistics". Write it as ONE line in your ' +
-    'own words (never their typed words), read it back and ask if it is right; call with ' +
-    'confirmed: true only after their yes. An offer never answers anyone and is never shown to ' +
-    'another person: it only helps find who may want to talk. When the owner already wrote the ' +
-    'line and asked you to save it, that is their yes. Not for needs (those are goals).',
+    'interested", „yes to any Axel member asking about logistics". FIRST: when the owner wrote ' +
+    'the offer themselves AND asked to save or remember it, call at once with confirmed: true — ' +
+    'their request is the yes; do not read it back or ask „is this right?". Only when YOU drew ' +
+    'the offer out of a longer message: write it as ONE line in your own words, read it back, ' +
+    'and call with confirmed: true after their yes. An offer never answers anyone and is never ' +
+    'shown to another person: it only helps find who may want to talk. Not for needs (those ' +
+    'are goals).',
   input_schema: {
     type: 'object',
     properties: {
@@ -1817,7 +1819,8 @@ const SAVE_OFFER_TOOL: AnthropicTool = {
       },
       confirmed: {
         type: 'boolean',
-        description: 'True only after the owner said yes to the line.',
+        description:
+          'True when the owner wrote the offer and asked to save it, or said yes to your line.',
       },
     },
     required: ['text', 'field', 'confirmed'],
