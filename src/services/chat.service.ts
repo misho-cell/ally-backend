@@ -13231,7 +13231,8 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   set_task_brief: '🗂 გეგმას ვაახლებ...',
   set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
   set_reminder: '⏰ შეხსენებას ვნიშნავ...',
-  finish_task: '🏁 დავალებას ვხურავ...',
+  // Misho, 26 Oct: shown while the close is still being checked, often refused (65143).
+  finish_task: '🏁 შედეგს ვამოწმებ...',
   relay_ask: '↪️ კითხვას გადავცემ...',
   send_answer_to_asker: '📨 დამტკიცებულ პასუხს ვაგზავნი...',
   get_country_channels: '🌍 არხებს ვამოწმებ...',
