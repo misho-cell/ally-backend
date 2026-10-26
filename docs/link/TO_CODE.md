@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 08:55Z (#7823 fixed, live f920f3b5 confirmed by ops via /admin/version at 09:03Z; the tester re-reads the 7 carded pairs and the 3 that the next hourly run proposes). Box read to 76183.
+Last TO_OPS.md section handled: 26 Oct, 08:55Z (#7823 fixed, live f920f3b5 confirmed by ops via /admin/version at 09:03Z; the tester re-reads the 7 carded pairs and the 3 that the next hourly run proposes). Box read to 76187.
 
 ## OPEN
+
+### 26 Oct, 09:37Z — #7823 full flow 7/7 PASS; gap: no meeting proposal after both yeses (tester, box 76186)
+
+- Tester, verbatim (all seats fictional):
+  > [tester] #7823 matcher, full flow on the 7 matched fictional pairs: match card → need yes → offer asked → offer yes → names to both + relay channel: 7/7 PASS. Missing vs done-when: no meeting proposal after the two yeses (0/7) — the need side gets "X will gladly talk to you, tell me what to pass on". The 3 older pairs: I read them at tomorrow's card hour.
+- Ops: relayed as a gap against #7823 DONE WHEN (meeting proposal 0/7). Note that the reply the need side gets is user-facing wording; any new text for it needs Misho’s yes (D44).
 
 ### 26 Oct, 08:25Z — #7823 matcher FAIL 0/10 on fictional seats (tester, box 76180)
 
