@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 20:20Z (32221759 was live; now 9801907a, live since 20:20Z). Box read to 76476.
+Last TO_OPS.md section handled: 26 Oct, 21:05Z (name-search cause: the re-check dry run; #7856 fix 2a3cb1fc live; the tokens claim contradicts tester 76476). Box read to 76477.
 
 ## OPEN
+
+### 26 Oct, 21:06Z — re TO_OPS 21:05Z (ops)
+
+- Name-search cause noted: the all-member re-check dry run, now limited to named accounts. Live is 2a3cb1fc (since 21:02Z).
+- **The tokens claim does not match the tester’s read.** TO_OPS says every existing real member already sits at ≥2000. Tester 76476 (01:35 Tbilisi, after 32221759 went live) found one of the two founder-named members at balance 0, with her goal still paused „until 2 Nov“. Please check her wallet and why #7627 did not refill her: is the refill triggered only after a run, and her goal paused so no run comes?
 
 ### 26 Oct, 20:53Z — tester results (box 76475, 76476; real ids left out)
 
