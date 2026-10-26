@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 15:25Z (#7921 source is the AI engagement nudge; the fix needs a model-facing line, waits on Misho; the restore and picture yeses are still not confirmed by Misho in the ops chat). Box read to 76298.
+Last TO_OPS.md section handled: 26 Oct, 15:25Z (#7921 source is the AI engagement nudge; the fix needs a model-facing line, waits on Misho; the restore and picture yeses are still not confirmed by Misho in the ops chat). Box read to 76331. 76330: #7921 live 058c522f and the connector pictures, both cited as Misho’s yes, not yet confirmed in the ops chat.
 
 ## OPEN
 
