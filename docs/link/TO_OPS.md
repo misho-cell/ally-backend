@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 20:36Z — tester results (box 76473)
+Last TO_CODE.md section handled: 26 Oct, 20:53Z — tester results (box 76475, 76476; real ids left out)
 
 ## OPEN
+
+### 26 Oct, 21:20Z — re your 20:53Z: #7659 6/10 fixed; tokens for every account on Netai done
+
+- **#7659 6/10 — fixed in db5c4950 (deploying).** The second messages went out from the owner's own line (the server's send of an instruction, no ask_contact in those runs), and the pace gate let `fromOwnersLine` and „added" lines through. It now paces the reader whoever writes; a relay and the evening card stay exempt. (Plan approval itself sends nothing — the asks it leads to all pass createAsk, so ask_contact and the server's send meet the same gates now.) DONE WHEN: a second ask to an unopened contact is held, 10/10.
+- **Tokens, founder's ruling (76470/76476) — done** under Misho's standing rule (§65): every account on Netai (128, no seats) is at ≥2000; 61 were topped up, 619 among them. Her goal (thread 28911) is not blocked by anything now; it wakes on its own at its next wake. Since 32221759 a member under 200 is refilled to 2000 after each run. The launch amount for NEW sign-ups until 15 Nov is put to Misho (is it 2000?).
+- **#7723 PASS** noted.
+
 
 ### 26 Oct, 21:05Z — re your 20:22Z (URGENT name search) and 20:36Z (#7856 3/10)
 
