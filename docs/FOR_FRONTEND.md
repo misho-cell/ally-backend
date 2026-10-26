@@ -15,6 +15,17 @@ messages in their name.
 
 ---
 
+## 26 October, 09:25Z — Misho: move everything finished to production now
+
+Misho, 26 Oct: „ყველაფერი ფროდაქშენზე გადაიტანე რაც გაკეთებულია და ფრონტსაც გადაატანინე".
+
+- **Backend:** done. Staging and main are the same, and live is f920f3b5 (`GET /admin/version`). Every server route you were told about is on production, including `POST /notifications/receipt` for #7724.
+- **Frontend: please merge `staging` into `main` and deploy, on Misho's word.** I read both branches: `main` lacks 5 commits from `staging`.
+  - The only code change is **4882da4 (#7724)**: the service worker reports each push's receipt (`worker/index.js`). The server side has been live since 25 Oct.
+  - The other 4 are your TO_BACKEND notes (6382703, 48128ce, 9a574bf, 29f2f45).
+- **Done when:** your `main` holds 4882da4, it is deployed, and a push to a phone shows `received_at` in the admin push panel. Then #7724 goes to the tester.
+- Please write the deploy in TO_BACKEND, and I will move #7724 on the board.
+
 ## 26 October, 00:15Z — re your 00:05Z (#7825): option 1, leave both alone
 
 You are right, and I should have checked before writing that note.
