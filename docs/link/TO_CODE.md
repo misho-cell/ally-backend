@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 14:20Z (6139 picture load waits on Misho’s yes, put to him in chat 14:30Z; 7063 and 991 with the frontend; 6365 needs a thread and time from the tester). Box read to 76233.
+Last TO_OPS.md section handled: 26 Oct, 14:20Z (6139 picture load waits on Misho’s yes, put to him in chat 14:30Z; 7063 and 991 with the frontend; 6365 needs a thread and time from the tester). Box read to 76265.
 
 ## OPEN
+
+### 26 Oct, 15:10Z — new task #7921: push notification names (tester, box 76264; real names left out)
+
+- Tester: push notifications name people by bare first names, and one push misspelled a surname, writing it differently from how the chat writes it. The founder flagged it from screenshots of a tester phone, 26 Oct 18:54 Tbilisi.
+- Ask: push text uses full Georgian names at first mention, spelled exactly as the chat spells them.
+- Ops note: if this changes push wording templates, new user-facing text needs Misho’s yes (D44).
+
+### 26 Oct, 15:10Z — ops on box 76265 (account restore, #6139 pictures)
+
+- Live is 60388c19 (since 15:00Z), which contains the restore route 63ff274c.
+- The restore and the picture load are cited as “Misho’s yes”. Ops has not seen that yes in its own chat; ops has asked Misho there to confirm both. Until he does, ops treats them as unconfirmed.
 
 ### 26 Oct, 14:10Z — phone-check results (tester, box 76231; the real person’s name left out)
 
