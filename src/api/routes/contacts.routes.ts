@@ -8,6 +8,12 @@ import {
 import { requireSubscription } from '../middleware/subscription.middleware';
 import { importContacts, parseVcf } from '../../services/contacts.service';
 import {
+  CARD_MEDIA_TYPES,
+  CardMediaType,
+  MAX_CARD_BASE64_CHARS,
+  readBusinessCard,
+} from '../../services/businessCard.service';
+import {
   contactImportState,
   setContactImportReminder,
 } from '../../services/contactImportState.service';
@@ -124,6 +130,49 @@ contactsRouter.post(
     } catch (error) {
       const message = error instanceof Error ? error.message : 'კონტაქტების იმპორტი ვერ მოხერხდა';
       res.status(400).json({ success: false, error: message });
+    }
+  },
+);
+
+const CARD_READS_PER_MINUTE = 10;
+const cardReadLimit = rateLimit({ windowMs: 60_000, max: CARD_READS_PER_MINUTE });
+
+/**
+ * #374 way 3: a business card photo read into one contact, not saved — the app
+ * shows it for a check and saves it with POST /contacts/import.
+ *   POST /contacts/card-read { image: base64, media_type: image/jpeg|png|webp }
+ *   200 { name, phones[], email?, employer?, jobPosition?, city? } · 400 bad image
+ *   422 no name or number on the card · 500 the read failed
+ */
+contactsRouter.post(
+  '/card-read',
+  cardReadLimit,
+  body('image').isString().isLength({ min: 1, max: MAX_CARD_BASE64_CHARS }),
+  body('media_type').isIn([...CARD_MEDIA_TYPES]),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'Send image (base64, up to about 5 MB) and media_type (image/jpeg, png or webp).',
+      });
+      return;
+    }
+    try {
+      const { image, media_type: mediaType } = req.body as {
+        image: string;
+        media_type: CardMediaType;
+      };
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const contact = await readBusinessCard(image, mediaType, userId);
+      if (contact === null) {
+        res.status(422).json({ success: false, error: 'ბარათზე სახელი ან ნომერი ვერ ამოვიკითხე.' });
+        return;
+      }
+      res.status(200).json({ success: true, data: contact });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[card-read]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'ბარათი ვერ წავიკითხე — სცადე ხელახლა.' });
     }
   },
 );

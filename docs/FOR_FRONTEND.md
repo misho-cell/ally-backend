@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 26 October, 20:40Z — #374 (Misho's yes): a business card photo becomes a contact
+
+For way 3 of #374 („add a person inside Netai: type, QR, or a photo of their card"). Server only reads; the app saves.
+
+- `POST /contacts/card-read` (signed in) `{ "image": "<base64, no data: prefix>", "media_type": "image/jpeg" | "image/png" | "image/webp" }` — resize on the phone first (≈1600 px long side is plenty; up to ~5 MB accepted).
+- `200 { success: true, data: { "name": "Nino Beridze", "phones": ["+995 555 00 00 00"], "employer": "Instinct", "jobPosition": "CEO", "email": "…", "city": "…" } }` (optional fields only when printed) · `400` bad body · `422` no name or number on the card (text is Georgian, show it) · `429` more than 10 reads a minute · `500` the read failed.
+- Nothing is saved by this. Show the fields for a check/edit, then save with the existing `POST /contacts/import { contacts: [ { name, phones, employer?, jobPosition?, city?, email? } ] }` — the same door as typing a person in, so they are findable at once.
+- Ways 2 (Android share target) and 4 (the „save to phone" .vcf card) stay app work, as in your 22 Oct plan.
+
 ## 26 October, 19:55Z — #7591 war room step 5: the worker writes the draft
 
 Server only; one small addition on the /admin/war-room page if you want it.
