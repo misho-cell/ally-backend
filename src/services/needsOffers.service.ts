@@ -19,8 +19,17 @@ const QUERY_TIMEOUT_MS = 10_000;
 /** Goals and offers read per night; the matcher catches up over nights, never in one sweep. */
 const GOALS_READ = 2_000;
 const OFFERS_READ = 1_000;
-/** New proposals a night, so a first night with many offers cannot flood the cards. */
+/** New proposals a run, so a first run with many offers cannot flood the cards. */
 const MAX_PROPOSALS_PER_NIGHT = 200;
+/**
+ * #7823 (tester 76180, 0/10 on 26 Oct): the 200 above used to bound the
+ * CANDIDATES, not the proposals. Ten offers in one field against every goal
+ * naming it made 1,024 sure pairs; the first 200 were spent on pairs that
+ * cannot reach each other, and the goals behind them were never checked. This
+ * bounds the reach checks of one run; already-proposed pairs are not counted.
+ */
+const MAX_CANDIDATES_PER_RUN = 5_000;
+const MATCHED_READ = 50_000;
 const DECLINED_PAIR_QUIET_DAYS = 90;
 
 export interface OpenGoal {
@@ -47,16 +56,23 @@ export function isSureMatch(goal: OpenGoal, offer: ActiveOffer): boolean {
   return fieldFits(goal.title, field) && placeFits(goal.title, field);
 }
 
-/** Every sure (goal, offer) pair, in goal order, at most `limit`. */
+/** The key a (goal, offer) pair is known by in `matches`. */
+export function pairKey(goalId: number, offerId: number): string {
+  return `${goalId}:${offerId}`;
+}
+
+/** Every sure (goal, offer) pair not already proposed, in goal order, at most `limit`. */
 export function surePairs(
   goals: readonly OpenGoal[],
   offers: readonly ActiveOffer[],
-  limit: number = MAX_PROPOSALS_PER_NIGHT,
+  limit: number = MAX_CANDIDATES_PER_RUN,
+  alreadyProposed: ReadonlySet<string> = new Set(),
 ): Array<{ readonly goal: OpenGoal; readonly offer: ActiveOffer }> {
   const pairs: Array<{ readonly goal: OpenGoal; readonly offer: ActiveOffer }> = [];
   for (const goal of goals) {
     for (const offer of offers) {
       if (pairs.length >= limit) return pairs;
+      if (alreadyProposed.has(pairKey(goal.id, offer.id))) continue;
       if (isSureMatch(goal, offer)) pairs.push({ goal, offer });
     }
   }
@@ -87,6 +103,17 @@ async function activeOffers(scope: MemberScope): Promise<ActiveOffer[]> {
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
+}
+
+/** The pairs these goals already have in `matches`, whatever their state. */
+async function proposedPairs(goalIds: readonly number[]): Promise<ReadonlySet<string>> {
+  if (goalIds.length === 0) return new Set();
+  const result = await query<{ need_goal_id: number; offer_id: number }>(
+    `SELECT need_goal_id, offer_id FROM matches WHERE need_goal_id = ANY($1::int[]) LIMIT $2`,
+    [[...goalIds], MATCHED_READ],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((r) => pairKey(r.need_goal_id, r.offer_id)));
 }
 
 /**
@@ -144,10 +171,17 @@ async function proposeIfReachable(
 export async function proposeMatches(scope: MemberScope = null): Promise<number> {
   const offers = await activeOffers(scope);
   if (offers.length === 0) return 0;
-  const pairs = surePairs(await openGoals(scope), offers);
+  const goals = await openGoals(scope);
   const community = await communityMemberIds();
+  const pairs = surePairs(
+    goals,
+    offers,
+    MAX_CANDIDATES_PER_RUN,
+    await proposedPairs(goals.map((g) => g.id)),
+  );
   let proposed = 0;
   for (const { goal, offer } of pairs) {
+    if (proposed >= MAX_PROPOSALS_PER_NIGHT) break;
     const sameCommunity = community.has(goal.user_id) && community.has(offer.user_id);
     try {
       if (await proposeIfReachable(goal, offer, sameCommunity)) proposed += 1;
