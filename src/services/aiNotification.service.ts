@@ -6,6 +6,7 @@ import { getPrivateContext } from './userPrivateContext.service';
 import { sendPushNotification } from './notification.service';
 import { scrubMechanicalForStorage } from './privacyScrub';
 import anthropic from '../config/anthropic';
+import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
 
 /** #1816: where a tap on the engagement push lands — the owner's conversation. */
 export const AI_NOTIFICATION_PUSH_URL = '/chat';
@@ -13,6 +14,9 @@ export const AI_NOTIFICATION_PUSH_URL = '/chat';
 const NOTIFICATION_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_RECENT_MESSAGES = 12;
 const MAX_TOP_CONTACTS = 10;
+/** #7921: the people the owner is waiting on, as many as a short push can mention. */
+const MAX_WAITING_ON = 8;
+const WAITING_ON_DAYS = 14;
 
 // Nudge fatigue: ignoring this many notifications in a row pauses nudges.
 const NUDGE_IGNORE_PAUSE_THRESHOLD = 3;
@@ -36,10 +40,12 @@ interface UserContext {
   recentMessages: string[];
   topContacts: ContactEntry[];
   pendingMediatorRequests: number;
+  /** #7921: who the owner's open asks went to, named as the chat names them. */
+  waitingOn: string[];
 }
 
 async function gatherUserContext(userId: string): Promise<UserContext> {
-  const [profile, privateContext, messagesResult, contactsResult, requestsResult] =
+  const [profile, privateContext, messagesResult, contactsResult, requestsResult, waitingOn] =
     await Promise.all([
       getUserProfile(userId),
       getPrivateContext(userId),
@@ -63,6 +69,7 @@ async function gatherUserContext(userId: string): Promise<UserContext> {
          WHERE mediator_user_id = $1 AND status = 'pending'`,
         [userId],
       ),
+      namesWaitedOn(userId),
     ]);
 
   return {
@@ -71,7 +78,26 @@ async function gatherUserContext(userId: string): Promise<UserContext> {
     recentMessages: messagesResult.rows.map((r) => r.content),
     topContacts: contactsResult.rows,
     pendingMediatorRequests: Number(requestsResult.rows[0]?.count ?? 0),
+    waitingOn,
   };
+}
+
+/**
+ * #7921 (founder, 26 Oct): a nudge read „ტიკოსა და ერეკლეს პასუხი ელოდება" and
+ * misspelled a surname the chat spells right — this model was never given the
+ * names, so it shortened them from the owner's own messages. It gets them now,
+ * spelled exactly as the chat spells them (the owner's saved name).
+ */
+async function namesWaitedOn(userId: string): Promise<string[]> {
+  const result = await query<{ name: string | null }>(
+    `SELECT DISTINCT ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name
+       FROM task_asks ta
+      WHERE ta.from_user_id = $1::int AND ta.status = 'sent'
+        AND ta.created_at > NOW() - make_interval(days => $2)
+      LIMIT $3`,
+    [userId, WAITING_ON_DAYS, MAX_WAITING_ON],
+  );
+  return result.rows.map((r) => r.name?.trim() ?? '').filter((n) => n !== '');
 }
 
 function formatContext(ctx: UserContext): string {
@@ -106,6 +132,10 @@ function formatContext(ctx: UserContext): string {
     );
   }
 
+  if (ctx.waitingOn.length > 0) {
+    parts.push('## ვისაც ახლა პასუხს ელოდება\n' + ctx.waitingOn.join('\n'));
+  }
+
   if (ctx.pendingMediatorRequests > 0) {
     parts.push(`## გაუხსნელი გაცნობის მოთხოვნები: ${ctx.pendingMediatorRequests}`);
   }
@@ -132,6 +162,7 @@ async function generateNotificationContent(
 - თუ კონტენტი მწირია — მაინც პირადი და ინტრიგული ტექსტი დაწერე, რომ მოინდომოს შემოსვლა
 - არასოდეს გენერიკულ ტექსტს ("შეამოწმე აპი", "ახალი შეტყობინება")
 - ქართულად
+- ადამიანი დაასახელე მხოლოდ ისე, როგორც „ვისაც ახლა პასუხს ელოდება" სიაშია — პირველად სრული სახელით და გვარით; არ შეამოკლო და არ შეცვალო მართლწერა; სიაში თუ არაა, სახელს ნუ ახსენებ
 
 გამოიტანე მხოლოდ JSON: {"title": "...", "body": "..."}`,
     messages: [
