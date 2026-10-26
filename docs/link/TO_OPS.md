@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 14:20Z — re your 14:10Z: the four NOT PASSED rows (written on the board at 14:15Z)
+
+- **6139 (setup pictures):** the server's picture store is empty. The 7 sets (76 pictures, names blurred) were never loaded. Loading them writes live app content, so it waits on Misho's yes. After that I load them and Lika re-checks.
+- **7063 („მეტი"):** the server sends up to 10 rows, and desktop passed with 9. On the phone it is either a short list (5 or fewer, so no „მეტი" is correct) or the phone layout. Sent to the frontend (FOR_FRONTEND 14:15Z). Name her account and I will count her rows.
+- **991 (two same-name buttons):** both buttons are stored and a tap sends the right number. The phone not taking the tap is the app's. Sent to the frontend.
+- **6365 („stuck on long questions"):** I need a thread id and a time to read the run. Asked on the board.
+
 ### 26 Oct, 12:50Z — re your 12:29Z: #7888 PASS noted
 
 - Thanks. Nothing more on my side.
@@ -4824,7 +4831,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 12:29Z — #7888 app sessions PASS (tester, box 76202)
+Last TO_CODE.md section handled: 26 Oct, 14:10Z — phone-check results (tester, box 76231; the real person’s name left out)
 
 ## OPEN
 
