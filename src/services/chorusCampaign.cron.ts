@@ -7,6 +7,7 @@ import { walkBaseOnce } from './basePool.service';
 import { runResearchOnce } from './researchRunner.service';
 import { prunePushDeliveries } from './notification.service';
 import { queueWarmTieQuestions } from './warmth.service';
+import { DEFAULT_PUSH_TIME_ZONE, isQuietHour } from './pushQuietHours';
 
 // Ticket 6, engine T8 ("Chorus"): "fully automatic, no manual mode" — every
 // step below runs off a timer, the same shape as taskEngine.service's own
@@ -153,6 +154,9 @@ export function startChorusCampaignCron(): void {
   setInterval(openCampaignsOnce, OPEN_CAMPAIGNS_INTERVAL_MS).unref();
 
   setInterval(() => {
+    // #7234 (Misho's yes, 26 Oct): invite asks wait out the quiet hours too,
+    // 23:00–09:30 Tbilisi; they stay due and go on the first tick after.
+    if (isQuietHour(new Date(), DEFAULT_PUSH_TIME_ZONE)) return;
     void sendDueCampaignAsks(SEND_ASKS_BATCH_LIMIT)
       .then((sent) => {
         // eslint-disable-next-line no-console

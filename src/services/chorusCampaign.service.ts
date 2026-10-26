@@ -599,9 +599,9 @@ const CAMPAIGN_ASK_MESSAGE = (label: string, how: number, returning: boolean): s
 
 /** Sends every due (state='pending', scheduled_ask_at elapsed) campaign ask — a cron tick's own worklist. */
 export async function sendDueCampaignAsks(limit: number): Promise<number> {
-  // A campaign ask lands in the app at any hour; its push waits for 09:30 on
-  // the device's own clock (G-002, push quiet hours). It used to wait whole
-  // for 08:00 Tbilisi (D472), which Misho retired on 2 October.
+  // The cron does not send between 23:00 and 09:30 Tbilisi (#7234, Misho's
+  // yes of 26 Oct); its push also waits for 09:30 on the device's own clock
+  // (G-002). D472's 08:00 wait was retired on 2 October.
   const due = await query<{
     id: number;
     campaign_id: number;
