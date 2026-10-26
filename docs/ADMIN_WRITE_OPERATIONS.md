@@ -6374,3 +6374,16 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Guards:** one card is sent once (a second approval gets 409); no text and no draft → 400; a failed send frees the card for another try; the log line names admin, card and message id, never the words.
 - **Undo:** a sent message cannot be unsent; a correction is a new card or a new #7360 message.
 
+
+## 59 · TOKEN FLOOR 2000 FOR EVERY REAL MEMBER ACTIVE SINCE 21 OCT (#7756 / #7627, 26 Oct ~19:10Z)
+
+- **Who authorises:** the founder's ask on #7756 („top up Nuka, Khatuna and George now; every real member from 21 Oct gets at least 2000"), done directly under Misho's standing rule of 26 Oct (ROUTINES hourly rule 5).
+- **Who:** not deleted, not a test seat, typed at least one message in Netai since 21 Oct, balance under 2000. 48 people at the time of the read; 53 such members in all. George (598) and Nuka (190054) are among them. Khatuna has no account that typed since 21 Oct, so nothing is written for her.
+- **What:** per person `POST /admin/users/:id/tokens { "tokens": 2000 - balance, "note": "#7756 floor 2000 (founder) — 26 Oct" }`. Nobody is lowered; nobody ends above 2000 by this call.
+- **Undo:** the same call negated per person, `{ "tokens": -<amount>, "note": "undo #7756 floor" }`; amounts are in `GET /admin/users/:id/tokens` history under that note.
+
+## 60 · #7827: OPEN ASKS ON PEOPLE WHO NEVER CAME TO NETAI WITHDRAWN (26 Oct ~19:15Z)
+
+- **Who authorises:** the founder's Pr1 row #7827, done directly under Misho's standing rule of 26 Oct (ROUTINES hourly rule 5).
+- **What:** `POST /admin/asks/withdraw-non-members {"dry_run": false}` after a dry run (129 open asks on 80 people, 94 goals). Each ask goes `sent` → `cancelled`; nothing is said to anyone; each goal's next wake sees no open ask there.
+- **Undo:** `UPDATE task_asks SET status = 'sent' WHERE status = 'cancelled' AND id = ANY('{18389,13795,13762,13995,14554,24886,6635,6602,6701,14660,14853,27028,25147,8152,11094,1915,2050,2246,13169,22870,6272,6304,20230,6471,6636,6667,5710,1850,1981,1983,2048,6702,2180,2181,2245,23433,2510,23828,18712,19572,19571,13401,13399,19570,21882,15588,13400,19577,17524,21717,19042,26741,6370,19573,19576,19639,21420,21419,21418,21421,23434,8815,21617,21616,21618,9010,19277,19405,21718,7265,21716,9115,23860,23827,21880,22837,22939,23829,23795,23796,25715,23432,22941,22938,22904,22903,22940,22936,22937,25218,25213,25214,19275,24687,25217,25215,25216,14983,23596,23466,15643,19339,19638,26370,26368,26369,14663,14662,25280,14852,24688,24817,24819,24818,15086,27193,25712,25716,27820,25713,25717,25714,25718,25719,25842,26434,26436,26435,27787}'::int[])`.

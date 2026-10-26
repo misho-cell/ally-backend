@@ -1,5 +1,6 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
 import { RestoreOutcome, restoreDeletedAccount } from '../../services/accountRestore.service';
+import { MAX_LABEL_ROWS, removeImportedLabels } from '../../services/labelRemoval.service';
 import {
   AppSessionStats,
   MAX_USERS_PER_READ,
@@ -1640,6 +1641,45 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin restore]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// #7761: an imported label the owner never saved, removed by row id.
+//   POST /admin/users/:id/labels/remove { alias_ids: [..], tag_ids: [..], confirm: true }
+// 200 { aliases_removed, tags_removed } · 400 bad body. Only rows saved by :id are touched.
+function labelIds(value: unknown): number[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_LABEL_ROWS) return null;
+  return value.every((v) => Number.isInteger(v) && Number(v) > 0) ? value.map(Number) : null;
+}
+
+adminRouter.post(
+  '/users/:id/labels/remove',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const aliasIds = labelIds(body.alias_ids);
+    const tagIds = labelIds(body.tag_ids);
+    if (!validationResult(req).isEmpty() || body.confirm !== true || !aliasIds || !tagIds) {
+      res.status(400).json({
+        success: false,
+        error: `Pass alias_ids and/or tag_ids (up to ${MAX_LABEL_ROWS} positive ids each) and { confirm: true }.`,
+      });
+      return;
+    }
+    try {
+      const ownerId = Number(req.params.id);
+      const removed = await removeImportedLabels(ownerId, aliasIds, tagIds);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[admin labels] owner ${ownerId}: ${removed.aliases_removed} alias, ${removed.tags_removed} tag rows removed`,
+      );
+      res.status(200).json({ success: true, data: removed });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin labels]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
