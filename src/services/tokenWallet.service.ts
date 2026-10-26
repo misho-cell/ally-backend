@@ -1,3 +1,4 @@
+import { refillBelowFloor } from './tokenFloor.service';
 import { query, withTransaction } from '../db/postgres/client';
 import { TRIAL_GRANT_PRICE_KEY } from './trialGrant.service';
 import { getPrice } from './costLedger.service';
@@ -406,7 +407,18 @@ export async function debitRun(userId: string, runId: string): Promise<RunDebit>
   const tokens = Math.ceil((costUsd * (1 + overheadPct / PERCENT)) / usdPerToken);
   if (tokens <= 0) return NOTHING_DEBITED;
 
-  return settleRunAgainstTheBalance(userId, runId, tokens);
+  const debit = await settleRunAgainstTheBalance(userId, runId, tokens);
+  // #7627: a real member's goal never stops for tokens — under the floor, the wallet is filled.
+  await refillBelowFloor(userId)
+    .then((added) => {
+      // eslint-disable-next-line no-console
+      if (added > 0) console.log(`[wallet] ${userId}: filled back to the floor (+${added})`);
+    })
+    .catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(`[wallet] ${userId}: floor refill failed:`, (err as Error).message);
+    });
+  return debit;
 }
 
 /**
