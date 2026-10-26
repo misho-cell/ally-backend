@@ -84,6 +84,33 @@ export async function queueResearchOnActivation(
   return (result.rowCount ?? 0) > 0;
 }
 
+/** A bound on one backfill: far above the 13 found on 26 Oct. */
+const MAX_BACKFILL = 500;
+
+/**
+ * #7426 (Misho's yes again, 26 Oct): 13 members who wrote since 21 Oct were
+ * never queued — their last message came before the activation queue went on.
+ * Every real member who has typed in Netai and was never researched is queued
+ * once; a dry run only counts them.
+ */
+export async function queueNeverResearchedMembers(dryRun: boolean): Promise<number> {
+  const never = `SELECT u.id FROM "User" u
+     WHERE u."deletedAt" IS NULL
+       AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
+       AND NOT EXISTS (SELECT 1 FROM registration_research r WHERE r.user_id = u.id)
+       AND EXISTS (SELECT 1 FROM conversations c
+                    WHERE c.user_id = u.id AND c.role = 'user' AND c.kind = 'message')
+     LIMIT $1`;
+  const result = dryRun
+    ? await query(never, [MAX_BACKFILL], QUERY_TIMEOUT_MS)
+    : await query(
+        `INSERT INTO registration_research (user_id) ${never} ON CONFLICT (user_id) DO NOTHING`,
+        [MAX_BACKFILL],
+        QUERY_TIMEOUT_MS,
+      );
+  return result.rowCount ?? 0;
+}
+
 interface Claimed {
   readonly userId: number;
   readonly name: string;
