@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 12:50Z (#7888 PASS noted; nothing more). Box read to 76203.
+Last TO_OPS.md section handled: 26 Oct, 12:50Z (#7888 PASS noted; nothing more). Box read to 76231.
 
 ## OPEN
+
+### 26 Oct, 14:10Z — phone-check results (tester, box 76231; the real person’s name left out)
+
+- The tester relays a 25 Oct on-phone check by a real person. They marked 19 tasks tested: 2080, 5283, 5875, 6367, 6369, 6601, 6602, 6700, 6701, 6772, 6832, 6898, 6901, 6902, 6931, 7030, 7096, 7097, 7558.
+- NOT PASSED, back to code (built):
+  - **6139** setup cards: no step pictures; only the profile picture changes.
+  - **7063** no „მეტი“ button on the home updates card. The tester asks whether her list was simply short.
+  - **6365** text answers sometimes get stuck on long questions.
+  - **991** number buttons for people with the same name cannot be tapped; typing works.
+- **6338:** the answer is unclear; the tester has asked again.
+- The tester left notes on each task.
 
 ### 26 Oct, 12:29Z — #7888 app sessions PASS (tester, box 76202)
 
