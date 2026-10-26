@@ -25,4 +25,11 @@ describe('a newcomer registered with a partial name', () => {
   it('gets nothing when no saver wrote a clean full name', () => {
     expect(mostCommonFullForm(['Gio', 'Giorgi B.', 'Kakha Beridze'], 'Giorgi')).toBeNull();
   });
+
+  it('reads a short form of the registered name as the same name (matsi → Matsatso)', () => {
+    expect(mostCommonFullForm(['Matsatso Papava', 'Papava'], 'matsi papava')).toBe(
+      'Matsatso Papava',
+    );
+    expect(mostCommonFullForm(['Mariam Papava'], 'matsi papava')).toBeNull();
+  });
 });
