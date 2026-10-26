@@ -1,7 +1,7 @@
 import { PoolClient } from 'pg';
 import { withTransaction } from '../../db/postgres/client';
 import { readPhonebooks, readRoster } from '../axelExport/axelData';
-import { exportPhoneHash } from '../axelExport/exportHash';
+import { exportPhoneHashesUnderAnySecret } from '../axelExport/exportHash';
 import { normalizePhone } from '../phone';
 import { basePlan, ResearchFact } from './axelBasePlan';
 
@@ -45,8 +45,9 @@ export async function numbersByHash(): Promise<Map<string, string>> {
   const phonebooks = await readPhonebooks(ids);
   const out = new Map<string, string>();
   for (const raw of [...roster.map((m) => m.phone), ...phonebooks.map((r) => r.contact_digits)]) {
-    const hash = exportPhoneHash(raw);
-    if (hash !== '' && !out.has(hash)) out.set(hash, normalizePhone(raw));
+    for (const hash of exportPhoneHashesUnderAnySecret(raw)) {
+      if (!out.has(hash)) out.set(hash, normalizePhone(raw));
+    }
   }
   return out;
 }

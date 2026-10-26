@@ -16,22 +16,46 @@ import { phoneDigits } from '../phone';
 const HASH_LABEL = 'netai-export-phone-hash-v1|';
 const HASH_HEX_CHARS = 24;
 
-function exportKey(): Buffer {
-  const secret = process.env.MCP_REF_SECRET ?? process.env.JWT_SECRET;
-  if (!secret) throw new Error('MCP_REF_SECRET or JWT_SECRET must be set for the export hash');
+/**
+ * #7525: the packages already handed out were hashed under whichever secret
+ * the server held that day. When MCP_REF_SECRET changed after 21 Oct, every
+ * package hash stopped matching (0 of 109 roster numbers, 26 Oct). Reading a
+ * package back therefore tries each secret the server may have hashed under;
+ * EXPORT_HASH_PREVIOUS_SECRET holds a retired one when neither current
+ * secret is it.
+ */
+const PAST_SECRET_VARS = ['MCP_REF_SECRET', 'JWT_SECRET', 'EXPORT_HASH_PREVIOUS_SECRET'] as const;
+
+function keyOf(secret: string): Buffer {
   return crypto
     .createHash('sha256')
     .update(HASH_LABEL + secret)
     .digest();
 }
 
+function exportKey(): Buffer {
+  const secret = process.env.MCP_REF_SECRET ?? process.env.JWT_SECRET;
+  if (!secret) throw new Error('MCP_REF_SECRET or JWT_SECRET must be set for the export hash');
+  return keyOf(secret);
+}
+
+function hashDigits(key: Buffer, digits: string): string {
+  return crypto.createHmac('sha256', key).update(digits).digest('hex').slice(0, HASH_HEX_CHARS);
+}
+
 /** '' for no number; otherwise the same 24 hex characters for the same digits, always. */
 export function exportPhoneHash(raw: string | null | undefined): string {
   const digits = phoneDigits(raw);
   if (digits === '') return '';
-  return crypto
-    .createHmac('sha256', exportKey())
-    .update(digits)
-    .digest('hex')
-    .slice(0, HASH_HEX_CHARS);
+  return hashDigits(exportKey(), digits);
+}
+
+/** The number's hash under every secret a handed-out package may carry; [] for no number. */
+export function exportPhoneHashesUnderAnySecret(raw: string | null | undefined): string[] {
+  const digits = phoneDigits(raw);
+  if (digits === '') return [];
+  const secrets = new Set(
+    PAST_SECRET_VARS.map((v) => process.env[v] ?? '').filter((s) => s !== ''),
+  );
+  return [...secrets].map((s) => hashDigits(keyOf(s), digits));
 }

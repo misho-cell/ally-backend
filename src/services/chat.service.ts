@@ -4153,11 +4153,11 @@ const SEARCH_ROSTER_TOOL: AnthropicTool = {
 };
 
 /**
- * D847 — the company base's search (TECH_TASK_COMPANY_BASE §6). OFF until the
- * base is loaded on live and the tool is tried there; the prompt line that
- * tells the model when to reach for it is the prompt chat's (TECH_TASK §8).
+ * D847 — the company base's search (TECH_TASK_COMPANY_BASE §6). ON from 26 Oct:
+ * the base is loaded on live (ADMIN_WRITE_OPERATIONS §67, #7525 part 1); the
+ * prompt line that tells the model when to reach for it is the prompt chat's.
  */
-export const COMPANY_SEARCH_TOOL_ON = false;
+export const COMPANY_SEARCH_TOOL_ON = true;
 
 const FIND_COMPANIES_FOR_NEED_TOOL: AnthropicTool = {
   name: 'find_companies_for_need',
