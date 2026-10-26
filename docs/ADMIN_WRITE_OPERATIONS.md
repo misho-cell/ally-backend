@@ -6425,3 +6425,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Why:** the deletion outside Netai (20 Oct 14:25Z) rewrote 118509's number as „<number>_DELETED_<n>"; sign-in matches digits only, so his number opened 190086, an empty account the old Ally app created four minutes later (485 contacts, no thread, never typed).
 - **What:** `POST /admin/users/118509/restore-phone {"dry_run": false}` after a dry run, in one transaction: 190086's number → „<number>_MERGED_118509", 190086 soft-deleted; 118509's number → the bare number. 190286 (a different number, 3 contacts, used today) is left as it is.
 - **Undo:** 118509's number back to „<number>_DELETED_<n>" (the suffix is in this run's log line), 190086's number back to the bare number and its deletedAt cleared.
+
+## 67 · #7525 PART 1: THE COMPANY BASE LOADED LIVE (founder's word 25 Oct „load it now"; 26 Oct ~23:10Z)
+
+- **Who authorises:** the founder's word on #7525 (25 Oct 20:04 Tbilisi), done under Misho's standing rule of 26 Oct (the load had waited on his word).
+- **What:** `POST /admin/company-base/load` per part, in order, chunked (≤1.5M characters, header repeated, split by CSV records), after a dry run: industries (46), companies (9,808), names (33,184), public people (≈9,836 kept), links (7,426, numbers via v7 person_numbers). Upserts by key; no phone numbers in any file.
+- **Undo:** the company tables (migration 259) held nothing before this load: empty them (`TRUNCATE` companies, company_names, company_public_people, company_person_links, company_industries) to return to before.
