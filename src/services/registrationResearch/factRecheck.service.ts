@@ -1,6 +1,6 @@
 import { query } from '../../db/postgres/client';
 import { nameKey } from '../tools/transliterate';
-import { identityFor } from './identity';
+import { identityWords } from './identity';
 import { FactConfidence } from './plan';
 
 /**
@@ -19,6 +19,42 @@ const RECHECK_NOTE = 'held as possible on re-check (#7727): holds none of the wo
 interface ResearchedUser {
   readonly id: number;
   readonly name: string;
+}
+
+/**
+ * The dry run of 26 Oct 20:15Z held 736 facts on 201 of 203 people: every word of
+ * every label counted, nicknames and city names too. Only a word that at least
+ * two different members put in their labels is identity here — „UGT" on
+ * Giorgi Maisuradze is saved by several people; „ძმა" by one.
+ */
+const MIN_SAVERS_PER_WORD = 2;
+const MAX_LABELS_READ = 200;
+
+async function sharedIdentityWords(user: ResearchedUser): Promise<string[]> {
+  const result = await query<{ saver: number; alias: string }>(
+    `SELECT ua."contactId" AS saver, TRIM(ua.alias) AS alias
+       FROM "UserAlias" ua
+       JOIN "UserPhone" up ON up.phone = ua.phone
+      WHERE up."userId" = $1 AND ua."contactId" <> $1 AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+      LIMIT $2`,
+    [user.id, MAX_LABELS_READ],
+    QUERY_TIMEOUT_MS,
+  );
+  return wordsSavedByMany(result.rows, user.name);
+}
+
+/** Identity words that at least two different savers wrote. */
+export function wordsSavedByMany(
+  labels: readonly { saver: number; alias: string }[],
+  name: string,
+): string[] {
+  const savers = new Map<string, Set<number>>();
+  for (const { saver, alias } of labels) {
+    for (const word of identityWords([alias], name)) {
+      savers.set(word, (savers.get(word) ?? new Set<number>()).add(saver));
+    }
+  }
+  return [...savers].filter(([, who]) => who.size >= MIN_SAVERS_PER_WORD).map(([word]) => word);
 }
 
 interface ConfirmedFact {
@@ -88,10 +124,10 @@ export async function recheckStoredResearch(dryRun: boolean): Promise<RecheckRep
   let withIdentity = 0;
   let held = 0;
   for (const user of users) {
-    const identity = await identityFor(user.id, user.name);
-    if (identity.words.length === 0) continue;
+    const words = await sharedIdentityWords(user);
+    if (words.length === 0) continue;
     withIdentity += 1;
-    const ids = factsWithoutIdentity(await confirmedFactsOf(user.id), identity.words);
+    const ids = factsWithoutIdentity(await confirmedFactsOf(user.id), words);
     held += dryRun ? ids.length : await holdAsPossible(ids);
   }
   return {
