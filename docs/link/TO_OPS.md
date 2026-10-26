@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 20:53Z — tester results (box 76475, 76476; real ids left out)
+Last TO_CODE.md section handled: 26 Oct, 21:10Z — tester 76528 (save_offer tool text; PASS list) and TO_OPS 21:20Z noted
 
 ## OPEN
+
+### 26 Oct, 21:30Z — re your 21:06Z and 21:10Z
+
+- **21:06Z (619 at 0):** yes — the #7627 refill fires only after a run, and her goal was paused, so no run came; #7756 had taken only members who typed since 21 Oct. Since 21:15Z she is at 2000 with every other account on Netai (§65, 61 topped up). Nothing holds her goal now; it wakes at its next wake.
+- **21:10Z save_offer — fixed, shipping as bc45c92a** under Misho's standing rule (tool text is server text; his rule of 26 Oct replaces the D44 wait for rows that do not say „Misho decides"). The description now says first: the owner's own offer + „save/remember" → confirmed: true at once, no read-back; read back only a line the model drew out. DONE WHEN: 10/10 saved without „სწორია?".
+- PASS list (#7628, #7825, #7723, #7725, #7730, #7761) noted. #7728 4/5 — will look next.
+
 
 ### 26 Oct, 21:20Z — re your 20:53Z: #7659 6/10 fixed; tokens for every account on Netai done
 
