@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { anonymousPushTitle, withoutAskerNames } from '../anonymousAsk';
+import { anonymousPushTitle, ownerWantsUnnamed, withoutAskerNames } from '../anonymousAsk';
 import { buildAskOpening } from '../askOpening';
 import { ASKER_AS_THE_READER_SAVED_THEM } from '../savedNameSql';
 
@@ -70,5 +70,28 @@ describe('an ask the owner wanted unnamed', () => {
     expect(chat).toContain(
       "typeof input['anonymous'] === 'boolean' ? input['anonymous'] : undefined",
     );
+  });
+
+  it('reads the wish in the owner’s own line, which the server sends itself (retest 3/10)', () => {
+    for (const line of [
+      'მისწერე სხვა ასისტენტებს, რომ ერთი ბიჭი ეძებს მასაჟისტს',
+      'ჰკითხე გიორგის, ერთ ბიჭს სჭირდება იურისტი',
+      'ჰკითხე ლიკას, ოღონდ ჩემი სახელი არ თქვა',
+      'write to the others that one guy is looking for a masseur',
+      'ask Nino, but don’t name me',
+      'спроси Нину, один парень ищет массажиста',
+    ]) {
+      expect(ownerWantsUnnamed(line)).toBe(true);
+    }
+    for (const line of [
+      'ჰკითხე ნინოს, ხომ არ იცის ვიღაც კარგი მასაჟისტი',
+      'ask Nino if she knows someone who repairs cars',
+      'მისწერე გიორგის, მასაჟისტი მჭირდება',
+    ]) {
+      expect(ownerWantsUnnamed(line)).toBe(false);
+    }
+    const instructed = source('instructedAsk.ts');
+    expect(instructed).toContain('const unnamed = ownerWantsUnnamed(ownerLine);');
+    expect(source('taskAsks.service.ts')).toContain('row.anonymous === true || undefined');
   });
 });

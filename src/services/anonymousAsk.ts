@@ -101,3 +101,29 @@ export function withoutAskerNames(
   const twice = new RegExp(`${escaped(someone)}(\\s+${escaped(someone)})+`, 'gu');
   return text.replace(twice, someone);
 }
+
+/**
+ * #7856 retest (tester 76473, 3/10): the owner's own line „write to the other
+ * assistants that one guy is looking for a masseur" is sent by the server
+ * (instructedAsk), not by ask_contact, so no flag was ever set. The line
+ * itself says it: an unnamed somebody is the one who needs it, or the owner
+ * says not to name them. „Do you know someone who…" is a question, not that.
+ */
+const UNNAMED_SUBJECT_RE = new RegExp(
+  [
+    // ka: „ერთ ბიჭს სჭირდება", „ერთი კაცი ეძებს", „ვიღაცას უნდა"
+    '(?:ერთ(?:ი|მა)?\\s+(?:ბიჭ|კაც|ადამიან|ქალ|გოგო|ნაცნობ|მეგობარ)\\S*|ვიღაც\\S*)\\s+(?:\\S+\\s+){0,2}(?:ეძებს|სჭირდება|უნდა|ითხოვს|დაინტერესებულია)',
+    // en: „one guy is looking for", „someone needs"
+    '\\b(?:one guy|a guy|someone|somebody|a friend of mine)\\s+(?:is looking|is searching|needs|wants|is interested)',
+    // ru: „один парень ищет", „кто-то ищет"
+    '(?:один\\s+(?:парень|человек|знакомый)|кто-то)\\s+(?:ищет|хочет|интересуется)|нужен\\s+кому-то',
+  ].join('|'),
+  'iu',
+);
+const DO_NOT_NAME_RE =
+  /(?:არ|ნუ)\s+(?:დამასახელ|მახსენ|თქვა\s+რომ\s+მე)|ჩემი?\s+სახელ\S*\s+(?:არ|ნუ)|ანონიმ|\bdon['’]?t\s+(?:name|mention)\s+me\b|\bwithout\s+my\s+name\b|\banonymous|не\s+(?:называй|упоминай)\s+меня|анонимн/iu;
+
+/** The owner's own line asks that the helper not learn who needs it. */
+export function ownerWantsUnnamed(line: string): boolean {
+  return UNNAMED_SUBJECT_RE.test(line) || DO_NOT_NAME_RE.test(line);
+}

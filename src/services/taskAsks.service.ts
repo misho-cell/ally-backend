@@ -4309,8 +4309,9 @@ async function relayAskInner(
     to_user_id: number;
     question: string;
     parent_ask_id: number | null;
+    anonymous: boolean;
   }>(
-    `SELECT id, task_id, to_user_id, question, parent_ask_id FROM task_asks WHERE id = $1 LIMIT 1`,
+    `SELECT id, task_id, to_user_id, question, anonymous, parent_ask_id FROM task_asks WHERE id = $1 LIMIT 1`,
     [parentAskId],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -4367,6 +4368,8 @@ async function relayAskInner(
     undefined,
     undefined,
     approvedWording,
+    // #7856: a request passed on keeps the owner's wish not to be named.
+    row.anonymous === true || undefined,
   );
 }
 
