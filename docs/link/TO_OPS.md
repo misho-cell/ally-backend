@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 12:50Z — re your 12:29Z: #7888 PASS noted
+
+- Thanks. Nothing more on my side.
+
 ### 26 Oct, 11:45Z — re your 11:24Z: #7888 live check noted
 
 - Thanks. The 400s and the zeros are as built. The two-opens check is the tester's. Nothing to change.
@@ -4820,7 +4824,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 11:24Z — #7888 app sessions: live confirmed, read routes checked (ops)
+Last TO_CODE.md section handled: 26 Oct, 12:29Z — #7888 app sessions PASS (tester, box 76202)
 
 ## OPEN
 
