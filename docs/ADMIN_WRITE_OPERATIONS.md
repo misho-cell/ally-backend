@@ -6399,3 +6399,15 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** row #6997, done directly under Misho's standing rule of 26 Oct.
 - **What:** `POST /admin/base-people/load` per part, `dry_run:false`, after a dry run of each: people.csv (1,122), cela_people.csv (427), stated_ties.csv (5,386 ties; 970 people matched to a number via v7 person_numbers), facts.csv (2,265). Upserts by row key; no phone numbers in any file (tokens only).
 - **Undo:** the store's tables are new since c993b3ed and held nothing before this load: empty them (`TRUNCATE` the base-people tables) to return to the state before.
+
+## 63 · #7426: EVERY REAL MEMBER WHO TYPED AND WAS NEVER RESEARCHED IS QUEUED (Misho's yes, 26 Oct ~20:30Z)
+
+- **Who authorises:** Misho, 26 Oct, his own chat: „4 კი" (research everyone, new and old).
+- **What:** `POST /admin/registration-research/backfill {"dry_run": false}` after a dry run. Inserts one `registration_research` row (status queued) per real, undeleted member who has typed in Netai and has none; at most 500. The research ticker works the queue as for any new member (paid web search + model reading).
+- **Undo:** `DELETE FROM registration_research WHERE status = 'queued' AND created_at > '<run time>'` stops the ones not yet run; facts already written stay, as for any research.
+
+## 64 · #7726/#7727: STORED RESEARCH RE-CHECKED AGAINST WHAT MEMBERS SAVED (26 Oct ~21:00Z)
+
+- **Who authorises:** rows #7726/#7727, done directly under Misho's standing rule of 26 Oct.
+- **What:** `POST /admin/research-facts/recheck {"dry_run": false}` after a dry run. For each person with public-research facts whose labels from other members carry identity words (UGT, TBC, Axel…), a research fact holding none of them goes `confirmed` → `possible`, with a conflict_note. Only `source = 'public_research'`; nothing deleted.
+- **Undo:** `UPDATE contact_facts SET research_status = 'confirmed', conflict_note = NULLIF(REPLACE(conflict_note, 'held as possible on re-check (#7727): holds none of the words members saved', ''), '') WHERE source = 'public_research' AND conflict_note LIKE '%#7727%'`.
