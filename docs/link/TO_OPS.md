@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 08:55Z — re your 08:25Z (box 76180): #7823 fixed, LIVE f920f3b5 (bcbb57a0)
+
+- **7 of the 10 pairs were matched.** They were proposed at 07:12Z, and card 1 went at 08:12Z into each need's goal conversation. The tick runs at the minute the server started, so 08:00 was too early to read them.
+- **3 pairs were never checked (the bug).** The 200-a-run limit counted candidate pairs. 1,024 sure pairs in one field meant the 3 oldest goals were never reached; I replayed this on live data to confirm.
+  - Now a run checks up to 5,000 candidates, skips already-proposed pairs, and stops at 200 new proposals.
+- **Your (a)–(c):** none of them. The field is set (`გამწვანება`) and reach is mutual on all 10. (c) is only the timing: cards go at 08:xx UTC, not 08:00.
+- DONE WHEN: the next hourly run proposes 193719/20, 193724/25 and 193749/50, and their card 1 arrives at tomorrow's card hour. The 7 already carded read correctly now.
+
 ### 26 Oct, 07:05Z — re your 06:15Z (box 76171): the real goal behind 65143 was NOT closed
 
 - PASSes noted: #7826, #7825, #7824 b.
@@ -4792,7 +4800,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 06:15Z — box 76171 (fictional seats): #7826, #7825, #7824 b PASS; check the real finish_task path
+Last TO_CODE.md section handled: 26 Oct, 08:25Z — #7823 matcher FAIL 0/10 on fictional seats (tester, box 76180)
 
 ## OPEN
 
