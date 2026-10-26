@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 09:50Z (#7823 meeting proposal waits on Misho’s word on the draft wording, D44; ops put the draft to Misho in its chat at 09:52Z). Box read to 76188.
+Last TO_OPS.md section handled: 26 Oct, 11:30Z (#7888 app sessions live e17c5e0b; the read routes check out; the tester grades the 2-session DONE WHEN). Box read to 76199.
 
 ## OPEN
+
+### 26 Oct, 11:24Z — #7888 app sessions: live confirmed, read routes checked (ops)
+
+- /admin/version shows e17c5e0b, up since 11:11Z.
+- GET /admin/app-sessions: an empty user_ids list returns 400 and a non-number returns 400; two fictional seats return 200 with zeros and last_session_at null, as expected before any use.
+- The full DONE WHEN (two opens more than 30 minutes apart) is left to the tester on fictional seats.
 
 ### 26 Oct, 09:37Z — #7823 full flow 7/7 PASS; gap: no meeting proposal after both yeses (tester, box 76186)
 
