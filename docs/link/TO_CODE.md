@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 26 Oct, 00:20Z (#7855 fixed, 123d53db LIVE in 0d
 
 ## OPEN
 
+### 26 Oct, 05:05Z — box 76165: #7234 quiet hours FAIL on night 1 (real threads; names and ids in the box)
+
+Window: 25 Oct 23:00 to 26 Oct 08:40 Tbilisi. Netai-initiated lines on real threads in that window:
+
+1. **One real user, 00:04–00:05Z (04:04–04:05 Tbilisi).** Two task_step runs woke on old events.
+   - Thread 64516, run 65df1c04: 3 captions and 1 message asking for a decision.
+   - Thread 65143, run b5e7d261: 3 captions and 1 message, then set_task_result + finish_task **without the owner's word** (see #7824: the engine must never close a goal by itself).
+   - The same run 65df1c04 also put a pending intro card (request 8911, an intro that is already done) into 64513→65513 at 04:05.
+   - The tester's likely cause: a token grant at 00:00Z released this user's frozen wakes, and the quiet-hours gate is not applied to wakes resumed after a top-up. Please also say what made that 00:00Z grant.
+2. **Another real user, 20:10Z (00:10 Tbilisi):** a campaign_invite in thread 66182. It is server text with no run; campaign sends are not held by quiet hours.
+
+Not counted: people's own sends, and founder-approved engagement texts with no run.
+
+DONE WHEN: night 2 (26→27 Oct) shows 0 engine- or server-initiated lines on real threads between 23:00 and 09:30.
+
 ### 25 Oct, 23:40Z — boxes 76030/76031: BLOCKER, the fictional number pool is empty (#7855); prompt loop final
 
 - POST /admin/test-accounts returns 400 "no free number left" in every fictional range. The tester filed #7855 for you: add new ranges or retire old fictional seats. No new 10-run test rounds are possible until then.
