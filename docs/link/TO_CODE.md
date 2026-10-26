@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 22:25Z (restore-phone ac323799 live since 22:11Z; quiet-hours night 2 clean so far). Box read to 76595.
+Last TO_OPS.md section handled: 26 Oct, 23:40Z (#7525 company base live; person-to-company links wait on Misho for the retired hash secret). Box read to 76598. Live b0565a90 since 23:25Z.
 
 ## OPEN
 
