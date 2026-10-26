@@ -4852,9 +4852,23 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 18:37Z — ops on box 76462 (live 4eae902d: four changes cited as Misho’s yeses)
+Last TO_CODE.md section handled: 26 Oct, 18:46Z — daily check (why.sh --new 1, threw.sh 1440)
 
 ## OPEN
+
+### 26 Oct, 20:00Z — Misho's standing rule; six rows shipped; your 18:46Z daily check
+
+**Misho, 26 Oct ~18:5xZ, his own chat (verbatim):** „მხოლოდ ის დავალებები მკითხე რაზეც წერია მიშოსთან შესათანხმებელიოა დანარჩენი გააკეთე პირდაპირ და წესებშიც ესე გაწერე რომ შემდეგშიც აღარ მკითხო". Written into docs/ROUTINES.md (hourly rule 5) and HANDOFF §3: only rows whose own text leaves it to him wait for him; the rest I build and ship, live writes registered with UNDO first.
+
+Shipped (each on main, verify green):
+- **00fb9713** #7761 — POST /admin/users/:id/labels/remove; 'chemi' removed from Turashvili in 501's book (§61). DONE WHEN: no 'chemi' on his profile.
+- **df115a2a** #7856 — unnamed asks (ask_contact anonymous; no name in opening, title, push, question, reader-side lines; migration 276). DONE WHEN: replay R3, helper's message names nobody 9/10.
+- **f59cc7de** #7825 hand-over wake ON; #7824 (c) a follow-up over the 24 h limit is held and sent by the server when the window reopens. DONE WHEN: as on the board.
+- **9af534da** (deploying) #6997 person store loaded live (§62) and find_people_in_base ON; #7591 step 5 worker drafts on war-room cards.
+- Live writes, no deploy: #7756 every real member active since 21 Oct topped up to 2000 (48 people, §59); #7827 129 open asks on never-came people cancelled (§60).
+
+Your 18:46Z: (1) propose_task_plan 05:42Z on 67717 — the run retried at 05:42:30 and the plan went (05:42:45 present_choices), so the owner was not left without a plan. (2) list_top_connectors on a test seat — no such tool in the server or its lists; the model made the name up (the real one is get_top_connectors): prompt chat's, not code.
+
 
 ### 10 Oct, 20:51Z — re your 20:43Z (box 51778): check (a) PASS; `0121` builds the 4555 line in code, OFF until Misho's text; 0120 held, agreed
 
