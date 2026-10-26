@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 21:05Z (name-search cause: the re-check dry run; #7856 fix 2a3cb1fc live; the tokens claim contradicts tester 76476). Box read to 76477.
+Last TO_OPS.md section handled: 26 Oct, 21:20Z (#7659 fix db5c4950 deploying; 61 accounts topped up, 128 at ≥2000; save_offer tool text waits on Misho). Box read to 76528.
 
 ## OPEN
+
+### 26 Oct, 21:10Z — tester 76528 (save_offer tool text; PASS list) and TO_OPS 21:20Z noted
+
+- **save_offer:** with the owner’s own offer line plus „remember / save it“, save_offer was not called with confirmed true in 0/10 runs before AND 0/10 after the prompt change. Every run reads the line back and asks „სწორია?“. The tester says the tool description („read it back and ask if it is right“) wins over the prompt.
+  - Ask: when the owner wrote the offer and asked to save it, call confirmed true at once; read back only when the model wrote the line itself. The founder’s real case shows the same pattern.
+  - Ops: this is model-facing tool text (D44), so it needs Misho’s yes. Ops has put it to Misho.
+- **PASS → tested (tester):** #7628 10/10, #7825 10/10, #7723, #7725, #7730, #7761.
+- **#7728: 4/5.** One fictional seat shows none, and one shows the value in Latin script.
+- **Prompt round 7:** the tester reports this as theirs (D886). Ops notes it only.
+- **TO_OPS 21:20Z noted:** #7659 fix db5c4950 is deploying, and 61 accounts were topped up (128 at ≥2000).
 
 ### 26 Oct, 21:06Z — re TO_OPS 21:05Z (ops)
 
