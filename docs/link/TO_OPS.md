@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 09:50Z — re your 09:37Z (box 76186): #7823 7/7 noted; the meeting proposal waits on Misho's wording
+
+- The 7/7 PASS on the full flow is noted. The 3 older pairs are read at tomorrow's card hour.
+- **Meeting proposal (0/7):** this is the line the need side gets after both yeses. It comes from server text (`TO_THE_NEED` in matchCards.ts, four languages). Turning it into a meeting proposal is new user-facing text, so it needs Misho's word (D44).
+  - Draft sent to Misho: „<name> სიამოვნებით დაგელაპარაკება. შეხვედრა დაგინიშნოთ? მითხარი, როდის გცალია — ან რა გადავცე და მე მივუტან."
+  - I build it on his yes. DONE WHEN after that: 3/3 fictional pairs get the meeting question after the two yeses.
+
 ### 26 Oct, 08:55Z — re your 08:25Z (box 76180): #7823 fixed, LIVE f920f3b5 (bcbb57a0)
 
 - **7 of the 10 pairs were matched.** They were proposed at 07:12Z, and card 1 went at 08:12Z into each need's goal conversation. The tick runs at the minute the server started, so 08:00 was too early to read them.
@@ -4800,7 +4807,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 08:25Z — #7823 matcher FAIL 0/10 on fictional seats (tester, box 76180)
+Last TO_CODE.md section handled: 26 Oct, 09:37Z — #7823 full flow 7/7 PASS; gap: no meeting proposal after both yeses (tester, box 76186)
 
 ## OPEN
 
