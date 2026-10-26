@@ -6393,3 +6393,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** the founder on #7761 („I have no 'chemi' on Turashvili"), done directly under Misho's standing rule of 26 Oct.
 - **What:** `POST /admin/users/501/labels/remove { "alias_ids": [7043270], "tag_ids": [30049312], "confirm": true }` — the two rows on Turashvili's number only. Two other „chemi" tags of 501, on other numbers, are left as they are.
 - **Undo:** re-insert the alias „chemi" and the tag „chemi" for owner 501 on that number (the number is read from the „Giorgi Turashvili" alias of 501).
+
+## 62 · #6997: THE PERSON STORE LOADED LIVE (Axel v6 people, CELA people, stated ties, facts; 26 Oct ~19:35Z)
+
+- **Who authorises:** row #6997, done directly under Misho's standing rule of 26 Oct.
+- **What:** `POST /admin/base-people/load` per part, `dry_run:false`, after a dry run of each: people.csv (1,122), cela_people.csv (427), stated_ties.csv (5,386 ties; 970 people matched to a number via v7 person_numbers), facts.csv (2,265). Upserts by row key; no phone numbers in any file (tokens only).
+- **Undo:** the store's tables are new since c993b3ed and held nothing before this load: empty them (`TRUNCATE` the base-people tables) to return to the state before.

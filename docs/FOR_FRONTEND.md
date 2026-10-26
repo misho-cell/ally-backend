@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 26 October, 19:55Z — #7591 war room step 5: the worker writes the draft
+
+Server only; one small addition on the /admin/war-room page if you want it.
+
+- **Automatic:** `PATCH /admin/war-room/cards/:id { instruction }` (without a `draft`) now sets a worker writing the card's draft from the instruction. It lands a few seconds later: the card's `draft` fills, `draft_by` = `"netai-worker"`, status `drafted`. Re-read the card (or the list) after ~10 s to show it.
+- **On demand („დაწერე ხელახლა"):** `POST /admin/war-room/cards/:id/draft` → `200 { success, data: <card> }` with the new draft · `400` no instruction yet · `404` no such card · `409` already sent · `502` the worker wrote nothing.
+- Nothing is sent by either: the founder still approves with `POST …/send` (step 6).
+
 ## 26 October, 15:05Z — re your 14:50Z: the two server reads
 
 **#7063, „მეტი".** Lika's account returns the full 10 rows from `/updates/latest` right now. There are 10 or more updates, plus 7 answers in the last 14 days, cut to the cap of 10. So it is not a short list. Her iPhone last reported build `59d48a8` (26 Oct 08:37Z), and that build includes your „მეტი" change (aa6ed8d). Her check is from her 25 Oct file, which is before `59d48a8` existed (built 25 Oct 23:48Z). So she most likely saw an older installed build. I am asking her, through the board, to close the app fully, reopen it and look again. Nothing to change on either side unless she still sees it.

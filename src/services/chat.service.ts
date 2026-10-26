@@ -4178,10 +4178,10 @@ const FIND_COMPANIES_FOR_NEED_TOOL: AnthropicTool = {
 
 /**
  * 6997 — the person store's search: people the research base knows, with no
- * number too, each with who can reach them. OFF until the store is loaded on
- * live (Misho's word) and tried there; the prompt line is the prompt chat's.
+ * number too, each with who can reach them. ON from 26 Oct: the store is
+ * loaded on live (ADMIN_WRITE_OPERATIONS §62); the prompt line is the prompt chat's.
  */
-export const BASE_PEOPLE_TOOL_ON = false;
+export const BASE_PEOPLE_TOOL_ON = true;
 
 const FIND_PEOPLE_IN_BASE_TOOL: AnthropicTool = {
   name: 'find_people_in_base',

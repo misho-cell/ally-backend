@@ -340,6 +340,16 @@ async function claimForSending(cardId: number, by: string): Promise<WarRoomCard 
   return result.rows[0] ?? null;
 }
 
+/** One card as the board shows it; null when there is none. */
+export async function getWarRoomCard(cardId: number): Promise<WarRoomCard | null> {
+  const result = await query<WarRoomCard>(
+    `SELECT ${CARD_COLUMNS} FROM war_room_cards WHERE id = $1`,
+    [cardId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
 async function cardExists(cardId: number): Promise<boolean> {
   const result = await query<{ found: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM war_room_cards WHERE id = $1) AS found`,

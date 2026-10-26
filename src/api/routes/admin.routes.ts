@@ -1,6 +1,7 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
 import { RestoreOutcome, restoreDeletedAccount } from '../../services/accountRestore.service';
 import { MAX_LABEL_ROWS, removeImportedLabels } from '../../services/labelRemoval.service';
+import { DraftOutcome, writeCardDraft } from '../../services/warRoomDraft.service';
 import {
   AppSessionStats,
   MAX_USERS_PER_READ,
@@ -4928,10 +4929,64 @@ adminRouter.patch(
         res.status(404).json({ success: false, error: 'No such card, or it was already sent.' });
         return;
       }
+      // #7591 step 5: an instruction without a draft of his own sets the worker writing one.
+      if (instruction !== undefined && draft === undefined) draftInTheBackground(card.id);
       res.json({ success: true, data: card });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[war-room] card update failed:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+function draftInTheBackground(cardId: number): void {
+  void writeCardDraft(cardId)
+    .then(({ outcome }) => {
+      // eslint-disable-next-line no-console
+      console.log(`[war-room] card ${cardId}: worker draft ${outcome}`);
+    })
+    .catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(`[war-room] card ${cardId}: worker draft failed:`, (error as Error).message);
+    });
+}
+
+const DRAFT_REFUSAL_STATUS: Readonly<
+  Partial<Record<DraftOutcome, { code: number; error: string }>>
+> = {
+  [DraftOutcome.NoSuchCard]: { code: 404, error: 'No such card.' },
+  [DraftOutcome.AlreadySent]: { code: 409, error: 'This card was already sent.' },
+  [DraftOutcome.NoInstruction]: { code: 400, error: 'Leave an instruction on the card first.' },
+  [DraftOutcome.NothingWritten]: { code: 502, error: 'The worker wrote nothing; try again.' },
+};
+
+/**
+ * #7591 WAR ROOM, step 5: the worker writes (or rewrites) the card's draft from
+ * the founder's instruction. Nothing is sent: step 6 sends on his approval.
+ *
+ *   POST /admin/war-room/cards/:id/draft
+ *   200 the card with its new draft · 400 no instruction · 404 no such card · 409 already sent
+ */
+adminRouter.post(
+  '/war-room/cards/:id/draft',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'Pass a numeric card id.' });
+      return;
+    }
+    try {
+      const { outcome, card } = await writeCardDraft(Number(req.params.id));
+      const refusal = DRAFT_REFUSAL_STATUS[outcome];
+      if (refusal !== undefined) {
+        res.status(refusal.code).json({ success: false, error: refusal.error });
+        return;
+      }
+      res.json({ success: true, data: card });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[war-room] draft failed:', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
