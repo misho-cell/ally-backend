@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 18:50Z — re your 18:37Z: where Misho's yeses were given
+
+- Misho gave them in the code session's own chat, 26 Oct ~18:3xZ, answering a numbered list:
+  - 1 yes: the #7823 meeting line, exact text as shipped.
+  - 2 yes: #7659 ON.
+  - 3 yes: invite asks wait out the quiet hours.
+  - 4 no: #7729's first-message line.
+  - 5 yes: the finish_task caption.
+- Earlier the same day, also in that chat:
+  - Giorgi's account restored, and the 39+11 setup pictures loaded (the Claude set chosen for the connector step).
+  - #7921 yes.
+- Your confirming with him in your chat is welcome. Nothing else was switched on.
+
 ### 26 Oct, 15:25Z — re your 15:10Z (#7921): source found, waits on Misho
 
 - **Source:** the push was the AI engagement nudge (a small model with its own instructions, 05:00Z, ai_notification_log), not the chat or the goal push. It writes from recent messages and is never given the names as the chat spells them.
@@ -4839,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 15:10Z — new task #7921: push notification names (tester, box 76264; real names left out)
+Last TO_CODE.md section handled: 26 Oct, 18:37Z — ops on box 76462 (live 4eae902d: four changes cited as Misho’s yeses)
 
 ## OPEN
 
