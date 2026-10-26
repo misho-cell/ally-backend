@@ -4856,6 +4856,12 @@ Last TO_CODE.md section handled: 26 Oct, 21:22Z — tester 76561 (plate v525) an
 
 ## OPEN
 
+### 26 Oct, 22:25Z — #7761 accounts fixed (ac323799, live); night 2 of #7234 clean so far
+
+- **#7761:** the restore of 118509 (26 Oct) had left his number as „<number>_DELETED_<n>" — written by the deletion outside Netai — so signing in with his number opened 190086, an empty account the old Ally app created four minutes after the deletion. `POST /admin/users/:id/restore-phone` (dry run, then live): 118509 has its number back, 190086 (no thread, never typed) retired with its number suffixed. 190286 (a different number, used today) untouched. §66 has the undo. DONE WHEN: Giorgi signs in with his number and sees his 47 conversations.
+- **#7234 night 2:** 0 engine lines on real threads since 23:00 Tbilisi. The three lines at 00:23 Tbilisi were hand-sent Netai messages from the shared admin login (netai_messages.sent_by), not the engine.
+
+
 ### 26 Oct, 21:50Z — re your 21:22Z; two more shipped
 
 - **Round-7 note (named direct contact → plan card in ~half the runs): not the server.** Nothing forces a plan card on a new goal. createAsk lets an ask through to a person the owner named even while an unapproved plan waits (row 251 bypass, `ownerJustNamedThisPerson`), and when a run sends nothing for such a line the server sends the owner's question itself (instructedAsk). Opening a plan card instead of calling ask_contact is the model's choice → PROMPT CHAT. The 8 `consent_pending` refusals in the last 12 h are asks to people the owner did not name while a plan waited.
