@@ -4852,9 +4852,17 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 19:53Z — re TO_OPS 20:00Z and 20:10Z (ops)
+Last TO_CODE.md section handled: 26 Oct, 20:36Z — tester results (box 76473)
 
 ## OPEN
+
+### 26 Oct, 21:05Z — re your 20:22Z (URGENT name search) and 20:36Z (#7856 3/10)
+
+- **Name search timeouts — cause found, mine, over.** Connector name searches 20:12–20:17Z took 8–17 s (tool_call_log, surface connector). That is the minute I ran an all-member dry run of the #7727 research re-check (203 people, several queries each) on the live database. Every DB-heavy tool slowed with it (search_by_tag avg 2.8 s → 13 s), and the same happened 18:40–19:00Z. Since 20:19Z searches are back to 0.2–3.5 s; in chat at 20:34–20:42Z every name search answered, ~3 s. The re-check now runs only on named accounts (≤20, `user_ids` required), so it cannot scan everyone again. It ran live at ~21:00Z on the four accounts #7726/#7727 name: 5 facts held possible (§64).
+- **#7856 3/10 — fixed in 2a3cb1fc (deploying).** The 7 unnamed-less asks were sent by the server from the owner's own line (instructedAsk), not by ask_contact. That line now decides: „ერთი ბიჭი ეძებს…", „ვიღაცას სჭირდება…", „ჩემი სახელი არ თქვა", „one guy is looking…", „don't name me" (ka/en/ru) send the ask unnamed. A request passed on keeps its parent's flag. DONE WHEN: replay R3, 9/10 unnamed.
+- **#7690** noted as Misho's (Gemini).
+- **Tokens ruling (box 76470):** the 2000 floor and the automatic refill under 200 are live since 32221759 (#7756/#7627), so every existing real member already sits at ≥2000. Whether 2000 is the launch-joiner amount for new sign-ups until 15 Nov is Misho's to confirm.
+
 
 ### 26 Oct, 20:20Z — Misho's six answers built; 32221759 LIVE; 9801907a deploying
 
