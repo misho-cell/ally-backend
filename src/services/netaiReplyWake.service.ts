@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { wakeTask } from './taskEngine.service';
+import { WakeOrigin } from './quietWakeGuard';
 
 /**
  * #7825 (founder 26 Oct; Korneli, thread 64696): the person answered a Netai
@@ -53,7 +54,14 @@ export async function wakeGoalWithNetaiReply(
   try {
     const goal = await goalOfLatestNetaiMessage(threadId, userId);
     if (goal === null) return false;
-    return (await wakeTask(goal.taskId, netaiReplyWakeText(goal.body, answer))) === 'woken';
+    return (
+      (await wakeTask(
+        goal.taskId,
+        netaiReplyWakeText(goal.body, answer),
+        undefined,
+        WakeOrigin.Owner,
+      )) === 'woken'
+    );
   } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error(

@@ -25,7 +25,8 @@ describe('runs Netai starts on its own', () => {
     expect(engine).toContain('return isQuietHour(now, DEFAULT_PUSH_TIME_ZONE);');
   });
 
-  it('review goals at 09:30 Tbilisi, not inside the quiet hours', () => {
-    expect(engine).toContain('const NIGHTLY_REVIEW_HOUR_UTC = 5;');
+  it('review goals at 10:00 Tbilisi, after the quiet hours', () => {
+    expect(engine).toContain('const NIGHTLY_REVIEW_HOUR_UTC = 6;');
+    expect(isQuietHour(new Date('2026-10-26T06:00:00Z'), DEFAULT_PUSH_TIME_ZONE)).toBe(false);
   });
 });

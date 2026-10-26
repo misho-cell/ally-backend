@@ -32,7 +32,12 @@ describe('an answer to a Netai message about a goal reaches that goal', () => {
     mockQuery.mockResolvedValue({ rows: [{ task_id: 30838, body: 'ლევანს ჰკითხე?' }] });
     mockWake.mockResolvedValue('woken');
     expect(await wakeGoalWithNetaiReply(64696, 1053, 'ვკითხოთ', true)).toBe(true);
-    expect(mockWake).toHaveBeenCalledWith(30838, expect.stringContaining('«ვკითხოთ»'));
+    expect(mockWake).toHaveBeenCalledWith(
+      30838,
+      expect.stringContaining('«ვკითხოთ»'),
+      undefined,
+      'owner',
+    );
     const [sql, params, timeout] = mockQuery.mock.calls[0] as [string, unknown[], number];
     expect(sql).toContain("t.status = 'open' AND t.user_id = m.user_id::text");
     expect(params).toEqual([64696, 1053]);
