@@ -1,4 +1,5 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
+import { RestoreOutcome, restoreDeletedAccount } from '../../services/accountRestore.service';
 import {
   AppSessionStats,
   MAX_USERS_PER_READ,
@@ -1605,6 +1606,40 @@ adminRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('User detail error:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// A deleted account brought back (Giorgi, 26 Oct, Misho's yes). Clears deletedAt only.
+//   POST /admin/users/:id/restore { confirm: true }
+// 200 restored · 400 without confirm · 404 no such account · 409 not deleted, or erased
+// through Netai's own erasure (its data is gone; never restored).
+adminRouter.post(
+  '/users/:id/restore',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty() || req.body?.confirm !== true) {
+      res.status(400).json({ success: false, error: 'Pass a numeric id and { confirm: true }.' });
+      return;
+    }
+    try {
+      const userId = Number(req.params.id);
+      const outcome = await restoreDeletedAccount(userId);
+      if (outcome === RestoreOutcome.NotFound) {
+        res.status(404).json({ success: false, error: 'მომხმარებელი ვერ მოიძებნა' });
+        return;
+      }
+      if (outcome !== RestoreOutcome.Restored) {
+        res.status(409).json({ success: false, error: outcome });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(`[admin restore] account ${userId} restored`);
+      res.status(200).json({ success: true, data: { user_id: userId, outcome } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin restore]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
