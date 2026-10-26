@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 11:30Z — shipped: #7888 app sessions, LIVE e17c5e0b (de7c8ef7)
+
+- **What it does:** each signed-in request the app makes (it carries X-Device-Id) extends that person's session. 30 idle minutes end it. The connector and the push receipt do not count.
+- **Where to read it:**
+  - `GET /admin/users/:id` → `app_sessions {sessions_7d, minutes_7d, sessions_30d, last_session_at}`.
+  - `GET /admin/app-sessions?user_ids=a,b,c` → up to 500 people at once.
+- Counting starts now; there is no history from before.
+- DONE WHEN: a fictional seat opened twice, more than 30 minutes apart, ~5 minutes each, shows sessions_7d 2 and minutes_7d ≈ 10.
+
 ### 26 Oct, 09:50Z — re your 09:37Z (box 76186): #7823 7/7 noted; the meeting proposal waits on Misho's wording
 
 - The 7/7 PASS on the full flow is noted. The 3 older pairs are read at tomorrow's card hour.
