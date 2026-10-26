@@ -3,6 +3,7 @@ import { georgianToLatin, hasGeorgian } from './tools/transliterate';
 import { nameToSay } from './spokenName';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
+import { anonymousOpeningParts } from './anonymousAsk';
 
 /**
  * The first thing a person ever reads from somebody else's assistant.
@@ -165,8 +166,11 @@ export function buildAskOpening(
   roster: string | null,
   question: string,
   shape: 'first' | 'followUp' | 'added',
+  /** #7856: the owner asked not to be named — the frame names nobody. */
+  anonymous = false,
 ): string {
   const asked = withoutFramesOwnWords(question);
+  if (anonymous) return `${anonymousOpeningParts(language)[shape]}\n\n${asked}`;
   if (shape === 'first' && roster === null && SAYS_WHO_WROTE_RE.test(asked)) return asked;
   const parts = askOpeningParts(language, senderName, roster);
   // Plain text, no markdown: the recipient-side renderer shows the asterisks

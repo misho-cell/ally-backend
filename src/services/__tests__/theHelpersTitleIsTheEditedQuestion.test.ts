@@ -7,7 +7,7 @@ describe('theHelpersTitleIsTheEditedQuestion', () => {
     const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     const edited = source.indexOf('const editorsAsk =');
     const opened = source.indexOf(
-      'liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));',
+      'liveThreadId ?? (await openAskThread(toUserId, shownName, edited.question, language));',
     );
     expect(edited).toBeGreaterThan(0);
     expect(opened).toBeGreaterThan(edited);

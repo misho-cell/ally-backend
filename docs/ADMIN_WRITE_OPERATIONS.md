@@ -6387,3 +6387,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** the founder's Pr1 row #7827, done directly under Misho's standing rule of 26 Oct (ROUTINES hourly rule 5).
 - **What:** `POST /admin/asks/withdraw-non-members {"dry_run": false}` after a dry run (129 open asks on 80 people, 94 goals). Each ask goes `sent` → `cancelled`; nothing is said to anyone; each goal's next wake sees no open ask there.
 - **Undo:** `UPDATE task_asks SET status = 'sent' WHERE status = 'cancelled' AND id = ANY('{18389,13795,13762,13995,14554,24886,6635,6602,6701,14660,14853,27028,25147,8152,11094,1915,2050,2246,13169,22870,6272,6304,20230,6471,6636,6667,5710,1850,1981,1983,2048,6702,2180,2181,2245,23433,2510,23828,18712,19572,19571,13401,13399,19570,21882,15588,13400,19577,17524,21717,19042,26741,6370,19573,19576,19639,21420,21419,21418,21421,23434,8815,21617,21616,21618,9010,19277,19405,21718,7265,21716,9115,23860,23827,21880,22837,22939,23829,23795,23796,25715,23432,22941,22938,22904,22903,22940,22936,22937,25218,25213,25214,19275,24687,25217,25215,25216,14983,23596,23466,15643,19339,19638,26370,26368,26369,14663,14662,25280,14852,24688,24817,24819,24818,15086,27193,25712,25716,27820,25713,25717,25714,25718,25719,25842,26434,26436,26435,27787}'::int[])`.
+
+## 61 · #7761: „chemi" REMOVED FROM GIORGI TURASHVILI IN THE FOUNDER'S PHONEBOOK (26 Oct ~19:45Z)
+
+- **Who authorises:** the founder on #7761 („I have no 'chemi' on Turashvili"), done directly under Misho's standing rule of 26 Oct.
+- **What:** `POST /admin/users/501/labels/remove { "alias_ids": [7043270], "tag_ids": [30049312], "confirm": true }` — the two rows on Turashvili's number only. Two other „chemi" tags of 501, on other numbers, are left as they are.
+- **Undo:** re-insert the alias „chemi" and the tag „chemi" for owner 501 on that number (the number is read from the „Giorgi Turashvili" alias of 501).

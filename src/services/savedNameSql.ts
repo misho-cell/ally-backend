@@ -56,8 +56,15 @@ const GOAL_OWNER_OF_ASK = '(SELECT go_t.user_id::int FROM tasks go_t WHERE go_t.
 /** The asker's view of the person asked — every line in the asker's goal thread. */
 export const ASKED_AS_THE_ASKER_SAVED_THEM = nameAsSavedBySql('ta.from_user_id', 'ta.to_user_id');
 
-/** The reader's view of the person asking — every line in the reader's own chat. */
-export const ASKER_AS_THE_READER_SAVED_THEM = nameAsSavedBySql('ta.to_user_id', 'ta.from_user_id');
+/** #7856: an unnamed ask reads this wherever the reader would see who asked. */
+export const UNNAMED_ASKER = 'Netai-ის ერთ-ერთი წევრი';
+
+/**
+ * The reader's view of the person asking — every line in the reader's own chat.
+ * #7856: an ask the owner wanted unnamed names nobody there either.
+ */
+export const ASKER_AS_THE_READER_SAVED_THEM = `CASE WHEN ta.anonymous THEN '${UNNAMED_ASKER}'
+    ELSE (${nameAsSavedBySql('ta.to_user_id', 'ta.from_user_id')}) END`;
 
 /**
  * 5347 (the tester's 63861 c): at the third link the pass-on card read „ask X
