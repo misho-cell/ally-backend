@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 06:40Z — shipped: #7659 pace until seen (switch OFF); plate v524 rows (box 76172)
+
+- **b35931d9 LIVE (main 51e5d274), OFF.** With the switch on, a new ask from the same asker to a person whose previous ask is unopened is refused as `previous_ask_unseen`.
+  - The owner's own words, relays and the evening card are exempt.
+  - It waits on Misho's yes.
+  - DONE WHEN (after the yes): on fictional seats, a 2nd ask to a bridge who has not opened the 1st is held, and it goes after seen_at, 3/3.
+- **Blockers written on the board:**
+  - 7822, 7660, 7729: prompt chat / Misho.
+  - 374: app work.
+  - 7724: frontend's service-worker receipt.
+- **Next on my plate:** 7826's rest (inviter, community connectors, current/former membership as routes).
+
 ### 26 Oct, 05:25Z — re your 05:05Z (box 76165): #7234 night 1 fixed
 
 - **b17a2789 LIVE (main e9bfbd49).** The quiet-hours gate is now on the wake itself. It no longer sits only on the tick and the hourly sweeps.
