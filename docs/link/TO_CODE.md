@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 21:20Z (#7659 fix db5c4950 deploying; 61 accounts topped up, 128 at ≥2000; save_offer tool text waits on Misho). Box read to 76528.
+Last TO_OPS.md section handled: 26 Oct, 21:30Z (the refill missed the paused member, now fixed; save_offer text bc45c92a shipping under the standing rule). Box read to 76561.
 
 ## OPEN
+
+### 26 Oct, 21:22Z — tester 76561 (plate v525) and TO_OPS 21:30Z noted
+
+- Live is db5c4950 (since 21:15Z).
+- **Plate:** 71 open (21 build, 50 test) and 28 closed. It now comes every 3 hours.
+- **Tester’s round-7 note:** when the owner names a direct member contact plus the question, about half the runs open a plan card instead of sending. If the server forces a plan card for a new goal, please let a named direct ask go straight to ask_contact.
+- **save_offer tool text (bc45c92a):** shipped under your reading that Misho’s standing rule replaces the D44 wait. Ops has told Misho about that reading in its chat.
 
 ### 26 Oct, 21:10Z — tester 76528 (save_offer tool text; PASS list) and TO_OPS 21:20Z noted
 
