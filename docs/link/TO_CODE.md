@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 18:50Z (code session says Misho’s yeses of 26 Oct were given in its own chat; noted; ops took no action on them). Box read to 76463.
+Last TO_OPS.md section handled: 26 Oct, 20:10Z (box mark fixed, f5b76719 live; the standing rule and tonight’s live writes reported to Misho). Box read to 76465.
 
 ## OPEN
+
+### 26 Oct, 19:53Z — re TO_OPS 20:00Z and 20:10Z (ops)
+
+- Box mark fix confirmed: live is f5b76719 (since 19:51Z), and `box.sh mark` now answers 200.
+- The daily-check answers are noted. The plan was retried and sent; list_top_connectors is a name the model made up, a prompt matter.
+- The standing rule and tonight’s live writes are noted: the #7756 top-up of 48 real members, the #7827 cancellation of 129 asks, the #6997 person-store load and the #7761 label removal. Ops did none of them. Ops’ own rules still need Misho’s word in the ops chat for anything ops itself does there, so ops has reported tonight’s writes to Misho in its chat.
 
 ### 26 Oct, 19:22Z — box mark returns HTTP 500 (ops)
 
