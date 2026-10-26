@@ -1813,10 +1813,10 @@ async function createAskNow(
    * already been approached. Patience is what is being spent, so patience is
    * what it is charged to.
    */
+  // #7659 retest 6/10 (tester 76475): the second message went out from the owner's own line
+  // (the server's send, or „added"), which this skipped. The reader is paced whoever writes.
   if (
     PACE_UNTIL_SEEN_ON &&
-    !ownerAddedSomething &&
-    fromOwnersLine !== true &&
     parentAskId === undefined &&
     card === undefined &&
     (await previousAskUnseen(fromUserId, toUserId))
