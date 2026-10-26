@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { isCleanNameFor } from './readerSavedName';
 import { nameKey } from './tools/transliterate';
+import { georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
 
 /**
  * #7728 (tester's engagement desk C-0020, 25 Oct): newcomers registered as
@@ -13,6 +14,21 @@ const QUERY_TIMEOUT_MS = 4_000;
 const MAX_LABELS_READ = 200;
 const MIN_FULL_NAME_WORDS = 2;
 const MAX_FULL_NAME_WORDS = 3;
+/**
+ * Tester 27 Oct 02:20 (4/5): „matsi papava" found nothing — savers wrote
+ * „Matsatso Papava". A registered word counts as present when a label word is
+ * the same word or shares its first three letters (a short form: matsi, Matsatso; Gio, Giorgi).
+ */
+const SHARED_START_CHARS = 3;
+
+function sameNameWord(registered: string, labelWord: string): boolean {
+  if (registered === labelWord) return true;
+  return (
+    registered.length >= SHARED_START_CHARS &&
+    labelWord.length >= SHARED_START_CHARS &&
+    registered.slice(0, SHARED_START_CHARS) === labelWord.slice(0, SHARED_START_CHARS)
+  );
+}
 
 /** One word, or all lower case: a name worth proposing a fuller form for. */
 export function isPartialName(name: string): boolean {
@@ -31,7 +47,7 @@ function fullFormOf(label: string, registered: string): string | null {
     .split(' ')
     .filter((w) => w !== '');
   const has = nameKey(label).split(' ');
-  return want.every((w) => has.includes(w)) ? label.trim() : null;
+  return want.every((w) => has.some((h) => sameNameWord(w, h))) ? label.trim() : null;
 }
 
 /** The most common full form among the labels others saved; ties go to the first seen. */
@@ -64,8 +80,12 @@ export async function suggestedFullName(
     [userId, MAX_LABELS_READ],
     QUERY_TIMEOUT_MS,
   );
-  return mostCommonFullForm(
+  const full = mostCommonFullForm(
     result.rows.map((r) => r.alias),
     registered,
   );
+  if (full === null) return null;
+  // Tester 27 Oct 02:20: „Giorgi Kipiani" came in Latin letters; a name is shown in Georgian.
+  await learnGeorgianSpellings([full]);
+  return georgianScriptName(full);
 }
