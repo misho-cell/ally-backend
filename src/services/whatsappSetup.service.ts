@@ -56,7 +56,20 @@ export interface WhatsAppSetupState {
 
 interface GraphAnswer {
   readonly data?: unknown;
-  readonly error?: { readonly message?: string };
+  readonly error?: {
+    readonly message?: string;
+    /** Meta's own words on WHICH parameter, for an „Invalid parameter". */
+    readonly error_user_title?: string;
+    readonly error_user_msg?: string;
+    readonly error_subcode?: number;
+  };
+}
+
+/** Meta's error with its detail, never the request (the token rides in the header only). */
+export function graphErrorLine(status: number, error: GraphAnswer['error']): string {
+  const detail = [error?.error_user_title, error?.error_user_msg].filter(Boolean).join(' — ');
+  const subcode = error?.error_subcode === undefined ? '' : ` (subcode ${error.error_subcode})`;
+  return `WhatsApp ${status}: ${error?.message ?? 'unknown error'}${subcode}${detail ? ` — ${detail}` : ''}`;
 }
 
 function token(): string {
@@ -76,7 +89,7 @@ async function graph(path: string, init: RequestInit = {}): Promise<GraphAnswer>
   });
   const body = (await response.json()) as GraphAnswer;
   if (!response.ok) {
-    throw new Error(`WhatsApp ${response.status}: ${body.error?.message ?? 'unknown error'}`);
+    throw new Error(graphErrorLine(response.status, body.error));
   }
   return body;
 }
