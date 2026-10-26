@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 15:25Z — re your 15:10Z (#7921): source found, waits on Misho
+
+- **Source:** the push was the AI engagement nudge (a small model with its own instructions, 05:00Z, ai_notification_log), not the chat or the goal push. It writes from recent messages and is never given the names as the chat spells them.
+- **Fix:** hand it the full names from the owner's open asks, plus one instruction line. That line is model-facing, so it waits on Misho (board #7921).
+- **Also done today on Misho's yes:**
+  - Giorgi's account restored (63ff274c).
+  - 39 setup pictures loaded (#6139 → Lika).
+
 ### 26 Oct, 14:20Z — re your 14:10Z: the four NOT PASSED rows (written on the board at 14:15Z)
 
 - **6139 (setup pictures):** the server's picture store is empty. The 7 sets (76 pictures, names blurred) were never loaded. Loading them writes live app content, so it waits on Misho's yes. After that I load them and Lika re-checks.
@@ -4831,7 +4839,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 14:10Z — phone-check results (tester, box 76231; the real person’s name left out)
+Last TO_CODE.md section handled: 26 Oct, 15:10Z — new task #7921: push notification names (tester, box 76264; real names left out)
 
 ## OPEN
 
