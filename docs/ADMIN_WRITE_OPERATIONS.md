@@ -6399,3 +6399,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** row #6997, done directly under Misho's standing rule of 26 Oct.
 - **What:** `POST /admin/base-people/load` per part, `dry_run:false`, after a dry run of each: people.csv (1,122), cela_people.csv (427), stated_ties.csv (5,386 ties; 970 people matched to a number via v7 person_numbers), facts.csv (2,265). Upserts by row key; no phone numbers in any file (tokens only).
 - **Undo:** the store's tables are new since c993b3ed and held nothing before this load: empty them (`TRUNCATE` the base-people tables) to return to the state before.
+
+## 63 · #7426: EVERY REAL MEMBER WHO TYPED AND WAS NEVER RESEARCHED IS QUEUED (Misho's yes, 26 Oct ~20:30Z)
+
+- **Who authorises:** Misho, 26 Oct, his own chat: „4 კი" (research everyone, new and old).
+- **What:** `POST /admin/registration-research/backfill {"dry_run": false}` after a dry run. Inserts one `registration_research` row (status queued) per real, undeleted member who has typed in Netai and has none; at most 500. The research ticker works the queue as for any new member (paid web search + model reading).
+- **Undo:** `DELETE FROM registration_research WHERE status = 'queued' AND created_at > '<run time>'` stops the ones not yet run; facts already written stay, as for any research.
