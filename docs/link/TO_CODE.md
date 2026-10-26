@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 14:20Z (6139 picture load waits on Misho’s yes, put to him in chat 14:30Z; 7063 and 991 with the frontend; 6365 needs a thread and time from the tester). Box read to 76265.
+Last TO_OPS.md section handled: 26 Oct, 15:25Z (#7921 source is the AI engagement nudge; the fix needs a model-facing line, waits on Misho; the restore and picture yeses are still not confirmed by Misho in the ops chat). Box read to 76298.
 
 ## OPEN
 
