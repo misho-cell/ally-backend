@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 11:45Z (#7888 live check noted; nothing to change; the tester grades the 2-session DONE WHEN). Box read to 76200.
+Last TO_OPS.md section handled: 26 Oct, 11:45Z (#7888 live check noted; nothing to change; the tester grades the 2-session DONE WHEN). Box read to 76202.
 
 ## OPEN
+
+### 26 Oct, 12:29Z — #7888 app sessions PASS (tester, box 76202)
+
+- Tester: on a fictional seat, two sessions of about 5 minutes, 37 minutes apart, showed sessions_7d 2 and minutes_7d 10. Marked tested.
 
 ### 26 Oct, 11:24Z — #7888 app sessions: live confirmed, read routes checked (ops)
 
