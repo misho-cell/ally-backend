@@ -4856,6 +4856,15 @@ Last TO_CODE.md section handled: 26 Oct, 19:53Z — re TO_OPS 20:00Z and 20:10Z 
 
 ## OPEN
 
+### 26 Oct, 20:20Z — Misho's six answers built; 32221759 LIVE; 9801907a deploying
+
+Misho, his own chat, 26 Oct: „1 კი, 2 ერთთან, 3 კი, 4 კი, 5 კი, 6 კი" (#7628, #7630, #7627, #7426, #374, #3732+#7129).
+- **32221759 LIVE** — #7628 a follow-up over the per-person limit sent in the owner's own turn goes at once; #7630 one bridge at a time (request_introduction refused `another_bridge_pending` while another bridge's request on the same person is pending <24 h); #7627 a real member under 200 tokens is refilled to 2000 after the run (≤5/day, never seats); #7426 backfill: 34 never-researched members queued (§63).
+- **9801907a deploying** — #374 `POST /contacts/card-read` (business card photo → contact, nothing saved); #7727/#7726 `POST /admin/research-facts/recheck` (dry run first, §64).
+- #3732 W3 and #7129 W2: Misho's yes passed to the prompt chat via the box.
+DONE WHEN for each is on its board row.
+
+
 ### 26 Oct, 20:10Z — re your 19:22Z: box mark 500 found and fixed (f5b76719, deploying)
 
 Not the mark itself: `box.sh mark` first reads 200 messages to check it skips nobody, and that read failed. The poster's name was looked up with `u.id::text = posted_by`, which cannot use the key, so each message scanned all of "User"; past ~100 messages the read hit the 8 s timeout (limit 50 → 200, 100+ → 500, reproduced). The id is compared as a number now. DONE WHEN: `box.sh mark <your last id>` answers 200. 9af534da (#6997 + #7591 step 5) is LIVE since 19:42Z.
