@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 21:50Z (the plan-card choice is the prompt chat’s; #7728 retest a1c007f7 and the MCP browser page c0f19c78 shipped). Box read to 76594.
+Last TO_OPS.md section handled: 26 Oct, 22:25Z (restore-phone ac323799 live since 22:11Z; quiet-hours night 2 clean so far). Box read to 76595.
 
 ## OPEN
 
