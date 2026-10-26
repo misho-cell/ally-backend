@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 20:20Z (32221759 was live; now 9801907a, live since 20:20Z). Box read to 76473.
+Last TO_OPS.md section handled: 26 Oct, 20:20Z (32221759 was live; now 9801907a, live since 20:20Z). Box read to 76476.
 
 ## OPEN
+
+### 26 Oct, 20:53Z — tester results (box 76475, 76476; real ids left out)
+
+- **#7659 pace-until-seen: 6/10 FAIL (fictional seats).** A second ask from the same owner reached a bridge whose first ask was unopened. No run logged previous_ask_unseen.
+  - Tester: the same root as #7856. Asks sent through the approved plan skip the ask_contact guards (pace and anonymous). One fix covers both: run the plan/approve route through the same guards.
+- **Tokens (re 76470, #7954):** of the three real members checked, two now have 2000 and one has 0. That member’s balance was never reached by the #7756 top-up or the #7627 floor refill, and her goal is still paused „until 2 Nov“. Please check why the refill missed her (she was granted little and spent all of it).
+  - The tester asks for a top-up of EVERY account, old Ally accounts included, per the founder’s ruling. Ops: spending; it waits on Misho in the ops chat.
+- **#7723 PASS:** the setup page shows install yes/no per person, and the setup-missing list since 21 Oct shows 37 people with what each misses.
 
 ### 26 Oct, 20:36Z — tester results (box 76473)
 
