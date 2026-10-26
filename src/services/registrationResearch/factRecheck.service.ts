@@ -1,0 +1,103 @@
+import { query } from '../../db/postgres/client';
+import { nameKey } from '../tools/transliterate';
+import { identityFor } from './identity';
+import { FactConfidence } from './plan';
+
+/**
+ * #7726 / #7727 (engagement desk, 25 Oct): research stored before 980e71d8 can
+ * carry a namesake — Giorgi Maisuradze, whom members save as „UGT", shows a
+ * different Giorgi Maisuradze's company. Research from 980e71d8 on keeps a fact
+ * that holds none of the words others saved as possible; this applies the same
+ * check once to what was stored before. Nothing is deleted.
+ */
+const RESEARCH_SOURCE = 'public_research';
+const QUERY_TIMEOUT_MS = 10_000;
+/** Everyone researched so far is a few hundred; a bound, not a target. */
+const MAX_USERS = 2_000;
+const RECHECK_NOTE = 'held as possible on re-check (#7727): holds none of the words members saved';
+
+interface ResearchedUser {
+  readonly id: number;
+  readonly name: string;
+}
+
+interface ConfirmedFact {
+  readonly id: number;
+  readonly value: string;
+}
+
+export interface RecheckReport {
+  readonly dry_run: boolean;
+  readonly users_read: number;
+  readonly users_with_identity: number;
+  readonly facts_held_possible: number;
+}
+
+async function researchedUsers(): Promise<ResearchedUser[]> {
+  const result = await query<ResearchedUser>(
+    `SELECT u.id, COALESCE(NULLIF(TRIM(u.name), ''), '') AS name
+       FROM "User" u
+      WHERE u."deletedAt" IS NULL
+        AND EXISTS (SELECT 1 FROM "UserPhone" up
+                      JOIN contact_facts cf ON cf.neo4j_contact_id = up.phone
+                     WHERE up."userId" = u.id AND cf.source = $1)
+      LIMIT $2`,
+    [RESEARCH_SOURCE, MAX_USERS],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+async function confirmedFactsOf(userId: number): Promise<ConfirmedFact[]> {
+  const result = await query<ConfirmedFact>(
+    `SELECT cf.id, cf.value FROM contact_facts cf
+       JOIN "UserPhone" up ON up.phone = cf.neo4j_contact_id
+      WHERE up."userId" = $1 AND cf.source = $2 AND cf.retracted_at IS NULL
+        AND cf.research_status IS DISTINCT FROM $3`,
+    [userId, RESEARCH_SOURCE, FactConfidence.Possible],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** The facts that hold none of the identity words. */
+export function factsWithoutIdentity(
+  facts: readonly ConfirmedFact[],
+  words: readonly string[],
+): number[] {
+  if (words.length === 0) return [];
+  return facts
+    .filter((f) => !words.some((w) => nameKey(f.value).split(' ').includes(w)))
+    .map((f) => f.id);
+}
+
+async function holdAsPossible(ids: readonly number[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const result = await query(
+    `UPDATE contact_facts SET research_status = $2,
+            conflict_note = COALESCE(conflict_note || ' · ', '') || $3, updated_at = NOW()
+      WHERE id = ANY($1::int[]) AND source = $4`,
+    [[...ids], FactConfidence.Possible, RECHECK_NOTE, RESEARCH_SOURCE],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rowCount ?? 0;
+}
+
+export async function recheckStoredResearch(dryRun: boolean): Promise<RecheckReport> {
+  const users = await researchedUsers();
+  let withIdentity = 0;
+  let held = 0;
+  for (const user of users) {
+    const identity = await identityFor(user.id, user.name);
+    if (identity.words.length === 0) continue;
+    withIdentity += 1;
+    const ids = factsWithoutIdentity(await confirmedFactsOf(user.id), identity.words);
+    held += dryRun ? ids.length : await holdAsPossible(ids);
+  }
+  return {
+    dry_run: dryRun,
+    users_read: users.length,
+    users_with_identity: withIdentity,
+    facts_held_possible: held,
+  };
+}

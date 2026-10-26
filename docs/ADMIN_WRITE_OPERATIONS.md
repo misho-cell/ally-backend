@@ -6405,3 +6405,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** Misho, 26 Oct, his own chat: „4 კი" (research everyone, new and old).
 - **What:** `POST /admin/registration-research/backfill {"dry_run": false}` after a dry run. Inserts one `registration_research` row (status queued) per real, undeleted member who has typed in Netai and has none; at most 500. The research ticker works the queue as for any new member (paid web search + model reading).
 - **Undo:** `DELETE FROM registration_research WHERE status = 'queued' AND created_at > '<run time>'` stops the ones not yet run; facts already written stay, as for any research.
+
+## 64 · #7726/#7727: STORED RESEARCH RE-CHECKED AGAINST WHAT MEMBERS SAVED (26 Oct ~21:00Z)
+
+- **Who authorises:** rows #7726/#7727, done directly under Misho's standing rule of 26 Oct.
+- **What:** `POST /admin/research-facts/recheck {"dry_run": false}` after a dry run. For each person with public-research facts whose labels from other members carry identity words (UGT, TBC, Axel…), a research fact holding none of them goes `confirmed` → `possible`, with a conflict_note. Only `source = 'public_research'`; nothing deleted.
+- **Undo:** `UPDATE contact_facts SET research_status = 'confirmed', conflict_note = NULLIF(REPLACE(conflict_note, 'held as possible on re-check (#7727): holds none of the words members saved', ''), '') WHERE source = 'public_research' AND conflict_note LIKE '%#7727%'`.

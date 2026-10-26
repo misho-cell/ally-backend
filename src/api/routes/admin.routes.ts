@@ -2,6 +2,7 @@ import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsap
 import { RestoreOutcome, restoreDeletedAccount } from '../../services/accountRestore.service';
 import { MAX_LABEL_ROWS, removeImportedLabels } from '../../services/labelRemoval.service';
 import { DraftOutcome, writeCardDraft } from '../../services/warRoomDraft.service';
+import { recheckStoredResearch } from '../../services/registrationResearch/factRecheck.service';
 import {
   AppSessionStats,
   MAX_USERS_PER_READ,
@@ -1706,6 +1707,24 @@ adminRouter.post('/registration-research/backfill', async (req: Request, res: Re
     // eslint-disable-next-line no-console
     console.error('[research backfill]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The backfill did not run; nothing was queued' });
+  }
+});
+
+// #7726/#7727: research stored before 980e71d8, checked once against what members saved.
+//   POST /admin/research-facts/recheck { dry_run: boolean }
+//   → { dry_run, users_read, users_with_identity, facts_held_possible }
+adminRouter.post('/research-facts/recheck', async (req: Request, res: Response) => {
+  const dryRun = (req.body as Record<string, unknown> | undefined)?.dry_run;
+  if (typeof dryRun !== 'boolean') {
+    res.status(400).json({ success: false, error: 'dry_run (true or false) is required' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await recheckStoredResearch(dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[research recheck]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The re-check did not finish' });
   }
 });
 
