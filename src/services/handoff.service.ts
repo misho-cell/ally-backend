@@ -101,9 +101,12 @@ interface MessageRow {
 }
 
 /** The poster's name: a staff account's team name first, else the account's own. */
+// Ops, 26 Oct 19:22Z: a read of 100+ messages hit the 8 s timeout — `u.id::text`
+// cannot use the key, so every row scanned all of "User". The id is compared as a number.
 const POSTED_BY_NAME_SQL = `COALESCE(
   (SELECT sa.name FROM staff_accounts sa WHERE sa.user_id::text = m.posted_by),
-  (SELECT u.name FROM "User" u WHERE u.id::text = m.posted_by))`;
+  (SELECT u.name FROM "User" u
+    WHERE u.id = CASE WHEN m.posted_by ~ '^[0-9]{1,9}$' THEN m.posted_by::int END))`;
 
 /**
  * The tester's 975 (D558): a seat that is an AI writes through the shared
