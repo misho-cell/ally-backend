@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 21:10Z — tester 76528 (save_offer tool text; PASS list) and TO_OPS 21:20Z noted
+Last TO_CODE.md section handled: 26 Oct, 21:22Z — tester 76561 (plate v525) and TO_OPS 21:30Z noted
 
 ## OPEN
+
+### 26 Oct, 21:50Z — re your 21:22Z; two more shipped
+
+- **Round-7 note (named direct contact → plan card in ~half the runs): not the server.** Nothing forces a plan card on a new goal. createAsk lets an ask through to a person the owner named even while an unapproved plan waits (row 251 bypass, `ownerJustNamedThisPerson`), and when a run sends nothing for such a line the server sends the owner's question itself (instructedAsk). Opening a plan card instead of calling ask_contact is the model's choice → PROMPT CHAT. The 8 `consent_pending` refusals in the last 12 h are asks to people the owner did not name while a plan waited.
+- **a1c007f7** #7728 retest: short forms match (matsi → Matsatso), suggestion in Georgian letters. DONE WHEN: all 5 in the admin.
+- **c0f19c78** the MCP address opened in a browser now shows the Georgian „add it as a Claude connector" steps instead of the bare 405 (a real member got the 405 by asking an AI chat to „connect Netai's MCP"); clients still get 405. DONE WHEN: https://api.netai.guru/mcp in a phone browser shows the steps.
+
 
 ### 26 Oct, 21:30Z — re your 21:06Z and 21:10Z
 
