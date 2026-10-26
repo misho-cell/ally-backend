@@ -488,6 +488,85 @@ const RELAY_REFUSALS: Readonly<
   },
 };
 
+/** #7824 (c): one minute past the moment the oldest message in the window turns 24 hours old. */
+const REOPEN_MARGIN_MS = 60_000;
+const RELAY_WINDOW_MS = 24 * 60 * 60_000;
+
+interface OverTheLimitFollowUp {
+  readonly fromUserId: string;
+  readonly taskId: number;
+  readonly toUserId: number;
+  readonly toName: string;
+  readonly contactPhone: string;
+  readonly question: string;
+}
+
+/** When this person's 24-hour window on this goal has room again. */
+async function relayWindowReopensAt(
+  fromUserId: string,
+  toUserId: number,
+  taskId: number,
+): Promise<Date> {
+  const oldest = await query<{ first_at: Date | string | null }>(
+    `SELECT MIN(created_at) AS first_at FROM task_asks
+      WHERE from_user_id = $1::int AND to_user_id = $2 AND task_id = $3
+        AND created_at > NOW() - INTERVAL '24 hours'`,
+    [fromUserId, toUserId, taskId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const firstAt = oldest.rows[0]?.first_at;
+  const from = firstAt ? new Date(firstAt).getTime() : Date.now();
+  return new Date(from + RELAY_WINDOW_MS + REOPEN_MARGIN_MS);
+}
+
+/**
+ * #7824 (c), founder 26 Oct (D888–D891): at the first obstacle Netai handed the
+ * work back — „send it yourself". A follow-up over the per-person limit is now
+ * kept and goes on its own when the window reopens; the goal wakes just after
+ * and reads that it went. The run tells the owner it carries it.
+ */
+export async function holdFollowUpOverTheLimit(
+  input: OverTheLimitFollowUp,
+): Promise<CreateAskOutcome> {
+  const reopensAt = await relayWindowReopensAt(input.fromUserId, input.toUserId, input.taskId);
+  try {
+    await holdAsk({
+      taskId: input.taskId,
+      toUserId: input.toUserId,
+      contactName: input.toName,
+      contactPhone: input.contactPhone,
+      question: input.question,
+      reopensAt,
+      waveNo: null,
+    });
+    await wakeTaskNoLaterThan(input.taskId, new Date(reopensAt.getTime() + REOPEN_MARGIN_MS));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[ask] task ${input.taskId}: could not hold the follow-up:`,
+      (err as Error).message,
+    );
+    const refusal = RELAY_REFUSALS.person_daily_relay_limit_reached;
+    return { sent: false, reason: refusal.reason, error: refusal.error(input.toName) };
+  }
+  // eslint-disable-next-line no-console
+  console.log(
+    `[ask] task ${input.taskId}: follow-up over the limit held until ${reopensAt.toISOString()}`,
+  );
+  return {
+    sent: false,
+    reason: 'person_daily_relay_limit_reached',
+    reopens_at: reopensAt.toISOString(),
+    error:
+      `${input.toName}-სთან ამ მიზანზე ბოლო 24 საათის ზღვარი ამოწურულია, ამიტომ ეს შეტყობინება ` +
+      'შენახულია და სერვერი თავად გააგზავნის reopens_at-ში მითითებულ დროს — შენ არაფერი გჭირდება. ' +
+      'მფლობელს ერთი ხაზით უთხარი, რომ გადასცემ, როცა შესაძლებელი გახდება. „თავად მიწერე" ' +
+      'ან „თავად დაურეკე" არ თქვა.' +
+      NOT_THE_OWNERS_LIMIT +
+      PROMISE_NO_ANSWER,
+  };
+}
+
 /**
  * The recipient's thread for a NEW conversation: born a task-shaped item
  * awaiting their reply, announced to their devices. A follow-up never comes
@@ -1787,6 +1866,16 @@ async function createAskNow(
     const budget = sameThread
       ? await checkFollowUpBudget(fromUserId, toUserId, taskId)
       : await checkAskBudget(fromUserId, threadId);
+    if (!budget.allowed && budget.reason === 'person_daily_relay_limit_reached') {
+      return holdFollowUpOverTheLimit({
+        fromUserId,
+        taskId,
+        toUserId,
+        toName,
+        contactPhone,
+        question: trimmed,
+      });
+    }
     if (!budget.allowed) {
       const refusal = RELAY_REFUSALS[budget.reason ?? 'monthly_budget_reached'];
       return { sent: false, reason: refusal.reason, error: refusal.error(toName) };
