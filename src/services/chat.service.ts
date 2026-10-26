@@ -1688,6 +1688,15 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
           'of the second-degree person you found through them. They are named to the bridge ' +
           '(it is the bridge’s own contact) as the reason they were asked.',
       },
+      anonymous: {
+        type: 'boolean',
+        description:
+          '#7856: true when the owner asked not to be named („one guy is looking for…", „don’t ' +
+          'say it’s me", „someone needs…"). The reader then sees no name anywhere — not in the ' +
+          'opening, the title or the notification — so write the question without the owner’s ' +
+          'name too. A later ask to the same person stays unnamed; pass false there only after ' +
+          'the owner has agreed to be named.',
+      },
     },
     required: ['task_id', 'phone', 'question', 'choices'],
   },
@@ -11085,6 +11094,9 @@ async function executeToolCall(
         bridgeNeedFrom(input) ?? rememberedBridgeNeed(threadId, String(input['phone'] ?? '')),
         undefined,
         authored,
+        undefined,
+        undefined,
+        typeof input['anonymous'] === 'boolean' ? input['anonymous'] : undefined,
       );
       if ((askOutcome as { sent?: unknown }).sent !== true && runId) runAskRefused.add(runId);
       if ((askOutcome as { sent?: unknown }).sent === true) {

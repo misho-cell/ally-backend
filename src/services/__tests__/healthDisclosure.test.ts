@@ -52,7 +52,7 @@ describe('a question carries the need, never somebody’s condition (3567)', () 
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     const filtered = asks.indexOf('questionWithoutCondition(editorsAsk.question)');
     expect(filtered).toBeGreaterThan(-1);
-    expect(asks.indexOf('openAskThread(toUserId, senderName, edited.question')).toBeGreaterThan(
+    expect(asks.indexOf('openAskThread(toUserId, shownName, edited.question')).toBeGreaterThan(
       filtered,
     );
   });

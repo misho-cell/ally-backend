@@ -13,7 +13,7 @@ describe('the push says whose assistant asks', () => {
 
   it('is what the ask push and the introduction push say', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('title: askPushTitle(language, senderName)');
+    expect(asks).toContain('askPushTitle(language, senderName)');
     expect(asks).not.toContain('`Netai — ${senderName} გეკითხება`');
     const intro = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
     expect(intro).toContain('ასისტენტი გთხოვს, გააცნო');

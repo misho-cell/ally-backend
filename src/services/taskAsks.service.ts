@@ -106,6 +106,7 @@ import {
   unknownSenderName,
   withoutFramesOwnWords,
 } from './askOpening';
+import { anonymousAskerName, anonymousPushTitle, withoutAskerNames } from './anonymousAsk';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { askBoundaryBlocks } from './askBoundary.service';
@@ -1013,6 +1014,8 @@ async function createAskNow(
   fromOwnersLine?: boolean,
   /** 3731 / BN (box 52869): text Misho approved word for word — sent as written, never edited. */
   approvedWording?: boolean,
+  /** #7856: the owner asked not to be named; unset, a follow-up keeps its thread's choice. */
+  anonymous?: boolean,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1568,6 +1571,7 @@ async function createAskNow(
     seconds_ago: number;
     a2a_rounds: number;
     answer: string | null;
+    anonymous: boolean;
   }>(
     // The daily check (8 Oct, 00:38:56Z, goal 5580): the reader had deleted
     // that conversation, and the new question was written into a thread that
@@ -1577,7 +1581,7 @@ async function createAskNow(
                  THEN a.ask_thread_id END AS ask_thread_id,
             a.status, a.from_user_id::text AS from_user_id,
             EXTRACT(EPOCH FROM (NOW() - a.created_at))::int AS seconds_ago,
-            a.a2a_rounds, a.answer
+            a.a2a_rounds, a.answer, a.anonymous
      FROM task_asks a
      WHERE a.task_id = $1 AND a.to_user_id = $2 AND a.status IN ('sent', 'answered')
      ORDER BY a.id DESC LIMIT 1`,
@@ -1585,6 +1589,7 @@ async function createAskNow(
     ASK_QUERY_TIMEOUT_MS,
   );
   const liveThreadId = live.rows[0]?.ask_thread_id ?? null;
+  const unnamed = anonymous ?? live.rows[0]?.anonymous === true;
 
   /**
    * Row 205 — one approval, the same person, the same question twice, seconds
@@ -1830,6 +1835,9 @@ async function createAskNow(
       fromName.rows[0]?.name?.trim() ?? '',
       language,
     )) || unknownSenderName(language);
+  // #7856: where the reader would see a name, an unnamed ask says „a member".
+  const shownName = unnamed ? anonymousAskerName(language) : senderName;
+  const askerNames = [fromName.rows[0]?.name?.trim() ?? '', senderName];
 
   // The question crosses accounts — scrub it.
   const safeQuestion = scrubText(trimmed);
@@ -1902,7 +1910,7 @@ async function createAskNow(
           { question: relayed.text, choices: draftChoices },
           {
             ownerWords,
-            askerName: senderName,
+            askerName: shownName,
             readerName: toName,
             language,
             draftIsOwnersWords: fromOwnersLine === true,
@@ -1926,10 +1934,11 @@ async function createAskNow(
     question: withAskerAsTheOneInNeed(
       questionWithoutCondition(editorsAsk.question),
       toName,
-      senderName,
+      shownName,
       language,
     ),
   };
+  if (unnamed) edited.question = withoutAskerNames(edited.question, askerNames, language);
   // A follow-up lands in the conversation it belongs to; only a first ask
   // opens a thread. Two threads for one exchange would put the answer and the
   // question that followed it in different rooms (ticket 9 task 12).
@@ -1940,7 +1949,7 @@ async function createAskNow(
     return goalStoppedMidSend(taskId);
   }
   const askThreadId =
-    liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));
+    liveThreadId ?? (await openAskThread(toUserId, shownName, edited.question, language));
   // The tester's 44551 / 44584: the frame, the question and the buttons in one language.
   const said = messageLanguage(edited.question, language);
   // 2907 (the tester's 46136, asks 16209 / 16210): the editor rewrote the question and its
@@ -1971,6 +1980,7 @@ async function createAskNow(
     roster,
     edited.question,
     isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
+    unnamed,
   );
   if (relayed.original !== undefined) {
     // eslint-disable-next-line no-console
@@ -2034,8 +2044,9 @@ async function createAskNow(
         said,
         senderName,
         roster,
-        shorter,
+        unnamed ? withoutAskerNames(shorter, askerNames, language) : shorter,
         isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
+        unnamed,
       );
     }
   }
@@ -2083,9 +2094,10 @@ async function createAskNow(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
                             wave_no, evening_card_id, choices, shown_question,
-                            prematch, prematch_source, prematch_at, a2a_rounds, field, prepared_answer)
+                            prematch, prematch_source, prematch_at, a2a_rounds, field, prepared_answer,
+                            anonymous)
      VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
-             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17, $18)
+             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17, $18, $19)
      RETURNING id`,
     [
       taskId,
@@ -2107,6 +2119,7 @@ async function createAskNow(
       // 1689 (A6): the field the recipient's answer record is kept under.
       isFollowUp || parentAskId !== undefined ? null : askField(goalText) || null,
       prepared,
+      unnamed,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -2160,8 +2173,11 @@ async function createAskNow(
   // #1850: a question that goes with the evening card rings once, as the card.
   if (card === undefined) {
     void sendPushNotification(String(toUserId), {
-      title: askPushTitle(language, senderName),
-      body: safeQuestion.slice(0, 120),
+      title: unnamed ? anonymousPushTitle(language) : askPushTitle(language, senderName),
+      body: (unnamed ? withoutAskerNames(safeQuestion, askerNames, language) : safeQuestion).slice(
+        0,
+        120,
+      ),
       url: `/chat/${askThreadId}`,
     }).catch(() => undefined);
   }
