@@ -1711,16 +1711,31 @@ adminRouter.post('/registration-research/backfill', async (req: Request, res: Re
 });
 
 // #7726/#7727: research stored before 980e71d8, checked once against what members saved.
-//   POST /admin/research-facts/recheck { dry_run: boolean }
+//   POST /admin/research-facts/recheck { dry_run: boolean, user_ids: number[] (1-20) }
 //   → { dry_run, users_read, users_with_identity, facts_held_possible }
+const MAX_RECHECK_USERS = 20;
+
 adminRouter.post('/research-facts/recheck', async (req: Request, res: Response) => {
-  const dryRun = (req.body as Record<string, unknown> | undefined)?.dry_run;
-  if (typeof dryRun !== 'boolean') {
-    res.status(400).json({ success: false, error: 'dry_run (true or false) is required' });
+  const reqBody = (req.body ?? {}) as Record<string, unknown>;
+  const dryRun = reqBody.dry_run;
+  const userIds = reqBody.user_ids;
+  const idsOk =
+    Array.isArray(userIds) &&
+    userIds.length >= 1 &&
+    userIds.length <= MAX_RECHECK_USERS &&
+    userIds.every((id) => Number.isInteger(id) && Number(id) > 0);
+  if (typeof dryRun !== 'boolean' || !idsOk) {
+    res.status(400).json({
+      success: false,
+      error: `dry_run (true or false) and user_ids (1-${MAX_RECHECK_USERS} account ids a row names) are required`,
+    });
     return;
   }
   try {
-    res.status(200).json({ success: true, data: await recheckStoredResearch(dryRun) });
+    res.status(200).json({
+      success: true,
+      data: await recheckStoredResearch(dryRun, (userIds as unknown[]).map(Number)),
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[research recheck]', (error as Error).message);

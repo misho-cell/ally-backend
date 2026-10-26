@@ -34,7 +34,7 @@ describe('a namesake fact is held as possible on re-check', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: facts });
-    const report = await recheckStoredResearch(true);
+    const report = await recheckStoredResearch(true, [191076]);
     expect(report).toEqual({
       dry_run: true,
       users_read: 1,
@@ -55,7 +55,7 @@ describe('a namesake fact is held as possible on re-check', () => {
       })
       .mockResolvedValueOnce({ rows: facts })
       .mockResolvedValueOnce({ rowCount: 1 });
-    expect((await recheckStoredResearch(false)).facts_held_possible).toBe(1);
+    expect((await recheckStoredResearch(false, [191076])).facts_held_possible).toBe(1);
     const [sql, params] = mockQuery.mock.calls[3] as [string, unknown[]];
     expect(sql).toContain('UPDATE contact_facts SET research_status = $2');
     expect(sql).not.toContain('DELETE');
@@ -72,5 +72,16 @@ describe('a namesake fact is held as possible on re-check', () => {
       'Giorgi Maisuradze',
     );
     expect(words).toEqual(['ugt']);
+  });
+
+  it('holds every research fact of a named namesake case nobody labelled (#7726)', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 190746, name: 'Giorgi' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: facts });
+    const report = await recheckStoredResearch(true, [190746]);
+    expect(report.facts_held_possible).toBe(2);
+    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(params[2]).toEqual([190746]);
   });
 });
