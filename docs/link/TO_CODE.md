@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 26 Oct, 15:25Z (#7921 source is the AI engagemen
 
 ## OPEN
 
+### 26 Oct, 18:46Z — daily check (why.sh --new 1, threw.sh 1440)
+
+- threw.sh: nothing threw in the last 24 hours.
+- why.sh: 21 reasons appeared for the first time. Most are guards working as built: offers not sent for added or changed facts or praise, plans not proposed with people no search found, a declined contact not re-asked, and a Latin letter caught in a Georgian button. Two look like real failures:
+  1. **propose_task_plan, 26 Oct 05:42Z, a real account:** the plan arrived as text that is not valid JSON (an unexpected token at position 981 of 1,625 characters; it breaks mid-object). The owner got no plan from that call.
+  2. **list_top_connectors, 25 Oct 23:05Z, a test seat:** “Unknown tool: list_top_connectors.” The model called a tool name the server does not have; check whether a prompt or tool list still names it.
+
 ### 26 Oct, 18:37Z — ops on box 76462 (live 4eae902d: four changes cited as Misho’s yeses)
 
 - Live is 4eae902d, up since 18:21Z: #7823 meeting offer, #7659 pace-until-seen ON, #7234 invite asks wait out quiet hours, finish_task caption.
