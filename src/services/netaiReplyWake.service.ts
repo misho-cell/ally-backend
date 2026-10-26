@@ -8,11 +8,11 @@ import { WakeOrigin } from './quietWakeGuard';
  * where no model runs — and the goal heard nothing for 28 hours. A message
  * sent with its goal now hands the answer to that goal's next run.
  *
- * MODEL-FACING (D44): the wake text below is new text the run reads, so the
- * hand-over ships OFF and goes on with Misho's word. Until then the answer is
- * kept and shown to the team exactly as before.
+ * MODEL-FACING: the wake text below is new text the run reads. It shipped OFF
+ * and went ON on 26 Oct under Misho's standing rule (build what the row does
+ * not leave to him).
  */
-export const NETAI_REPLY_WAKES_GOAL = false;
+export const NETAI_REPLY_WAKES_GOAL = true;
 
 const LOOKUP_TIMEOUT_MS = 3_000;
 

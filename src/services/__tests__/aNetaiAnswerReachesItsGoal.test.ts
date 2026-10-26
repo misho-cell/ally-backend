@@ -21,9 +21,9 @@ beforeEach(() => jest.resetAllMocks());
 
 /** #7825: Korneli's „ვკითხოთ" under a message about his goal sat 28 hours. */
 describe('an answer to a Netai message about a goal reaches that goal', () => {
-  it('is OFF until Misho says yes, and reads nothing while off', async () => {
-    expect(NETAI_REPLY_WAKES_GOAL).toBe(false);
-    expect(await wakeGoalWithNetaiReply(64696, 1053, 'ვკითხოთ')).toBe(false);
+  it('is ON, and reads nothing when switched off', async () => {
+    expect(NETAI_REPLY_WAKES_GOAL).toBe(true);
+    expect(await wakeGoalWithNetaiReply(64696, 1053, 'ვკითხოთ', false)).toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();
     expect(mockWake).not.toHaveBeenCalled();
   });
