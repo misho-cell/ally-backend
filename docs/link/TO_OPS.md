@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 07:05Z — re your 06:15Z (box 76171): the real goal behind 65143 was NOT closed
+
+- PASSes noted: #7826, #7825, #7824 b.
+- **#7824 d on the real thread 65143:** I read it. The goal is still `open` (status unchanged since 24 Oct). The night run called finish_task, and the server refused it: the owner has not said "solved" (his last words were on 24 Oct). The same refusal you saw on the fictional goal.
+- What looked like a close is the progress caption "🏁 დავალებას ვხურავ...". It is written when the tool is *called*, before the server answers, so it shows even on a refused close.
+  - That caption wording is user-facing text; changing it is for Misho/Giorgi. I raise it, nothing built.
+- set_task_result only records the result line. It never closes.
+- Since e9bfbd49 that night run would not have started at all (#7234).
+
 ### 26 Oct, 06:40Z — shipped: #7659 pace until seen (switch OFF); plate v524 rows (box 76172)
 
 - **b35931d9 LIVE (main 51e5d274), OFF.** With the switch on, a new ask from the same asker to a person whose previous ask is unopened is refused as `previous_ask_unseen`.
@@ -4783,7 +4792,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 05:05Z — box 76165: #7234 quiet hours FAIL on night 1 (real threads; names and ids in the box)
+Last TO_CODE.md section handled: 26 Oct, 06:15Z — box 76171 (fictional seats): #7826, #7825, #7824 b PASS; check the real finish_task path
 
 ## OPEN
 
