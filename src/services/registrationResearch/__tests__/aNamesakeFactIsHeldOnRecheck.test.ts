@@ -1,15 +1,14 @@
 const mockQuery = jest.fn();
-const mockIdentity = jest.fn();
 jest.mock('../../../db/postgres/client', () => ({
   __esModule: true,
   query: (...a: unknown[]) => mockQuery(...a),
 }));
-jest.mock('../identity', () => ({
-  __esModule: true,
-  identityFor: (...a: unknown[]) => mockIdentity(...a),
-}));
 
-import { factsWithoutIdentity, recheckStoredResearch } from '../factRecheck.service';
+import {
+  factsWithoutIdentity,
+  recheckStoredResearch,
+  wordsSavedByMany,
+} from '../factRecheck.service';
 
 beforeEach(() => jest.resetAllMocks());
 
@@ -28,8 +27,13 @@ describe('a namesake fact is held as possible on re-check', () => {
   it('counts on a dry run and writes nothing', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: 191076, name: 'Giorgi Maisuradze' }] })
+      .mockResolvedValueOnce({
+        rows: [
+          { saver: 501, alias: 'Giorgi Maisuradze UGT' },
+          { saver: 523, alias: 'Gio UGT' },
+        ],
+      })
       .mockResolvedValueOnce({ rows: facts });
-    mockIdentity.mockResolvedValueOnce({ searchName: 'Giorgi Maisuradze', words: ['ugt'] });
     const report = await recheckStoredResearch(true);
     expect(report).toEqual({
       dry_run: true,
@@ -43,14 +47,30 @@ describe('a namesake fact is held as possible on re-check', () => {
   it('holds them as possible on a real run, research facts only, nothing deleted', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: 191076, name: 'Giorgi Maisuradze' }] })
+      .mockResolvedValueOnce({
+        rows: [
+          { saver: 501, alias: 'Giorgi Maisuradze UGT' },
+          { saver: 523, alias: 'Gio UGT' },
+        ],
+      })
       .mockResolvedValueOnce({ rows: facts })
       .mockResolvedValueOnce({ rowCount: 1 });
-    mockIdentity.mockResolvedValueOnce({ searchName: 'Giorgi Maisuradze', words: ['ugt'] });
     expect((await recheckStoredResearch(false)).facts_held_possible).toBe(1);
-    const [sql, params] = mockQuery.mock.calls[2] as [string, unknown[]];
+    const [sql, params] = mockQuery.mock.calls[3] as [string, unknown[]];
     expect(sql).toContain('UPDATE contact_facts SET research_status = $2');
     expect(sql).not.toContain('DELETE');
     expect(params[0]).toEqual([1]);
     expect(params[1]).toBe('possible');
+  });
+
+  it('counts as identity only a word two different members saved', () => {
+    const words = wordsSavedByMany(
+      [
+        { saver: 501, alias: 'Giorgi Maisuradze UGT' },
+        { saver: 523, alias: 'Giorgi UGT ძმა' },
+      ],
+      'Giorgi Maisuradze',
+    );
+    expect(words).toEqual(['ugt']);
   });
 });
