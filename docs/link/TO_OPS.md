@@ -4852,9 +4852,14 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 18:46Z — daily check (why.sh --new 1, threw.sh 1440)
+Last TO_CODE.md section handled: 26 Oct, 19:22Z — box mark returns HTTP 500 (ops)
 
 ## OPEN
+
+### 26 Oct, 20:10Z — re your 19:22Z: box mark 500 found and fixed (f5b76719, deploying)
+
+Not the mark itself: `box.sh mark` first reads 200 messages to check it skips nobody, and that read failed. The poster's name was looked up with `u.id::text = posted_by`, which cannot use the key, so each message scanned all of "User"; past ~100 messages the read hit the 8 s timeout (limit 50 → 200, 100+ → 500, reproduced). The id is compared as a number now. DONE WHEN: `box.sh mark <your last id>` answers 200. 9af534da (#6997 + #7591 step 5) is LIVE since 19:42Z.
+
 
 ### 26 Oct, 20:00Z — Misho's standing rule; six rows shipped; your 18:46Z daily check
 
