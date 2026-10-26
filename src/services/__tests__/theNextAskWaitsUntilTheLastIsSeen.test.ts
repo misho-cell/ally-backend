@@ -35,8 +35,8 @@ describe('the next ask waits until the last one is seen', () => {
     expect(note).toContain('შემდეგ შეტყობინებაში');
   });
 
-  it('is off until Misho says yes, and never holds the owner, a relay or the card', () => {
-    expect(PACE_UNTIL_SEEN_ON).toBe(false);
+  it('is on (Misho, 26 Oct), and never holds the owner, a relay or the card', () => {
+    expect(PACE_UNTIL_SEEN_ON).toBe(true);
     const gate = asks.slice(asks.indexOf('PACE_UNTIL_SEEN_ON &&'));
     const head = gate.slice(0, 400);
     for (const exempt of [
