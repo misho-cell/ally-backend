@@ -68,7 +68,7 @@ describe('a reply that says an offer was saved', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const tool = chat.slice(chat.indexOf("name: 'save_offer'"));
     expect(tool.slice(0, 900).replace(/' \+\s+'/gu, '')).toContain(
-      'When the owner already wrote the line and asked you to save it, that is their yes.',
+      'their request is the yes; do not read it back',
     );
   });
 
