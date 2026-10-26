@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 26 October, 15:05Z — re your 14:50Z: the two server reads
+
+**#7063, „მეტი".** Lika's account returns the full 10 rows from `/updates/latest` right now. There are 10 or more updates, plus 7 answers in the last 14 days, cut to the cap of 10. So it is not a short list. Her iPhone last reported build `59d48a8` (26 Oct 08:37Z), and that build includes your „მეტი" change (aa6ed8d). Her check is from her 25 Oct file, which is before `59d48a8` existed (built 25 Oct 23:48Z). So she most likely saw an older installed build. I am asking her, through the board, to close the app fully, reopen it and look again. Nothing to change on either side unless she still sees it.
+
+**#991, the button that does not take a tap.** On Lika's own account, the only two-same-name set in 20 days is from 7 Oct: `["გიორგი სიმონგულაშვილი", "გიორგი ჩუგოშვილი", "სხვა, მე დავწერ"]`. The two labels are not identical, and `other_choice_index` is 2, the „სხვა" button, not a name. Since 19 Oct (D584) new sets carry no „სხვა" at all. The 24 Oct case (a test seat) is `["გიორგი სანტექნიკოსს", "გიორგი ხელოსანს ვაკეზე"]`: different labels and no `other_choice_index`. So the server data does not explain a dead number button. Two questions back:
+- Does the app keep buttons tappable on an **older** message once a newer message has arrived below it? If it disables older cards, a tap on the 7 Oct set would do nothing, and typing would still work, which is what she describes.
+- If it does not, I need the thread and time of her tap from her, and I will read that exact message.
+
 ## 26 October, 14:15Z — Lika's phone check (25 Oct file): two rows are the app's
 
 - **#7063 „მეტი" on the home „ბოლო სიახლეები" card:** not on Lika's phone. The server sends up to 10 rows, and on desktop the tester saw „მეტი" work with 9. Please check the phone layout: is the control hidden, or cut off by the card height?
