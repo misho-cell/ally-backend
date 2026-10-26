@@ -25,7 +25,7 @@ function clientIp(req: Request): string | null {
 }
 
 /** The signed-in person's id when the request carries a valid user token; null otherwise. */
-function signedInUserId(req: Request): string | null {
+export function signedInUserId(req: Request): string | null {
   const header = req.headers.authorization;
   if (typeof header !== 'string' || !header.startsWith(BEARER_PREFIX)) return null;
   try {

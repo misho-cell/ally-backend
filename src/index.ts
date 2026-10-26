@@ -3,6 +3,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import { rateLimit } from './api/middleware/rateLimit.middleware';
 import { captureDeviceFingerprint } from './api/middleware/deviceFingerprint.middleware';
+import { trackAppSession } from './api/middleware/appSession.middleware';
 import authRouter from './api/routes/auth.routes';
 import chatRouter from './api/routes/chat.routes';
 import adminRouter from './api/routes/admin.routes';
@@ -127,6 +128,8 @@ app.use('/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
 app.use(express.json({ limit: '10mb' }));
 // 4298: every signed-in request's device and app build, on every route.
 app.use(captureDeviceFingerprint);
+// #7888: the app's signed-in requests make its sessions (2 x 15 min a week is the target).
+app.use(trackAppSession);
 app.use('/auth', authRouter);
 app.use('/chat', chatRouter);
 app.use('/admin', adminRouter);

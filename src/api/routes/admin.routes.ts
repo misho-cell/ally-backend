@@ -1,4 +1,9 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
+import {
+  AppSessionStats,
+  MAX_USERS_PER_READ,
+  appSessionStats,
+} from '../../services/appSessions.service';
 import { createNetaiTemplates, whatsappSetupState } from '../../services/whatsappSetup.service';
 import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
@@ -1579,7 +1584,10 @@ adminRouter.post(
 adminRouter.get(
   '/users/:id',
   param('id').isInt({ min: 1 }),
-  async (req: Request, res: Response<ApiResponse<UserProfile>>) => {
+  async (
+    req: Request,
+    res: Response<ApiResponse<UserProfile & { readonly app_sessions: AppSessionStats | null }>>,
+  ) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ success: false, errors: errors.array() } as never);
@@ -1591,7 +1599,9 @@ adminRouter.get(
         res.status(404).json({ success: false, error: 'მომხმარებელი ვერ მოიძებნა' });
         return;
       }
-      res.status(200).json({ success: true, data: profile });
+      // #7888: sessions_7d, minutes_7d, sessions_30d, last_session_at.
+      const [sessions] = await appSessionStats([Number(req.params.id)]);
+      res.status(200).json({ success: true, data: { ...profile, app_sessions: sessions ?? null } });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('User detail error:', error);
@@ -1599,6 +1609,34 @@ adminRouter.get(
     }
   },
 );
+
+// #7888: app sessions for many people at once, for the founder's onboarding list.
+//   GET /admin/app-sessions?user_ids=501,118509   → [{ user_id, sessions_7d, minutes_7d,
+//                                                    sessions_30d, last_session_at }]
+// 400 when user_ids is missing, not whole numbers, or more than MAX_USERS_PER_READ.
+adminRouter.get('/app-sessions', async (req: Request, res: Response) => {
+  const raw = String(req.query.user_ids ?? '').trim();
+  const parts = raw === '' ? [] : raw.split(',').map((p) => p.trim());
+  const ids = [...new Set(parts.map(Number))];
+  if (
+    ids.length === 0 ||
+    ids.length > MAX_USERS_PER_READ ||
+    !ids.every((id) => Number.isInteger(id) && id > 0)
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `Pass user_ids as 1 to ${MAX_USERS_PER_READ} comma-separated account ids.`,
+    });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await appSessionStats(ids) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin app-sessions]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 // The whole registered base as one file (Ticket 10 Task 8; Ticket 9 Task 1).
 //   GET /admin/base-export.csv                 every account, streamed in batches
