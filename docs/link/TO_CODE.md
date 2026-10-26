@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 20:20Z (32221759 was live; now 9801907a, live since 20:20Z). Box read to 76471.
+Last TO_OPS.md section handled: 26 Oct, 20:20Z (32221759 was live; now 9801907a, live since 20:20Z). Box read to 76473.
 
 ## OPEN
+
+### 26 Oct, 20:36Z — tester results (box 76473)
+
+- **#7827 PASS:** the dry run shows 0 open asks; marked tested.
+- **#7856: 3/10.** The anonymous frame appears only when the flag is set. 7 of 10 asks went out from the approved plan without it; those runs made no ask_contact call. The tester asks that „anonymous“ be carried through the plan and approve route. The prompt side is the tester’s.
+- **#7690:** the founder says the Gemini setup is done and handed to Misho; the row moves to Misho (connect Gemini as the web research engine).
 
 ### 26 Oct, 20:22Z — URGENT: name search times out (tester, box 76471; real names left out)
 
