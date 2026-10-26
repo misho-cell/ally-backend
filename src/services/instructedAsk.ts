@@ -15,6 +15,7 @@ import {
 import { contactInstructionIn } from './instructionUnsent';
 import { ownerAsksForIntroduction } from './introInstruction';
 import { canBeAsked, createAsk } from './taskAsks.service';
+import { ownerWantsUnnamed } from './anonymousAsk';
 import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
 import type { RunMode } from './promptBlocks.service';
 import { findContactPhonesByName } from './tools/nameMatch';
@@ -192,6 +193,7 @@ async function askOne(
   contact: NamedContact,
   question: string,
   threadId: number,
+  unnamed: boolean,
 ): Promise<PersonOutcome | null> {
   const outcome = await createAsk(
     userId,
@@ -204,6 +206,8 @@ async function askOne(
     undefined,
     undefined,
     true,
+    undefined,
+    unnamed || undefined,
   );
   if (outcome.sent) return { result: InstructedAskResult.Sent, toName: outcome.to_name };
   if (outcome.reason === undefined || !NOT_ON_NETAI_REASONS.has(outcome.reason)) return null;
@@ -293,8 +297,10 @@ export async function sendInstructedAsk(
     factsAround(ownerLine.trim(), isInstructionSentence),
     INSTRUCTED_QUESTION_MAX_CHARS,
   );
+  // #7856: „one guy is looking for…" — the line itself asks that the helper not learn who.
+  const unnamed = ownerWantsUnnamed(ownerLine);
   for (const c of askable) {
-    const outcome = await askOne(userId, taskId, c, question, threadId);
+    const outcome = await askOne(userId, taskId, c, question, threadId, unnamed);
     if (outcome !== null) people.push(outcome);
   }
   if (!people.some((p) => p.result !== InstructedAskResult.Excluded)) return NOT_SENT;
