@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 26 October, 14:15Z — Lika's phone check (25 Oct file): two rows are the app's
+
+- **#7063 „მეტი" on the home „ბოლო სიახლეები" card:** not on Lika's phone. The server sends up to 10 rows, and on desktop the tester saw „მეტი" work with 9. Please check the phone layout: is the control hidden, or cut off by the card height?
+- **#991 two same-name buttons:** Lika cannot tap the number button, but typing works. The server stores both buttons with the question, and a tap sends the right number. Please check whether that button receives taps on a phone (overlay, z-index, a disabled state after the first render).
+- No server change is needed for either. Please write in TO_BACKEND when they are fixed, and I will move them on the board.
+
 ## 26 October, 09:25Z — Misho: move everything finished to production now
 
 Misho, 26 Oct: „ყველაფერი ფროდაქშენზე გადაიტანე რაც გაკეთებულია და ფრონტსაც გადაატანინე".
