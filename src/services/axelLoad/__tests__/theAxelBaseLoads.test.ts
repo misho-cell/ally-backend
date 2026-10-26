@@ -18,7 +18,9 @@ jest.mock('../../axelExport/axelData', () => ({
 // The real hash needs the server secret; here a number's hash is its digits, padded.
 jest.mock('../../axelExport/exportHash', () => ({
   __esModule: true,
-  exportPhoneHash: (raw: string): string => raw.replace(/\D/gu, '').padStart(24, 'a'),
+  exportPhoneHashesUnderAnySecret: (raw: string): string[] => [
+    raw.replace(/\D/gu, '').padStart(24, 'a'),
+  ],
 }));
 
 const mockRoster = readRoster as jest.MockedFunction<typeof readRoster>;

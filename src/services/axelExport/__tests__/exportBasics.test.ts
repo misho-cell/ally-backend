@@ -1,4 +1,4 @@
-import { exportPhoneHash } from '../exportHash';
+import { exportPhoneHash, exportPhoneHashesUnderAnySecret } from '../exportHash';
 import { toCsv } from '../csv';
 
 /** The Axel export (Misho, 6 Oct): one stable keyed hash per number, and CSV a spreadsheet opens safely. */
@@ -28,6 +28,20 @@ describe('the phone hash', () => {
     const before = exportPhoneHash('995599000001');
     process.env.MCP_REF_SECRET = 'another-secret';
     expect(exportPhoneHash('995599000001')).not.toBe(before);
+    process.env.MCP_REF_SECRET = 'test-secret';
+  });
+
+  it('is read back under the old secret after MCP_REF_SECRET changed (#7525)', () => {
+    const savedJwt = process.env.JWT_SECRET;
+    process.env.JWT_SECRET = 'the-jwt-secret';
+    delete process.env.MCP_REF_SECRET;
+    const handedOut = exportPhoneHash('995599000001');
+    process.env.MCP_REF_SECRET = 'a-newer-secret';
+    expect(exportPhoneHash('995599000001')).not.toBe(handedOut);
+    expect(exportPhoneHashesUnderAnySecret('995599000001')).toContain(handedOut);
+    expect(exportPhoneHashesUnderAnySecret('')).toEqual([]);
+    if (savedJwt === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = savedJwt;
     process.env.MCP_REF_SECRET = 'test-secret';
   });
 });
