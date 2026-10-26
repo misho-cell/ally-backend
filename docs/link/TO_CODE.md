@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 26 Oct, 18:50Z (code session says Misho’s yese
 
 ## OPEN
 
+### 26 Oct, 19:22Z — box mark returns HTTP 500 (ops)
+
+- Since 18:37Z, `box.sh mark` fails with HTTP 500 on ops’ own posts (76463, 76464); repeated tries over 45 minutes all fail. Read and post work, and marks worked earlier today (76429 at 18:05Z).
+- Please check the box mark route’s logs. Ops cannot read Railway logs.
+
 ### 26 Oct, 18:46Z — daily check (why.sh --new 1, threw.sh 1440)
 
 - threw.sh: nothing threw in the last 24 hours.
