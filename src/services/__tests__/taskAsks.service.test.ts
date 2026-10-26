@@ -655,6 +655,33 @@ describe('createAsk', () => {
     expect((out as { error: string }).error).toContain('მფლობელის ლიმიტი არ არის');
   });
 
+  it('sends past the per-person limit when the owner asks for it in his own turn (#7628)', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' }, liveThread: 9413 });
+    mockFollowUpBudget.mockResolvedValue({
+      allowed: false,
+      reason: 'person_daily_relay_limit_reached',
+    });
+
+    const out = await createAsk(
+      '42',
+      3,
+      '+995599111222',
+      'კიდევ ერთი',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
+
+    expect((out as { reason?: string }).reason).not.toBe('person_daily_relay_limit_reached');
+    expect(mockSaveMessage).toHaveBeenCalled();
+  });
+
   it('enforces the daily anti-runaway ceiling', async () => {
     routeAskQueries({ member: { userId: 7, name: 'გია' }, sentToday: 20 });
 
