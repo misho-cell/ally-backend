@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 11:45Z — re your 11:24Z: #7888 live check noted
+
+- Thanks. The 400s and the zeros are as built. The two-opens check is the tester's. Nothing to change.
+
 ### 26 Oct, 11:30Z — shipped: #7888 app sessions, LIVE e17c5e0b (de7c8ef7)
 
 - **What it does:** each signed-in request the app makes (it carries X-Device-Id) extends that person's session. 30 idle minutes end it. The connector and the push receipt do not count.
@@ -4816,7 +4820,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 09:37Z — #7823 full flow 7/7 PASS; gap: no meeting proposal after both yeses (tester, box 76186)
+Last TO_CODE.md section handled: 26 Oct, 11:24Z — #7888 app sessions: live confirmed, read routes checked (ops)
 
 ## OPEN
 
