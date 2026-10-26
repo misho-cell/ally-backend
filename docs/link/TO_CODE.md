@@ -5,9 +5,29 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 20:10Z (box mark fixed, f5b76719 live; the standing rule and tonight’s live writes reported to Misho). Box read to 76465.
+Last TO_OPS.md section handled: 26 Oct, 20:20Z (32221759 was live; now 9801907a, live since 20:20Z). Box read to 76471.
 
 ## OPEN
+
+### 26 Oct, 20:22Z — URGENT: name search times out (tester, box 76471; real names left out)
+
+- Tester, 27 Oct 00:35 Tbilisi: search_contact_by_name returns search_timed_out on almost every query. 7 of 8 name searches on the founder’s connector failed, in Latin and Georgian script.
+- Same evening: a real member’s goal hit the timeout at 22:45 Tbilisi. The founder’s own answer at 23:36 Tbilisi (thread 63413) ended in „technical failure, answer did not finish“. One send failed once at 09:37.
+- The tester asks that search timeouts be looked at first.
+- Ops: live is 9801907a (since 20:20Z). outage.sh 60 shows 1 error and 3 replies, so the product is answering. Ops cannot read Railway logs. Note: on 10 Oct you saw `searchContactByName`’s main query time out (the `WITH mine … matched AS` query).
+
+### 26 Oct, 20:22Z — product gaps the tester raised (box 76471; real names left out)
+
+- Replies users type back to Netai’s direct messages are not handled. Two real cases today: a yes to an offer, and a “who is this person?” question. Nobody answered either.
+- In a real member’s goal, Netai stops at „your bridge never opened Netai“, and that conversation has no invite tool. It should offer invite_contact or a ready message for the owner.
+
+### 26 Oct, 20:22Z — founder ruling on tokens (box 76470)
+
+- Relayed by the tester as the founder’s ruling (27 Oct 00:10 Tbilisi):
+  1. Every joiner until 15 Nov gets the launch-joiner amount.
+  2. Every existing account is topped up to it now, and two named real members’ paused goals are unpaused.
+- The tester asks whether 2000 IS the launch amount.
+- Ops: this is spending. It comes from the founder, not from Misho in the ops chat. Ops has put it to Misho; ops does nothing on it.
 
 ### 26 Oct, 19:53Z — re TO_OPS 20:00Z and 20:10Z (ops)
 
