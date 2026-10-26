@@ -1095,6 +1095,8 @@ async function createAskNow(
   approvedWording?: boolean,
   /** #7856: the owner asked not to be named; unset, a follow-up keeps its thread's choice. */
   anonymous?: boolean,
+  /** #7628: sent in the owner's own turn, on his word — the per-person daily limit gives way. */
+  ownerAskedNow?: boolean,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1866,7 +1868,14 @@ async function createAskNow(
     const budget = sameThread
       ? await checkFollowUpBudget(fromUserId, toUserId, taskId)
       : await checkAskBudget(fromUserId, threadId);
-    if (!budget.allowed && budget.reason === 'person_daily_relay_limit_reached') {
+    const ownersWordLiftsIt =
+      ownerAskedNow === true && budget.reason === 'person_daily_relay_limit_reached';
+    if (!budget.allowed && ownersWordLiftsIt) {
+      // #7628 (Misho's yes, 26 Oct): „send the third one too, no problem" — the owner's
+      // explicit ask outranks the two-a-day limit with one person.
+      // eslint-disable-next-line no-console
+      console.log(`[ask] task ${taskId}: over the per-person limit, sent on the owner's word`);
+    } else if (!budget.allowed && budget.reason === 'person_daily_relay_limit_reached') {
       return holdFollowUpOverTheLimit({
         fromUserId,
         taskId,
@@ -1876,7 +1885,7 @@ async function createAskNow(
         question: trimmed,
       });
     }
-    if (!budget.allowed) {
+    if (!budget.allowed && !ownersWordLiftsIt) {
       const refusal = RELAY_REFUSALS[budget.reason ?? 'monthly_budget_reached'];
       return { sent: false, reason: refusal.reason, error: refusal.error(toName) };
     }

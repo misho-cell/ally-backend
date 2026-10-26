@@ -8,6 +8,7 @@ import { nameAsReaderSaved } from '../readerSavedName';
 import { learnGeorgianSpellings } from '../georgianScriptName';
 import { forwardedRequestPush } from '../introOpening';
 import { query } from '../../db/postgres/client';
+import { bridgeAlreadyAsked, oneBridgeAtATimeNote } from '../oneBridgeAtATime';
 import { foldedLower } from './georgianCase';
 import { buildSearchTerms } from './transliterate';
 import { sendPushNotification } from '../notification.service';
@@ -551,6 +552,23 @@ async function requestIntroductionInner(
             'მიწეროს — ნუ დატოვებ ისე, თითქოს პასუხი გზაშია.'
           : `${mediatorName}-სთვის ${targetName}-ზე გაცნობის მოთხოვნა უკვე გაგზავნილია`,
     };
+  }
+
+  // #7630: one bridge at a time to one person; the next waits for a no, or a quiet day.
+  if (!isDirect) {
+    const pending = await bridgeAlreadyAsked({
+      requesterUserId,
+      mediatorUserId,
+      targetUserId: safeTargetUserId ?? null,
+      targetName,
+    });
+    if (pending !== null) {
+      return {
+        success: false,
+        reason: 'another_bridge_pending',
+        error: oneBridgeAtATimeNote(pending, targetName),
+      };
+    }
   }
 
   // 5347: a request passed on opens its own threads; there is no conversation of

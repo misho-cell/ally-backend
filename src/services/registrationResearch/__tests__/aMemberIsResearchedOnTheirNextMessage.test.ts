@@ -13,7 +13,11 @@ jest.mock('../extract', () => ({
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../../db/postgres/client';
-import { queueResearchOnActivation, RESEARCH_ON_ACTIVATION } from '../registrationResearch.service';
+import {
+  queueNeverResearchedMembers,
+  queueResearchOnActivation,
+  RESEARCH_ON_ACTIVATION,
+} from '../registrationResearch.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -44,5 +48,21 @@ describe('research on a member’s next message', () => {
       'utf8',
     );
     expect(routes).toContain('void queueResearchOnActivation(Number(userId))');
+  });
+});
+
+describe('members never researched are queued once (#7426, 26 Oct)', () => {
+  it('counts on a dry run and inserts only real, typing, never-queued members', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 13 } as never);
+    expect(await queueNeverResearchedMembers(true)).toBe(13);
+    const [dry] = mockQuery.mock.calls[0] as [string];
+    expect(dry).not.toContain('INSERT');
+    mockQuery.mockResolvedValueOnce({ rowCount: 13 } as never);
+    expect(await queueNeverResearchedMembers(false)).toBe(13);
+    const [live] = mockQuery.mock.calls[1] as [string];
+    expect(live).toContain('INSERT INTO registration_research');
+    expect(live).toContain('NOT EXISTS (SELECT 1 FROM test_seats');
+    expect(live).toContain('NOT EXISTS (SELECT 1 FROM registration_research');
+    expect(live).toContain('ON CONFLICT (user_id) DO NOTHING');
   });
 });

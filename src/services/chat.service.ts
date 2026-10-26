@@ -11097,6 +11097,7 @@ async function executeToolCall(
         undefined,
         undefined,
         typeof input['anonymous'] === 'boolean' ? input['anonymous'] : undefined,
+        !ownerAbsent,
       );
       if ((askOutcome as { sent?: unknown }).sent !== true && runId) runAskRefused.add(runId);
       if ((askOutcome as { sent?: unknown }).sent === true) {

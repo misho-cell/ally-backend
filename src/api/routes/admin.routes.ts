@@ -427,7 +427,10 @@ import {
   snoozeSeatEveningCard,
 } from '../../services/adminEveningCard.service';
 import { BACKFILL_MAX_BATCH, backfillShortTitles } from '../../services/shortTitleBackfill.service';
-import { queueRegistrationResearch } from '../../services/registrationResearch/registrationResearch.service';
+import {
+  queueNeverResearchedMembers,
+  queueRegistrationResearch,
+} from '../../services/registrationResearch/registrationResearch.service';
 import {
   isPictureType,
   MAX_PICTURE_POSITION,
@@ -1685,6 +1688,26 @@ adminRouter.post(
     }
   },
 );
+
+// #7426: every real member who typed and was never researched is queued once.
+//   POST /admin/registration-research/backfill { dry_run: boolean }  → { dry_run, members }
+adminRouter.post('/registration-research/backfill', async (req: Request, res: Response) => {
+  const dryRun = (req.body as Record<string, unknown> | undefined)?.dry_run;
+  if (typeof dryRun !== 'boolean') {
+    res.status(400).json({ success: false, error: 'dry_run (true or false) is required' });
+    return;
+  }
+  try {
+    const members = await queueNeverResearchedMembers(dryRun);
+    // eslint-disable-next-line no-console
+    console.log(`[research backfill] ${dryRun ? 'would queue' : 'queued'} ${members} member(s)`);
+    res.status(200).json({ success: true, data: { dry_run: dryRun, members } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[research backfill]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The backfill did not run; nothing was queued' });
+  }
+});
 
 // #7888: app sessions for many people at once, for the founder's onboarding list.
 //   GET /admin/app-sessions?user_ids=501,118509   → [{ user_id, sessions_7d, minutes_7d,
