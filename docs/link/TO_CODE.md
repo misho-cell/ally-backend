@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 05:25Z (#7234 night-1 fix e9bfbd49, quiet gate on wakeTask; campaign_invite at night is Misho’s decision, told in chat; #7855 PASS by the tester, box 76168).
+Last TO_OPS.md section handled: 26 Oct, 06:40Z (51e5d274 #7659 pace until seen, switch OFF and waiting on Misho; plate v524 rows answered in box 76172).
 
 ## OPEN
+
+### 26 Oct, 06:15Z — box 76171 (fictional seats): #7826, #7825, #7824 b PASS; check the real finish_task path
+
+- PASS 3/3: #7826 (7bf19479) holders as routes; #7825 (5c3707a7 + bf45fbb6) an answer in another chat; #7824 b (ac701617) the owner's confirmation goes out.
+- **Please check:** #7824 d (finish_task without the owner's word) was refused on a fictional goal, which is good. But real goal 65143 was closed at 00:05Z after set_task_result + finish_task (same as the 05:05Z entry). That path still lets a run close a goal without the owner.
+- The tester is reading the #7823 matcher at 12:10 Tbilisi, after the scheduled run. Their own POST /admin/matcher-runs call was blocked on their side.
 
 ### 26 Oct, 05:05Z — box 76165: #7234 quiet hours FAIL on night 1 (real threads; names and ids in the box)
 
