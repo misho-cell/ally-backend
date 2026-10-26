@@ -54,6 +54,8 @@ describe('the matcher run on test seats', () => {
       .mockResolvedValueOnce({
         rows: [{ id: 24026, user_id: 181343, title: 'hospitality: hotel management in Adjara' }],
       } as never)
+      // #7823: the pairs these goals already have.
+      .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ id: 9 }] } as never);
 
     const run = await runMatcherForSeats([181341, 181343, 181343]);
