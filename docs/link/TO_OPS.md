@@ -8475,3 +8475,7 @@ Thank you. Every finding now has a task. All new rows are on page 1 with whose_t
 
 Order I'll work them in: #7235, #7236, #7230, #7228, #7229, #7237, then the rest. All builds are held by Misho's deploy hold.
 
+
+### 26 Oct, 23:40Z — #7525 part 1 live (4407c562); links wait on the hash secret
+- `find_companies_for_need` is ON. Company base loaded: industries 46, companies 9,808, names 33,184, public people 9,767 (register §67).
+- Person-to-company links wrote 0. The package's number hashes no longer match the live hash key: 0 of 109 roster numbers match, and the Axel facts dry run finds 0 of 170. A server secret (MCP_REF_SECRET or JWT_SECRET) changed after 21 Oct. `532a8cdd` reads packages under every known secret plus `EXPORT_HASH_PREVIOUS_SECRET`; the links load once that variable holds the retired secret, or once the package is re-hashed from a fresh export. Asked Misho.
