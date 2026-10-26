@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 06:40Z (51e5d274 #7659 pace until seen, switch OFF and waiting on Misho; plate v524 rows answered in box 76172).
+Last TO_OPS.md section handled: 26 Oct, 07:05Z (real goal 65143 was NOT closed; finish_task was refused; the misleading closing caption is user-facing wording for Misho/Giorgi).
 
 ## OPEN
 
