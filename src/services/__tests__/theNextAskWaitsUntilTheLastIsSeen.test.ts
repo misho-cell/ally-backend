@@ -35,18 +35,16 @@ describe('the next ask waits until the last one is seen', () => {
     expect(note).toContain('შემდეგ შეტყობინებაში');
   });
 
-  it('is on (Misho, 26 Oct), and never holds the owner, a relay or the card', () => {
+  it("is on (Misho, 26 Oct), never holds a relay or the card, and holds the owner's line too", () => {
     expect(PACE_UNTIL_SEEN_ON).toBe(true);
     const gate = asks.slice(asks.indexOf('PACE_UNTIL_SEEN_ON &&'));
     const head = gate.slice(0, 400);
-    for (const exempt of [
-      '!ownerAddedSomething',
-      'fromOwnersLine !== true',
-      'parentAskId === undefined',
-      'card === undefined',
-    ]) {
+    for (const exempt of ['parentAskId === undefined', 'card === undefined']) {
       expect(head).toContain(exempt);
     }
+    // #7659 retest 6/10: the server's send of the owner's line was let through.
+    expect(head).not.toContain('fromOwnersLine !== true');
+    expect(head).not.toContain('!ownerAddedSomething');
     expect(gate.slice(0, 800)).toContain("reason: 'previous_ask_unseen'");
   });
 });

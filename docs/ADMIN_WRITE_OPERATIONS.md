@@ -6411,3 +6411,10 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** rows #7726/#7727, done directly under Misho's standing rule of 26 Oct.
 - **What:** `POST /admin/research-facts/recheck {"dry_run": false, "user_ids": [191076, 191045, 190746, 190713]}` after a dry run — only the accounts the rows name (two all-member dry runs held 736 and 780 facts: a true fact need not repeat the label word). For each person with public-research facts whose labels carry an identity word written by at least two different members (UGT, TBC, Axel…; a first dry run counting every label word held 736 facts and was narrowed), a research fact holding none of them goes `confirmed` → `possible`, with a conflict_note. Only `source = 'public_research'`; nothing deleted.
 - **Undo:** `UPDATE contact_facts SET research_status = 'confirmed', conflict_note = NULLIF(REPLACE(conflict_note, 'held as possible on re-check (#7727): holds none of the words members saved', ''), '') WHERE source = 'public_research' AND conflict_note LIKE '%#7727%'`.
+
+## 65 · TOKEN FLOOR 2000 FOR EVERY ACCOUNT ON NETAI (founder's ruling, box 76470/76476; 26 Oct ~21:10Z)
+
+- **Who authorises:** the founder's ruling relayed by the tester („every account already on Netai is topped up now"), done under Misho's standing rule of 26 Oct; the same floor as §59, widened from „typed since 21 Oct" to every account on Netai.
+- **Who:** not deleted, not a test seat, and on Netai (a thread, a search, or a live subscription): 128 accounts, 61 under 2000 at the read (619 among them).
+- **What:** per account `POST /admin/users/:id/tokens { "tokens": 2000 - balance, "note": "founder ruling: every account on Netai at 2000 — 26 Oct" }`. Nobody lowered, nobody above 2000 by this.
+- **Undo:** the same call negated per account; amounts are in each account's token history under that note.
