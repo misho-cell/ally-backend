@@ -1,4 +1,5 @@
 import { netaiMember } from './netaiMembership';
+import { PACE_UNTIL_SEEN_ON, previousAskUnseen, previousAskUnseenNote } from './paceUntilSeen';
 import { goalWaitsForMorning } from './quietWakeGuard';
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
@@ -279,6 +280,8 @@ export type AskRefusalReason =
   | 'ask_fatigue_budget_exhausted'
   | 'person_daily_relay_limit_reached'
   | 'duplicate_ask_in_flight'
+  /** #7659: this asker's previous message to the person is still unopened (switch OFF). */
+  | 'previous_ask_unseen'
   /** 4093: the recipient said no to this asker within the last two days. */
   | 'declined_recently'
   /** 1688 (A5): two assistant-only rounds with this person already — the owner answers now. */
@@ -1724,6 +1727,24 @@ async function createAskNow(
    * already been approached. Patience is what is being spent, so patience is
    * what it is charged to.
    */
+  if (
+    PACE_UNTIL_SEEN_ON &&
+    !ownerAddedSomething &&
+    fromOwnersLine !== true &&
+    parentAskId === undefined &&
+    card === undefined &&
+    (await previousAskUnseen(fromUserId, toUserId))
+  ) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ask] task ${taskId}: held — the previous message to this person is unseen (#7659)`,
+    );
+    return {
+      sent: false,
+      reason: 'previous_ask_unseen',
+      error: previousAskUnseenNote(toName) + PROMISE_NO_ANSWER,
+    };
+  }
   // Row 259: a second message the owner's own new words asked for is a
   // FOLLOW-UP, not a first ask — the recipient is told „wrote again", which is
   // exactly what happened, and the badge maths stays honest.
