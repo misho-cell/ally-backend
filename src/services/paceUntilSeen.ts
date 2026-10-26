@@ -7,10 +7,10 @@ import { query } from '../db/postgres/client';
  * after seeing what they were sent; the next question waits for the message
  * after that.
  *
- * OFF until Misho says yes: the refusal note is model-facing text (D44), and
- * it replaces row 205's „a later nudge stays legal" for unseen asks.
+ * ON by Misho's yes of 26 Oct (the note is model-facing text, D44); it
+ * replaces row 205's „a later nudge stays legal" for unseen asks.
  */
-export const PACE_UNTIL_SEEN_ON = false;
+export const PACE_UNTIL_SEEN_ON = true;
 
 const UNSEEN_LOOKUP_TIMEOUT_MS = 4_000;
 /** An unseen ask older than this no longer holds the next one; askExpiry closes such asks anyway. */
@@ -31,7 +31,7 @@ export async function previousAskUnseen(fromUserId: string, toUserId: number): P
   return result.rows[0]?.found === true;
 }
 
-/** What the asking run is told. Draft for Misho; not live while the switch is off. */
+/** What the asking run is told (Misho's yes, 26 Oct). */
 export function previousAskUnseenNote(toName: string): string {
   return (
     `${toName}-ს წინა შეტყობინება ჯერ არ უნახავს — ახალს არ ვუგზავნით, სანამ არ ნახავს. ` +

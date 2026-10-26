@@ -77,7 +77,7 @@ describe('the taps (1699)', () => {
       'You are connected with Nino. They will write to you through me.',
     );
     expect(mockSave.mock.calls[0][3]).toBe(
-      'Levan is happy to talk. Tell me what to pass on and I will carry it.',
+      'Levan is happy to talk. Shall I set up a meeting? Tell me when you are free — or what to pass on, and I will carry it.',
     );
   });
 

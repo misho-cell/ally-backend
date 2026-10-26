@@ -45,11 +45,16 @@ const CARD2_CHOICES: ByLanguage<readonly [string, string]> = {
   es: ['Sí, conéctanos', 'Ahora no'],
 };
 
+// #7823 (Misho's yes, 26 Oct): after both yeses the need side is offered a meeting.
 const TO_THE_NEED: ByLanguage<(name: string) => string> = {
-  ka: (n) => `${n} სიამოვნებით დაგელაპარაკება. მითხარი, რა გადავცე, და მე მივუტან.`,
-  en: (n) => `${n} is happy to talk. Tell me what to pass on and I will carry it.`,
-  ru: (n) => `${n} с радостью поговорит. Скажи, что передать, и я передам.`,
-  es: (n) => `${n} está encantado de hablar. Dime qué le paso y se lo llevo.`,
+  ka: (n) =>
+    `${n} სიამოვნებით დაგელაპარაკება. შეხვედრა დაგინიშნოთ? მითხარი, როდის გცალია — ან რა გადავცე და მე მივუტან.`,
+  en: (n) =>
+    `${n} is happy to talk. Shall I set up a meeting? Tell me when you are free — or what to pass on, and I will carry it.`,
+  ru: (n) =>
+    `${n} с радостью поговорит. Назначить встречу? Скажи, когда тебе удобно — или что передать, и я передам.`,
+  es: (n) =>
+    `${n} está encantado de hablar. ¿Organizo una reunión? Dime cuándo te viene bien — o qué le paso, y se lo llevo.`,
 };
 
 const TO_THE_OFFER: ByLanguage<(name: string) => string> = {

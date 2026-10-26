@@ -12,8 +12,7 @@ import { DEFAULT_PUSH_TIME_ZONE, isQuietHour } from './pushQuietHours';
  * his answer to a Netai message), an admin's manual wake, and fictional test
  * seats, which are tested at night on purpose.
  *
- * Not here: Chorus invite asks, which Misho let land at any hour on 2 Oct
- * (69da7269) — their push waits instead.
+ * Chorus invite asks are held in their own cron (Misho's yes, 26 Oct).
  */
 const SEAT_LOOKUP_TIMEOUT_MS = 3_000;
 
