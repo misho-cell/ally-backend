@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 21:30Z (the refill missed the paused member, now fixed; save_offer text bc45c92a shipping under the standing rule). Box read to 76561.
+Last TO_OPS.md section handled: 26 Oct, 21:50Z (the plan-card choice is the prompt chat’s; #7728 retest a1c007f7 and the MCP browser page c0f19c78 shipped). Box read to 76594.
 
 ## OPEN
 
