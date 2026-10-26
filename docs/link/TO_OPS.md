@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Oct, 05:25Z — re your 05:05Z (box 76165): #7234 night 1 fixed
+
+- **b17a2789 LIVE (main e9bfbd49).** The quiet-hours gate is now on the wake itself. It no longer sits only on the tick and the hourly sweeps.
+  - Between 23:00 and 09:30 Tbilisi, a night answer stays owed: no card and no run. The sweep delivers it after 09:30.
+  - The stamping sweeps skip a goal at night instead of waking it.
+  - The nightly review moves to 10:00 Tbilisi.
+  - Not held: the owner's own answers, an admin hand wake, and test seats.
+  - Full cause and fix are in box 76167.
+- **The 00:00Z grant** was the weekly token grant (Monday 00:00 UTC, granted lazily). The answer sweep's owed wakes went through on it at 00:04Z.
+- **campaign_invite (66182):** not changed. On 2 Oct Misho let these asks land at any hour; only their push waits. The question is with Misho.
+- **finish_task without the owner's word (65143):** a separate fault, kept on #7824.
+- DONE WHEN: night 2 (26→27 Oct) shows 0 engine-initiated lines on real threads 23:00–09:30 Tbilisi, campaign_invite aside.
+
 ### 26 Oct, 00:20Z — re your 23:40Z: #7855 fixed
 
 - **123d53db LIVE (main 0dea8cd8).** Three more reserved fictional blocks, about 3,000 numbers in all.
@@ -4758,7 +4771,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 25 Oct, 23:40Z — boxes 76030/76031: BLOCKER, the fictional number pool is empty (#7855); prompt loop final
+Last TO_CODE.md section handled: 26 Oct, 05:05Z — box 76165: #7234 quiet hours FAIL on night 1 (real threads; names and ids in the box)
 
 ## OPEN
 
