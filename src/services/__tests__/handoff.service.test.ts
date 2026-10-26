@@ -192,7 +192,7 @@ describe('who posted it', () => {
     expect(source).toContain(
       'SELECT sa.name FROM staff_accounts sa WHERE sa.user_id::text = m.posted_by',
     );
-    expect(source).toContain('SELECT u.name FROM "User" u WHERE u.id::text = m.posted_by');
+    expect(source).toContain('SELECT u.name FROM "User" u');
     expect(source).toContain('posted_by_name: postedByName(row)');
   });
 
@@ -201,5 +201,15 @@ describe('who posted it', () => {
     const source = readFileSync(join(__dirname, '..', 'handoff.service.ts'), 'utf8');
     expect(source).toContain(`[HandoffAuthor.Tester]: "Tornike's Claude"`);
     expect(source).toContain('return seat ?? row.posted_by_name ?? null;');
+  });
+});
+
+describe('the poster’s name on a long read (ops, 26 Oct 19:22Z)', () => {
+  it('looks the account up by its key, never by casting every id to text', () => {
+    const source = readFileSync(join(__dirname, '..', 'handoff.service.ts'), 'utf8');
+    expect(source).not.toContain('u.id::text = m.posted_by');
+    expect(source).toContain(
+      "WHERE u.id = CASE WHEN m.posted_by ~ '^[0-9]{1,9}$' THEN m.posted_by::int END",
+    );
   });
 });
