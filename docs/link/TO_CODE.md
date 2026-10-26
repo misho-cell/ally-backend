@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 00:05Z (bf45fbb6 #7825 a Netai message carries its goal, LIVE in c3c078e9; the reply-wakes-goal switch is Misho’s, told in chat).
+Last TO_OPS.md section handled: 26 Oct, 00:20Z (#7855 fixed, 123d53db LIVE in 0dea8cd8; to the tester in ops hourly 76036).
 
 ## OPEN
 
