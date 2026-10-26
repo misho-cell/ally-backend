@@ -192,7 +192,7 @@ describe('a need finds a person with no number, with who can reach them', () => 
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('is loaded by its own admin route and stays OFF until Misho says so', () => {
+  it('is loaded by its own admin route and is ON since the live load (26 Oct)', () => {
     const routes = readFileSync(
       join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
       'utf8',
@@ -200,7 +200,7 @@ describe('a need finds a person with no number, with who can reach them', () => 
     expect(routes).toContain("adminRouter.post('/base-people/load'");
     expect(routes).toContain('part (people | ties | facts), csv (text) and dry_run');
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('export const BASE_PEOPLE_TOOL_ON = false;');
+    expect(chat).toContain('export const BASE_PEOPLE_TOOL_ON = true;');
     expect(chat).toContain("case 'find_people_in_base':");
   });
 });
