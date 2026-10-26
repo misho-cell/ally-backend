@@ -1,3 +1,4 @@
+import { WakeOrigin } from './quietWakeGuard';
 import { query } from '../db/postgres/client';
 import { queueFollowUp } from './pendingUpdates.service';
 import { setThreadStatus } from './threadStatus.service';
@@ -229,7 +230,8 @@ export async function answerGoalQuestion(
   // shape as sendApprovedAskAnswer's wake).
   try {
     const { wakeTask } = await import('./taskEngine.service');
-    const woken = await wakeTask(taskId, event);
+    // #7234: the owner's own answer — his reply is not held for the morning.
+    const woken = await wakeTask(taskId, event, undefined, WakeOrigin.Owner);
     if (woken === 'woken') return { delivered: true };
   } catch (err) {
     // eslint-disable-next-line no-console

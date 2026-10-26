@@ -181,6 +181,7 @@ import {
 import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
 import { getTaskById } from '../../services/taskStore.service';
 import { wakeTask } from '../../services/taskEngine.service';
+import { WakeOrigin } from '../../services/quietWakeGuard';
 import {
   getThreadMessages,
   getThreadsForUser,
@@ -1690,6 +1691,9 @@ adminRouter.post(
       await wakeTask(
         taskId,
         'ადმინმა ხელით გააღვიძა დავალება — გააგრძელე მუშაობა გეგმის მიხედვით.',
+        undefined,
+        // #7234: an admin's hand wake is not held for the morning.
+        WakeOrigin.Owner,
       );
       res.status(200).json({ success: true, data: { woken: true } });
     } catch (error) {

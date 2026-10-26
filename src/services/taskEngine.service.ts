@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { releaseDueHeldAsks } from './heldAsks.service';
 import { answerOnlySaysNo, noteQuietAfterDecline } from './quietSystemRun';
 import { DEFAULT_PUSH_TIME_ZONE, isQuietHour } from './pushQuietHours';
+import { WakeOrigin, goalWaitsForMorning, wakeWaitsForMorning } from './quietWakeGuard';
 import {
   HeldAskOutcome,
   heldAsksSentNote,
@@ -162,8 +163,9 @@ const MAX_UNWOKEN_PER_SWEEP = 10;
 // Nightly review (the matcher, v1): quiet open tasks get one model-driven
 // re-check per night — new members/tags/facts since yesterday surface through
 // the same searches the task already knows how to run.
-// #7234: 05:30 UTC is 09:30 Tbilisi, the end of quiet hours (it was 06:30, inside them).
-const NIGHTLY_REVIEW_HOUR_UTC = 5;
+// #7234: 06:00 UTC is 10:00 Tbilisi, after the quiet hours end at 09:30. It was
+// 05:00 UTC, which is 09:00 Tbilisi and still inside them (the timer takes whole hours).
+const NIGHTLY_REVIEW_HOUR_UTC = 6;
 const NIGHTLY_REVIEW_QUIET_HOURS = 20;
 const MAX_NIGHTLY_REVIEWS = 10;
 // How many due tasks one tick advances — engine runs share the model budget
@@ -238,7 +240,9 @@ export type WakeResult =
   /** The thread is occupied right now; asking again shortly may well work. */
   | 'busy'
   /** Nothing to wake, or nothing a retry could change. Stop asking. */
-  | 'stopped';
+  | 'stopped'
+  /** #7234: a run Netai would start on its own in the quiet hours; due again in the morning. */
+  | 'quiet';
 
 /**
  * Advance a task by one engine-initiated run: the event text enters the task's
@@ -265,6 +269,8 @@ export async function wakeTask(
   eventText: EventText,
   // Answer wakes carry the verbatim answer; the run's reply provably quotes it.
   ensureQuoted?: QuoteGuarantee,
+  // #7234: who caused it. Netai's own wakes wait out the quiet hours; the owner's do not.
+  origin: WakeOrigin = WakeOrigin.Netai,
 ): Promise<WakeResult> {
   if (runningTasks.has(taskId)) return 'busy';
   /**
@@ -300,6 +306,7 @@ export async function wakeTask(
     const task = await getTaskById(taskId);
     if (!task || task.status !== 'open' || task.thread_id === null) return 'stopped';
     const ownerId = String(task.user_id);
+    if (await wakeWaitsForMorning(ownerId, origin)) return 'quiet';
     const thread = await getThread(task.thread_id, ownerId);
     if (!thread) return 'stopped';
     if (thread.status === 'working') return 'busy'; // a live run owns the thread right now
@@ -680,6 +687,8 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
   const owed = await listUnwokenAnswersForTask(taskId, MAX_ANSWERS_PER_WAKE);
   if (owed.length === 0) return 0;
   if (await conversationIsBusy(taskId, owed[0].task_thread_id)) return 0;
+  // #7234: no card and no run at night; the answers stay owed for the morning sweep.
+  if (await goalWaitsForMorning(taskId)) return 0;
   const arrived = await Promise.all(
     owed.map(async (ask) => ({
       answer: unheardAnswerOf(ask),
@@ -795,6 +804,8 @@ export function deliverAnswersWhenFree(taskId: number, attempt = 1): void {
     void (async () => {
       const owed = await listUnwokenAnswersForTask(taskId, 1);
       if (owed.length === 0) return;
+      // #7234: retrying through the night changes nothing; the morning sweep delivers.
+      if (await goalWaitsForMorning(taskId)) return;
       // Row 311: a closed goal gets its answers as a card, without a run.
       if (owed[0].task_status !== 'open') {
         await showClosedGoalAnswers(taskId);
@@ -824,6 +835,8 @@ async function sweepUnwokenAnswers(): Promise<void> {
   const sweptTasks = new Set<number>();
   let delivered = 0;
   for (const ask of due) {
+    // #7234: no card and no run at night; the answer stays owed until 09:30.
+    if (await goalWaitsForMorning(ask.task_id)) continue;
     if (ask.task_status !== 'open') {
       // Row 311: a question the owner kept open after „solved" can still be
       // answered. The answer reaches them as a card — no run on a closed goal.
@@ -1227,6 +1240,12 @@ function wakeWhenFree(
           // eslint-disable-next-line no-console
           console.log(`[task-engine] task ${taskId}: woken (attempt ${attempt})`);
           await onWoken();
+          return;
+        }
+        // #7234: held for the morning; the wake floor written on attempt 1 brings it back.
+        if (woken === 'quiet') {
+          // eslint-disable-next-line no-console
+          console.log(`[task-engine] task ${taskId}: wake held for the morning (quiet hours)`);
           return;
         }
         // Row 157: only a BUSY thread is worth asking again. 'stopped' means
@@ -1858,6 +1877,8 @@ export async function sweepMethodChanges(): Promise<number> {
   const stuck = await getGoalsSilentForDays(METHOD_CHANGE_HOURS, MAX_METHOD_CHANGE_WAKES_PER_SWEEP);
   let woken = 0;
   for (const task of stuck) {
+    // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
+    if (await goalWaitsForMorning(task.id)) continue;
     await markMethodChangeWoken(task.id);
     const ok = await wakeTask(
       task.id,
@@ -1890,6 +1911,8 @@ export async function sweepUnansweredOwnerQuestions(): Promise<number> {
   );
   let taken = 0;
   for (const task of waiting) {
+    // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
+    if (await goalWaitsForMorning(task.id)) continue;
     // Stamped BEFORE the wake, so a failing run cannot fire the default every
     // five minutes; the question is still open and the next wake sees it.
     await markQuestionDefaulted(task.id);
@@ -1942,6 +1965,8 @@ export async function sweepSilentGoals(): Promise<number> {
   const silent = await getSilentGoals(SILENT_DAY_HOURS, MAX_SILENT_WAKES_PER_SWEEP);
   let woken = 0;
   for (const task of silent) {
+    // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
+    if (await goalWaitsForMorning(task.id)) continue;
     await markSilentDayWoken(task.id);
     // #1685 (A2): a silent day opens the next wave even while some still wait.
     await widenWaveOnSilence(task).catch((err: unknown) =>
@@ -1969,6 +1994,8 @@ export async function sweepSilentGoals(): Promise<number> {
 async function nightlyReview(): Promise<void> {
   const stale = await getStaleOpenTasks(NIGHTLY_REVIEW_QUIET_HOURS, MAX_NIGHTLY_REVIEWS);
   for (const task of stale) {
+    // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
+    if (await goalWaitsForMorning(task.id)) continue;
     await touchTaskActivity(task.id); // one review per night even if the run fails
     await wakeTask(
       task.id,
@@ -2192,7 +2219,7 @@ export function startTaskTicker(): void {
   scheduleNightly();
 
   // eslint-disable-next-line no-console
-  console.log('[task-engine] ticker started (60s; reminders hourly; nightly review 02:30 UTC)');
+  console.log('[task-engine] ticker started (60s; reminders hourly; nightly review 06:00 UTC)');
 }
 
 /** Re-exported for the ask-answer capture path (threads.routes). */

@@ -20,3 +20,10 @@ if (process.env.PG_INTEGRATION !== '1') {
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key-not-a-real-credential';
 process.env.WHATSAPP_PHONE_ID = 'test-phone-id';
 process.env.WHATSAPP_TOKEN = 'test-whatsapp-token';
+// #7234: the night hold reads the real clock; a suite run at night must not
+// behave differently from one run at noon. Its own suite unmocks it.
+jest.mock('../services/quietWakeGuard', () => ({
+  ...jest.requireActual<typeof import('../services/quietWakeGuard')>('../services/quietWakeGuard'),
+  wakeWaitsForMorning: (): Promise<boolean> => Promise.resolve(false),
+  goalWaitsForMorning: (): Promise<boolean> => Promise.resolve(false),
+}));

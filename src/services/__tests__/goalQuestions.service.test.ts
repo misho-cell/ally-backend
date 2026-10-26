@@ -98,7 +98,12 @@ describe("answerGoalQuestion — the owner's answer travels back to the goal", (
     const out = await answerGoalQuestion('501', 1519, 'სალომეს ხიდი ავირჩიოთ');
 
     expect(out.delivered).toBe(true);
-    expect(mockWake).toHaveBeenCalledWith(1519, expect.stringContaining('სალომეს ხიდი ავირჩიოთ'));
+    expect(mockWake).toHaveBeenCalledWith(
+      1519,
+      expect.stringContaining('სალომეს ხიდი ავირჩიოთ'),
+      undefined,
+      'owner',
+    );
     const clear = mockQuery.mock.calls.find(([sql]) =>
       (sql as string).includes('pending_question = NULL'),
     );

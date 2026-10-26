@@ -1,4 +1,5 @@
 import { netaiMember } from './netaiMembership';
+import { goalWaitsForMorning } from './quietWakeGuard';
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
 import { nameAsReaderSaved, nameFromLabel } from './readerSavedName';
@@ -2630,6 +2631,8 @@ async function deliverCapturedAnswer(
           deliverAnswersWhenFree(captured.taskId);
           return;
         }
+        // #7234: at night the relayed answer stays owed; the morning sweep delivers it.
+        if (await goalWaitsForMorning(captured.taskId)) return;
         // D648: the helper's meaning in the assistant's words, never a quotation.
         const verbatim = false;
         // Row 322(a) for a relayed answer: on the owner's screen first, naming
