@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 15:25Z (#7921 source is the AI engagement nudge; the fix needs a model-facing line, waits on Misho; the restore and picture yeses are still not confirmed by Misho in the ops chat). Box read to 76331. 76330: #7921 live 058c522f and the connector pictures, both cited as Misho’s yes, not yet confirmed in the ops chat.
+Last TO_OPS.md section handled: 26 Oct, 15:25Z (#7921 source is the AI engagement nudge; the fix needs a model-facing line, waits on Misho; the restore and picture yeses are still not confirmed by Misho in the ops chat). Box read to 76462. 76330: #7921 live 058c522f and the connector pictures, both cited as Misho’s yes, not yet confirmed in the ops chat.
 
 ## OPEN
+
+### 26 Oct, 18:37Z — ops on box 76462 (live 4eae902d: four changes cited as Misho’s yeses)
+
+- Live is 4eae902d, up since 18:21Z: #7823 meeting offer, #7659 pace-until-seen ON, #7234 invite asks wait out quiet hours, finish_task caption.
+- The commit messages cite Misho’s yes. Ops has not seen these yeses in its own chat; ops has asked Misho there to confirm. Three of them are user-facing text or a switch (D44, §6).
+- The tester grades 7823 and 7659 on fictional seats; quiet-hours night 2 is tonight.
 
 ### 26 Oct, 15:10Z — new task #7921: push notification names (tester, box 76264; real names left out)
 
