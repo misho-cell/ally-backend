@@ -13,7 +13,7 @@ import { FactConfidence } from './plan';
 const RESEARCH_SOURCE = 'public_research';
 const QUERY_TIMEOUT_MS = 10_000;
 /** Everyone researched so far is a few hundred; a bound, not a target. */
-const MAX_USERS = 2_000;
+const MAX_USERS = 20;
 const RECHECK_NOTE = 'held as possible on re-check (#7727): holds none of the words members saved';
 
 interface ResearchedUser {
@@ -69,16 +69,21 @@ export interface RecheckReport {
   readonly facts_held_possible: number;
 }
 
-async function researchedUsers(): Promise<ResearchedUser[]> {
+/**
+ * Run over everyone, the dry runs held 736 and then 780 facts: a true fact need
+ * not repeat the label word („Nika Axel" works somewhere that is not Axel). So
+ * the re-check runs only on the people a row names as a namesake case.
+ */
+async function researchedUsers(userIds: readonly number[]): Promise<ResearchedUser[]> {
   const result = await query<ResearchedUser>(
     `SELECT u.id, COALESCE(NULLIF(TRIM(u.name), ''), '') AS name
        FROM "User" u
-      WHERE u."deletedAt" IS NULL
+      WHERE u."deletedAt" IS NULL AND u.id = ANY($3::int[])
         AND EXISTS (SELECT 1 FROM "UserPhone" up
                       JOIN contact_facts cf ON cf.neo4j_contact_id = up.phone
                      WHERE up."userId" = u.id AND cf.source = $1)
       LIMIT $2`,
-    [RESEARCH_SOURCE, MAX_USERS],
+    [RESEARCH_SOURCE, MAX_USERS, [...userIds]],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
@@ -119,15 +124,22 @@ async function holdAsPossible(ids: readonly number[]): Promise<number> {
   return result.rowCount ?? 0;
 }
 
-export async function recheckStoredResearch(dryRun: boolean): Promise<RecheckReport> {
-  const users = await researchedUsers();
+/**
+ * The named people's research facts that hold none of the words two members
+ * saved; with no such word, all of them (the row named the research a namesake's).
+ */
+export async function recheckStoredResearch(
+  dryRun: boolean,
+  userIds: readonly number[],
+): Promise<RecheckReport> {
+  const users = await researchedUsers(userIds);
   let withIdentity = 0;
   let held = 0;
   for (const user of users) {
     const words = await sharedIdentityWords(user);
-    if (words.length === 0) continue;
-    withIdentity += 1;
-    const ids = factsWithoutIdentity(await confirmedFactsOf(user.id), words);
+    if (words.length > 0) withIdentity += 1;
+    const facts = await confirmedFactsOf(user.id);
+    const ids = words.length > 0 ? factsWithoutIdentity(facts, words) : facts.map((f) => f.id);
     held += dryRun ? ids.length : await holdAsPossible(ids);
   }
   return {
