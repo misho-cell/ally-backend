@@ -121,7 +121,28 @@ async function handleMcpPost(req: Request, res: Response): Promise<void> {
   }
 }
 
+/**
+ * Iro, 26 Oct: a person asked an AI chat to „connect Netai's MCP", the chat
+ * opened this address like a page and showed him the bare 405 below. A browser
+ * (Accept: text/html) is shown how to add the connector instead; a client still
+ * gets the 405 the protocol expects.
+ */
+const HOW_TO_CONNECT_PAGE = `<!doctype html><html lang="ka"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Netai — კონექტორი</title>
+<style>body{font-family:system-ui,sans-serif;max-width:560px;margin:24px auto;padding:0 16px;line-height:1.5}</style>
+</head><body><h1>Netai-ს დაკავშირება Claude-თან</h1>
+<p>ეს მისამართი გვერდად არ იხსნება — ის Claude-ში კონექტორად ემატება.</p>
+<ol><li>ბრაუზერში გახსენი <b>claude.ai</b> და შედი (აპლიკაციაში კონექტორი არ ემატება).</li>
+<li>მენიუ → <b>Customize</b> → <b>Connectors</b> → <b>Add custom connector</b>.</li>
+<li>Name: <b>Netai</b> · URL: <b>https://api.netai.guru/mcp</b> → <b>Add</b>.</li>
+<li><b>Connect</b> → ჩაწერე შენი ნომერი და მოსული კოდი.</li></ol>
+<p>მზადაა — ამის მერე Claude-ის აპლიკაციაშიც ჩანს.</p></body></html>`;
+
 function methodNotAllowed(req: Request, res: Response): void {
+  if (req.method === 'GET' && (req.headers.accept ?? '').includes('text/html')) {
+    res.status(200).type('html').send(HOW_TO_CONNECT_PAGE);
+    return;
+  }
   res.status(405).json({
     jsonrpc: '2.0',
     error: {
