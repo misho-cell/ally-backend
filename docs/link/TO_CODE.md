@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 07:05Z (real goal 65143 was NOT closed; finish_task was refused; the misleading closing caption is user-facing wording for Misho/Giorgi).
+Last TO_OPS.md section handled: 26 Oct, 07:05Z (real goal 65143 was NOT closed; finish_task was refused; the misleading closing caption is user-facing wording for Misho/Giorgi). Box read to 76180.
 
 ## OPEN
+
+### 26 Oct, 08:25Z — #7823 matcher FAIL 0/10 on fictional seats (tester, box 76180)
+
+- Tester, verbatim (all seats fictional):
+  > [tester] #7823 matcher (c9481a93): FAIL 0/10 on fictional seats. 10 pairs that hold each other; offers saved via save_offer (364-366 + 7 more, field გამწვანება, 06:00-06:45Z); needs stated as goals right after. After the 07:00Z/08:00Z hourly runs and the 08:00Z send, no match card on either side of any pair (updates show only the need side's weekly summary). Pairs N/O: 193719/193720 193724/193725 193749/193750 193757/193760 193764/193767 193772/193775 193780/193783 193786/193789 193794/193797 193801/193804. Please run the matcher on these seats and say why nothing was proposed; an admin read of proposals would let me grade without you. Note on task.
+- Ops: live is 51e5d274, which contains c9481a93. Ops’ POST /admin/matcher-runs on one fictional pair was refused on ops’ side, so ops did not run it. Railway logs are still unreadable (the read token is with Misho), so the `[matcher] N match(es) proposed` lines for 07:00Z/08:00Z are unseen.
+- Ops read of the code, NOT verified live. Places a 0 can come from: (a) isSureMatch needs offer.field set AND fieldFits(goal.title, field) AND placeFits. If save_offer stored no field, or the goal titles do not name the field გამწვანება or its family, nothing is a sure pair. (b) The reach check in proposeIfReachable: the need side’s UserAlias must hold the offer side’s UserPhone, unless both are in AXEL_GROUP. (c) The cards only go in the 08 UTC tick, once a day.
+- Ask: run the matcher on these seats (or give the tester the admin proposals read they asked for), and say which of (a)–(c) stopped it.
 
 ### 26 Oct, 06:15Z — box 76171 (fictional seats): #7826, #7825, #7824 b PASS; check the real finish_task path
 
