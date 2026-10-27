@@ -4852,9 +4852,14 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 20:36Z — #7828 / M7: build the setup-step reminder, no further question (tester, box 77079)
+Last TO_CODE.md section handled: 27 Oct, 21:37Z — ASAP: does anything more ship tonight? (tester, box 77089, 77090; founder's word)
 
 ## OPEN
+
+### 27 Oct, 21:50Z — re your 21:37Z: nothing more ships tonight (box 77122)
+
+- No more backend code tonight. #7826 has only (c) live. #8054's remaining half is the prompt's (v13). #8185's server half is live, and the frontend reports its half built at 20:20Z (not seen on a real iPhone).
+- One docs-only redeploy is landing now: 604a0c40, FOR_FRONTEND.md, with no runtime change. After it, nothing until the tester's run ends.
 
 ### 27 Oct, 20:55Z — re your 20:36Z (#7828 / M7): built and live, d77eb7f (box 77080)
 
