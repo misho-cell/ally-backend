@@ -96,6 +96,13 @@ describe('an owner instruction left unsent', () => {
     }
   });
 
+  /** #8054 (2), 69977: the owner already said it right; the line never asks for it again. */
+  it('never asks the owner to write the request again', () => {
+    expect(NOT_SENT_LINE.ka).not.toContain('კიდევ ერთხელ');
+    expect(NOT_SENT_LINE.ka).toContain('ჩვენი მხრის შეცდომაა');
+    expect(NOT_SENT_LINE.en).not.toMatch(/once more|again/iu);
+  });
+
   it('does not take a refused introduction for a sent question (44884)', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
