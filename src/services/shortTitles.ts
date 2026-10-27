@@ -11,8 +11,9 @@
  */
 export const SHORT_TITLES_ON = true;
 
-export const SHORT_TITLE_MAX_WORDS = 3;
-export const SHORT_TITLE_MAX_CHARS = 40;
+/** #5215 (Giorgi, again 27 Oct, G-186): three or four words. */
+export const SHORT_TITLE_MAX_WORDS = 4;
+export const SHORT_TITLE_MAX_CHARS = 48;
 export const ONE_WORD_TITLE_MAX_CHARS = 24;
 
 export interface ShortTitles {
@@ -22,8 +23,8 @@ export interface ShortTitles {
 
 export function shortTitlesPrompt(language: string): string {
   return (
-    'Shorten the conversation title below. Answer with exactly two lines. Line 1: two or ' +
-    'three words that still name what the conversation is about. Line 2: one word that ' +
+    'Shorten the conversation title below. Answer with exactly two lines. Line 1: three or ' +
+    'four words that still name what the conversation is about. Line 2: one word that ' +
     `names it. Write in ${language} only, and use words from the title. No quotes, no ` +
     'numbering, no punctuation at the end, nothing else.'
   );

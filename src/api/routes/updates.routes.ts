@@ -17,6 +17,7 @@ import {
   peekDueUpdates,
   pastWeeklySummaries,
   latestUpdates,
+  HOME_CARD_ROWS,
   LATEST_UPDATES_LIMIT,
   LatestUpdate,
   UpdateCounts,
@@ -355,7 +356,7 @@ function answerRow(
 function newestFirst(rows: readonly LatestRowView[]): readonly LatestRowView[] {
   return [...rows]
     .sort((a, b) => b.released_at.localeCompare(a.released_at))
-    .slice(0, LATEST_UPDATES_LIMIT);
+    .slice(0, HOME_CARD_ROWS);
 }
 
 /**

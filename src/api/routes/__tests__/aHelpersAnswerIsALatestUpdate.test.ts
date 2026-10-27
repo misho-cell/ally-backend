@@ -21,7 +21,7 @@ import type { Server } from 'http';
 import updatesRouter from '../updates.routes';
 import { query } from '../../../db/postgres/client';
 import * as threads from '../../../services/threads.service';
-import { LATEST_UPDATES_LIMIT } from '../../../services/pendingUpdates.service';
+import { HOME_CARD_ROWS, LATEST_UPDATES_LIMIT } from '../../../services/pendingUpdates.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -122,8 +122,9 @@ describe('GET /updates/latest — a helper’s answer', () => {
       [LIKA_SAID_YES],
     );
     const rows = await latest();
-    expect(rows.map((r) => r.update_ref)).toEqual(['upd_1', 'ask_24718', 'upd_2', 'upd_3']);
-    expect(rows.length).toBeLessThanOrEqual(LATEST_UPDATES_LIMIT);
+    // #7063 (Giorgi, 27 Oct): the card holds the three newest only.
+    expect(rows.map((r) => r.update_ref)).toEqual(['upd_1', 'ask_24718', 'upd_2']);
+    expect(rows.length).toBeLessThanOrEqual(HOME_CARD_ROWS);
   });
 
   it('reads only the owner’s own answered questions of the last two weeks', async () => {

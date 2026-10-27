@@ -406,6 +406,15 @@ export async function listSeenUpdates(
  */
 export const LATEST_UPDATES_LIMIT = 10;
 
+/**
+ * #7063 failed on Giorgi's retest, 27 Oct (G-186): the card showed ten rows.
+ * His four rules together: #5121 the last three updates only; #5215 a case's
+ * updates grouped under its short title; #5382 „მეტი" opens the same updates
+ * uncut; #7063 four or five lines by default. The server sends the three; the
+ * grouping, the default height and „მეტი" are the app's.
+ */
+export const HOME_CARD_ROWS = 3;
+
 /** An update as the home card draws it: its case's thread, and when it came out. */
 export interface LatestUpdate extends PendingUpdate {
   thread_id: number | null;
