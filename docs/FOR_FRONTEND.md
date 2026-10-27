@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 27 October, 18:55Z — #8185 (founder, 22:19 Tbilisi): an invite link needs no typed code, ever
+
+**What happened.** Account 511, an old Ally number, opened the founder's `/join?ref=…` link. After the SMS step he was refused („invite-only … registered in old Ally") and had to type the code that was already in his link. The server admits an invited old Ally number at `POST /auth/complete-login`, but only when that request carries `referralCode`. The login page keeps the link's code in page memory (`urlRefRef`), so a reload, a new tab, the SMS autofill bringing the page back, or the home-screen app drops it.
+
+**Server (ships tonight, `#8185` on the branch):** when `POST /auth/request-otp` or resend carries `referralCode`, the server keeps it for that number for 30 minutes. `POST /auth/complete-login` and `POST /auth/register` then use it when their own body carries none. A body that carries a code always wins. This is a safety net, not the contract.
+
+**App, please:** keep the link's `ref` from `/join?ref=CODE` in `localStorage` (and a first-party cookie for the home-screen app), from the moment the link opens until a successful sign-in. Send it as `referralCode` on every one of `POST /auth/request-otp`, `/auth/resend-otp`, `/auth/eligibility`, `/auth/complete-login`, `/auth/register` and `POST /billing/invite-days`. Clear it only after sign-in succeeds.
+
 ## 27 October, 16:20Z — #8119: the thread read says whether a run is live, and since when; #8087 link
 
 **#8119 (on the branch, ships today on Misho's „now"; this section reaches main with it).**
