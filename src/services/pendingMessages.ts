@@ -143,7 +143,7 @@ interface PendingTexts {
    * over, and „it expired" without the second half reads as a door shutting.
    * It does NOT say the other person refused — they may never have seen it.
    */
-  introExpired: (who: string, days: number) => string;
+  introExpired: (who: string, days: number, mediator: string | null, why: string | null) => string;
   introAskAgain: string;
   /**
    * ⚠️ ROW 272 — THE QUESTION WAS QUEUED, RELEASED, MARKED SEEN AND NEVER SHOWN.
@@ -274,9 +274,11 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `${who} ახლახან შემოვიდა Netai-ზე — შენთან ${organisation}-ით არის მონიშნული, ` +
       `და მიზანი „${goal}" სწორედ ${organisation}-ს ეხება. ვკითხოთ?`,
     newMemberAsk: 'კი, ვკითხოთ',
-    introExpired: (who, days) =>
-      `${geoName(who, 'dat')} გაცნობის მოთხოვნას ${days} დღეა პასუხი არ მოჰყოლია, ` +
-      `ამიტომ დავხურეთ. თუ ისევ გჭირდება, თავიდან ვცადოთ.`,
+    introExpired: (who, days, mediator, why) =>
+      (mediator === null
+        ? `${geoName(who, 'dat')} გაცნობის მოთხოვნას`
+        : `${geoName(mediator, 'dat')} სთხოვე, რომ ${who} გაგაცნოს${why === null ? '' : ` („${why}")`}. ამ თხოვნას`) +
+      ` ${days} დღეა პასუხი არ მოჰყოლია, ამიტომ დავხურეთ. თუ ისევ გჭირდება, თავიდან ვცადოთ.`,
     introAskAgain: 'თავიდან ვცადოთ',
     goalFeedbackLater: 'ახლა არა',
     myGoalsWaiting: (count) =>
@@ -352,9 +354,11 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
       `${who} has just opened Netai — you have them down as ${organisation}, and your goal ` +
       `„${goal}" is about ${organisation}. Shall we ask them?`,
     newMemberAsk: 'Yes, ask them',
-    introExpired: (who, days) =>
-      `Your request to be introduced to ${who} has had no answer for ${days} days, so it is ` +
-      `closed. If you still need it, we can try again.`,
+    introExpired: (who, days, mediator, why) =>
+      (mediator === null
+        ? `Your request to be introduced to ${who}`
+        : `You asked ${mediator} to introduce you to ${who}${why === null ? '' : ` („${why}")`}. That request`) +
+      ` has had no answer for ${days} days, so it is closed. If you still need it, we can try again.`,
     introAskAgain: 'Try again',
     goalFeedbackLater: 'Not now',
     myGoalsWaiting: (count) =>
@@ -405,6 +409,15 @@ export function introRequestChoices(
   return [accept, t.introDecline];
 }
 
+/** #109: an expiry card stays worth showing for a week after the expiry it reports. */
+const EXPIRY_CARD_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function expiredRecently(expiredAt: string | null, now: Date): boolean {
+  const at = expiredAt === null ? NaN : Date.parse(expiredAt);
+  return !Number.isNaN(at) && now.getTime() - at <= EXPIRY_CARD_DAYS * DAY_MS;
+}
+
 /**
  * One pending item as its own message, or null when its payload cannot say
  * anything true — a silent skip beats an invented sentence.
@@ -412,6 +425,7 @@ export function introRequestChoices(
 export function renderPendingMessage(
   item: PendingItemInput,
   language: RunLanguage,
+  now: Date = new Date(),
 ): RenderedPendingMessage | null {
   const t = textsFor(language);
   const p = item.payload ?? {};
@@ -561,8 +575,12 @@ export function renderPendingMessage(
     case 'intro_expired': {
       const days = num(p, 'days_waiting');
       if (who === null || days === undefined) return null;
+      // #109: the 26 Sep sweep's cards were drip-released a month late. A card
+      // is shown only within a week of the expiry it reports, and only one
+      // that carries that date (every card queued since does).
+      if (!expiredRecently(str(p, 'expired_at'), now)) return null;
       return {
-        text: t.introExpired(who, days),
+        text: t.introExpired(who, days, str(p, 'mediator'), str(p, 'why')),
         choices: [t.introAskAgain],
         ref: { kind: item.kind, request_id: num(p, 'request_id') },
         instruction,
