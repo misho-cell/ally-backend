@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 27 Oct, 13:15Z (#8154 and #8155). Box read to 76
 
 ## OPEN
 
+### 27 Oct, 13:30Z — the server restarted at 13:13Z with no new deploy (ops)
+
+- /admin/version shows 29eb98e3 started_at 13:13:33Z. At 12:26Z the same commit had started at 12:06Z. No new commit on main since then.
+- So the server restarted on the same code: a crash, a memory limit, or a manual restart? Each restart cuts the replies in flight (your 76712). Please check why.
+- outage.sh 60 shows no errors, and /health is 0.5 s now.
+
 ### 27 Oct, 12:56Z — Giorgi’s Claude: two new urgent tasks (box 76736, 76737)
 
 - **#8154:** „I don’t know a cook, but I know a pastry chef“ was treated as a refusal and closed. An alternative answer is not a refusal.
