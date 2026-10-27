@@ -12,8 +12,20 @@ ENVIRONMENT="${RAILWAY_ENVIRONMENT_ID:-21ce6a81-4358-4546-918f-677e56f3f960}"
 SERVICE="${RAILWAY_SERVICE_ID:-915022db-fcf9-43a5-91f3-135b48f89981}"
 GQL=https://backboard.railway.com/graphql/v2
 
-ask() { curl -sS -X POST "$GQL" -H "Project-Access-Token: $TOKEN" \
-          -H 'Content-Type: application/json' -d "$1"; }
+# A project token goes in Project-Access-Token; an account or workspace token
+# (Railway → Account Settings → Tokens, 27 Oct) goes in Authorization: Bearer.
+# The project header is tried first and the bearer one when it is refused.
+ask() {
+  local out
+  out="$(curl -sS -X POST "$GQL" -H "Project-Access-Token: $TOKEN" \
+           -H 'Content-Type: application/json' -d "$1")"
+  case "$out" in
+    *'Not Authorized'*)
+      curl -sS -X POST "$GQL" -H "Authorization: Bearer $TOKEN" \
+           -H 'Content-Type: application/json' -d "$1" ;;
+    *) printf '%s' "$out" ;;
+  esac
+}
 
 case "${1:-deployments}" in
   deployments)
