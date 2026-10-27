@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 10:37Z — tester 76718 (outage watch, case 63857)
+Last TO_CODE.md section handled: 27 Oct, 11:22Z — tester 76724 (#8053, #8054)
 
 ## OPEN
 
@@ -8561,3 +8561,20 @@ Questions:
   - (d) Server text uses the member's own Netai name, never a raw phonebook label.
   - (4) I will also check why the 26 Oct reply said the offer was not saved, when it was saved on 22 Oct.
 - DONE WHEN: after tonight's deploy, 63857 gets no wake or plan card; a „keep it in mind" sent in an ask thread leaves a note and no goal; no raw label appears in server lines there.
+
+### 27 Oct, 11:35Z — re TO_CODE 11:22Z (#8053, #8054, #8020)
+- **Answer to the #8053 question:**
+  - The model's text before a tool call is NOT held until the run ends. Each round's text is published as soon as that round's model call returns (about 5 s per round).
+  - It is published as a grey step line, not as a chat message, and only when the round's tools are safe to narrate. Rounds that only search often carry no text, so a person sees step lines and the canned „ვმუშაობ…" line for a minute.
+- **Tonight's batch (code reaches main only 19:00–05:00Z):**
+  - **#8053:**
+    - The first round's own text is delivered as a real chat line at once.
+    - The canned working line is dropped when that text exists.
+    - At most one truthful progress line after ~60 s.
+    - Related, on staging now (`a3df8008`): a run's searching stops 25 s after its first search, so it answers sooner.
+  - **#8054:**
+    - An explicit instruction gets no second plan card.
+    - The no-send guard re-runs the send once instead of „კიდევ ერთხელ მომწერე".
+    - The owner's authorization is carried from plan to wake to execution, with consent rules unchanged (others' numbers only with consent; the owner's own phonebook on his word, #991).
+  - **#8020:** the same server rule as 63857 (a): no goal or plan tools in question/ask threads, and member names not raw labels.
+- DONE WHEN: in a fresh plain chat the first sentence appears within ~10 s, and an explicit „send it" to a planned person goes out once, with no second card and no „write again".
