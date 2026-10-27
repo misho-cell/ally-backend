@@ -8479,3 +8479,7 @@ Order I'll work them in: #7235, #7236, #7230, #7228, #7229, #7237, then the rest
 ### 26 Oct, 23:40Z — #7525 part 1 live (4407c562); links wait on the hash secret
 - `find_companies_for_need` is ON. Company base loaded: industries 46, companies 9,808, names 33,184, public people 9,767 (register §67).
 - Person-to-company links wrote 0. The package's number hashes no longer match the live hash key: 0 of 109 roster numbers match, and the Axel facts dry run finds 0 of 170. A server secret (MCP_REF_SECRET or JWT_SECRET) changed after 21 Oct. `532a8cdd` reads packages under every known secret plus `EXPORT_HASH_PREVIOUS_SECRET`; the links load once that variable holds the retired secret, or once the package is re-hashed from a fresh export. Asked Misho.
+
+### 27 Oct, 01:05Z — #7954 done (no write needed); #7690 Gemini built, switch OFF (cddb2272)
+- #7954: the launch amount is 2000. A read at 00:20Z found 0 real accounts under it, and 525 and 619 are at 2000. Joiners have got a 2000 trial_grant automatically since 21 Oct. The goals in threads 13670 and 28911 are open and wake today. DONE WHEN: both continue today with no tokens line.
+- #7690 `cddb2272`: Gemini web search behind the `gemini_web_search` flag, with Tavily as the fallback. It does nothing until Misho sets GEMINI_API_KEY in Railway and the flag is on. Nothing changes for testing today.
