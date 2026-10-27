@@ -25,7 +25,7 @@ import { nameOnlyFromLabel } from '../labelReader.service';
 import { foldedLower, toMtavruli } from './georgianCase';
 import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
 import { withEveryHolder } from './everyHolder';
-import { holdersOnly, ownerHolderPhonesOrNone } from './ownerHolders';
+import { holdersOnly, ownerCommunityPhonesOrNone, ownerHolderPhonesOrNone } from './ownerHolders';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -771,7 +771,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       holderPhones,
       friendKeys.flatMap((k) => k.split('-')),
     );
-    friendKeys = [...friendKeys, ...holderPhones];
+    // #7826 (c): and the members of the owner's own communities, marked too.
+    const communityPhones = await ownerCommunityPhonesOrNone(userId, userPhones);
+    const sameCommunity = holdersOnly(communityPhones, [
+      ...friendKeys.flatMap((k) => k.split('-')),
+      ...holderPhones,
+    ]);
+    friendKeys = [...friendKeys, ...holderPhones, ...communityPhones];
     if (friendKeys.length === 0) return { found: false, reason: 'no_contacts_in_graph' };
 
     const blockedPhones = await getExcludedPhones(userId, tagQuery);
@@ -1673,6 +1679,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
             is_member: isMemberPhone(accountStates, bridge.phone),
             // #7826: not in the owner's phonebook — this member has the owner saved.
             ...(heldBy.has(phoneDigits(bridge.phone)) && { holds_you: true }),
+            ...(sameCommunity.has(phoneDigits(bridge.phone)) && { same_community: true }),
             ...(tie ? { owner_tie: tie } : {}),
             ...(why !== null ? { colour_why: why } : {}),
           };

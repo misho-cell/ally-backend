@@ -59,3 +59,49 @@ export async function ownerHolderPhonesOrNone(
     return [];
   }
 }
+
+/**
+ * #7826 (c), Misho 27 Oct („სულ დაასრულე"): the community connectors. A member
+ * who shares one of the owner's own communities (a current `member_of` fact
+ * on both numbers; a former member carries an „affiliation … (former member)"
+ * fact instead and is not read here) is a route too, like a holder.
+ */
+export async function ownerCommunityPhones(
+  userId: string,
+  ownerPhones: readonly string[],
+): Promise<string[]> {
+  if (ownerPhones.length === 0) return [];
+  const result = await query<{ phone: string }>(
+    `SELECT DISTINCT up.phone
+       FROM contact_facts mine
+       JOIN contact_facts theirs
+         ON theirs.field_type = 'member_of' AND theirs.retracted_at IS NULL
+        AND theirs.value = mine.value AND theirs.neo4j_contact_id <> mine.neo4j_contact_id
+       -- Both carry the same normalised number (+995…), so the index answers.
+       JOIN "UserPhone" up ON up.phone = theirs.neo4j_contact_id
+       JOIN "User" u ON u.id = up."userId" AND u."deletedAt" IS NULL
+      WHERE mine.field_type = 'member_of' AND mine.retracted_at IS NULL
+        AND mine.neo4j_contact_id = ANY($2::text[])
+        AND up."userId" <> $1::int
+        AND ${notAnExcludedHolder('up."userId"')}
+        AND ${netaiMember('u')}
+      LIMIT $3`,
+    [userId, [...ownerPhones], MAX_OWNER_HOLDERS],
+    HOLDERS_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => r.phone);
+}
+
+/** Best-effort: a failed read leaves the second circle without the community. */
+export async function ownerCommunityPhonesOrNone(
+  userId: string,
+  ownerPhones: readonly string[],
+): Promise<string[]> {
+  try {
+    return await ownerCommunityPhones(userId, ownerPhones);
+  } catch (err: unknown) {
+    // eslint-disable-next-line no-console
+    console.error("[second-degree] owner's community unavailable:", (err as Error).message);
+    return [];
+  }
+}
