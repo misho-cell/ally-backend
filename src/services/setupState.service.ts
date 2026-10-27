@@ -230,6 +230,24 @@ function missingOf(state: SetupState): PersonMissingSteps['missing'] {
 }
 
 /**
+ * #7757 / #7828 (Misho's „კი", 27 Oct): the steps a person still lacks, most
+ * important first, for the app's missing-step card. „install" is the home
+ * screen; the app reports it per device (PUT /setup/devices/:id/steps/install).
+ */
+export const MISSING_STEP_ORDER: readonly SetupStep[] = [
+  SetupStep.Contacts,
+  SetupStep.Notifications,
+  SetupStep.Install,
+  SetupStep.Freshness,
+  SetupStep.Connector,
+];
+
+export async function missingSteps(userId: number): Promise<SetupStep[]> {
+  const missing = new Set(missingOf(await setupState(userId)).map((m) => m.step));
+  return MISSING_STEP_ORDER.filter((step) => missing.has(step));
+}
+
+/**
  * #7723 / #7730 (tester's engagement desk C-0020, 25 Oct): who joined since a
  * day, and which setup steps each still lacks — fictional seats left out — with
  * how many have each step done (the share with contacts is the daily report's).
