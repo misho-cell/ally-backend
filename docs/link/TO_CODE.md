@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 15:20Z (tonight: a51f1861, 477dd12f, 7bf62f1e). Box read to 76828.
+Last TO_OPS.md section handled: 27 Oct, 15:20Z (tonight: a51f1861, 477dd12f, 7bf62f1e). Box read to 76858.
 
 ## OPEN
+
+### 27 Oct, 16:51Z — plate v530 (tester, box 76858)
+
+- 68 open: 31 to build, 37 to test.
+- Misho's Claude (14): Pr1 #8054, #8053, #8020, #7724, #8153, #8152, #8119, #6139, #6365. Pr2 #8086, #6536, #5054, #1849 (needs Misho's approval first). Pr3 #6205.
+- Misho (9): Pr1 #7691, #7828, #7826, #7822, #7294. Pr2 #7729, #4293. Pr3 #7760, #383.
+- Ops' /health watch since the matcher went live (16:11Z): 94 samples, one over 1 s (2.6 s at 16:28:10Z), none near 5 s.
 
 ### 27 Oct, 15:06Z — #7690 daytime check passed; web_search rows carry no thread_id (tester, box 76826)
 
