@@ -1,3 +1,4 @@
+import { isSmallTalk } from './smallTalk';
 import { netaiMember } from './netaiMembership';
 import { PACE_UNTIL_SEEN_ON, previousAskUnseen, previousAskUnseenNote } from './paceUntilSeen';
 import { goalWaitsForMorning } from './quietWakeGuard';
@@ -1512,9 +1513,15 @@ async function createAskNow(
     return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
   }
 
-  // 4093: somebody who just said no to this asker gets nothing more from them —
-  // no follow-up, no new question — unless the owner names them again himself.
-  if (fromOwnersLine !== true && (await declinedThisAskerRecently(fromUserId, toUserId))) {
+  // 4093: somebody who just said no to this asker gets nothing more from the
+  // system — no follow-up, no new question. #8155 (Giorgi, 27 Oct): the owner
+  // himself may always write again, to clarify or ask differently, so any ask
+  // sent in the owner's own turn passes; only runs he is not in are refused.
+  if (
+    fromOwnersLine !== true &&
+    ownerAskedNow !== true &&
+    (await declinedThisAskerRecently(fromUserId, toUserId))
+  ) {
     // eslint-disable-next-line no-console
     console.log(`[ask] task ${taskId}: refused — the recipient declined this asker recently`);
     return { sent: false, reason: 'declined_recently', error: declinedRecently(toName) };
@@ -2466,18 +2473,17 @@ export async function recordAskAnswer(
          -- (No backtick anywhere in here: this SQL lives in a template literal
          -- and one ends the string. Seventh time this week.)
          --
-         -- COALESCE, so a later line in the same round cannot un-decline it:
-         -- if somebody taps the button and then types a name after all, the
-         -- name is appended to the answer and the asker gets it, and the
-         -- refusal that WAS said stays said.
-         declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW()) ELSE declined_at END
+         -- #8154: a later line with something in it ($4: not a no, not a thank
+         -- you or goodbye) un-declines it while it still joins the answer.
+         declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW())
+           WHEN $4 AND wake_delivered_at IS NULL THEN NULL ELSE declined_at END
      WHERE id = (
        SELECT id FROM task_asks
        WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
        ORDER BY id DESC LIMIT 1
      )
      RETURNING id, task_id, answer, to_user_id, from_user_id`,
-    [askThreadId, safe, declined],
+    [askThreadId, safe, declined, !declined && !isSmallTalk(safe)],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];

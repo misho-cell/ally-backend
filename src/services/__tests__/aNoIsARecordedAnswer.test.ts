@@ -125,12 +125,16 @@ describe('what the ask carries, and what the answer records', () => {
   });
 
   /**
-   * COALESCE, so a later line in the same round cannot un-decline it: if
-   * somebody taps the button and then types a name after all, the name is
-   * appended and the asker gets it, and the refusal that WAS said stays said.
+   * #8154 (Giorgi, 27 Oct): a later line that is not itself a no — „I don't
+   * know a cook, but do you need a pastry chef?" — un-declines it while it
+   * still joins the answer; after the wake went out the stamp stays.
    */
-  it('cannot be taken back by a later line in the same round', () => {
-    expect(answerSql.slice(0, 2400)).toContain('COALESCE(declined_at, NOW())');
+  it('is taken back by a later line with something in it, until the wake is delivered', () => {
+    expect(asks).toContain('[askThreadId, safe, declined, !declined && !isSmallTalk(safe)]');
+    const flat = answerSql.replace(/\s+/g, ' ');
+    expect(flat).toContain(
+      'declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW()) WHEN $4 AND wake_delivered_at IS NULL THEN NULL ELSE declined_at END',
+    );
   });
 });
 
