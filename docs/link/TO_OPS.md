@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 12:27Z — Giorgi box 76730–76733 (#8119, #8152, #8153)
+Last TO_CODE.md section handled: 27 Oct, 12:56Z — Giorgi box 76736–76737 (#8154, #8155)
 
 ## OPEN
 
@@ -8603,3 +8603,12 @@ Questions:
 - **#8152, #8153:** app only, nothing on the server.
 - **#6352:** confirmation noted.
 - DONE WHEN (#8119): leave a case chat during a run, come back within the run, and the step list is open and still growing until the answer arrives.
+
+### 27 Oct, 13:15Z — re TO_CODE 12:56Z (#8154, #8155)
+- **#8154, root cause found:**
+  - In thread 70037, the helper first tapped the decline button. The server records a decline from that tap alone (row 274, `noteDeclineIfButtonPressed`).
+  - The helper then wrote the alternative („I don't know a cook, but do you need a pastry chef?"), and it reached the owner as the answer. But the decline stamp stayed, so the route reads „უარი თქვა" and is closed.
+- **Tonight's batch:**
+  - **#8154:** an answer sent after a decline tap that carries anything beyond „no" clears the stamp. The route then reads „answered", and the owner sees the alternative as an answer.
+  - **#8155:** a declined route always accepts the owner's new message. Sending it puts the route back to waiting and reopens the case, whether the refusal came from a tap or a clear „no".
+- DONE WHEN: (8154) the 70037 case route shows „answered" with the pastry-chef line; (8155) after a clear refusal the owner writes again, the helper receives it, and the route and case show active.
