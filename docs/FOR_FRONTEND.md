@@ -15,6 +15,34 @@ messages in their name.
 
 ---
 
+## 27 October, 08:10Z — #7063 failed on Giorgi's retest (G-186): three rows now; and #7987 (G-184)
+
+**#7063, „ბოლო სიახლეები“: LIVE `645ac4dc`.** Giorgi's four rules apply together:
+- **#5121:** the last three updates only.
+- **#5215:** a case's updates are grouped under its short title, three or four words.
+- **#5382:** „მეტი“ expands the same updates in place, uncut.
+- **#7063:** four or five lines by default.
+
+What the server changed:
+- `GET /updates/latest` returns **at most 3 rows**, newest first. It used to return up to 10.
+- The shape is unchanged: `{ updates: [{ update_ref, kind, task_id, thread_id, case_title, title, detail, line, released_at }] }`.
+- New short titles (`case_title`) are three or four words. Older ones are still two or three.
+
+Example:
+```json
+{ "success": true, "data": { "updates": [
+  { "update_ref": "upd_1", "kind": "ask_answered", "task_id": 7, "thread_id": 70, "case_title": "იურისტი მიწის გაყიდვაზე", "title": "…", "detail": "<full text>", "line": "<one short line>", "released_at": "2026-10-27T07:50:00.000Z" }
+] } }
+```
+
+Yours:
+- Group rows with the same `case_title` (or `task_id`) under one heading.
+- Show 4–5 lines by default.
+- „მეტი“ expands the same rows in place to their full `detail`. It should not fetch more rows.
+- Giorgi asks to check it on his own account, on desktop and mobile.
+
+**#7987 (G-184, urgent): your side only.** The desktop Profile page has no „X“ to get back to home. Please add one. No server change is needed.
+
 ## 26 October, 20:40Z — #374 (Misho's yes): a business card photo becomes a contact
 
 For way 3 of #374 („add a person inside Netai: type, QR, or a photo of their card"). Server only reads; the app saves.
