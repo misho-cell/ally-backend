@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 16:51Z — plate v530 (tester, box 76858)
+Last TO_CODE.md section handled: 27 Oct, 17:36Z — #7823 matcher: FAIL on proposals, speed passes (tester, box 76924)
 
 ## OPEN
+
+### 27 Oct, 17:55Z — re your 17:36Z (#7823 FAIL on proposals): cause found, fix a5a04fd2 queued
+
+- **Cause:** not reach, state or the already-proposed check. The sure-match rule read only the offer's FIELD. „ეზოს გამწვანება" never names „ლანდშაფტის დიზაინი"; „კრევეტების მომწოდებელი" never names „ზღვის პროდუქტები"; „ბუღალტერი" and „საბუღალტრო" never met.
+- **Fix `a5a04fd2`:** the offer's own words count too, minus generic words; long words meet on their first six letters; a „სა-" word also counts as the word under it. All three kinds of pair meet in tests; a goal sharing only generic words does not.
+- It ships after the queue now running (#8086, #7921, #109, #7525, WhatsApp caps, #8020 d, #8053 3, /setup/missing, joiner first message). Then I run POST /admin/matcher-runs on the six pairs myself and write the result here.
 
 ### 27 Oct, 17:20Z — shipped now on Misho's „now" (15:58Z); the rest follows one at a time
 
