@@ -588,17 +588,22 @@ export async function wakeTask(
       // inside sendPushNotification, and this gate — one boolean for a person
       // with four devices — is exactly what silenced Lika's phone (row 6).
       const preview = scrubText(result.reply).replace(/\s+/g, ' ').trim();
-      void sendPushNotification(ownerId, {
-        // The conversation's own language, read at the top of this function.
-        // The PREVIEW is the reply itself and is already in it; the chrome
-        // around it was Georgian on every lock screen in the world.
-        title: RUN_STRINGS[language].goalNewsPush.title,
-        body:
-          preview.length > PUSH_PREVIEW_MAX_CHARS
-            ? preview.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
-            : preview || RUN_STRINGS[language].goalNewsPush.body,
-        url: `/chat/${thread.id}`,
-      }).catch(() => undefined);
+      void sendPushNotification(
+        ownerId,
+        {
+          // The conversation's own language, read at the top of this function.
+          // The PREVIEW is the reply itself and is already in it; the chrome
+          // around it was Georgian on every lock screen in the world.
+          title: RUN_STRINGS[language].goalNewsPush.title,
+          body:
+            preview.length > PUSH_PREVIEW_MAX_CHARS
+              ? preview.slice(0, PUSH_PREVIEW_MAX_CHARS - 1).trimEnd() + '…'
+              : preview || RUN_STRINGS[language].goalNewsPush.body,
+          url: `/chat/${thread.id}`,
+        },
+        // News on the owner's own goal is worth a WhatsApp template.
+        { highValue: true },
+      ).catch(() => undefined);
       return 'woken';
     } catch (err) {
       // eslint-disable-next-line no-console

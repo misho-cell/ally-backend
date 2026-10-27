@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { getPrice } from './costLedger.service';
 import { hasWhatsappConsent } from './whatsappConsent.service';
 
 /**
@@ -228,7 +229,61 @@ export enum WhatsAppOutcome {
   Off = 'off',
   NoConsent = 'no_consent',
   NoPhone = 'no_phone',
+  /** Outside the 24 h window, and the event is not worth a paid template. */
+  NotWorthATemplate = 'not_worth_a_template',
+  /** A paid template would pass today's one or the month's budget. */
+  Capped = 'capped',
   Failed = 'failed',
+}
+
+/**
+ * Misho, 27 Oct (yes to $50): before the channel goes on, paid templates are
+ * held to at most one per person per Tbilisi day, and the month's templates to
+ * a budget; past it nothing paid goes until the next month. The budget and the
+ * price are Railway variables when set (WHATSAPP_MONTHLY_BUDGET_USD; the price
+ * from provider_prices whatsapp.template), else these.
+ */
+const DEFAULT_MONTHLY_BUDGET_USD = 50;
+const DEFAULT_TEMPLATE_PRICE_USD = 0.05;
+const TEMPLATE_PRICE_KEY = 'whatsapp.template';
+const DAY_ZONE = 'Asia/Tbilisi';
+const START_OF_TODAY_SQL = `(date_trunc('day', NOW() AT TIME ZONE '${DAY_ZONE}') AT TIME ZONE '${DAY_ZONE}')`;
+const START_OF_MONTH_SQL = `(date_trunc('month', NOW() AT TIME ZONE '${DAY_ZONE}') AT TIME ZONE '${DAY_ZONE}')`;
+
+function monthlyBudgetUsd(): number {
+  const raw = Number(process.env.WHATSAPP_MONTHLY_BUDGET_USD);
+  return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_MONTHLY_BUDGET_USD;
+}
+
+/** Pure: may one more paid template go, given today's for this person and the month's for all? */
+export function paidTemplateAllowed(
+  sentTodayToPerson: number,
+  sentThisMonth: number,
+  priceUsd: number,
+  budgetUsd: number,
+): boolean {
+  return sentTodayToPerson < 1 && (sentThisMonth + 1) * priceUsd <= budgetUsd;
+}
+
+/** Reads today's and the month's templates; fails towards no (a failed read sends nothing paid). */
+export async function paidTemplateMayGo(userId: number): Promise<boolean> {
+  try {
+    const result = await query<{ today: number; month: number }>(
+      `SELECT COUNT(*) FILTER (WHERE user_id = $1 AND created_at >= ${START_OF_TODAY_SQL})::int AS today,
+              COUNT(*)::int AS month
+         FROM whatsapp_messages
+        WHERE direction = $2 AND kind = $3 AND created_at >= ${START_OF_MONTH_SQL}`,
+      [userId, WhatsAppDirection.Out, WhatsAppKind.Template],
+      QUERY_TIMEOUT_MS,
+    );
+    const price = (await getPrice(TEMPLATE_PRICE_KEY)) || DEFAULT_TEMPLATE_PRICE_USD;
+    const row = result.rows[0] ?? { today: 0, month: 0 };
+    return paidTemplateAllowed(row.today, row.month, price, monthlyBudgetUsd());
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[whatsapp] template cap for ${userId} not read:`, (err as Error).message);
+    return false;
+  }
 }
 
 /**
@@ -240,6 +295,7 @@ export async function tellInWhatsapp(
   userId: number,
   text: string,
   threadId: number | null,
+  highValue = false,
 ): Promise<WhatsAppOutcome> {
   if (!(await whatsappChannelOn())) return WhatsAppOutcome.Off;
   try {
@@ -257,6 +313,9 @@ export async function tellInWhatsapp(
       );
       return WhatsAppOutcome.Sent;
     }
+    // Outside the window a message costs money: only a high-value event, within the caps.
+    if (!highValue) return WhatsAppOutcome.NotWorthATemplate;
+    if (!(await paidTemplateMayGo(userId))) return WhatsAppOutcome.Capped;
     const wamid = await sendTemplate(phone, notifyTemplate(), [text]);
     await recordWhatsappMessage(
       userId,

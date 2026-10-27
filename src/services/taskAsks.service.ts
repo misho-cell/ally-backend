@@ -2277,14 +2277,19 @@ async function createAskNow(
 
   // #1850: a question that goes with the evening card rings once, as the card.
   if (card === undefined) {
-    void sendPushNotification(String(toUserId), {
-      title: unnamed ? anonymousPushTitle(language) : askPushTitle(language, senderName),
-      body: (unnamed ? withoutAskerNames(safeQuestion, askerNames, language) : safeQuestion).slice(
-        0,
-        120,
-      ),
-      url: `/chat/${askThreadId}`,
-    }).catch(() => undefined);
+    void sendPushNotification(
+      String(toUserId),
+      {
+        title: unnamed ? anonymousPushTitle(language) : askPushTitle(language, senderName),
+        body: (unnamed
+          ? withoutAskerNames(safeQuestion, askerNames, language)
+          : safeQuestion
+        ).slice(0, 120),
+        url: `/chat/${askThreadId}`,
+      },
+      // A question asked of this person is worth a WhatsApp template.
+      { highValue: true },
+    ).catch(() => undefined);
   }
 
   // D49: a relayed ask reaching 'sent' arms the asker's 3-day debrief — if

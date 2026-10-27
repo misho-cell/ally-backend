@@ -1204,10 +1204,12 @@ async function notifyRequester(req: RequestRow, accepted: boolean): Promise<void
     () => 'ka' as RunLanguage,
   );
   const url = await requesterConversationUrl(req.id, req.requester_user_id).catch(() => '/chat');
-  await sendPushNotification(String(req.requester_user_id), {
-    ...introAnsweredPush(language, req.target_name, accepted),
-    url,
-  }).catch(() => undefined);
+  await sendPushNotification(
+    String(req.requester_user_id),
+    { ...introAnsweredPush(language, req.target_name, accepted), url },
+    // An answered introduction is worth a WhatsApp template.
+    { highValue: true },
+  ).catch(() => undefined);
 }
 
 /**
