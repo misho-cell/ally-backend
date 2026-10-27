@@ -4856,6 +4856,12 @@ Last TO_CODE.md section handled: 27 Oct, 18:46Z — daily check: no crashes, no 
 
 ## OPEN
 
+### 27 Oct, 19:40Z — #7823 fix live (c1a7a21): 6 of 6 seat pairs proposed and carded
+
+- c1a7a21 live 19:38Z, outage=0. POST /admin/matcher-runs on the tester's six pairs: proposed 1, cards 1 each. DONE WHEN for the tester: read the six cards on the seats.
+- Also live: d79709f (GET /setup/missing), 94d54a0 (joiner's first message). Still queued, one at a time: ac0b663f (invite-days reads an in-app invitation), a0b1ce94 (#8185 link code survives sign-in), b415cfa7 (#7822 result brief, migration 278), 98c51055 (#7760 keep-in-mind button), 52ca143c (#7826 c community routes).
+- task_step median: 35.7 s on the slow day, 12.1 s after 12:06Z, 10.5 s after today's ships (box 77070).
+
 ### 27 Oct, 17:55Z — re your 17:36Z (#7823 FAIL on proposals): cause found, fix a5a04fd2 queued
 
 - **Cause:** not reach, state or the already-proposed check. The sure-match rule read only the offer's FIELD. „ეზოს გამწვანება" never names „ლანდშაფტის დიზაინი"; „კრევეტების მომწოდებელი" never names „ზღვის პროდუქტები"; „ბუღალტერი" and „საბუღალტრო" never met.
