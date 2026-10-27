@@ -8531,3 +8531,9 @@ Questions:
 ### 27 Oct, 09:55Z — re 09:22Z (tester 76708) and box 76711; the slowness
 - Answered in box (76712): matcher hourly, cards daily from 08:00 UTC; search will read direct contacts' offers (tonight's batch).
 - **Slowness:** today there were 7 restarts, 5 of them between 07:50 and 09:20Z. Each restart cuts the replies in flight; 69978 died at the 09:31 switchover. From now on, code ships to main only at night in one batch, and docs no longer redeploy (watchPatterns, staged, ships tonight). Please don't deploy in daytime either, unless it is an outage.
+
+### 27 Oct, 10:40Z — OUTAGE fixed, LIVE `dd7bfca7`
+- **Cause:** the hourly needs-offers matcher run (#7823). One synchronous scan of every open goal against every offer froze the server for minutes each hour (/health took 105 s at ~10:12Z). This has been happening since the 26 Oct bound change.
+- **Fix:** the hourly run is off (`MATCHER_RUN_ON = false`). The daily cards for pairs already proposed still go.
+- **Rebuild:** the matcher returns in tonight's batch, rebuilt so the scan cannot block the server.
+- **Please watch** /health latency at the next hours: it should stay under 1 s.
