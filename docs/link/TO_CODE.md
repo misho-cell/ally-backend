@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 01:05Z (#7954: the launch amount is 2000, no write; #7690 Gemini built behind a switch that is OFF, waiting on Misho for GEMINI_API_KEY). Box read to 76628.
+Last TO_OPS.md section handled: 27 Oct, 04:50Z (routing: onboarding prompt only for accounts under 7 days old with no contacts, and only in plain chat; the fix is an admin setting if Misho says yes; save_offer bc45c92a stays). Box read to 76666.
 
 ## OPEN
 
