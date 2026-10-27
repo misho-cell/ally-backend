@@ -264,6 +264,10 @@ import {
   notePlanChangeRequested,
   findOpenTaskNamedIn,
   setTaskBrief,
+  setResultBrief,
+  isResultKind,
+  cleanCheckpoints,
+  nextCheckpoint,
   setTaskWake,
   wakeTaskNoLaterThan,
   touchTaskActivityForThread,
@@ -1738,6 +1742,30 @@ const SET_TASK_BRIEF_TOOL: AnthropicTool = {
     properties: {
       task_id: { type: 'number', description: 'The task id from the system context.' },
       brief: { type: 'string', description: 'The full replacement brief text.' },
+      // #7822: the result brief, kept beside the free brief and shown to every wake.
+      result_kind: {
+        type: 'string',
+        enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+        description:
+          'The kind of result: A trusted provider, B buyer-seller match, C a specific person or ' +
+          "organisation, D an expert's advice, E a meeting or presentation, F bring a non-member " +
+          'in, G sell without pitching, H re-engage. Change it when the goal switches kind.',
+      },
+      result_shape: {
+        type: 'string',
+        description: 'What the delivered result looks like, in one or two sentences.',
+      },
+      checkpoints: {
+        type: 'array',
+        description:
+          "The kind's checkpoints in order, each with done true once reached. Every wake works " +
+          'on the first one not done.',
+        items: {
+          type: 'object',
+          properties: { step: { type: 'string' }, done: { type: 'boolean' } },
+          required: ['step', 'done'],
+        },
+      },
     },
     required: ['task_id', 'brief'],
   },
@@ -5713,6 +5741,7 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
     `რეჟიმი: ${autonomyLine}\n` +
     planBlock +
     (task.brief ? `\nსამუშაო გეგმა (brief):\n${task.brief}\n` : '') +
+    resultBriefSection(task) +
     (askLines ? `\nგაგზავნილი კითხვები:\n${askLines}\n` : '') +
     `\nძრავის წესები:\n` +
     askRule +
@@ -11185,7 +11214,15 @@ async function executeToolCall(
       if (!brief) return { updated: false, error: 'Pass a non-empty brief.' };
       const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
       if (taskId === null) return { updated: false, error: BRIEF_NOT_THIS_CONVERSATION };
-      return { updated: await setTaskBrief(userId, taskId, brief) };
+      const updated = await setTaskBrief(userId, taskId, brief);
+      // #7822: the result brief rides on the same call; fields not given are kept.
+      const kind = isResultKind(input['result_kind']) ? input['result_kind'] : null;
+      const shape = String(input['result_shape'] ?? '').trim() || null;
+      const checkpoints = cleanCheckpoints(input['checkpoints']);
+      if (updated && (kind !== null || shape !== null || checkpoints !== null)) {
+        await setResultBrief(userId, taskId, { kind, shape, checkpoints });
+      }
+      return { updated };
     }
     case 'set_reminder':
       return setReminderTool(userId, input, threadId, ownerAbsent);
@@ -16302,6 +16339,30 @@ export const ASK_THREAD_WITHHELD_TOOL_NAMES: ReadonlySet<string> = new Set([
   'approve_task_plan',
   'grant_task_permission',
 ]);
+
+/**
+ * #7822: the result brief as each run of the goal reads it: the kind, how the
+ * delivered result looks, and the NEXT checkpoint to work on. Nothing when the
+ * goal has none yet.
+ */
+export function resultBriefSection(task: {
+  readonly result_kind?: string | null;
+  readonly result_shape?: string | null;
+  readonly checkpoints?: readonly { readonly step: string; readonly done: boolean }[] | null;
+}): string {
+  if (!task.result_kind && !task.result_shape && !task.checkpoints?.length) return '';
+  const lines = [
+    task.result_kind ? `შედეგის სახე: ${task.result_kind}` : '',
+    task.result_shape ? `მზა შედეგი ასე გამოიყურება: ${task.result_shape}` : '',
+    task.checkpoints?.length
+      ? `საკონტროლო ნაბიჯები: ${task.checkpoints.map((c) => `${c.done ? '✓' : '○'} ${c.step}`).join('; ')}`
+      : '',
+    nextCheckpoint(task.checkpoints)
+      ? `ახლა იმუშავე შემდეგ ნაბიჯზე: ${nextCheckpoint(task.checkpoints)}`
+      : '',
+  ].filter((line) => line !== '');
+  return `\nშედეგის გეგმა (#7822):\n${lines.join('\n')}\n`;
+}
 
 /**
  * Ticket 7 Task 1(a), founder's ruling D48, 26 August, and re-affirmed by him
