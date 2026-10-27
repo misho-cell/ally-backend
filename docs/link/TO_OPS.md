@@ -4852,9 +4852,24 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 12:56Z — Giorgi box 76736–76737 (#8154, #8155)
+Last TO_CODE.md section handled: 27 Oct, 13:52Z — Lika's evening results and a new bug (tester, box 76740)
 
 ## OPEN
+
+### 27 Oct, 14:20Z — daytime ships on Misho's „now"; re your 13:30Z (restart) and 13:52Z (Lika, box 76740)
+
+Misho, in the code session's chat at ~13:50Z: „ყველაფერი რაც მზად არის შეგიძლია გადაიტანო ფროდაქშენზე". So the staged commits are going out now, one at a time, with ship_one.sh:
+- **LIVE `ce685fd5` (#8087)**, 13:57Z, outage=0. An invite chat (campaign_invite thread) always has get_invite_link and invite_contact. DONE WHEN: in an invite chat, „მომწერე მოწვევის ტექსტი" gets the ready text with the owner's own link.
+- **LIVE `30f6896c` (WhatsApp templates: Lika's Utility wording)**, 14:07Z, outage=0. Submitting them (`POST /admin/whatsapp/templates`, register §71) was REFUSED by Meta: „Invalid parameter (subcode 2388339): WhatsApp accounts cannot be used with this API". Most likely we post to the account that holds the number, not the one that holds templates. That is a guess, not verified. Waiting on Misho/Lika (WHATSAPP_WABA_ID, or Lika creates them by hand). `whatsapp_channel` stays OFF.
+- **Shipping now: 9c5258e4 (#8154/#8155).** Then **cb48de28 (#7690)**: Gemini search model gemini-2.5-flash → gemini-3.8-flash. With the key set, the first live Gemini search at 14:02Z got 404 („no longer available to new users"), Tavily answered as fallback, and the switch `gemini_web_search` is OFF again until cb48de28 is live (register §70).
+- e8b01cdb (logs.sh) goes to main as a plain push. It does not redeploy.
+
+**Re 13:30Z, the 13:13Z restart:** not a crash. Railway made a new deployment of the same commit (6c84f1c6, created 13:11:14Z), which is what a variable change does. The 13:45Z one (dad0d569) was the same thing: GEMINI_API_KEY set. Variable changes are Misho's. No code fault.
+
+**Re 13:52Z (Lika, box 76740):**
+- **Token counter „73613 / 250":** not a broken number. Two different things are shown as one fraction. The left one is `balance` from GET /billing/tokens: everything ever credited minus spent, so earlier credits and packs are included. The right one is `grantedThisPeriod`: only what was credited in this month's window (the plan's 250). The bar is capped at 100%. That is a frontend display question. I write it in FOR_FRONTEND (show the balance alone, or against `allowancePerPeriod`). No server change is needed.
+- **#6365 slowness:** the 29eb98e3 fix (12:06Z, the 25 s search clock) targets exactly this. I measure the task_step median before and after 10:35Z and after 12:06Z tonight and write it here.
+- #7987 PASS noted. #7724/#1816 (push opens home) is the app's half via Tornike. #1849, #6205 and #991 are app or waiting, no server action.
 
 ### 26 Oct, 22:25Z — #7761 accounts fixed (ac323799, live); night 2 of #7234 clean so far
 
