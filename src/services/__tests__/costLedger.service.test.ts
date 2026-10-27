@@ -166,7 +166,33 @@ describe('recordFixedUsage', () => {
     });
 
     const params = insertCalls()[0];
-    expect(params).toEqual([null, 'web_search', 'tavily', null, 3, 0.024, null]);
+    expect(params).toEqual([null, 'web_search', 'tavily', null, 3, 0.024, null, null]);
+  });
+
+  /** Tester 76826: a web search is booked on its conversation and with the model it ran on. */
+  it('books the conversation and the label it is given', async () => {
+    const { insertCalls } = routeQueries();
+
+    await recordFixedUsage({
+      userId: '7',
+      kind: 'web_search',
+      provider: 'tavily',
+      priceKey: 'tavily.search',
+      runId: 'run-1',
+      threadId: 63857,
+      label: 'gemini-3.8-flash',
+    });
+
+    expect(insertCalls()[0]).toEqual([
+      '7',
+      'web_search',
+      'tavily',
+      'gemini-3.8-flash',
+      1,
+      0.008,
+      'run-1',
+      63857,
+    ]);
   });
 });
 

@@ -55,7 +55,8 @@ export interface GeminiResponse {
 
 export class GeminiSearchError extends Error {}
 
-function geminiModel(): string {
+/** The Gemini model a search runs on; also booked on its usage row. */
+export function geminiModel(): string {
   return process.env.GEMINI_SEARCH_MODEL?.trim() || DEFAULT_MODEL;
 }
 

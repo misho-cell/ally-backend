@@ -376,6 +376,7 @@ export async function runOpeningSearches(
       kind: 'web_search',
       ...(await webSearchLedger()),
       runId,
+      threadId,
     }).catch(() => {});
     // Row 154: the raw result is kept, because the way-in searches need the
     // names and `logged` hands back the serialised string.

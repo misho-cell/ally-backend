@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { geminiModel } from './geminiSearch';
 
 /**
  * #7690 (founder, 25 Oct: „I prefer to have gemini engine for web research").
@@ -62,9 +63,19 @@ export async function webSearchProvider(): Promise<WebSearchProvider> {
   return (await switchOn()) ? WebSearchProvider.Gemini : WebSearchProvider.Tavily;
 }
 
-/** Ledger fields for one web search. A Gemini call that fell back to Tavily is still booked as Gemini. */
-export async function webSearchLedger(): Promise<{ provider: string; priceKey: string }> {
-  return LEDGER[await webSearchProvider()];
+/**
+ * Ledger fields for one web search. A Gemini call that fell back to Tavily is
+ * still booked as Gemini, with the model it ran on (tester 76826).
+ */
+export async function webSearchLedger(): Promise<{
+  provider: string;
+  priceKey: string;
+  label?: string;
+}> {
+  const provider = await webSearchProvider();
+  return provider === WebSearchProvider.Gemini
+    ? { ...LEDGER[provider], label: geminiModel() }
+    : LEDGER[provider];
 }
 
 /** Ledger fields for one page read (fetch_page). */
