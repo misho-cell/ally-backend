@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 27 October, 20:40Z — M7 (#7757 / #7828): who nudges which missing step
+
+Misho approved the split (his chat, „შენი შეთავაზება გააკეთე"). Each missing step is nudged by whoever can act on it.
+
+**App, please:** read `GET /setup/missing` (`{ success, data: { missing: [step, …] } }`, the most important first) when the main screen opens. When `missing` holds `notifications` or `install`, show ONE small card for the first of those two: „ჩართე შეტყობინებები" with the permission prompt behind the tap, or „დაამატე Netai მთავარ ეკრანზე" with the install prompt (or the iOS how-to). A dismiss hides that card for 7 days, kept on the device. Read the list again after the step is done, so the card goes away.
+
+**Server (live tonight):** `contacts` is NOT the app's card. A member who never uploaded contacts gets one line from Netai in their main chat, once, a few hours after registering and never at night: „შენი კონტაქტები ჯერ არ ატვირთულა. სანამ არ ატვირთავ, შენს წრეში ვერავის მოვძებნი და ვერავის ვკითხავ. ატვირთე და მაშინვე დავიწყებ." It arrives as an ordinary assistant message (`message_appended`, `ref.kind = "contacts_missing_line"`) with a push opening `/chat/:id`. If the app wants a button under it to its contacts upload screen, key it on that `ref.kind`. `freshness` and `connector` stay unnudged for now.
+
 ## 27 October, 18:55Z — #8185 (founder, 22:19 Tbilisi): an invite link needs no typed code, ever
 
 **What happened.** Account 511, an old Ally number, opened the founder's `/join?ref=…` link. After the SMS step he was refused („invite-only … registered in old Ally") and had to type the code that was already in his link. The server admits an invited old Ally number at `POST /auth/complete-login`, but only when that request carries `referralCode`. The login page keeps the link's code in page memory (`urlRefRef`), so a reload, a new tab, the SMS autofill bringing the page back, or the home-screen app drops it.
