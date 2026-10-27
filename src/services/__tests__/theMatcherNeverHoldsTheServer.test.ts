@@ -90,3 +90,45 @@ describe('the matcher’s offer index (#7823)', () => {
     expect(MATCHER_RUN_ON).toBe(true);
   });
 });
+
+/** #7823 FAIL (tester 76924): the six seat pairs, in their own words. */
+describe('a need meets an offer in the offer’s own words', () => {
+  const need = (title: string) => ({ id: 1, user_id: 10, title });
+  const give = (field: string, text: string) => ({ id: 2, user_id: 20, field, text });
+
+  it('meets the three kinds of pair the tester set up', () => {
+    expect(
+      isSureMatch(
+        need('ჩემს ახალ საცხოვრებელ კომპლექსს ეზოს გამწვანება სჭირდება, ვინმე კარგი მჭირდება'),
+        give('ლანდშაფტის დიზაინი', 'ლანდშაფტის დიზაინი და ეზოების გამწვანება — საკუთარი კომპანია'),
+      ),
+    ).toBe(true);
+    expect(
+      isSureMatch(
+        need('რესტორნისთვის ახალი კრევეტების მომწოდებელი მჭირდება'),
+        give('ზღვის პროდუქტები', 'ზღვის პროდუქტების (კრევეტები და თევზი) იმპორტი — სთავაზობს'),
+      ),
+    ).toBe(true);
+    expect(
+      isSureMatch(
+        need('ოფისისთვის ბუღალტერი მჭირდება, პატარა კომპანია გვაქვს'),
+        give('საბუღალტრო მომსახურება', 'საბუღალტრო მომსახურებას ვუწევ მცირე კომპანიებს'),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not meet on the words every offer says', () => {
+    expect(
+      isSureMatch(
+        need('ოფისისთვის დიზაინერი მჭირდება, პატარა კომპანია გვაქვს'),
+        give('საბუღალტრო მომსახურება', 'საბუღალტრო მომსახურებას ვუწევ მცირე კომპანიებს'),
+      ),
+    ).toBe(false);
+  });
+
+  it('still needs a field on the offer', () => {
+    expect(isSureMatch(need('ეზოს გამწვანება მჭირდება'), give('', 'ეზოების გამწვანება'))).toBe(
+      false,
+    );
+  });
+});
