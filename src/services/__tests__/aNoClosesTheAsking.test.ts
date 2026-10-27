@@ -38,12 +38,13 @@ describe('nothing more goes to somebody who said no', () => {
     expect(DECLINE_QUIET_HOURS).toBe(48);
   });
 
-  it('refuses a new question or follow-up from the same asker unless the owner named them', () => {
+  it('refuses the system a new question or follow-up, never the owner in his own turn (#8155)', () => {
     const guard = asks.slice(asks.indexOf('// 4093: somebody who just said no'));
-    expect(guard.slice(0, 600)).toContain(
-      'fromOwnersLine !== true && (await declinedThisAskerRecently(fromUserId, toUserId))',
+    const flat = guard.slice(0, 900).replace(/\s+/g, ' ');
+    expect(flat).toContain(
+      'fromOwnersLine !== true && ownerAskedNow !== true && (await declinedThisAskerRecently(fromUserId, toUserId))',
     );
-    expect(guard.slice(0, 600)).toContain("reason: 'declined_recently'");
+    expect(guard.slice(0, 900)).toContain("reason: 'declined_recently'");
     const read = asks.slice(asks.indexOf('async function declinedThisAskerRecently('));
     expect(read.slice(0, 700)).toContain('from_user_id = $1::int AND to_user_id = $2');
     expect(read.slice(0, 700)).toContain('declined_at > NOW() - make_interval(hours => $3)');
