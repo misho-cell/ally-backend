@@ -6468,3 +6468,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** board row #8054 (founder's case, 27 Oct: „no second plan card, no approve buttons for the same action"), built directly under Misho's standing rule of 26 Oct.
 - **What:** a model-facing tool note, never shown to anyone. When the owner's own line in this run is an instruction naming one of their contacts (D316), present_choices with approve labels is refused with `INSTRUCTION_IS_THE_APPROVAL`: „Not shown: the owner's own line is the instruction, and an instruction naming their contact is the approval itself (D316). Send it now (ask_contact or request_introduction) and say in one line who it went to; no plan card and no approve buttons for it."
 - **Undo:** revert the commit. No data is written.
+
+## 74 · #8086: THE DAY AFTER A DECLINE, ONE NEW CONVERSATION WITH THE HELPER (27 Oct ~16:40Z)
+
+- **Who authorises:** board row #8086 (founder's rule W7, 25 Oct, „BUILD #7661 part 1"), built directly under Misho's standing rule of 26 Oct.
+- **What:** a daily job at 10:00 UTC (14:00 Tbilisi). For each real member who declined an ask 24–48 h earlier, who was not opened such a conversation in the last 7 days, and who got no new conversation today: ONE new regular conversation „Netai". Its first line is written by the model with the shared prompt, from the server event `AFTER_DECLINE_EVENT_BODY` (src/services/afterDecline.service.ts, model-facing, never shown), and a push follows. The event names nothing from the asker's goal. At most 30 a day. Recorded as product_events `after_decline_opened`. `POST /admin/after-decline-runs {user_ids}` runs it on fictional test seats only.
+- **Undo:** revert the commit (the job stops). The conversations opened stay in their owners' lists like any other chat; `SELECT props->>'thread_id' FROM product_events WHERE event = 'after_decline_opened'` lists them.
