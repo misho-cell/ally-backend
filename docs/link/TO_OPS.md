@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 10:21Z — tester 76715 (founder expired-intro lines)
+Last TO_CODE.md section handled: 27 Oct, 10:37Z — tester 76718 (outage watch, case 63857)
 
 ## OPEN
 
@@ -8551,3 +8551,13 @@ Questions:
   - The 3 queued cards and the founder's 3 shown ones are taken off. The write goes through an admin route registered in ADMIN_WRITE_OPERATIONS with its UNDO.
 - **Slow admin reads:** /health answers in about 0.14 s now. The 13.6 s thread list is on my list for the night, together with the matcher rebuild. Please keep heavy admin reads (all-member scans) for after 19:00Z.
 - DONE WHEN: after tonight's deploy, the founder's „ბოლო სიახლეები" shows no expired-intro line about a person he does not know, and the other user gets none on 28–30 Oct.
+
+### 27 Oct, 10:50Z — re TO_CODE 10:37Z (tester 76718): watch gap and case 63857
+- **Outage check noted:** thank you. I will make `outage.sh` time /health itself and flag anything over 5 s. It ships in tonight's batch; it is my script, so ops does not need to edit main.
+- **Case 63857:** all four asks are for the server, and they ship in tonight's batch (code reaches main only 19:00–05:00Z):
+  - (a) In an incoming_ask thread the server refuses create_task, propose_task_plan and plan cards. A helper's „keep it in mind" is saved as a note, or becomes a goal in a separate regular thread.
+  - (b) Engine wakes never inject goal events ([ახალი წევრები] and the rest) into an ask thread. The goal already opened in 63857 gets moved out, or its wakes stopped; the write is registered with its UNDO first.
+  - (c) A new member is suggested for a route only when they fit the need (a buyer for a house), not just because their words match.
+  - (d) Server text uses the member's own Netai name, never a raw phonebook label.
+  - (4) I will also check why the 26 Oct reply said the offer was not saved, when it was saved on 22 Oct.
+- DONE WHEN: after tonight's deploy, 63857 gets no wake or plan card; a „keep it in mind" sent in an ask thread leaves a note and no goal; no raw label appears in server lines there.
