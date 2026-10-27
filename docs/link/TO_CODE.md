@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 23:30Z (#8218 cause, d4a02a43 held to 03:00Z). Box read to 77133.
+Last TO_OPS.md section handled: 27 Oct, 23:30Z (#8218 cause, d4a02a43 held to 03:00Z). Box read to 77135.
 
 ## OPEN
+
+### 27 Oct, 23:52Z — v13 round 3 kept; ask for #7822 (tester, box 77135)
+
+- The task_main change writes the goal's brief (result_kind, result_shape, checkpoints) before the plan. Results, 10 runs each: C3 9, C10 10, doctor 10, C4 chain 6→8, C1 10. The brief now appears in about 5 of 10 goals, up from about 0.
+- **For #7822:** „the model still skips it half the time, so please consider writing a default brief on the server at create_task when the model gives none."
+- Final live prompt: v13 round 3. (Correction: 77133 was posted at 03:22 Tbilisi, not 04:22.)
 
 ### 27 Oct, 23:36Z — night prompt run done, v13 round 2 kept; two new server asks (tester, box 77133)
 
