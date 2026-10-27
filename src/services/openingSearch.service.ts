@@ -2,6 +2,7 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { ExactMatch, exactMatchesForMany } from './tools/searchByTag';
 import { firmSearchName, sameFirstName, wayInSearchName } from './wayInName';
 import { webSearch } from './tools/webSearch';
+import { webSearchLedger } from './tools/webSearchProvider';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
 import { matchShapeOf } from './resultShape';
@@ -373,8 +374,7 @@ export async function runOpeningSearches(
     await recordFixedUsage({
       userId,
       kind: 'web_search',
-      provider: 'tavily',
-      priceKey: 'tavily.search',
+      ...(await webSearchLedger()),
       runId,
     }).catch(() => {});
     // Row 154: the raw result is kept, because the way-in searches need the

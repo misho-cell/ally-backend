@@ -318,7 +318,9 @@ async function tick(idle: (verdict: string) => ResearchTickResult): Promise<Rese
     // Asked once, up front. Left to discover it call by call, the runner would
     // spend its whole daily allowance writing the same error row 200 times and
     // then report a day's work.
-    return idle('Web search is not configured (TAVILY_API_KEY missing); no step can run.');
+    return idle(
+      'Web search is not configured (neither TAVILY_API_KEY nor GEMINI_API_KEY); no step can run.',
+    );
   }
 
   const { peoplePerTick, dailyBudget, refreshDays, maxSteps } = dials();

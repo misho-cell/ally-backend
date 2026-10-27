@@ -89,6 +89,6 @@ describe("Netai's WhatsApp templates", () => {
     );
     expect(routes).toContain("adminRouter.get('/whatsapp'");
     expect(routes).toContain("'/whatsapp/templates',\n  body('confirm').equals('true'),");
-    expect(routes).toContain('  WHATSAPP_CHANNEL_FLAG,\n] as const;');
+    expect(routes).toMatch(/ {2}WHATSAPP_CHANNEL_FLAG,\n[^\]]*\] as const;/u);
   });
 });

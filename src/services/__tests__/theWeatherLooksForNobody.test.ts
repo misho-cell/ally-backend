@@ -48,7 +48,7 @@ describe('a weather question looks for nobody (3106)', () => {
   it('logs, costs and registers the server’s weather search like the model’s own', () => {
     const fn = source.slice(source.indexOf('async function weatherFoundFirst('));
     const body = fn.slice(0, fn.indexOf('\n}\n'));
-    expect(body).toContain("priceKey: 'tavily.search'");
+    expect(body).toContain('...(await webSearchLedger())');
     expect(body).toContain("tool: 'web_search:weather'");
     expect(body).toContain('registerWebResult(runId, raw);');
     expect(body).toContain('buildOpeningSearchSection(');

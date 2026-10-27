@@ -1,4 +1,6 @@
+import { geminiSearch, GeminiHit } from './geminiSearch';
 import { hasGeorgian, georgianToLatin } from './transliterate';
+import { geminiKey, webSearchProvider, WebSearchProvider } from './webSearchProvider';
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 const TAVILY_TIMEOUT_MS = 12_000;
@@ -212,7 +214,7 @@ async function fetchRawPageText(url: string): Promise<string> {
  * The key name stays known in one place.
  */
 export function webSearchConfigured(): boolean {
-  return Boolean(TAVILY_API_KEY);
+  return Boolean(TAVILY_API_KEY) || geminiKey() !== '';
 }
 
 /**
@@ -283,14 +285,48 @@ function unavailable(reason: string): object {
   return { unavailable: true, guidance: UNAVAILABLE_GUIDANCE };
 }
 
-export async function webSearch(query: string): Promise<object> {
-  if (!TAVILY_API_KEY) {
-    return unavailable('TAVILY_API_KEY missing');
-  }
+/** The results as the model reads them, whichever engine found them. */
+function searchResults(hits: readonly { title: string; url: string; snippet: string }[]): object {
+  return {
+    guidance: RESULT_GUIDANCE,
+    results: hits.map((r) => ({
+      title: r.title,
+      url: r.url,
+      snippet: r.snippet.slice(0, SNIPPET_CHARS),
+      // Institutional/government domains are the authoritative source for
+      // current officeholders — news can be stale. When official:true is
+      // present, prefer that result and read the page itself (fetch_page)
+      // before naming who holds a role.
+      ...(isOfficialDomain(r.url) && { official: true }),
+    })),
+  };
+}
 
+/**
+ * #7690: Gemini first when the switch is on; a Gemini failure falls back to
+ * Tavily while its key is still set, so the switch never costs a search.
+ */
+export async function webSearch(query: string): Promise<object> {
   // If query contains Georgian script, append transliterated Latin version
   // so search engines can match both scripts (e.g. "მახარაძე makharadze")
   const enrichedQuery = hasGeorgian(query) ? `${query} ${georgianToLatin(query)}` : query;
+  if ((await webSearchProvider()) === WebSearchProvider.Gemini) {
+    let hits: GeminiHit[] | null = null;
+    try {
+      hits = await geminiSearch(enrichedQuery, geminiKey());
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[web-search] gemini failed, trying tavily: ${(err as Error).message}`);
+    }
+    if (hits !== null) return searchResults(hits);
+  }
+  return tavilySearch(enrichedQuery);
+}
+
+async function tavilySearch(enrichedQuery: string): Promise<object> {
+  if (!TAVILY_API_KEY) {
+    return unavailable('TAVILY_API_KEY missing');
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
@@ -315,20 +351,9 @@ export async function webSearch(query: string): Promise<object> {
     }
 
     const data = (await response.json()) as TavilyResponse;
-
-    return {
-      guidance: RESULT_GUIDANCE,
-      results: (data.results ?? []).map((r) => ({
-        title: r.title,
-        url: r.url,
-        snippet: r.content.slice(0, SNIPPET_CHARS),
-        // Institutional/government domains are the authoritative source for
-        // current officeholders — news can be stale. When official:true is
-        // present, prefer that result and read the page itself (fetch_page)
-        // before naming who holds a role.
-        ...(isOfficialDomain(r.url) && { official: true }),
-      })),
-    };
+    return searchResults(
+      (data.results ?? []).map((r) => ({ title: r.title, url: r.url, snippet: r.content })),
+    );
   } catch (err) {
     return unavailable((err as Error).message);
   } finally {
@@ -416,12 +441,19 @@ export function densestStart(text: string, words: RegExp, window: number = PAGE_
  * those words are densest instead of at the first character.
  */
 export async function fetchPage(url: string, fromCharacter = 0, startAt?: RegExp): Promise<object> {
-  if (!TAVILY_API_KEY) {
-    return { error: 'Web fetch not configured (TAVILY_API_KEY missing)' };
-  }
   const target = (url ?? '').trim();
   if (!/^https?:\/\//i.test(target)) {
     return { error: 'Pass a full http(s) URL.' };
+  }
+  // #7690: with Gemini searching, a page is read by our own fetch first;
+  // Tavily's extractor is only the fallback for a page that gives no text.
+  if ((await webSearchProvider()) === WebSearchProvider.Gemini) {
+    const direct = await fetchRawPageText(target);
+    if (direct) return pageResult(target, direct, firstRead(direct, fromCharacter, startAt));
+    if (!TAVILY_API_KEY) return { url: target, content: null, note: NO_TEXT_NOTE };
+  }
+  if (!TAVILY_API_KEY) {
+    return { error: 'Web fetch not configured (TAVILY_API_KEY missing)' };
   }
 
   const controller = new AbortController();

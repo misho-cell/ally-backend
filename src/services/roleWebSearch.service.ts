@@ -1,4 +1,5 @@
 import { fetchPage, webSearch } from './tools/webSearch';
+import { webSearchLedger } from './tools/webSearchProvider';
 import { withPublicProfile } from './tools/publicProfileRead';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
@@ -38,12 +39,6 @@ const MAX_SECTION_CHARS_PER_QUERY = 3_000;
 
 /** The bank's own management page, as much of it as the model is handed. */
 const MAX_PAGE_CHARS = 6_000;
-
-const TAVILY_LEDGER = {
-  kind: 'web_search',
-  provider: 'tavily',
-  priceKey: 'tavily.search',
-} as const;
 
 export interface Institution {
   /** How the web knows it, in English. */
@@ -187,14 +182,18 @@ function withinBudget<T>(
   });
 }
 
-/** Every Tavily call is charged like the model's own web_search. */
+/** Every search or page read is charged like the model's own web_search, to the engine in use. */
 async function charge(run: RoleSearchRun): Promise<void> {
-  await recordFixedUsage({ userId: run.userId, runId: run.runId, ...TAVILY_LEDGER }).catch(
-    (err: unknown) => {
-      // eslint-disable-next-line no-console
-      console.warn('[role-search] ledger write failed:', (err as Error).message);
-    },
-  );
+  const ledger = await webSearchLedger();
+  await recordFixedUsage({
+    userId: run.userId,
+    runId: run.runId,
+    kind: 'web_search',
+    ...ledger,
+  }).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.warn('[role-search] ledger write failed:', (err as Error).message);
+  });
 }
 
 function logRoleCall(

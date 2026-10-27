@@ -169,6 +169,7 @@ import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
+import { pageFetchLedger, webSearchLedger } from './tools/webSearchProvider';
 import { linkedinEvidence, profileEvidence, withPublicProfile } from './tools/publicProfileRead';
 import { searchVerdictOf } from './searchVerdict';
 import { questionForButtons } from './buttonsCarryTheQuestion';
@@ -6493,8 +6494,7 @@ async function weatherFoundFirst(
     void recordFixedUsage({
       userId,
       kind: 'web_search',
-      provider: 'tavily',
-      priceKey: 'tavily.search',
+      ...(await webSearchLedger()),
       runId,
     }).catch(() => {});
     void logToolCall({
@@ -10495,20 +10495,18 @@ async function executeToolCall(
       await recordFixedUsage({
         userId,
         kind: 'web_search',
-        provider: 'tavily',
-        priceKey: 'tavily.search',
+        ...(await webSearchLedger()),
         runId,
       }).catch(() => {});
       // 4720 (§134): a public profile among the top results is read here, not left as a link.
       const found = await withPublicProfile(
         await webSearch(input['query'] as string),
         (url) => fetchPage(url),
-        () =>
+        async () =>
           recordFixedUsage({
             userId,
             kind: 'web_search',
-            provider: 'tavily',
-            priceKey: 'tavily.search',
+            ...(await pageFetchLedger()),
             runId,
           }).catch(() => {}),
       );
@@ -10544,8 +10542,7 @@ async function executeToolCall(
       await recordFixedUsage({
         userId,
         kind: 'web_search',
-        provider: 'tavily',
-        priceKey: 'tavily.search',
+        ...(await pageFetchLedger()),
         runId,
       }).catch(() => {});
       return fetchPage(input['url'] as string, Number(input['from_character'] ?? 0));

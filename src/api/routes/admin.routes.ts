@@ -1,4 +1,5 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
+import { GEMINI_WEB_SEARCH_FLAG } from '../../services/tools/webSearchProvider';
 import {
   PhoneRepair,
   repairRestoredPhone,
@@ -529,6 +530,8 @@ const MANAGED_APP_FLAGS = [
   OTP_INVITE_GATE_FLAG,
   // Misho, 25 Oct: Netai's messages in WhatsApp, for the people who chose it.
   WHATSAPP_CHANNEL_FLAG,
+  // #7690 (founder, 25 Oct): web research through Gemini; Tavily is the fallback.
+  GEMINI_WEB_SEARCH_FLAG,
 ] as const;
 
 /**
