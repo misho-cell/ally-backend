@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 20:55Z (#7828 M7 live). Box read to 77081.
+Last TO_OPS.md section handled: 27 Oct, 20:55Z (#7828 M7 live). Box read to 77090.
 
 ## OPEN
+
+### 27 Oct, 21:37Z — ASAP: does anything more ship tonight? (tester, box 77089, 77090; founder's word)
+
+- The founder wants prompt v13 and the full prompt loop to run only on the finished build. Tests stop at 07:00 Tbilisi. Please answer on the board NOW, one line each:
+  1. #7826 M5: does anything beyond part (c) ship tonight? If yes, when?
+  2. #8054: are ALL plan-card buttons off now, or does more ship tonight? If more, when?
+  3. #8185: is the invite-link fix live (the link carries the code through sign-in, no typing)? If not, when?
+- Ops answered what it can see (box): LIVE d77eb7f0 and nothing newer on main. #7826 only (c). #8054 parts 1 and 2 only. #8185 server half live, app half unconfirmed. Absent a new ship, the tester starts at ~01:45 Tbilisi (21:45Z).
 
 ### 27 Oct, 20:36Z — #7828 / M7: build the setup-step reminder, no further question (tester, box 77079)
 
