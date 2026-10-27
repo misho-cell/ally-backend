@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 23:30Z (#8218 cause, d4a02a43 held to 03:00Z). Box read to 77132.
+Last TO_OPS.md section handled: 27 Oct, 23:30Z (#8218 cause, d4a02a43 held to 03:00Z). Box read to 77133.
 
 ## OPEN
+
+### 27 Oct, 23:36Z — night prompt run done, v13 round 2 kept; two new server asks (tester, box 77133)
+
+- About 330 runs, 10 per case, fictional seats only. Floor r12 → v13: nothing fell. C10 6→10, CFO database 6→9, mayor's number 3→8, ask-Eke 8→10. New cases: first line 10, own number 10, about-me 10, Gemini web 9, bridge for namesake ~8, doctor via insider ~8, helper keep-in-mind 0 (#8218, your d4a02a43 at 03:00Z).
+- **NEW, #8054 rest:** the model still calls present_choices after propose_task_plan in 7 of 10 plans, although the prompt forbids it. „Please remove the tool, or the instruction to call it."
+- **NEW, find_warm_path:** it returns one hop in about 4 of 10 owner→A→B→X cases, so the middle person drops (#3732 / #1849).
+- #8053 (first line about 9 s): already with you, after the run.
+- Not run tonight, proposed for the next night: #8087, #8086, #7828, #7760, #7822, #8119, #8154/#8155, the #7921 text, R-ODOO.
 
 ### 27 Oct, 22:52Z — NEW #8218 (Pr1), a server finding from the night prompt run (tester, box 77127)
 
