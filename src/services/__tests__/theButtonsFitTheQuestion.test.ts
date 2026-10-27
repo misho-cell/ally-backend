@@ -41,15 +41,28 @@ describe('the buttons under it', () => {
   });
 
   it('a „do you know someone" question gets know / don’t know / later', () => {
-    const [yes, no, later] = askChoicesFor('ხომ არ იცნობ კარგ სანტექნიკს?', 'ka');
+    const [yes, no, keep, later] = askChoicesFor('ხომ არ იცნობ კარგ სანტექნიკს?', 'ka');
     expect(yes).toBe('კი, ვიცნობ');
     expect(askTapOf(yes)).toBe(AskTap.Yes);
     expect(isDeclineChoice(no)).toBe(true);
+    // #7760: „not yet, I'll keep it in mind" closes the ask like a no.
+    expect(keep).toBe('ჯერ არავის ვიცნობ, დავიმახსოვრებ');
+    expect(isDeclineChoice(keep)).toBe(true);
     expect(askTapOf(later)).toBe(AskTap.Later);
   });
 
-  it('a request for help keeps the original three', () => {
-    expect(askChoicesFor('Can you help me find a flat?', 'en')).toEqual(askChoices('en'));
+  /** #7760: help and „do you know" asks also offer „not yet, I'll keep it in mind", before „later". */
+  it('a request for help keeps the original three, with „keep it in mind" before „later"', () => {
+    const [yes, no, later] = askChoices('en');
+    expect(askChoicesFor('Can you help me find a flat?', 'en')).toEqual([
+      yes,
+      no,
+      "I don't know anyone yet, I'll keep it in mind",
+      later,
+    ]);
+    expect(askChoicesFor('Do you know a good plumber?', 'en')[2]).toBe(
+      "I don't know anyone yet, I'll keep it in mind",
+    );
   });
 
   it('an open question gets only „later" — the text field is the answer', () => {

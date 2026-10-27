@@ -337,7 +337,8 @@ export function isDeclineChoice(answer: string): boolean {
   return (
     matchesAnyLanguage(DECLINE_CHOICE, answer) ||
     matchesAnyLanguage(KNOW_NO_CHOICE, answer) ||
-    matchesAnyLanguage(INTRO_NO_CHOICE, answer)
+    matchesAnyLanguage(INTRO_NO_CHOICE, answer) ||
+    matchesAnyLanguage(KEEP_IN_MIND_CHOICE, answer)
   );
 }
 
@@ -385,6 +386,24 @@ const KNOW_NO_CHOICE: Readonly<Record<RunLanguage, string>> = {
   es: 'No, no conozco a nadie',
   ka: 'არა, არ ვიცნობ',
 };
+
+/**
+ * #7760 (use-case register L134): asks to a person who cannot help yet just
+ * sat unanswered. One tap says so honestly and keeps the need in mind: the
+ * asker is told, the ask closes like a no, and the helper's assistant keeps a
+ * note of the need for later.
+ */
+const KEEP_IN_MIND_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: "I don't know anyone yet, I'll keep it in mind",
+  ru: 'Пока никого не знаю, буду иметь в виду',
+  es: 'Aún no conozco a nadie, lo tendré en cuenta',
+  ka: 'ჯერ არავის ვიცნობ, დავიმახსოვრებ',
+};
+
+/** Is this message the „keep it in mind" tap, in any language? */
+export function isKeepInMindChoice(answer: string): boolean {
+  return matchesAnyLanguage(KEEP_IN_MIND_CHOICE, answer);
+}
 
 /**
  * #2185: the buttons for „will you introduce me". The yes is the same tap as
@@ -441,13 +460,13 @@ export function askChoicesFor(question: string, language: RunLanguage): readonly
     case AskKind.Intro:
       return [INTRO_YES_CHOICE, INTRO_NO_CHOICE, LATER_CHOICE].map(pick);
     case AskKind.Know:
-      return [KNOW_YES_CHOICE, KNOW_NO_CHOICE, LATER_CHOICE].map(pick);
+      return [KNOW_YES_CHOICE, KNOW_NO_CHOICE, KEEP_IN_MIND_CHOICE, LATER_CHOICE].map(pick);
     case AskKind.YesNo:
       return [PLAIN_YES, PLAIN_NO, LATER_CHOICE].map(pick);
     case AskKind.Open:
       return [pick(LATER_CHOICE)];
     default:
-      return askChoices(language);
+      return [YES_CHOICE, DECLINE_CHOICE, KEEP_IN_MIND_CHOICE, LATER_CHOICE].map(pick);
   }
 }
 
@@ -528,6 +547,13 @@ const KNOW_NO_TOLD: ToldByNetai = {
   ka: (name) => `${name} ასეთ ადამიანს არ იცნობს.`,
 };
 
+const KEEP_IN_MIND_TOLD: ToldByNetai = {
+  en: (name) => `${name} doesn't know anyone for this yet, but will keep it in mind.`,
+  ru: (name) => `${name} пока никого не знает, но будет иметь в виду.`,
+  es: (name) => `${name} aún no conoce a nadie para esto, pero lo tendrá en cuenta.`,
+  ka: (name) => `${name} ჯერ ასეთ ადამიანს არ იცნობს, მაგრამ დაიმახსოვრა.`,
+};
+
 const INTRO_NO_TOLD: ToldByNetai = {
   en: (name) => `${name} can't make the introduction.`,
   ru: (name) => `${name} не сможет познакомить.`,
@@ -543,6 +569,7 @@ const BUTTONS_TOLD: ReadonlyArray<readonly [Readonly<Record<RunLanguage, string>
   [DECLINE_CHOICE, DECLINE_TOLD],
   [KNOW_NO_CHOICE, KNOW_NO_TOLD],
   [INTRO_NO_CHOICE, INTRO_NO_TOLD],
+  [KEEP_IN_MIND_CHOICE, KEEP_IN_MIND_TOLD],
 ];
 
 /**
