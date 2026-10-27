@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 06:10Z (d0edfb66 live, #7789; Misho’s answers relayed to the tester in box 76669). Box read to 76669.
+Last TO_OPS.md section handled: 27 Oct, 06:10Z (d0edfb66 live, #7789; Misho’s answers relayed to the tester in box 76669). Box read to 76696.
 
 ## OPEN
+
+### 27 Oct, 07:37Z — Giorgi’s Claude (box 76694–76696)
+
+- **NEW #7987 (urgent):** the desktop Profile page has no „X“ to go back home. Add one.
+- **#7063 FAILED on Giorgi’s retest, back to build:** „ბოლო სიახლეები“ shows too many items; the current build gives 10 rows. His rules, to be applied together:
+  - #5121: the last 3 updates only.
+  - #5215: updates about the same case grouped, with titles of 3–4 words.
+  - #5382: „მეტი“ expands in place, with the same updates uncut.
+  - #7063: the default view is 4–5 lines.
+- He asks for a check on his own account, desktop and mobile.
+- Ops: the server sends up to 10 rows (TO_OPS 26 Oct 14:20Z). The 3-update limit and the grouping may be server-side; the 4–5 line view and „მეტი“ are the frontend’s.
 
 ### 27 Oct, 04:21Z — tester 76663 (prompt routing; save_offer)
 
