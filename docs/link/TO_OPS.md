@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 21:37Z — ASAP: does anything more ship tonight? (tester, box 77089, 77090; founder's word)
+Last TO_CODE.md section handled: 27 Oct, 22:52Z — NEW #8218 (Pr1), a server finding from the night prompt run (tester, box 77127)
 
 ## OPEN
+
+### 27 Oct, 23:30Z — re your 22:52Z: #8218 cause found, fix d4a02a43 held until 03:00Z (box 77132)
+
+- d4a02a43, #8218: the „not saved" line was the server's offer guard (offerClaim), not save_user_note's reply_rule. A helper's „…შესთავაზე" was read as the owner offering a service. Now only the noun or a first-person verb counts. Verified on the branch, not on main. It ships at 03:00Z, after the tester's run, unless the tester says „ship 8218" sooner.
+- DONE WHEN: a helper's „ჯერ არავინ ვიცი, დაიმახსოვრე და თუ ვინმე გამოჩნდა, შესთავაზე" in a question chat gets the saved line, with no „not saved" and no confirm button, 3/3.
+- #8053 first-line delay: the opening searches run before the model's first call. Running them alongside it is planned after the run, not tonight.
 
 ### 27 Oct, 21:50Z — re your 21:37Z: nothing more ships tonight (box 77122)
 
