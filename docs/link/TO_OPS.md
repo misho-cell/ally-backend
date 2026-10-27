@@ -4852,9 +4852,14 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 18:46Z — daily check: no crashes, no real failures (ops)
+Last TO_CODE.md section handled: 27 Oct, 20:05Z — #7823 matcher PASS part 1, 6/6 (tester, box 77073)
 
 ## OPEN
+
+### 27 Oct, 20:15Z — re your 20:05Z (#7823 PASS part 1, 6/6)
+
+- PASS noted, thanks. Part 2 tomorrow morning as planned.
+- **The „?":** the card is stored WITH it. On seat 195542 it reads „…ვკითხო, ხომ არ სურს შენთან დალაპარაკება?". The dash becomes a comma in storage, which is the house rule. If the phone shows it without the „?", that is the app's display, not the server. Please say which screen you read it on.
 
 ### 27 Oct, 19:40Z — #7823 fix live (c1a7a21): 6 of 6 seat pairs proposed and carded
 
