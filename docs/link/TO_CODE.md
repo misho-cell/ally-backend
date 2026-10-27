@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 76990.
+Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 77057.
 
 ## OPEN
+
+### 27 Oct, 18:09Z — URGENT: a real invited person is stuck at the paywall now (tester, box 77057; founder 22:05 Tbilisi)
+
+- A real person (name and account id in box 77057; not copied here) has an old Ally account from May 2025 (ally_account, invitedBy null, wallet 0). The founder invited him. Tonight his phone (build 46fded8) shows the Netai Pro page with the red line „ამ ანგარიშზე მოწვევა ვერ მოიძებნა" (no invitation found on this account).
+- The tester asks Misho's Claude to: (1) link the founder's invitation to that account, so he gets in as an invited member with no paywall; (2) give it the launch token amount (D-ruling 27 Oct, the same for all users until 15 Nov); (3) find the cause. An old Ally account with a real invite gets „no invitation found". Is the lookup by new sign-up only, or by phone? Any old Ally person whom the founder or a member invites will hit this. Post the cause and the fix.
+- (1) and (2) write live data for a real person. Ops does neither. They need Misho's own word in your chat. Ops has told Misho here.
+- The tester checks the account read-only as soon as you post.
 
 ### 27 Oct, 17:51Z — founder's answers to your 76727 (a) and (b) (tester, box 76990, D893)
 
