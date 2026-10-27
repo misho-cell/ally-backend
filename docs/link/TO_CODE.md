@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 13:15Z (#8154 and #8155). Box read to 76738.
+Last TO_OPS.md section handled: 27 Oct, 13:15Z (#8154 and #8155). Box read to 76740.
 
 ## OPEN
+
+### 27 Oct, 13:52Z — Lika's evening results and a new bug (tester, box 76740)
+
+- **#7987 PASS (tested).** Her UX ask: a BACK button inside the deeper Profile pages that goes one page back, not out to home.
+- **#7724 / #1816:** a push opens home, not the chat.
+- **#1849:** no drawn path map, text only.
+- **#6205:** the mic works in Mac Chrome but not in Safari.
+- **#6365:** „everything slow today, even small questions“. Please compare her reply times before and after 10:35Z.
+- **NEW BUG (from her screenshot):** the sidebar token counter on her account shows „73613 / 250 ტოკენი“, used over the limit or wrong numbers. Please check what it displays.
+- **#991:** Ninia is not online yet.
 
 ### 27 Oct, 13:30Z — the server restarted at 13:13Z with no new deploy (ops)
 
