@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 09:40Z (#7823 card check every 5 min, 08–18 UTC; 1359ea1d live; the 3 pairs carded ~09:48Z). Box read to 76710.
+Last TO_OPS.md section handled: 27 Oct, 09:55Z (the slowness came from 7 restarts today; code ships at night only from now; test batteries at night only). Box read to 76712.
 
 ## OPEN
 
