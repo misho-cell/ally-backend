@@ -16215,6 +16215,20 @@ function logSalvageFallback(runId: string, why: string): void {
 }
 
 /**
+ * #8020 (case 63857, founder 27 Oct): in a chat that holds another member's
+ * question, the helper's „keep it in mind" became the HELPER's own goal, and
+ * plan cards with „დავიწყო" were then pushed into the question chat. A
+ * question chat is for answering the question: no goal opens there and no
+ * plan is shown. What the helper wants remembered is a note (save_user_note).
+ */
+export const ASK_THREAD_WITHHELD_TOOL_NAMES: ReadonlySet<string> = new Set([
+  'create_task',
+  'propose_task_plan',
+  'approve_task_plan',
+  'grant_task_permission',
+]);
+
+/**
  * Ticket 7 Task 1(a), founder's ruling D48, 26 August, and re-affirmed by him
  * on 16 September after this file had briefly done the opposite: the
  * recipient's assistant carries EVERYTHING the normal chat has — search, second
@@ -16237,6 +16251,8 @@ function logSalvageFallback(runId: string, why: string): void {
  * an ask thread carrying a follow-up request holds send_answer_to_asker for
  * the question and respond_to_introduction — always on, in every thread — for
  * the request. Exported so the test can read the list back and see both.
+ *
+ * One exception since 27 Oct: goals and plans (#8020, ASK_THREAD_WITHHELD_TOOL_NAMES).
  */
 export async function buildToolsForThread(
   userId: string,
@@ -16244,11 +16260,12 @@ export async function buildToolsForThread(
   ownerAbsent = false,
 ): Promise<AnthropicTool[]> {
   if (threadType === 'incoming_ask') {
+    const enabled = await buildEnabledTools(userId, ownerAbsent);
     return [
       SEND_ANSWER_TO_ASKER_TOOL,
       // #991: only in a turn the owner is in — the tool rests on his own words.
       ...(ownerAbsent ? [] : [SHARE_CONTACT_NUMBER_TOOL]),
-      ...(await buildEnabledTools(userId, ownerAbsent)),
+      ...enabled.filter((tool) => !ASK_THREAD_WITHHELD_TOOL_NAMES.has(tool.name)),
     ];
   }
   // #991 reopened (tester 74020): an open question can be answered from any chat.

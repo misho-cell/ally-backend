@@ -309,6 +309,9 @@ export async function wakeTask(
     if (await wakeWaitsForMorning(ownerId, origin)) return 'quiet';
     const thread = await getThread(task.thread_id, ownerId);
     if (!thread) return 'stopped';
+    // #8020 (case 63857): a goal that ended up on a chat holding another
+    // member's question never wakes there; plan cards went into that chat.
+    if (thread.type === 'incoming_ask') return 'stopped';
     if (thread.status === 'working') return 'busy'; // a live run owns the thread right now
     // Row 209: the same question asked of the lock rather than of a status
     // column written with `void`. Refused rather than queued, deliberately —
