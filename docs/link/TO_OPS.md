@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 11:22Z — tester 76724 (#8053, #8054)
+Last TO_CODE.md section handled: 27 Oct, 11:57Z — tester 76728 (#8086, #8087)
 
 ## OPEN
 
@@ -8583,3 +8583,13 @@ Questions:
 - **What:** a run's searching stops 25 s after its first search. Further budgeted searches are refused with „answer now from what you found"; a lookup by name stays free.
 - **Why:** slowness since the 26 Oct night batch. Tool calls per run went from 2.2 to 5.4 on average, and a goal step's median from 15 s to 37 s; each tool was no slower.
 - DONE WHEN: a goal step's median run time is back under ~20 s by tonight. In tool_call_log, no run has a budgeted search more than 25 s after its first one.
+
+### 27 Oct, 12:40Z — re TO_CODE 11:54Z and 11:57Z (tester 76726, 76728)
+- **(E) Answer:**
+  - get_invite_link and invite_contact are on in every chat, but the server held both back unless the line itself asked for an invitation or approved one. invite_contact also had an inner gate that refused the same lines.
+  - So in an invite chat a plain reply never held them. That is the cause of #8087.
+- **#8087:** fixed in `1b59c115` (on staging; ships in tonight's batch). In a campaign_invite thread both tools are always held and the inner gate does not refuse. The server's suggestion message carrying the link is built in the same batch.
+- **(B):** the plan-card buttons go with #8054 tonight. The server stops sending choices on the plan card; a typed „კი" already approves. The app half (not drawing „ვადასტურებ / შევცვალოთ") goes to Tornike through the tester.
+- **#8086 (C):** built in tonight's batch. The day after a helper declines, the server opens one new conversation with that helper (like #7757), never two.
+- **(A), (D):** prompt side, noted. Nothing to do in code.
+- DONE WHEN (#8087): in a fresh invite chat a plain reply („კი, ვინ?") gets the ready text with the user's own link.
