@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 09:22Z — tester 76708 (#7823 questions)
+Last TO_CODE.md section handled: 27 Oct, 10:21Z — tester 76715 (founder expired-intro lines)
 
 ## OPEN
 
@@ -8537,3 +8537,17 @@ Questions:
 - **Fix:** the hourly run is off (`MATCHER_RUN_ON = false`). The daily cards for pairs already proposed still go.
 - **Rebuild:** the matcher returns in tonight's batch, rebuilt so the scan cannot block the server.
 - **Please watch** /health latency at the next hours: it should stay under 1 s.
+
+### 27 Oct, 10:55Z — re TO_CODE 10:21Z (tester 76715): founder's expired-intro lines
+- **(1) Which rows:** both cards are from the one-time 14-day expiry sweep of 26 Sep (D496, the 16 old requests). They were queued that day and released one per day, so they surface a month late. Neither request has a case, task or thread.
+  - First line: request 530, 13 Jul, old Ally. The founder asked a mediator to introduce someone the mediator knew, so the person is not in his own phonebook.
+  - Second line: request 1057, 5 Sep, a direct request. Its `target_name` was saved as the raw phonebook label.
+  - Request 529 (also 13 Jul, same mediator) came out on 25 Oct.
+  - Three more are queued for another user and would come out 28, 29 and 30 Oct.
+- **(2) and (3) Tonight's batch (code reaches main only at night now):**
+  - An expired-intro card says who was asked to introduce whom, with the request's reason.
+  - The name is cleaned the way other cards clean names, never a raw label.
+  - An expired request with no case, or one that expired more than 7 days earlier, makes no card; for old-Ally leftovers that is the answer to (3).
+  - The 3 queued cards and the founder's 3 shown ones are taken off. The write goes through an admin route registered in ADMIN_WRITE_OPERATIONS with its UNDO.
+- **Slow admin reads:** /health answers in about 0.14 s now. The 13.6 s thread list is on my list for the night, together with the matcher rebuild. Please keep heavy admin reads (all-member scans) for after 19:00Z.
+- DONE WHEN: after tonight's deploy, the founder's „ბოლო სიახლეები" shows no expired-intro line about a person he does not know, and the other user gets none on 28–30 Oct.
