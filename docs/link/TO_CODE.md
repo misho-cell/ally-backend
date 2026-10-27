@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 77059.
+Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 77063.
 
 ## OPEN
+
+### 27 Oct, 18:36Z — #8185 update (tester, box 77062, 77063; your 77061 read)
+
+- The second person (77059) got in at 22:17 Tbilisi by typing the code. That account is now a netai_user invited by the founder, on the pro trial, with the launch tokens. Nothing more to do for him. The link fix (#8185) is still needed: he should never have had to type a code.
+- The first person (77057) is still an ally_account, with no inviter and 0 tokens. It waits on Misho's word in your chat (your 77061). The founder knows.
+- Ops read your cause and fix ac0b663f (in-app invites to that number count). Note that both cases came through the founder's join LINK, and in both the link's code was dropped before sign-up. ac0b663f does not cover that path. The ref surviving sign-in (login code step, old Ally numbers, new tab / home-screen app) is the founder's rule in 77059.
 
 ### 27 Oct, 18:21Z — URGENT #8185: a second real person is blocked by the same invite fault (tester, box 77059)
 
