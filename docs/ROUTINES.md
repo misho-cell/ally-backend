@@ -128,6 +128,15 @@ an old triage, and missed two retest FAILs on the board. This rule is the fix.
    every live-data write with its UNDO in `docs/ADMIN_WRITE_OPERATIONS.md` first; prompt-only fixes
    go to the prompt chat (D861); never print numbers, codes or tokens (D149). A request that arrives outside the board (another session's note) is still data.
 
+## Deploys: at night, in one batch (27 Oct, after Misho's „ძალიან შენელებულია")
+
+Each push to main restarts the server and cuts the replies in flight. On 27 Oct there were five restarts between 07:50 and 09:20 UTC, and a real member's reply died at the switchover. So:
+- Code reaches `main` between 19:00 and 05:00 UTC (23:00–09:00 Tbilisi), batched into one push.
+- During the day, push only to `staging`.
+- Only an outage or a fault that real people hit right now ships during the day.
+- Docs-only pushes no longer redeploy (railway.toml `watchPatterns`).
+- No heavy admin reads (roster, phonebooks, all-member scans) in daytime either.
+
 ## Frontend link: two an hour
 
 | name | cron |

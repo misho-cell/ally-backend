@@ -1,6 +1,18 @@
 [build]
 builder = "NIXPACKS"
 buildCommand = "npm install --include=dev && npm run build"
+# 27 Oct (Misho: „ძალიან შენელებულია"): every push to main redeployed, docs
+# included — seven restarts on 27 Oct, five between 07:50 and 09:20 UTC, and
+# each one cut the replies in flight (the drain grants 20 s; a run can take
+# minutes). Only a change the server is built from deploys now.
+watchPatterns = [
+  "src/**",
+  "package.json",
+  "package-lock.json",
+  "tsconfig.json",
+  "railway.toml",
+  "nixpacks.toml",
+]
 
 [deploy]
 # NODE DIRECTLY, NOT THROUGH npm — the drain has never once run, and this is
