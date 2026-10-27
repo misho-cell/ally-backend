@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { fieldFits, placeFits } from './fieldPlaces';
+import { indexOffers, sureOffersFor, type OfferIndex } from './matchIndex';
 import { deliverDueCards } from './matchFlow.service';
 import { rosterMembers } from './roster.service';
 import { AXEL_GROUP } from './axelExport/axelData';
@@ -30,6 +31,8 @@ const MAX_PROPOSALS_PER_NIGHT = 200;
  */
 const MAX_CANDIDATES_PER_RUN = 5_000;
 const MATCHED_READ = 50_000;
+/** Goals scanned between two returns to the event loop. */
+const GOALS_PER_CHUNK = 100;
 const DECLINED_PAIR_QUIET_DAYS = 90;
 
 export interface OpenGoal {
@@ -61,20 +64,47 @@ export function pairKey(goalId: number, offerId: number): string {
   return `${goalId}:${offerId}`;
 }
 
+type SurePair = { readonly goal: OpenGoal; readonly offer: ActiveOffer };
+
 /** Every sure (goal, offer) pair not already proposed, in goal order, at most `limit`. */
 export function surePairs(
   goals: readonly OpenGoal[],
-  offers: readonly ActiveOffer[],
+  offers: readonly ActiveOffer[] | OfferIndex<ActiveOffer>,
   limit: number = MAX_CANDIDATES_PER_RUN,
   alreadyProposed: ReadonlySet<string> = new Set(),
-): Array<{ readonly goal: OpenGoal; readonly offer: ActiveOffer }> {
-  const pairs: Array<{ readonly goal: OpenGoal; readonly offer: ActiveOffer }> = [];
+): SurePair[] {
+  const index = 'byKey' in offers ? offers : indexOffers(offers);
+  const pairs: SurePair[] = [];
   for (const goal of goals) {
-    for (const offer of offers) {
+    for (const offer of sureOffersFor(goal, index)) {
       if (pairs.length >= limit) return pairs;
-      if (alreadyProposed.has(pairKey(goal.id, offer.id))) continue;
-      if (isSureMatch(goal, offer)) pairs.push({ goal, offer });
+      if (!alreadyProposed.has(pairKey(goal.id, offer.id))) pairs.push({ goal, offer });
     }
+  }
+  return pairs;
+}
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+/**
+ * #7823 (OUTAGE 27 Oct): the goals are scanned a chunk at a time, and the event
+ * loop is given back between chunks, so requests are answered while the
+ * matcher runs however many goals there are.
+ */
+export async function surePairsYielding(
+  goals: readonly OpenGoal[],
+  offers: readonly ActiveOffer[],
+  limit: number,
+  alreadyProposed: ReadonlySet<string>,
+): Promise<SurePair[]> {
+  const index = indexOffers(offers);
+  const pairs: SurePair[] = [];
+  for (let start = 0; start < goals.length && pairs.length < limit; start += GOALS_PER_CHUNK) {
+    const chunk = goals.slice(start, start + GOALS_PER_CHUNK);
+    pairs.push(...surePairs(chunk, index, limit - pairs.length, alreadyProposed));
+    await yieldToEventLoop();
   }
   return pairs;
 }
@@ -173,7 +203,7 @@ export async function proposeMatches(scope: MemberScope = null): Promise<number>
   if (offers.length === 0) return 0;
   const goals = await openGoals(scope);
   const community = await communityMemberIds();
-  const pairs = surePairs(
+  const pairs = await surePairsYielding(
     goals,
     offers,
     MAX_CANDIDATES_PER_RUN,

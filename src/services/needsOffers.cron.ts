@@ -26,13 +26,12 @@ const CARD_HOUR_UTC = 8;
 const CARD_WINDOW_END_UTC = 18;
 
 /**
- * OUTAGE 27 Oct ~10:15Z (Misho: „ვერ შედიან"): the hourly matcher run scans
- * every open goal against every offer in one synchronous loop; since the
- * 5,000-candidate bound (26 Oct) it holds the event loop for minutes and the
- * whole server stops answering. Off until the scan is rebuilt to yield; the
- * daily cards for pairs already proposed still go.
+ * OUTAGE 27 Oct ~10:15Z (Misho: „ვერ შედიან"): the hourly run scanned every
+ * open goal against every offer in one synchronous loop and held the event
+ * loop for minutes. It was off until the scan was rebuilt: offers indexed once
+ * (matchIndex), goals scanned in chunks that give the event loop back. On again.
  */
-export const MATCHER_RUN_ON = false;
+export const MATCHER_RUN_ON = true;
 
 let lastRunHour: string | null = null;
 let lastCardDay: string | null = null;
