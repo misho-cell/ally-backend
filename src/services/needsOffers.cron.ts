@@ -7,18 +7,35 @@ import { proposeMatches } from './needsOffers.service';
  * so it runs every hour. It only proposes; the cards still go once a day, at
  * their own hour.
  */
-const CHECK_EVERY_MS = 60 * 60 * 1000;
+/**
+ * #7823 (tester 76704): the check ran once an hour from the server's start, so
+ * a deploy at 08:01 left no check inside the 08:00 hour and three proposed
+ * pairs waited a day with no card. It checks every five minutes now; the
+ * matcher itself still runs once per hour (isMatchHour).
+ */
+const CHECK_EVERY_MS = 5 * 60 * 1000;
 /** The date and the hour of an ISO time: 2026-10-26T02. */
 const HOUR_KEY_CHARS = 13;
 /** 1699 part 2: cards go at 08:00 UTC — noon in Tbilisi; nobody is woken by a match. */
 const CARD_HOUR_UTC = 8;
+/**
+ * #7823: a day whose 08:00 check was missed (a restart) sends at the next
+ * check, up to 18:00 UTC (22:00 Tbilisi), so a card never lands in quiet
+ * hours. Sending twice is harmless: an owner carded in the last day is skipped.
+ */
+const CARD_WINDOW_END_UTC = 18;
 
 let lastRunHour: string | null = null;
 let lastCardDay: string | null = null;
 
-/** Should the cards go now? Once, in their hour, per UTC day. */
+/** Should the cards go now? Once per UTC day, at the first check from their hour until the window closes. */
 export function isCardHour(now: Date, lastDay: string | null): boolean {
-  return now.getUTCHours() === CARD_HOUR_UTC && lastDay !== now.toISOString().slice(0, 10);
+  const hour = now.getUTCHours();
+  return (
+    hour >= CARD_HOUR_UTC &&
+    hour < CARD_WINDOW_END_UTC &&
+    lastDay !== now.toISOString().slice(0, 10)
+  );
 }
 
 /** The UTC hour a run belongs to, as YYYY-MM-DDTHH. */

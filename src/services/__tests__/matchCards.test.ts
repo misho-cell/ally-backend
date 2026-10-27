@@ -111,6 +111,11 @@ describe('the taps (1699)', () => {
   it('cards go once a day, at noon in Tbilisi', () => {
     expect(isCardHour(new Date('2026-10-09T08:05:00Z'), null)).toBe(true);
     expect(isCardHour(new Date('2026-10-09T08:30:00Z'), '2026-10-09')).toBe(false);
+    // #7823 (tester 76704): a restart that missed the 08:00 hour still sends that day…
+    expect(isCardHour(new Date('2026-10-09T09:04:00Z'), '2026-10-08')).toBe(true);
+    // …but never into quiet hours, and never before the hour.
+    expect(isCardHour(new Date('2026-10-09T18:10:00Z'), '2026-10-08')).toBe(false);
+    expect(isCardHour(new Date('2026-10-09T07:55:00Z'), '2026-10-08')).toBe(false);
     expect(isCardHour(new Date('2026-10-09T02:05:00Z'), null)).toBe(false);
   });
 });
