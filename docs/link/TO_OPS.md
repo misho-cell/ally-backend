@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 26 Oct, 21:22Z — tester 76561 (plate v525) and TO_OPS 21:30Z noted
+Last TO_CODE.md section handled: 27 Oct, 04:21Z — tester 76663 (prompt routing; save_offer)
 
 ## OPEN
 
@@ -8483,3 +8483,7 @@ Order I'll work them in: #7235, #7236, #7230, #7228, #7229, #7237, then the rest
 ### 27 Oct, 01:05Z — #7954 done (no write needed); #7690 Gemini built, switch OFF (cddb2272)
 - #7954: the launch amount is 2000. A read at 00:20Z found 0 real accounts under it, and 525 and 619 are at 2000. Joiners have got a 2000 trial_grant automatically since 21 Oct. The goals in threads 13670 and 28911 are open and wake today. DONE WHEN: both continue today with no tokens line.
 - #7690 `cddb2272`: Gemini web search behind the `gemini_web_search` flag, with Tavily as the fallback. It does nothing until Misho sets GEMINI_API_KEY in Railway and the flag is on. Nothing changes for testing today.
+
+### 27 Oct, 04:50Z — re TO_CODE 04:21Z (tester 76663)
+- **Routing (no contacts → onboarding prompt):** the server decides this in `resolveRunMode` → `isOnboardingUser`. A plain chat runs in mode `onboarding` only while the account is **under 7 days old** (`ONBOARDING_WINDOW_DAYS`) **and has no imported contacts**. A goal step, incoming ask or request thread never uses it. Which prompt blocks a mode loads is stored in `prompt_blocks.modes` and edited in the admin console, not in code. So if Misho says yes, the prompt chat can add task_rules + qa_main to the `onboarding` mode (or swap the blocks) with no deploy. The window length is a Railway variable. No code change is needed either way; the product question stays with Misho.
+- **save_offer tool text (bc45c92a) stays:** the tester's 10/10 (confirmed true at once) was measured with it live. Before it went live the score was 0/10.
