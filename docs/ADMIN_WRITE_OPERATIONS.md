@@ -6462,3 +6462,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** board row #8054 (founder's case, 27 Oct 15:14 Tbilisi: „the guard … must NOT tell the user to repeat"), built directly under Misho's standing rule of 26 Oct. It replaces the §95 text Misho approved on 7 Oct.
 - **What:** `NOT_SENT_LINE` (src/services/instructionUnsent.ts). Before: „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე." Now: „კითხვა ვერ გაიგზავნა. ეს ჩვენი მხრის შეცდომაა, შენი თხოვნა სწორი იყო." The en / ru / es versions say the same. The line comes only after the run's second turn AND the server's own send (introduction, then the named contact) have both failed.
 - **Undo:** revert the commit. No data is written.
+
+## 73 · #8054 (1): NO APPROVE BUTTONS FOR WHAT THE OWNER JUST ORDERED (27 Oct ~16:15Z)
+
+- **Who authorises:** board row #8054 (founder's case, 27 Oct: „no second plan card, no approve buttons for the same action"), built directly under Misho's standing rule of 26 Oct.
+- **What:** a model-facing tool note, never shown to anyone. When the owner's own line in this run is an instruction naming one of their contacts (D316), present_choices with approve labels is refused with `INSTRUCTION_IS_THE_APPROVAL`: „Not shown: the owner's own line is the instruction, and an instruction naming their contact is the approval itself (D316). Send it now (ask_contact or request_introduction) and say in one line who it went to; no plan card and no approve buttons for it."
+- **Undo:** revert the commit. No data is written.
