@@ -174,7 +174,7 @@ function names(text: string, stem: string): boolean {
   return wordsOf(text).some((word) => stemMeets(word, stem));
 }
 
-interface Places {
+export interface Places {
   readonly regions: ReadonlySet<string>;
   readonly towns: ReadonlySet<string>;
 }
@@ -218,11 +218,20 @@ function familyWords(field: string): string[] {
   return [field, ...touched.flat()];
 }
 
+/**
+ * Every term a goal may speak of to fit this offer field: its own words and its
+ * families', without its place words. Depends on the offer alone, so the
+ * matcher reads it once per offer, not once per (goal, offer) pair (#7823).
+ */
+export function offerFieldTerms(offerField: string): string[] {
+  const field = withoutPlaces(offerField);
+  if (field.trim() === '') return [];
+  return [...new Set(familyWords(field).flatMap((word) => fieldTerms(word)))];
+}
+
 /** Does the goal speak of the offer's field, directly or through its family? */
 export function fieldFits(goalText: string, offerField: string): boolean {
-  const field = withoutPlaces(offerField);
-  if (field.trim() === '') return false;
-  return familyWords(field).some((word) => textSpeaksOf(goalText, fieldTerms(word)));
+  return textSpeaksOf(goalText, offerFieldTerms(offerField));
 }
 
 /**
@@ -230,12 +239,15 @@ export function fieldFits(goalText: string, offerField: string): boolean {
  * town in the offer needs that town in the goal; a region in the offer takes
  * the region or any town inside it.
  */
-export function placeFits(goalText: string, offerField: string): boolean {
-  const offer = placesIn(offerField);
+export function placesFit(offer: Places, goal: Places): boolean {
   if (offer.regions.size === 0) return true;
-  const goal = placesIn(goalText);
   if (offer.towns.size > 0) return [...offer.towns].some((town) => goal.towns.has(town));
   return [...offer.regions].some((region) => goal.regions.has(region));
+}
+
+export function placeFits(goalText: string, offerField: string): boolean {
+  const offer = placesIn(offerField);
+  return offer.regions.size === 0 || placesFit(offer, placesIn(goalText));
 }
 
 const GEORGIAN_RE = /[ა-ჰ]/u;
