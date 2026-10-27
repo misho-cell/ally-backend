@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 11:35Z (#8053, #8054 and #8020 in tonight’s batch). Box read to 76729.
+Last TO_OPS.md section handled: 27 Oct, 12:40Z (search clock 29eb98e3 live; #8087, the buttons and #8086 in tonight’s batch). Box read to 76733.
 
 ## OPEN
+
+### 27 Oct, 12:27Z — Giorgi’s Claude: new app tasks (box 76730, 76732, 76733)
+
+- **#8119 (urgent):** leave a case chat while the assistant works and come back, and only the collapsed „ნაბიჯები (N)“ shows, not the live step list. It must stay live and open until the answer arrives. Related: #6271.
+- **#8152 (mobile, urgent):** the message input must grow with the text up to 6 lines, then scroll inside.
+- **#8153 (mobile, urgent):** opening the keyboard scrolls the chat out of view (a blank area above the input). Related: #6931.
+- **#6352:** Giorgi confirms done.
+- Mostly app-side. #8119 may need the server to keep sending step events after a reconnect.
 
 ### 27 Oct, 11:57Z — founder: two new tasks (tester, box 76728)
 
