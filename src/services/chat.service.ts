@@ -9193,7 +9193,7 @@ const BUDGETED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
 const runSearchCalls = new Map<string, number>();
 
 export const SEARCH_BUDGET_SPENT =
-  `Not searched: this answer has used its ${MAX_SEARCHES_PER_RUN} searches. Do not search again ` +
+  'Not searched: this answer has used its search budget (searches or time). Do not search again ' +
   'in this run. Write your answer now from what you found — who or what was found, and the ' +
   'next route — and continue the search in a later step if it is needed.';
 
@@ -9208,8 +9208,39 @@ export const SEARCH_BUDGET_SPENT =
 const WEB_BUDGET_TOOLS: ReadonlySet<string> = new Set([WEB_SEARCH_TOOL, 'fetch_page']);
 const WEB_BUDGET_KEY_SUFFIX = ':web';
 
-/** Counts a budgeted search; true when this one is past the run's budget for its kind. */
-export function searchBudgetSpent(runId: string, tool: string): boolean {
+/**
+ * Misho, 27 Oct („ძალიან ნელია"): since the 26 Oct night batch a run made
+ * 5.4 tool calls on average instead of 2.2, and a goal step's median went
+ * from 15 s to 37 s. One run on 27 Oct made 30 calls one after another.
+ * Each tool was no slower; there were simply more of them. Counting alone
+ * cannot bound that, because the two budgets of eight plus the free lookups
+ * by name still allow some twenty-five calls. So a run's searching also has a
+ * clock, started by its first search of any kind (a lookup by name included):
+ * once SEARCH_TIME_BUDGET_MS has passed, every further budgeted search is
+ * refused with the same „answer now from what you found". A lookup by name
+ * itself stays free, for the members check above.
+ */
+const SEARCH_TIME_BUDGET_MS = 25_000;
+const TIMED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
+  ...BUDGETED_SEARCH_TOOLS,
+  'search_contact_by_name',
+]);
+const runFirstSearchAt = new Map<string, number>();
+
+/** True when this run started searching longer ago than its time budget allows. */
+function searchClockSpent(runId: string, tool: string, now: number): boolean {
+  if (!TIMED_SEARCH_TOOLS.has(tool)) return false;
+  const first = runFirstSearchAt.get(runId);
+  if (first === undefined) {
+    runFirstSearchAt.set(runId, now);
+    return false;
+  }
+  return BUDGETED_SEARCH_TOOLS.has(tool) && now - first > SEARCH_TIME_BUDGET_MS;
+}
+
+/** Counts a budgeted search; true when this one is past the run's budget for its kind or its clock. */
+export function searchBudgetSpent(runId: string, tool: string, now: number = Date.now()): boolean {
+  if (searchClockSpent(runId, tool, now)) return true;
   if (!BUDGETED_SEARCH_TOOLS.has(tool)) return false;
   const key = WEB_BUDGET_TOOLS.has(tool) ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
   const used = (runSearchCalls.get(key) ?? 0) + 1;
@@ -10101,6 +10132,7 @@ function clearRunState(runId: string): void {
   forgetNamesAsked(runId);
   runWithheldByOwnerLine.delete(runId);
   runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
+  runFirstSearchAt.delete(runId);
 }
 
 /**
@@ -10337,7 +10369,7 @@ async function executeToolCall(
     searchBudgetSpent(runId, name)
   ) {
     // eslint-disable-next-line no-console
-    console.log(`[search-budget] run ${runId}: ${name} refused, ${MAX_SEARCHES_PER_RUN} spent`);
+    console.log(`[search-budget] run ${runId}: ${name} refused, budget spent`);
     return { found: false, error: SEARCH_BUDGET_SPENT };
   }
   const repeated = runId === undefined ? undefined : runRepeatedGoal.get(runId);

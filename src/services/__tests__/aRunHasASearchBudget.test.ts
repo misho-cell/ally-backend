@@ -37,6 +37,23 @@ describe('a run’s search budget', () => {
     expect(searchBudgetSpent(run, 'find_warm_path')).toBe(true);
   });
 
+  it('stops further searches once 25 s have passed since the run first searched (Misho, 27 Oct)', () => {
+    const run = 'budget-run-clock';
+    const start = 1_000_000;
+    expect(searchBudgetSpent(run, 'search_contact_by_name', start)).toBe(false);
+    expect(searchBudgetSpent(run, 'web_search', start + 24_000)).toBe(false);
+    expect(searchBudgetSpent(run, 'search_by_tag', start + 26_000)).toBe(true);
+    expect(searchBudgetSpent(run, 'web_search', start + 26_000)).toBe(true);
+  });
+
+  it('keeps a lookup by name and non-search tools free after the clock runs out', () => {
+    const run = 'budget-run-clock-free';
+    const start = 2_000_000;
+    searchBudgetSpent(run, 'search_by_tag', start);
+    expect(searchBudgetSpent(run, 'search_contact_by_name', start + 60_000)).toBe(false);
+    expect(searchBudgetSpent(run, 'propose_task_plan', start + 60_000)).toBe(false);
+  });
+
   it('tells the model to answer now from what it found', () => {
     expect(SEARCH_BUDGET_SPENT).toContain('Do not search again');
     expect(SEARCH_BUDGET_SPENT).toContain('Write your answer now from what you found');
@@ -47,5 +64,6 @@ describe('a run’s search budget', () => {
     expect(chat).toContain('    searchBudgetSpent(runId, name)\n  ) {');
     expect(chat).toContain('runSearchCalls.delete(runId);');
     expect(chat).toContain('runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);');
+    expect(chat).toContain('runFirstSearchAt.delete(runId);');
   });
 });
