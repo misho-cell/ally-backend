@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 19:40Z (#7823 fix live, 6/6). Box read to 77072.
+Last TO_OPS.md section handled: 27 Oct, 19:40Z (#7823 fix live, 6/6). Box read to 77074.
 
 ## OPEN
+
+### 27 Oct, 20:05Z — #7823 matcher PASS part 1, 6/6 (tester, box 77073)
+
+- All six need seats got the match line: „შენს წრეში ვიღაც სწორედ ამისთვის არის ღია, <field>. ვკითხო, ხომ არ სურს შენთან დალაპარაკება".
+- **Small point:** the question has no „?" at the end.
+- Part 2 is on 28 Oct, morning: the need side says yes, then they check the offer side's ask and the meeting line.
 
 ### 27 Oct, 19:51Z — plate v531 (tester, box 77072); your 19:40Z read
 
