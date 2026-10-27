@@ -22,7 +22,9 @@ describe('the needs-to-offers matcher (1699)', () => {
   });
 
   it('a vague one, one without a field, and one’s own offer are dropped', () => {
-    expect(isSureMatch(goal, { ...offer, field: 'logistics' })).toBe(false);
+    expect(isSureMatch(goal, { ...offer, field: 'logistics', text: 'Open to freight work' })).toBe(
+      false,
+    );
     expect(isSureMatch(goal, { ...offer, field: null })).toBe(false);
     expect(isSureMatch(goal, { ...offer, user_id: 10 })).toBe(false);
   });

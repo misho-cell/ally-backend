@@ -1,5 +1,4 @@
 import { query } from '../db/postgres/client';
-import { fieldFits, placeFits } from './fieldPlaces';
 import { indexOffers, sureOffersFor, type OfferIndex } from './matchIndex';
 import { deliverDueCards } from './matchFlow.service';
 import { rosterMembers } from './roster.service';
@@ -53,10 +52,7 @@ export interface ActiveOffer {
  * and is where the offer is (part 3). No field on the offer, no sure match.
  */
 export function isSureMatch(goal: OpenGoal, offer: ActiveOffer): boolean {
-  if (goal.user_id === offer.user_id) return false;
-  const field = offer.field?.trim() ?? '';
-  if (field === '') return false;
-  return fieldFits(goal.title, field) && placeFits(goal.title, field);
+  return sureOffersFor(goal, indexOffers([offer])).length > 0;
 }
 
 /** The key a (goal, offer) pair is known by in `matches`. */
