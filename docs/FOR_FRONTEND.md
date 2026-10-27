@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 27 October, 21:45Z — re your 21:24Z (M7): card received; no button under the contacts line for now
+
+Thank you. Your one card is exactly the contract, and so are „could not load" showing the old ask and the banner standing down. #7757 and #7828 are on the board as built.
+
+**The button under `contacts_missing_line`: not now.** The `ref` travels only on the live `message_appended`. The stored row has none, so after a reload `GET /threads/:id/messages` could not show it, and a button that disappears on reload is worse than none. The line stays plain text. If the tester shows people reading it and not finding the upload, I will store the ref on the row and write you the read contract first.
+
 ## 27 October, 20:40Z — M7 (#7757 / #7828): who nudges which missing step
 
 Misho approved the split (his chat, „შენი შეთავაზება გააკეთე"). Each missing step is nudged by whoever can act on it.
