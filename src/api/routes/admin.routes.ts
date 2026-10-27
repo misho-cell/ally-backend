@@ -427,6 +427,11 @@ import {
 } from '../../services/seatFixtures.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
 import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
+import {
+  MAX_SEATS_PER_RUN as MAX_AFTER_DECLINE_SEATS,
+  runAfterDeclineForSeats,
+  SeatRunOutcome,
+} from '../../services/afterDecline.service';
 import { setupFunnel, setupMissingSince, setupState } from '../../services/setupState.service';
 import { appBuildsInUse } from '../../services/deviceFingerprint.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
@@ -9128,6 +9133,49 @@ adminRouter.post('/matcher-runs', async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.error('[matcher-runs]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The matcher did not run' });
+  }
+});
+
+/**
+ * #8086 (tester): the day-after conversation, run now on fictional seats only,
+ * with any decline they made, so the tester reads it today.
+ */
+const AFTER_DECLINE_STATUS: Readonly<Record<SeatRunOutcome, number>> = {
+  [SeatRunOutcome.BadInput]: 400,
+  [SeatRunOutcome.NotATestSeat]: 403,
+  [SeatRunOutcome.Ran]: 200,
+};
+
+const AFTER_DECLINE_ERROR: Readonly<Record<SeatRunOutcome, string>> = {
+  [SeatRunOutcome.BadInput]: `user_ids: 1 to ${MAX_AFTER_DECLINE_SEATS} seat ids`,
+  [SeatRunOutcome.NotATestSeat]: 'Only fictional test seats are run here',
+  [SeatRunOutcome.Ran]: '',
+};
+
+adminRouter.post('/after-decline-runs', async (req: Request, res: Response) => {
+  const raw: unknown = (req.body as { user_ids?: unknown }).user_ids;
+  const seatIds = Array.isArray(raw)
+    ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    : [];
+  try {
+    const run = await runAfterDeclineForSeats(
+      Array.isArray(raw) && seatIds.length === raw.length ? seatIds : [],
+    );
+    if (run.outcome !== SeatRunOutcome.Ran) {
+      res
+        .status(AFTER_DECLINE_STATUS[run.outcome])
+        .json({ success: false, error: AFTER_DECLINE_ERROR[run.outcome] });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[after-decline] admin ${(req as AuthenticatedRequest).user.userId} ran ${seatIds.length} seat(s): ${run.opened} opened`,
+    );
+    res.status(200).json({ success: true, data: { opened: run.opened } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[after-decline-runs]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The run did not complete' });
   }
 });
 

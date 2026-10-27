@@ -54,6 +54,7 @@ import { startOwnerReminders } from './services/ownerReminders.cron';
 import { startAnswerStats } from './services/answerStats.cron';
 import { startNeedsOffersMatcher } from './services/needsOffers.cron';
 import { startHelperFollowUps } from './services/helperThanks.cron';
+import { startAfterDeclineCron } from './services/afterDecline.cron';
 import { startContactSyncReminders } from './services/contactSyncReminder.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { startRegistrationResearch } from './services/registrationResearch/registrationResearch.service';
@@ -224,6 +225,8 @@ runMigrations()
     startAnswerStats();
     startNeedsOffersMatcher();
     startHelperFollowUps();
+    // #8086: the day after a helper declines, one new conversation about their own goal.
+    startAfterDeclineCron();
     startContactSyncReminders();
     startTaskTicker();
     startRegistrationResearch();
