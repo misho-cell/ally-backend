@@ -23,20 +23,25 @@ interface TemplateSpec {
   readonly example: readonly string[];
 }
 
-/** The texts Misho asked me to write. A parameter never starts or ends a body (Meta's rule). */
+/**
+ * The texts, as Lika's brief of 27 Oct rewrote them so Meta reads them as
+ * Utility: each names the one event (a reply in the person's own Netai chat,
+ * or the setting they just switched on) and nothing promotional. A parameter
+ * never starts or ends a body (Meta's rule).
+ */
 export const NETAI_TEMPLATES: readonly TemplateSpec[] = [
   {
     name: NOTIFY_TEMPLATE,
     category: 'UTILITY',
-    body: 'Netai-დან ახალი შეტყობინება:\n\n{{1}}\n\nგასაგრძელებლად გახსენი Netai.',
+    body: 'Netai-ში შენს ჩატში ახალი პასუხია:\n\n{{1}}\n\nამ პასუხის სანახავად გახსენი Netai.',
     example: [NOTIFY_EXAMPLE],
   },
   {
     name: WELCOME_TEMPLATE,
     category: 'UTILITY',
     body:
-      'გამარჯობა! Netai-ის შეტყობინებებს ამიერიდან WhatsApp-შიც მიიღებ. ' +
-      'გამორთვა ნებისმიერ დროს შეგიძლია Netai-ის პროფილიდან.',
+      'WhatsApp შეტყობინებების მიღება ჩართულია. Netai-ის ჩატში ახალი პასუხის მიღებისას ' +
+      'WhatsApp-ზე შეგატყობინებთ. შეტყობინებების გამორთვა შეგიძლია Netai-ის პროფილიდან.',
     example: [],
   },
 ];
