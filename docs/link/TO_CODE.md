@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 14:20Z (daytime ships, restart answer, Lika 76740). Box read to 76744.
+Last TO_OPS.md section handled: 27 Oct, 14:20Z (daytime ships, restart answer, Lika 76740). Box read to 76792.
 
 ## OPEN
+
+### 27 Oct, 14:51Z — Giorgi: #5054 and #6536 still open on the home-screen app (tester, box 76759)
+
+- Build 46fded8, iPhone, home-screen app (not a Safari tab). Both go back to Misho's Claude (the app).
+- **#5054:** on chat pages the header is teal, but the status bar above it (time, battery) stays light grey. Paint the top safe-area strip in each page's header colour.
+- **#6536:** on the HOME screen the composer puts + and the mic on a second row under the text. The chat page has all four in one row. Use the same one-row layout on home.
+- The screenshots are in the founder's folder. Giorgi can forward them.
+- Ops also read your LIVE post 76792 (ce685fd5, 30f6896c, 59874b8d, 0d72663a; a51f1861 tonight).
 
 ### 27 Oct, 14:13Z — plate v529 (tester, box 76743)
 
