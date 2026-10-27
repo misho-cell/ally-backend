@@ -164,9 +164,30 @@ describe('claiming the invitation’s free days', () => {
     expect(mockGrant).toHaveBeenCalledWith(189001, PHONE, { code: 'INVITED', trial_days: 20 });
   });
 
+  /** Tester 77057: an old Ally account the founder invited from inside Netai. */
+  it('takes an invitation sent from inside Netai to this number', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [account()] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ referral_code: 'FOUNDER1' }] } as never)
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] } as never)
+      .mockResolvedValueOnce({
+        rows: [{ trial_ends_at: new Date('2026-11-16T10:00:00Z') }],
+      } as never);
+    (subscribedInviter as jest.Mock).mockImplementation(async (code?: string) =>
+      code === 'FOUNDER1' ? 501 : null,
+    );
+    (inviteFreeDays as jest.Mock).mockResolvedValue(20);
+    const result = await claimInviteDays('93863');
+    expect(result.outcome).toBe(InviteDaysOutcome.Granted);
+    expect(String(mockQuery.mock.calls[2][0])).toContain('FROM invites i');
+    expect(mockQuery.mock.calls[3][1]).toEqual(['93863', 501]);
+  });
+
   it('says why when there is no invitation, or the days were already used', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [account()] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [] } as never);
     (subscribedInviter as jest.Mock).mockResolvedValue(null);
     expect((await claimInviteDays('189001')).outcome).toBe(InviteDaysOutcome.NoInvitation);

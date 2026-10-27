@@ -82,6 +82,29 @@ async function recordInviter(userId: string, inviter: number): Promise<void> {
   );
 }
 
+/**
+ * Tester 77057 (founder, 27 Oct 22:05 Tbilisi): an old Ally account the founder
+ * invited saw „no invitation found" — the link's code never reached the
+ * server, and an invitation sent from inside Netai (invite_contact, the
+ * invites table) was not read here. It is now: the latest invitation a member
+ * sent to this account's number, when that member is subscribed (the same
+ * person-invitation rule as the code, subscribedInviter).
+ */
+async function inviterByPhone(userId: string, phone: string): Promise<number | null> {
+  const result = await query<{ referral_code: string }>(
+    `SELECT i.referral_code
+       FROM invites i
+      WHERE regexp_replace(i.contact_phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+        AND i.user_id::text <> $2
+        AND i.referral_code IS NOT NULL
+      ORDER BY i.created_at DESC
+      LIMIT 1`,
+    [phone, userId],
+    CLAIM_QUERY_TIMEOUT_MS,
+  );
+  return subscribedInviter(result.rows[0]?.referral_code);
+}
+
 /** The invitation's free days for this account, once, when it can show an invitation. */
 export async function claimInviteDays(
   userId: string,
@@ -101,7 +124,10 @@ export async function claimInviteDays(
     return { outcome: InviteDaysOutcome.AlreadyUsed, trialEndsAt: null };
   }
   const fromCode = await subscribedInviter(referralCode);
-  const inviter = fromCode !== null && String(fromCode) !== userId ? fromCode : account.inviter;
+  const inviter =
+    fromCode !== null && String(fromCode) !== userId
+      ? fromCode
+      : (account.inviter ?? (await inviterByPhone(userId, account.phone)));
   if (inviter === null) return { outcome: InviteDaysOutcome.NoInvitation, trialEndsAt: null };
   const days = await inviteFreeDays();
   if (days === null) return { outcome: InviteDaysOutcome.FreeDaysOff, trialEndsAt: null };
