@@ -112,6 +112,39 @@ export async function postWorkingLineOnce(
   }
 }
 
+/**
+ * #8053 (founder 27 Oct): the owner waited 1–2 minutes of searching without
+ * knowing the request was understood; the text the model wrote beside its
+ * first search was only a step caption. That text is now posted at once as a
+ * real line, and it stands in for the canned line above, which says nothing
+ * about what was understood. Never throws: the search runs either way, and
+ * the canned line still goes if this one could not be written.
+ */
+export async function postFirstLine(
+  userId: string,
+  threadId: number,
+  runId: string,
+  text: string,
+): Promise<boolean> {
+  try {
+    const saved = await saveServerLine(threadId, Number(userId), text);
+    decidedRuns.add(runId);
+    emitMessageAppended(userId, threadId, runId, {
+      messageId: String(saved.id),
+      kind: 'working',
+      content: saved.content,
+      choices: [],
+      ref: {},
+      createdAt: saved.createdAt,
+    });
+    return true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[first-line] thread ${threadId}:`, (err as Error).message);
+    return false;
+  }
+}
+
 /** The run is over; its decision is no longer needed. */
 export function forgetWorkingLineRun(runId: string): void {
   decidedRuns.delete(runId);
