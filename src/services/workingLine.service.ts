@@ -145,7 +145,52 @@ export async function postFirstLine(
   }
 }
 
+/**
+ * #8053 (3): a run still searching after a minute says so once, truthfully;
+ * never a second time, never on a wake.
+ */
+export const PROGRESS_LINE_AFTER_MS = 60_000;
+
+export const PROGRESS_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'ჯერ კიდევ ვეძებ. როგორც კი დავასრულებ, აქვე მოგწერ.',
+  en: 'Still searching. I will write here as soon as I am done.',
+  ru: 'Всё ещё ищу. Напишу сюда, как только закончу.',
+  es: 'Sigo buscando. Escribiré aquí en cuanto termine.',
+};
+
+/** Runs that already said they are still searching. */
+const progressRuns = new Set<string>();
+
+/** Posts the progress line once per run, when the run has passed a minute. Never throws. */
+export async function postProgressLineOnce(
+  userId: string,
+  threadId: number,
+  runId: string,
+  language: RunLanguage,
+  elapsedMs: number,
+): Promise<boolean> {
+  if (elapsedMs < PROGRESS_LINE_AFTER_MS || progressRuns.has(runId)) return false;
+  progressRuns.add(runId);
+  try {
+    const saved = await saveServerLine(threadId, Number(userId), PROGRESS_LINE[language]);
+    emitMessageAppended(userId, threadId, runId, {
+      messageId: String(saved.id),
+      kind: 'working',
+      content: saved.content,
+      choices: [],
+      ref: {},
+      createdAt: saved.createdAt,
+    });
+    return true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[progress-line] thread ${threadId}:`, (err as Error).message);
+    return false;
+  }
+}
+
 /** The run is over; its decision is no longer needed. */
 export function forgetWorkingLineRun(runId: string): void {
   decidedRuns.delete(runId);
+  progressRuns.delete(runId);
 }
