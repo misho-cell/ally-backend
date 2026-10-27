@@ -319,3 +319,48 @@ export function startRegistrationResearch(on: boolean = REGISTRATION_RESEARCH_ON
   setInterval(() => fillResearchWorkers(), TICK_INTERVAL_MS).unref();
   return true;
 }
+
+/** The newest research rows a status read returns. */
+const STATUS_RECENT_ROWS = 20;
+
+export interface ResearchQueueRow {
+  readonly user_id: number;
+  readonly status: string;
+  readonly searches: number | null;
+  readonly facts: number | null;
+  readonly error: string | null;
+  readonly queued_at: Date;
+  readonly finished_at: Date | null;
+}
+
+export interface ResearchQueueStatus {
+  readonly counts: Readonly<Record<string, number>>;
+  readonly recent: readonly ResearchQueueRow[];
+}
+
+/**
+ * #7426 (tester 76702 b): how the member research queue stands — counts per
+ * status, and the newest rows (one member's rows when a user id is given).
+ */
+export async function researchQueueStatus(userId: number | null): Promise<ResearchQueueStatus> {
+  const [counts, recent] = await Promise.all([
+    query<{ status: string; n: number }>(
+      'SELECT status, COUNT(*)::int AS n FROM registration_research GROUP BY status',
+      [],
+      QUERY_TIMEOUT_MS,
+    ),
+    query<ResearchQueueRow>(
+      `SELECT user_id, status, searches, facts, error, queued_at, finished_at
+         FROM registration_research
+        WHERE $1::int IS NULL OR user_id = $1
+        ORDER BY queued_at DESC
+        LIMIT $2`,
+      [userId, STATUS_RECENT_ROWS],
+      QUERY_TIMEOUT_MS,
+    ),
+  ]);
+  return {
+    counts: Object.fromEntries(counts.rows.map((r) => [r.status, r.n])),
+    recent: recent.rows,
+  };
+}

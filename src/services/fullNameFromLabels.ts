@@ -50,7 +50,13 @@ function fullFormOf(label: string, registered: string): string | null {
   return want.every((w) => has.some((h) => sameNameWord(w, h))) ? label.trim() : null;
 }
 
-/** The most common full form among the labels others saved; ties go to the first seen. */
+/**
+ * The most common full form among the labels others saved; ties go to the first seen.
+ * #7728 retest (tester 76702): savers who wrote the registered name itself
+ * („matsi papava") outnumbered those who wrote it in full („Matsatso Papava"),
+ * so the suggestion was the name already there. A form that only repeats the
+ * registered name counts only when no saver wrote anything fuller.
+ */
 export function mostCommonFullForm(labels: readonly string[], registered: string): string | null {
   const counts = new Map<string, { label: string; n: number }>();
   for (const label of labels) {
@@ -60,8 +66,14 @@ export function mostCommonFullForm(labels: readonly string[], registered: string
     const seen = counts.get(key);
     counts.set(key, { label: seen?.label ?? full, n: (seen?.n ?? 0) + 1 });
   }
+  const registeredKey = nameKey(registered);
+  const fuller = [...counts].filter(([key]) => key !== registeredKey).map(([, c]) => c);
+  return mostSaved(fuller.length > 0 ? fuller : [...counts.values()]);
+}
+
+function mostSaved(forms: readonly { label: string; n: number }[]): string | null {
   let best: { label: string; n: number } | null = null;
-  for (const c of counts.values()) if (best === null || c.n > best.n) best = c;
+  for (const c of forms) if (best === null || c.n > best.n) best = c;
   return best?.label ?? null;
 }
 

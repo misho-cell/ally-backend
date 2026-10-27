@@ -31,6 +31,49 @@ function shownName(name: string, language: RunLanguage): string {
   return language === 'ka' ? georgianScriptName(name) : name;
 }
 
+const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
+
+/** #7789 (2) retest (tester 76702): each member's own registered name, by account. */
+async function membersOwnNames(
+  states: ReadonlyMap<string, AccountDetails>,
+): Promise<Map<number, string>> {
+  const ids = [...new Set([...states.values()].map((s) => s.user_id))].filter(
+    (id): id is number => typeof id === 'number',
+  );
+  if (ids.length === 0) return new Map();
+  const result = await query<{ id: number; name: string }>(
+    `SELECT id, TRIM(name) AS name FROM "User"
+      WHERE id = ANY($1::int[]) AND NULLIF(TRIM(name), '') IS NOT NULL
+      LIMIT $2`,
+    [ids, MAX_NAMES],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Map(result.rows.map((r) => [r.id, r.name]));
+}
+
+/**
+ * #7789 (2) retest: a Latin label was spelt letter by letter („გიო kipiani"
+ * style). In Georgian, a member whose own registered name is in Georgian is
+ * shown by that name; anyone else keeps the owner's label, spelt in Georgian.
+ */
+export function namesAsShown(
+  names: ReadonlyMap<string, string>,
+  states: ReadonlyMap<string, AccountDetails>,
+  own: ReadonlyMap<number, string>,
+  language: RunLanguage,
+): Map<string, string> {
+  if (language !== 'ka') return new Map(names);
+  const shown = new Map<string, string>();
+  for (const [digits, label] of names) {
+    const userId = states.get(digits)?.user_id;
+    const ownName = typeof userId === 'number' ? own.get(userId) : undefined;
+    const useOwn =
+      !GEORGIAN_LETTER_RE.test(label) && ownName !== undefined && GEORGIAN_LETTER_RE.test(ownName);
+    shown.set(digits, useOwn ? ownName : label);
+  }
+  return shown;
+}
+
 export interface MutualContact {
   readonly name: string;
   readonly onNetai: boolean;
@@ -44,7 +87,7 @@ interface GroupWords {
 
 const WORDS: Readonly<Partial<Record<RunLanguage, GroupWords>>> = {
   ka: {
-    heading: (target) => `${geoName(target, 'dat')} იცნობენ შენი ეს ნაცნობები:`,
+    heading: (target) => `${geoName(georgianScriptName(target), 'dat')} იცნობენ შენი ეს ნაცნობები:`,
     onNetai: 'Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ',
     notOnNetai: 'Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ',
   },
@@ -386,17 +429,22 @@ export async function mutualGroupsFor(
     ]);
     const digits = [...known, ...shared].filter((d) => !neverVouch.has(d)).slice(0, MAX_NAMES);
     if (digits.length === 0) return null;
-    const [names, states] = await Promise.all([
+    const [labels, states] = await Promise.all([
       ownersNames(userId, digits),
       fetchAccountStates(digits),
     ]);
+    const names = namesAsShown(labels, states, await membersOwnNames(states), language);
     const heading =
       (await goBetweensLabelFor(planned, targetDigits(planInput, foundTargets))) ?? target;
     const groups = mutualGroupsText(heading, contactsOnce(digits, names, states), language);
     const first = names.get(planned.find((d) => names.has(d)) ?? '');
     const reason =
       withReason && language === 'ka' && first !== undefined
-        ? knowsLine({ via: shownName(first, language), to: target, knowsThem: true })
+        ? knowsLine({
+            via: shownName(first, language),
+            to: shownName(target, language),
+            knowsThem: true,
+          })
         : null;
     return groups === null || reason === null ? groups : `${groups}\n${reason}`;
   } catch (err) {

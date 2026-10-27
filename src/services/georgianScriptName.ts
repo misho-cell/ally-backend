@@ -102,12 +102,31 @@ export function readsAsAName(clean: string): boolean {
 /** The name as a Georgian line writes it: no „Ally", Georgian script for a name (D859). */
 export function georgianScriptName(name: string): string {
   const clean = withoutAllyWord(name);
-  if (clean === '' || hasGeorgian(clean) || !readsAsAName(clean)) return clean;
+  if (clean === '') return clean;
+  if (hasGeorgian(clean)) return mixedNameInGeorgian(clean);
+  if (!readsAsAName(clean)) return clean;
   const words = clean.split(WORD_SPLIT_RE);
   const listedFirst = georgianFirstNameOf(words[0] ?? '') !== null;
   return words
     .map((word, index) =>
       isNameWord(word, index, listedFirst) ? wordInGeorgian(word, index === 0) : word,
+    )
+    .join(' ');
+}
+
+/**
+ * #7728 retest (tester 76702, 3/5): „გიო kipiani" — a name begun in Georgian
+ * kept its Latin surname, because a name with any Georgian letter was left as
+ * it is. Now a Latin word in it is spelt in Georgian when it reads as a
+ * surname (a Georgian surname's ending); other Latin words stay as written.
+ */
+function mixedNameInGeorgian(clean: string): string {
+  return clean
+    .split(WORD_SPLIT_RE)
+    .map((word) =>
+      LATIN_NAME_WORD_RE.test(word) && SURNAME_END_RE.test(word)
+        ? wordInGeorgian(word, false)
+        : word,
     )
     .join(' ');
 }

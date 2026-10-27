@@ -1,4 +1,6 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
+import { stripWebFromStudies } from '../../services/welcomeStudy.service';
+import { fillRosterPhonesByName } from '../../services/basePeople/rosterPhones.service';
 import { GEMINI_WEB_SEARCH_FLAG } from '../../services/tools/webSearchProvider';
 import {
   PhoneRepair,
@@ -436,6 +438,7 @@ import {
 import { BACKFILL_MAX_BATCH, backfillShortTitles } from '../../services/shortTitleBackfill.service';
 import {
   queueNeverResearchedMembers,
+  researchQueueStatus,
   queueRegistrationResearch,
 } from '../../services/registrationResearch/registrationResearch.service';
 import {
@@ -1715,6 +1718,52 @@ adminRouter.post('/registration-research/backfill', async (req: Request, res: Re
     // eslint-disable-next-line no-console
     console.error('[research backfill]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The backfill did not run; nothing was queued' });
+  }
+});
+
+// #7726 (tester 76702): the web section taken out of named accounts' welcome studies.
+//   POST /admin/welcome-study/strip-web { dry_run: boolean, user_ids: number[] (1-50) }
+//   → { dry_run, stripped: [{ user_id, before }] }  (before = the note as it was, the undo)
+adminRouter.post('/welcome-study/strip-web', async (req: Request, res: Response) => {
+  const reqBody = (req.body ?? {}) as Record<string, unknown>;
+  const ids = reqBody.user_ids;
+  const idsOk =
+    Array.isArray(ids) &&
+    ids.length >= 1 &&
+    ids.length <= 50 &&
+    ids.every((id) => Number.isInteger(id) && (id as number) > 0);
+  if (typeof reqBody.dry_run !== 'boolean' || !idsOk) {
+    res.status(400).json({
+      success: false,
+      error: 'dry_run (true or false) and user_ids (1-50 ids) are required',
+    });
+    return;
+  }
+  try {
+    const stripped = await stripWebFromStudies(ids as number[], reqBody.dry_run);
+    res.status(200).json({ success: true, data: { dry_run: reqBody.dry_run, stripped } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[welcome-study strip]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was changed' });
+  }
+});
+
+// #7426 (tester 76702 b): the member research queue — counts per status and the newest rows.
+//   GET /admin/registration-research/status[?user_id=N] → { counts, recent }
+adminRouter.get('/registration-research/status', async (req: Request, res: Response) => {
+  const raw = typeof req.query.user_id === 'string' ? req.query.user_id.trim() : '';
+  if (raw !== '' && !/^\d{1,10}$/u.test(raw)) {
+    res.status(400).json({ success: false, error: 'user_id must be a number' });
+    return;
+  }
+  try {
+    const status = await researchQueueStatus(raw === '' ? null : Number(raw));
+    res.status(200).json({ success: true, data: status });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[research status]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The research queue could not be read' });
   }
 });
 
@@ -8681,6 +8730,35 @@ adminRouter.post('/base-people/load', async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/base-people/load]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * #6997 (tester 76702): the Axel people (AX- keys) get their numbers from the
+ * roster by name, while the package hashes cannot be read (#7525).
+ *   POST /admin/base-people/roster-phones { roster_map_csv, dry_run }
+ *   → { dry_run, in_file, matched, ambiguous, unmatched, written }
+ */
+adminRouter.post('/base-people/roster-phones', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const csv = body.roster_map_csv;
+  if (
+    typeof csv !== 'string' ||
+    csv.length > MAX_AXEL_CSV_CHARS ||
+    typeof body.dry_run !== 'boolean'
+  ) {
+    res.status(400).json({
+      success: false,
+      error: 'roster_map_csv (text) and dry_run (true or false) are required',
+    });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await fillRosterPhonesByName(csv, body.dry_run) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/base-people/roster-phones]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was written' });
   }
 });
 

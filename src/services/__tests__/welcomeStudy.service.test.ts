@@ -8,7 +8,7 @@ jest.mock('../tools/webSearch', () => ({ __esModule: true, webSearch: jest.fn() 
 import { query } from '../../db/postgres/client';
 import { savePrivateContext } from '../userPrivateContext.service';
 import { webSearch } from '../tools/webSearch';
-import { runWelcomeStudy } from '../welcomeStudy.service';
+import { runWelcomeStudy, withoutWebSection } from '../welcomeStudy.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSave = savePrivateContext as jest.MockedFunction<typeof savePrivateContext>;
@@ -35,7 +35,7 @@ describe('runWelcomeStudy (engine T13)', () => {
   it('combines labels, old-Ally standing, and web results into one saved note', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserAlias"'))
-        return Promise.resolve(rows([{ alias: 'გია სანტექნიკოსი' }]) as never);
+        return Promise.resolve(rows([{ alias: 'გია სანტექნიკოსი ACME', count: '1' }]) as never);
       if (sql.includes('FROM "UserTags"'))
         return Promise.resolve(rows([{ tag: 'trusted' }]) as never);
       if (sql.includes('FROM "UserConnectionPhone"'))
@@ -53,10 +53,32 @@ describe('runWelcomeStudy (engine T13)', () => {
     expect(userId).toBe('7');
     expect(key).toBe('welcome_study');
     expect(mode).toBe('set');
-    expect(value).toContain('გია სანტექნიკოსი');
+    expect(value).toContain('გია სანტექნიკოსი ACME');
     expect(value).toContain('trusted');
     expect(value).toContain('allies: 3');
     expect(value).toContain('Gia at ACME');
+  });
+
+  it('drops a web result about a namesake: one holding no word members saved (#7726)', async () => {
+    mockQuery.mockImplementation((sql: string) =>
+      Promise.resolve(
+        (sql.includes('FROM "UserAlias"')
+          ? rows([{ alias: 'გია TBC', count: '2' }])
+          : rows([])) as never,
+      ),
+    );
+    mockWebSearch.mockResolvedValue({
+      results: [
+        { title: 'Gia Test, economics professor', url: 'https://uni.example', snippet: 'Wyoming' },
+        { title: 'Gia Test — TBC Bank', url: 'https://tbc.example', snippet: 'Head of sales' },
+      ],
+    });
+
+    await runWelcomeStudy('7', 'Gia Test', '+995599111222');
+
+    const value = mockSave.mock.calls[0][2] as string;
+    expect(value).toContain('TBC Bank');
+    expect(value).not.toContain('economics professor');
   });
 
   it('never touches contact_facts — private notes about the person are out of scope', async () => {
@@ -77,5 +99,16 @@ describe('runWelcomeStudy (engine T13)', () => {
 
     await expect(runWelcomeStudy('7', 'Gia', '+995599111222')).resolves.toBeUndefined();
     expect(mockSave).not.toHaveBeenCalled();
+  });
+});
+
+describe('withoutWebSection (#7726)', () => {
+  it('takes out the web section and keeps the rest', () => {
+    const note =
+      'ახალი მომხმარებლის საწყისი პროფილი:\n\nსხვები მას ასე იცნობენ: გია\n\nსაჯარო წყაროებში მოიძებნა:\nProfessor (https://x)';
+    expect(withoutWebSection(note)).toBe(
+      'ახალი მომხმარებლის საწყისი პროფილი:\n\nსხვები მას ასე იცნობენ: გია',
+    );
+    expect(withoutWebSection('no web here')).toBe('no web here');
   });
 });

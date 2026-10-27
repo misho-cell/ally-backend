@@ -3,6 +3,8 @@ import { savePrivateContext } from './userPrivateContext.service';
 import { webSearch } from './tools/webSearch';
 import { LabelCount, nameToResearch } from './researchName';
 import { normalizePhone, phoneDigits } from './phone';
+import { identityWords } from './registrationResearch/identity';
+import { nameKey } from './tools/transliterate';
 
 // UserAlias/UserConnectionPhone predate phone normalization and store every
 // spelling a phone import ever produced ('+995…', '995…', '599…', '0599…').
@@ -101,6 +103,23 @@ interface WebResult {
 }
 
 /**
+ * #7726 (tester 76702): the study kept whatever the web returned for the name
+ * — a US economics professor, the Wikipedia page for „Giorgi". A result stays
+ * only when it holds a word members saved about this person beyond the name
+ * (an employer, a role); with no such word, no web result is kept.
+ */
+export function confirmedWebResults(
+  results: readonly WebResult[],
+  words: readonly string[],
+): WebResult[] {
+  if (words.length === 0) return [];
+  return results.filter((r) => {
+    const text = new Set(nameKey(`${r.title} ${r.snippet}`).split(' '));
+    return words.some((w) => text.has(w));
+  });
+}
+
+/**
  * Fire-and-forget, called once right after registration succeeds. Never
  * throws into the registration response — a failed study is a missed
  * head-start, never a reason to fail sign-up.
@@ -126,7 +145,13 @@ export async function runWelcomeStudy(userId: string, name: string, phone: strin
       const summary = oldAllyEntries.map(([status, count]) => `${status}: ${count}`).join(', ');
       sections.push(`ძველი Ally-ს ხელით დახარისხებაში ის ასე ჩანს: ${summary}`);
     }
-    const webResults = (web as { results?: WebResult[] }).results ?? [];
+    const webResults = confirmedWebResults(
+      (web as { results?: WebResult[] }).results ?? [],
+      identityWords(
+        labelCounts.map((c) => c.label),
+        name,
+      ),
+    );
     if (webResults.length > 0) {
       const lines = webResults
         .slice(0, 3)
@@ -155,4 +180,48 @@ export async function runWelcomeStudy(userId: string, name: string, phone: strin
     // eslint-disable-next-line no-console
     console.error(`[welcome-study] user ${userId} failed:`, (err as Error).message);
   }
+}
+
+/** The heading the study writes its web section under; the section runs to the end of the note. */
+const WEB_SECTION_HEADING = '\n\nსაჯარო წყაროებში მოიძებნა:';
+const MAX_STRIP_USERS = 50;
+
+export interface StrippedStudy {
+  readonly user_id: number;
+  /** The note as it stood before, so the strip can be undone by writing it back. */
+  readonly before: string;
+}
+
+/** The note without its web section; the same text when there is none. */
+export function withoutWebSection(note: string): string {
+  const at = note.indexOf(WEB_SECTION_HEADING);
+  return at < 0 ? note : note.slice(0, at);
+}
+
+/**
+ * #7726 (tester 76702): studies written before the identity check still carry
+ * namesakes. For the named accounts, the web section is taken out of the note;
+ * labels and the old-Ally standing stay. Returns each note as it was.
+ */
+export async function stripWebFromStudies(
+  userIds: readonly number[],
+  dryRun: boolean,
+): Promise<StrippedStudy[]> {
+  const result = await query<{ user_id: number; value: string }>(
+    `SELECT user_id, value FROM user_private_context
+      WHERE key = $1 AND user_id = ANY($2::int[]) AND value LIKE '%' || $3 || '%'
+      LIMIT $4`,
+    [WELCOME_STUDY_KEY, userIds, WEB_SECTION_HEADING.trim(), MAX_STRIP_USERS],
+    STUDY_TIMEOUT_MS,
+  );
+  if (!dryRun) {
+    for (const row of result.rows) {
+      await query(
+        'UPDATE user_private_context SET value = $3, updated_at = NOW() WHERE user_id = $1 AND key = $2',
+        [row.user_id, WELCOME_STUDY_KEY, withoutWebSection(row.value)],
+        STUDY_TIMEOUT_MS,
+      );
+    }
+  }
+  return result.rows.map((r) => ({ user_id: r.user_id, before: r.value }));
 }

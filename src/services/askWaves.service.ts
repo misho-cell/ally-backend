@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { askStateOf, isOpenAskState } from './askState';
 import { phoneDigits } from './phone';
+import { routeIntroductions } from './planClosedRoute';
 import { inWaveOrder, ownerGoalWords } from './waveOrder';
 import { planInForce, type PlanPerson, type StoredPlan } from './taskPlans.service';
 import type { Task } from './taskStore.service';
@@ -26,7 +27,28 @@ export const NEXT_WAVE_AFTER_HOURS = 24;
 
 const QUERY_TIMEOUT_MS = 5_000;
 
+/**
+ * #7630 (Misho, 26 Oct: „ერთთან"; tester 76702: 0/3): an approved plan with
+ * three bridges to one person sent all three at once, because the wave held
+ * three. When two or more of the plan's introductions lead to the same person,
+ * the wave holds one: the next bridge is asked after the first declines or a
+ * day passes (the wave's own rules). The plan card still names every bridge.
+ */
+export const WAVE_SIZE_ONE_BRIDGE = 1;
+
+export function bridgesToOnePerson(plan: unknown): boolean {
+  const seen = new Set<string>();
+  for (const intro of routeIntroductions(plan)) {
+    const target = intro.toPhone !== undefined ? phoneDigits(intro.toPhone) : '';
+    const key = target !== '' ? target : intro.toName.trim().toLowerCase();
+    if (seen.has(key)) return true;
+    seen.add(key);
+  }
+  return false;
+}
+
 export function waveSize(plan: Pick<StoredPlan, 'real_work'>): number {
+  if (bridgesToOnePerson(plan)) return WAVE_SIZE_ONE_BRIDGE;
   return plan.real_work === true ? WAVE_SIZE_REAL_WORK : WAVE_SIZE_SMALL;
 }
 

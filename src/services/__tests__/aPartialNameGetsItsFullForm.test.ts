@@ -32,4 +32,10 @@ describe('a newcomer registered with a partial name', () => {
     );
     expect(mostCommonFullForm(['Mariam Papava'], 'matsi papava')).toBeNull();
   });
+
+  it('prefers a fuller form to more savers repeating the registered name (#7728 retest)', () => {
+    const labels = ['matsi papava', 'Matsi Papava', 'matsi papava', 'Matsatso Papava'];
+    expect(mostCommonFullForm(labels, 'matsi papava')).toBe('Matsatso Papava');
+    expect(mostCommonFullForm(['matsi papava'], 'matsi papava')).toBe('matsi papava');
+  });
 });
