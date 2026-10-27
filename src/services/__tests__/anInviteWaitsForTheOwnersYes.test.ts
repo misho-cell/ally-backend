@@ -13,7 +13,7 @@ describe('invite_contact before the owner says yes', () => {
   it('is not in the run’s tools unless the line asks for or approves an invitation', () => {
     const flat = chat.replace(/\s+/g, ' ');
     expect(flat).toContain(
-      'const inviteHeld = ownerAbsent || asksForAnInvite(userMessage) || isApproveChoice(userMessage.trim());',
+      "const inviteHeld = ownerAbsent || thread.type === 'campaign_invite' || asksForAnInvite(userMessage) || isApproveChoice(userMessage.trim());",
     );
     expect(chat).toContain('(inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&');
   });
@@ -33,5 +33,17 @@ describe('the invite link waits for the same yes (the tester’s 47027)', () => 
     expect(asksForTheLink('მომეცი ჩემი ლინკი')).toBe(true);
     expect(asksForTheLink('Send me my invite link')).toBe(true);
     expect(asksForTheLink('ლევან ტესტელთან დამაკავშირე')).toBe(false);
+  });
+});
+
+describe('an invite chat always holds both invite tools (#8087, founder 27 Oct)', () => {
+  it('holds invite_contact and get_invite_link whatever the line says', () => {
+    const flat = chat.replace(/\s+/g, ' ');
+    expect(flat).toContain("ownerAbsent || thread.type === 'campaign_invite' ||");
+  });
+
+  it('is not refused by the inner gate in an invite chat', () => {
+    expect(chat).toContain("runModes.get(runId) === 'campaign_invite'");
+    expect(chat).toContain('!inInviteChat &&');
   });
 });

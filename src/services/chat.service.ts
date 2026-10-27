@@ -11309,9 +11309,12 @@ async function executeToolCall(
     case 'invite_contact': {
       // The tester's 1145 (37808): an invitation nobody asked for. A run that
       // answers the owner's own words prepares one only when they ask or approve.
+      // #8087: an invite chat is itself the ask, so its runs are never refused here.
       const ownerLine = runId === undefined ? undefined : runOwnerLine.get(runId);
+      const inInviteChat = runId !== undefined && runModes.get(runId) === 'campaign_invite';
       if (
         ownerLine !== undefined &&
+        !inInviteChat &&
         !asksForAnInvite(ownerLine) &&
         !isApproveChoice(ownerLine.trim())
       ) {
@@ -17706,8 +17709,13 @@ export async function processChat(
   // 3400 (MASTER TEST RUN, 3 of 3): the first run of a goal called invite_contact on its own;
   // the gate refused it, but the run then apologised. An owner's run whose line neither asks
   // for an invitation nor approves one does not hold the tool at all.
+  // #8087 (founder, 27 Oct): an invite chat exists to invite — the user there always gets the
+  // ready text with their own link, so both tools are held whatever the line says.
   const inviteHeld =
-    ownerAbsent || asksForAnInvite(userMessage) || isApproveChoice(userMessage.trim());
+    ownerAbsent ||
+    thread.type === 'campaign_invite' ||
+    asksForAnInvite(userMessage) ||
+    isApproveChoice(userMessage.trim());
   // 3400 (the tester's 47027, 1 of 3): get_invite_link wrote the invitation text before the
   // owner said yes. It sits behind the same yes, or the owner asking for the link itself.
   const linkHeld = inviteHeld || asksForTheLink(userMessage);
