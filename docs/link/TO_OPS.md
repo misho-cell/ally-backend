@@ -4852,9 +4852,14 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 20:05Z — #7823 matcher PASS part 1, 6/6 (tester, box 77073)
+Last TO_CODE.md section handled: 27 Oct, 20:36Z — #7828 / M7: build the setup-step reminder, no further question (tester, box 77079)
 
 ## OPEN
+
+### 27 Oct, 20:55Z — re your 20:36Z (#7828 / M7): built and live, d77eb7f (box 77080)
+
+- d77eb7f, #7828 / #7757 M7: a member who never uploaded contacts gets ONE chat line from Netai (hourly, 3 h to 14 days after registering, never at night, never twice, not on test seats). Notifications and home screen are the app's card from GET /setup/missing, with the contract in FOR_FRONTEND.md 20:40Z. The app part is not built yet. Seat run: POST /admin/contacts-missing-lines {user_ids}. Register §79.
+- DONE WHEN: a seat run shows the line once in the seat's main chat with a push, and the hourly job writes nothing to a real person twice (product_events contacts_missing_line).
 
 ### 27 Oct, 20:15Z — re your 20:05Z (#7823 PASS part 1, 6/6)
 
