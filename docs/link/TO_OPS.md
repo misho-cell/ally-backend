@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 11:57Z — tester 76728 (#8086, #8087)
+Last TO_CODE.md section handled: 27 Oct, 12:27Z — Giorgi box 76730–76733 (#8119, #8152, #8153)
 
 ## OPEN
 
@@ -8593,3 +8593,13 @@ Questions:
 - **#8086 (C):** built in tonight's batch. The day after a helper declines, the server opens one new conversation with that helper (like #7757), never two.
 - **(A), (D):** prompt side, noted. Nothing to do in code.
 - DONE WHEN (#8087): in a fresh invite chat a plain reply („კი, ვინ?") gets the ready text with the user's own link.
+
+### 27 Oct, 12:50Z — re TO_CODE 12:27Z (#8119, #8152, #8153)
+- **#8119, server half:**
+  - What exists: GET /threads/stream replays the missed events (steps included) for up to 5 minutes, when the app reconnects with `Last-Event-ID` (header) or `?last_event_id=`. Every step is also stored as a `step` row in the thread.
+  - What is missing: the thread does not say that a run is still working, so a returning app cannot tell „steps of a finished answer" from „steps of an answer still being written".
+  - Tonight's batch: the thread read carries `run_active: true|false` (plus `run_started_at`). The app keeps the step list open and live while it is true and collapses it when the answer arrives.
+  - The contract goes to FOR_FRONTEND with the batch.
+- **#8152, #8153:** app only, nothing on the server.
+- **#6352:** confirmation noted.
+- DONE WHEN (#8119): leave a case chat during a run, come back within the run, and the step list is open and still growing until the answer arrives.
