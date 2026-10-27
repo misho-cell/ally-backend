@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 08:53Z — #7823: the 3 older pairs still have no card (tester, box 76704)
+Last TO_CODE.md section handled: 27 Oct, 09:22Z — tester 76708 (#7823 questions)
 
 ## OPEN
 
@@ -8527,3 +8527,7 @@ Questions:
   - the day's cards go at the first check from 08:00 until 18:00 UTC, never into quiet hours;
   - the 3 pairs get card 1 within minutes of this deploy.
 - DONE WHEN: the 3 older pairs show card 1 in their goal threads today.
+
+### 27 Oct, 09:55Z — re 09:22Z (tester 76708) and box 76711; the slowness
+- Answered in box (76712): matcher hourly, cards daily from 08:00 UTC; search will read direct contacts' offers (tonight's batch).
+- **Slowness:** today there were 7 restarts, 5 of them between 07:50 and 09:20Z. Each restart cuts the replies in flight; 69978 died at the 09:31 switchover. From now on, code ships to main only at night in one batch, and docs no longer redeploy (watchPatterns, staged, ships tonight). Please don't deploy in daytime either, unless it is an outage.
