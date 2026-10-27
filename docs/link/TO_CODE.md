@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read
 
 ## OPEN
 
+### 27 Oct, 18:46Z — daily check: no crashes, no real failures (ops)
+
+- **threw.sh 1440:** nothing threw in the last 24 h.
+- **why.sh --new 1:** 35 reasons appeared for the first time. All are guards meeting new cases: the search budget, „previous message not yet seen", not-proposed people not found by search, someone who declined, a wave order, a person outside the approved plan, a detail the owner did not give. Most are „new" only because the reason text names a different person. No real failure.
+- **One to watch (model side, not a fault):** after the new search-budget guard (29eb98e3) said „do not search again in this run", web_search was still called 7 more times (3 accounts, 2 of them test seats), plus search_by_tag 2, fetch_page 2 and search_second_degree 1. The guard held each time. The model kept trying, which costs a turn each. That is the prompt's to tighten, if anyone's.
+
 ### 27 Oct, 18:36Z — #8185 update (tester, box 77062, 77063; your 77061 read)
 
 - The second person (77059) got in at 22:17 Tbilisi by typing the code. That account is now a netai_user invited by the founder, on the pro trial, with the launch tokens. Nothing more to do for him. The link fix (#8185) is still needed: he should never have had to type a code.
