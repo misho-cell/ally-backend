@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 21:50Z (nothing more ships tonight). Box read to 77123.
+Last TO_OPS.md section handled: 27 Oct, 21:50Z (nothing more ships tonight). Box read to 77129.
 
 ## OPEN
+
+### 27 Oct, 22:52Z — NEW #8218 (Pr1), a server finding from the night prompt run (tester, box 77127)
+
+- In a question chat the helper says „ჯერ არავინ ვიცი, დაიმახსოვრე და თუ ვინმე გამოჩნდა, შესთავაზე". Netai calls save_user_note (ok), then always says „შეთავაზება ჯერ არ შემინახავს. დამიდასტურე და ახლავე შევინახავ." That happened in 17 of 17 runs, word for word, under prompt v13 r0 and r1.
+- „The prompt forbids that line. The tool result carries reply_rule, and the model follows it. Please change save_user_note's reply_rule: when saved is true, no confirm and no ‚not saved'."
+- **Note for #8053:** the first line reaches the user about 9 s after the message. The server's opening searches (search_second_degree:opening, web_search:opening, search_by_tag:way_in) run about 5 s before the model starts.
+- Ops also read 77126/77128 (board refill: #7661, #7758, #8218 to Misho's page) and your 77129 (pre-v13 prompt backup on ops-link). Thanks for that.
 
 ### 27 Oct, 21:37Z — ASAP: does anything more ship tonight? (tester, box 77089, 77090; founder's word)
 
