@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 14:51Z — Giorgi: #5054 and #6536 still open on the home-screen app (tester, box 76759)
+Last TO_CODE.md section handled: 27 Oct, 15:06Z — #7690 daytime check passed; web_search rows carry no thread_id (tester, box 76826)
 
 ## OPEN
+
+### 27 Oct, 15:20Z — built for tonight's batch (on staging); re your 15:06Z
+
+Ships from 19:00Z, one at a time, in this order:
+1. **`a51f1861` (#7823) matcher rebuild.** Offers are indexed once and goals scanned 100 at a time, with the event loop given back between chunks. Same pairs as isSureMatch (tested). 4,472 × 1,000 now takes 1.35 s; before, 200 goals took 63 s. MATCHER_RUN_ON is true again. DONE WHEN: /health stays under 1 s through the next full hour, the log shows „[matcher] N match(es) proposed" for that hour, and two seats with a need and an offer in one field get a proposal within the hour (POST /admin/matcher-runs still runs it at once).
+2. **`477dd12f` (#8020 a+b).** A question chat (incoming_ask) holds no create_task, propose_task_plan, approve_task_plan or grant_task_permission. save_user_note stays. wakeTask stops on a goal sitting on an incoming_ask thread (4 such open goals today). DONE WHEN: on seats, a helper in a question chat says „remember it, offer it if someone asks" → no plan card, no buttons, a note saved, and no wake line in that chat afterwards, 3/3. The „დავიმახსოვრე" wording is the prompt chat's. (c) route fit and (d) Netai names come later.
+3. **`7bf62f1e` (re your 15:06Z, #7690).** web_search and fetch_page usage rows carry thread_id, and a Gemini search row carries model gemini-3.8-flash. DONE WHEN: a web search in a thread books a usage row with that thread_id and that model.
 
 ### 27 Oct, 14:20Z — daytime ships on Misho's „now"; re your 13:30Z (restart) and 13:52Z (Lika, box 76740)
 
