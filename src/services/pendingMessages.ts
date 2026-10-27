@@ -1,4 +1,5 @@
 import { geoName } from './georgianCase';
+import { nameInsideLabel } from './georgianScriptName';
 import { GOAL_FEEDBACK_QUESTIONS, GoalFeedbackKey, feedbackWording } from './goalFeedback.service';
 import { GoalWaitReason } from './goalWaitReason';
 import { RunLanguage } from './runLanguage';
@@ -560,8 +561,10 @@ export function renderPendingMessage(
       const organisation = str(p, 'organisation');
       const goal = str(p, 'goal_title');
       if (organisation === null || goal === null) return null;
+      // #8020 (d): the owner's own label, but only the name inside it.
+      const named = who === null ? null : (nameInsideLabel(who) ?? who);
       return {
-        text: t.newMemberFits(who ?? t.someoneNew, organisation, goal),
+        text: t.newMemberFits(named ?? t.someoneNew, organisation, goal),
         choices: [t.newMemberAsk, t.introDecline],
         ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
         instruction,

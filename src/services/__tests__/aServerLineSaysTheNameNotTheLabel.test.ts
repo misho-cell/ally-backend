@@ -1,4 +1,5 @@
 import { nameInsideLabel } from '../georgianScriptName';
+import { renderPendingMessage } from '../pendingMessages';
 
 /**
  * #8020 (d) (case 63857): server lines read raw phonebook labels — „ლაშა
@@ -14,5 +15,24 @@ describe('the name inside a phonebook label', () => {
   it('is nothing when no piece opens on a first name', () => {
     expect(nameInsideLabel('BMW service')).toBeNull();
     expect(nameInsideLabel('')).toBeNull();
+  });
+});
+
+describe('the new-member card (#8020 d)', () => {
+  it('says the name inside the owner’s label, not the label', () => {
+    const out = renderPendingMessage(
+      {
+        kind: 'new_member_for_goal',
+        task_id: 9,
+        payload: {
+          who: 'LIST. Lika Osepashvili. Ally. Force',
+          organisation: 'tbc',
+          goal_title: 'a meeting at TBC',
+        },
+      },
+      'en',
+    );
+    expect(out?.text).toContain('Lika Osepashvili has just opened Netai');
+    expect(out?.text).not.toContain('LIST');
   });
 });
