@@ -1,3 +1,4 @@
+import { invitationFor, rememberInvitation } from '../../services/rememberedInvitation';
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import {
@@ -190,7 +191,10 @@ function codeSendingHandler(send: CodeSender, fallback: string): SendHandler {
 
     try {
       const { phone, actionType } = req.body as { phone: string; actionType: OtpAction };
-      await send(phone, actionType, invitationFrom(req.body));
+      const invitation = invitationFrom(req.body);
+      await send(phone, actionType, invitation);
+      // #8185: kept for this number, in case the app loses it before signing in.
+      rememberInvitation(phone, invitation);
       res.status(HTTP_OK).json({ success: true, data: { sent: true } });
     } catch (error) {
       answerSendFailure(res, error, fallback);
@@ -263,7 +267,7 @@ authRouter.post(
       const { phone } = req.body as { phone: string };
       // Row 319: an invite link reaches the LOGIN screen too, because an old
       // Ally number is sent here by registration. Same keys as /register.
-      const result = await completeLogin(phone, invitationFrom(req.body));
+      const result = await completeLogin(phone, invitationFor(phone, invitationFrom(req.body)));
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       if (error instanceof InvitationRequiredError) {
@@ -308,7 +312,14 @@ authRouter.post(
       // number does (D149).
       // eslint-disable-next-line no-console
       console.log(`[register] referral code arrived under: ${ref.key ?? 'NO KEY AT ALL'}`);
-      const result = await registerUser(phone, name, referralPhone, ref.code);
+      // #8185: the link's code the app lost after asking for the SMS still counts.
+      const invitation = invitationFor(phone, { referralCode: ref.code, referralPhone });
+      const result = await registerUser(
+        phone,
+        name,
+        invitation.referralPhone,
+        invitation.referralCode,
+      );
       res.status(201).json({ success: true, data: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'რეგისტრაცია ვერ მოხერხდა';
