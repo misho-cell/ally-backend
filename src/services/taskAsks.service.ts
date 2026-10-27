@@ -104,9 +104,11 @@ import {
   AskTap,
   askTapLineForAsker,
   askTapOf,
+  isKeepInMindChoice,
   unknownSenderName,
   withoutFramesOwnWords,
 } from './askOpening';
+import { saveUserNote } from './userNotes.service';
 import { anonymousAskerName, anonymousPushTitle, withoutAskerNames } from './anonymousAsk';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
@@ -4717,6 +4719,54 @@ async function ownerSpokeSince(taskId: number, secondsAgo: number): Promise<bool
  * Best-effort by construction. A recipient's message must never fail because a
  * diagnostic column could not be written.
  */
+/** #7760: the note's own words in front of the need, so the helper's assistant reads it as such. */
+const KEEP_IN_MIND_NOTE_PREFIX: Readonly<Record<RunLanguage, string>> = {
+  ka: 'დავიმახსოვრე, ერთ-ერთ წევრს სჭირდება: ',
+  en: 'Keeping in mind, a member needs: ',
+  ru: 'Имею в виду, одному из участников нужно: ',
+  es: 'Lo tengo en cuenta, un miembro necesita: ',
+};
+const KEEP_IN_MIND_NOTE_CHARS = 300;
+
+/**
+ * #7760: „I don't know anyone yet, I'll keep it in mind" — the ask closes like
+ * a no (isDeclineChoice), and the helper's own assistant keeps the need as a
+ * note, without the asker's name, so it can come back to it when somebody
+ * fitting appears. Never throws: the person's message must not fail for it.
+ */
+export async function keepInMindIfTapped(threadId: number, message: string): Promise<boolean> {
+  if (!isKeepInMindChoice(message)) return false;
+  try {
+    const ask = await query<{ to_user_id: number; question: string; asker: string | null }>(
+      `SELECT a.to_user_id::int AS to_user_id, a.question,
+              (SELECT u.name FROM "User" u WHERE u.id = a.from_user_id::int) AS asker
+         FROM task_asks a
+        WHERE a.ask_thread_id = $1 AND a.status IN ('sent', 'answered')
+        ORDER BY a.id DESC LIMIT 1`,
+      [threadId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const row = ask.rows[0];
+    if (row === undefined) return false;
+    const helper = String(row.to_user_id);
+    const language = await userLanguage(helper).catch(() => 'ka' as RunLanguage);
+    const need = withoutAskerNames(row.question, [row.asker ?? ''], language)
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .slice(0, KEEP_IN_MIND_NOTE_CHARS);
+    await saveUserNote(
+      helper,
+      'need',
+      `${KEEP_IN_MIND_NOTE_PREFIX[language] ?? KEEP_IN_MIND_NOTE_PREFIX.ka}${need}`,
+    );
+    return true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[keep-in-mind] note not kept:', (err as Error).message);
+    return false;
+  }
+}
+
 export async function noteDeclineIfButtonPressed(threadId: number, message: string): Promise<void> {
   // A string compare, and it is false for every ordinary message before
   // anything touches the database — this runs on every message in every

@@ -290,6 +290,7 @@ import {
   answerAskTapAtOnce,
   laterUntilOnThread,
   noteDeclineIfButtonPressed,
+  keepInMindIfTapped,
   setLaterDays,
   tappedPersonOnThread,
   ownerLineNamesThisContact,
@@ -4940,6 +4941,8 @@ export async function keepUserMessage(
     // later settles on as the answer's wording. Fire-and-forget: a person's
     // message must not fail because a diagnostic column could not be written.
     void noteDeclineIfButtonPressed(threadId, message);
+    // #7760: „not yet, I'll keep it in mind" also keeps the need as the helper's note.
+    void keepInMindIfTapped(threadId, message);
     // ROW 300: a „yes" or „later" tap is told to the asker at once, once.
     void answerAskTapAtOnce(threadId, message);
     // #1686 (A3): a day picked for that „later" moves its return to that day.
