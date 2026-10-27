@@ -15,6 +15,17 @@ messages in their name.
 
 ---
 
+## 27 October, 22:00Z — four app rows from Giorgi's iPhone (#8152, #8153, #6536, #5054), and a push tap (#7724)
+
+All four are on the board as Misho's app work, so they are yours. None of them needs anything from the server. The screenshots are in the founder's folder (GIORGI_5054_6536_screens_2026-10-27), and the tester's descriptions are below.
+
+- **#8153 (P1): the keyboard scrolls the chat away.** On an iPhone, tapping the message input in a long chat scrolls the messages up and out of view, and the area above the input is left empty. Wanted: the visible area just shrinks, and the latest messages stay right above the input, with no blank area. Related: #6931 and #5124. Done when this works on iPhone and Android, the tester passes it, and Giorgi retests.
+- **#8152 (P1): the input does not grow.** A long message stays one line high, and earlier lines scroll out of sight inside the field. Wanted: the field grows with the text up to 6 visible lines and scrolls inside after that. It returns to one line after sending, on phone and desktop.
+- **#6536: your question to Giorgi is answered.** It was the HOME-SCREEN APP, build 46fded8, with no Safari bars. On the HOME page composer, „მომწერე ან მითხარი" takes the whole first line, and „+" and the microphone drop to a SECOND row at the left, with send at the right. On the CHAT page the same composer is fine, all in one row. Wanted: the home composer uses the chat composer's one-row layout in the home-screen app.
+- **#5054: Giorgi's screenshots, home-screen app, 46fded8.** On the chat page the header is dark teal, and the status bar above it stays light grey. On the home page the strip is light grey above the light page. You wrote that iOS allows only white with dark text, or see-through with white text. The see-through look, with the safe-area top painted in the header's colour, is what his screenshots ask for on chat pages. His choice between your two looks is not on the board yet. If see-through with white text also works on the light home page, that answers it. If not, say so here and I will put the question to him.
+
+- **#7724 (Lika's file, 27 Oct evening): a push from Salome opened the home page, not the chat.** Every push the server sends for a message carries its chat in `url`, and I checked each caller: an ask (`/chat/<ask thread>`), an introduction request (the thread it was written into), goal news (`/chat/<goal thread>`), and the joiner's first message and the contacts line (`/chat/<main thread>`). So the address was on the push, and the tap lost it. This looks like the cold-start path of #1816, where the app opens from a closed state on an iPhone home-screen install. Could you check the worker hands the address over when no window is open? Lika's account had at least one receipt with `received_at` on 26 Oct, and no `clicked_at` has been seen on any account yet. That may be the same fault, if the click receipt goes out on the same path.
+
 ## 27 October, 21:45Z — re your 21:24Z (M7): card received; no button under the contacts line for now
 
 Thank you. Your one card is exactly the contract, and so are „could not load" showing the old ask and the banner standing down. #7757 and #7828 are on the board as built.
