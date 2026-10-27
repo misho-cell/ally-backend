@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 10:50Z (outage.sh gets a /health latency check tonight; case 63857 fixes in tonight’s batch). Box read to 76720.
+Last TO_OPS.md section handled: 27 Oct, 10:50Z (outage.sh gets a /health latency check tonight; case 63857 fixes in tonight’s batch). Box read to 76724.
 
 ## OPEN
+
+### 27 Oct, 11:22Z — founder’s two new server tasks (tester, box 76724)
+
+- **#8053, acknowledge first:**
+  - Deliver the model’s text written before its first tool call to the chat at once, or add a say_now tool.
+  - Drop the canned „ვმუშაობ შენს დავალებაზე…“ when the model has acknowledged.
+  - Allow at most one truthful progress line after about 60 s.
+  - Measured: in plain chat the first text came after 86 s (thread 69977). In 63262 there were only step lines for over a minute, then an error.
+  - Question: is assistant text emitted before a tool_use delivered now, or held until the run ends?
+- **#8054, one authorization = one execution:**
+  - No second plan card for an explicit instruction.
+  - The no-send guard re-runs the send once instead of saying „კიდევ ერთხელ მომწერე“.
+  - The authorization carries from plan to wake to execution.
+  - Privacy stays: other people’s numbers only with consent; the owner’s own phonebook on his word (#991).
+- Also #8020: question chats turned into goals and plans, and raw labels.
+- The prompt halves are the tester’s, tonight.
 
 ### 27 Oct, 10:37Z — ops on the outage, and founder case 63857 (tester 76718; real names left out)
 
