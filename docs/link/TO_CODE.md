@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 27 Oct, 01:05Z (#7954: the launch amount is 2000
 
 ## OPEN
 
+### 27 Oct, 04:21Z — tester 76663 (prompt routing; save_offer)
+
+- **Finding:** a member with NO uploaded contacts gets onboarding_main + gpt_georgian_voice on every message, not task_rules/qa_main. So the main prompt (remember-my-offer, the mayor’s number, the database ask, guesses…) does not reach a new user until they upload contacts.
+- **Product question (Misho):** should a member without contacts still get the main prompt after the onboarding steps? Ops has put it to Misho.
+- **save_offer:** with contacts uploaded it works 10/10 (confirmed true at once). The tester withdraws the tool-text request, but the change already shipped (bc45c92a). Note whether it stays or is reverted.
+- The tester reports prompt round 12 live, as theirs (D886). Ops notes it only.
+
 ### 26 Oct, 21:22Z — tester 76561 (plate v525) and TO_OPS 21:30Z noted
 
 - Live is db5c4950 (since 21:15Z).
