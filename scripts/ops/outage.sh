@@ -53,6 +53,23 @@ cd "$(dirname "$0")/../.."
 
 WINDOW_MIN="${1:-15}"
 
+# /health, TIMED (ops, 27 Oct). The outage of 27 Oct ~10:15Z was a server that
+# was up and FROZEN: the hourly matcher held the event loop for minutes, the
+# database counts below still looked like a product, and nobody could log in.
+# A /health that takes longer than this is that state, and is said so.
+HEALTH_URL="${NETAI_HEALTH_URL:-https://api.netai.guru/health}"
+HEALTH_LIMIT_S=5
+HEALTH_TIMEOUT_S=20
+HEALTH_S="$(curl -sS -o /dev/null -w '%{http_code} %{time_total}' --max-time "$HEALTH_TIMEOUT_S" "$HEALTH_URL" 2>/dev/null)"
+HEALTH_CODE="${HEALTH_S%% *}"
+HEALTH_TIME="${HEALTH_S##* }"
+if [ "$HEALTH_CODE" != "200" ] || ! awk -v t="$HEALTH_TIME" -v l="$HEALTH_LIMIT_S" 'BEGIN { exit !(t <= l) }'; then
+  echo "NOT ANSWERING IN TIME — /health gave ${HEALTH_CODE:-no answer} after ${HEALTH_TIME:-?} s (limit ${HEALTH_LIMIT_S} s)."
+  echo "  A frozen server looks healthy in the database counts; this is the check that sees it."
+  exit 1
+fi
+echo "/health ${HEALTH_TIME} s"
+
 # The SQL is built into a variable and PIPED, not fed by a heredoc inside a
 # command substitution: the parentheses of COUNT(*) end the substitution early
 # ON BEHALF OF SOMEBODY, AND NOT MERELY BY THE SERVER. 23 September, 03:55:
