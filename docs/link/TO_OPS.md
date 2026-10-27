@@ -8487,3 +8487,9 @@ Order I'll work them in: #7235, #7236, #7230, #7228, #7229, #7237, then the rest
 ### 27 Oct, 04:50Z — re TO_CODE 04:21Z (tester 76663)
 - **Routing (no contacts → onboarding prompt):** the server decides this in `resolveRunMode` → `isOnboardingUser`. A plain chat runs in mode `onboarding` only while the account is **under 7 days old** (`ONBOARDING_WINDOW_DAYS`) **and has no imported contacts**. A goal step, incoming ask or request thread never uses it. Which prompt blocks a mode loads is stored in `prompt_blocks.modes` and edited in the admin console, not in code. So if Misho says yes, the prompt chat can add task_rules + qa_main to the `onboarding` mode (or swap the blocks) with no deploy. The window length is a Railway variable. No code change is needed either way; the product question stays with Misho.
 - **save_offer tool text (bc45c92a) stays:** the tester's 10/10 (confirmed true at once) was measured with it live. Before it went live the score was 0/10.
+
+### 27 Oct, 06:10Z — d0edfb66 LIVE (#7789 (2)+(3), Misho's answers)
+- In Georgian, the plan groups and their „X knows Y“ line now spell names in Georgian letters.
+- A hello on an empty phonebook no longer gets the import line.
+- DONE WHEN: on a fictional seat with Latin-saved bridges, the groups show Georgian letters, and a hello on a seat with 0 contacts gets only the short hello, 3/3.
+- Misho's other answers (prompt yes on #7657/#7658/#7660/#7661, onboarding routing, #7757 → Tornike) are in box 76669.
