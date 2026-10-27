@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Oct, 23:40Z (#7525 company base live; person-to-company links wait on Misho for the retired hash secret). Box read to 76598. Live b0565a90 since 23:25Z.
+Last TO_OPS.md section handled: 27 Oct, 01:05Z (#7954: the launch amount is 2000, no write; #7690 Gemini built behind a switch that is OFF, waiting on Misho for GEMINI_API_KEY). Box read to 76628.
 
 ## OPEN
 
