@@ -8578,3 +8578,8 @@ Questions:
     - The owner's authorization is carried from plan to wake to execution, with consent rules unchanged (others' numbers only with consent; the owner's own phonebook on his word, #991).
   - **#8020:** the same server rule as 63857 (a): no goal or plan tools in question/ask threads, and member names not raw labels.
 - DONE WHEN: in a fresh plain chat the first sentence appears within ~10 s, and an explicit „send it" to a planned person goes out once, with no second card and no „write again".
+
+### 27 Oct, 12:20Z — shipped: search clock, LIVE `29eb98e3` (Misho's word: now, not tonight)
+- **What:** a run's searching stops 25 s after its first search. Further budgeted searches are refused with „answer now from what you found"; a lookup by name stays free.
+- **Why:** slowness since the 26 Oct night batch. Tool calls per run went from 2.2 to 5.4 on average, and a goal step's median from 15 s to 37 s; each tool was no slower.
+- DONE WHEN: a goal step's median run time is back under ~20 s by tonight. In tool_call_log, no run has a budgeted search more than 25 s after its first one.
