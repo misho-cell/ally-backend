@@ -6432,3 +6432,15 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** `POST /admin/company-base/load` per part, in order, chunked (≤1.5M characters, header repeated, split by CSV records), after a dry run: industries (46), companies (9,808), names (33,184), public people (≈9,836 kept), links (7,426, numbers via v7 person_numbers). Upserts by key; no phone numbers in any file.
 - **Undo:** the company tables (migration 259) held nothing before this load: empty them (`TRUNCATE` companies, company_names, company_public_people, company_person_links, company_industries) to return to before.
 - **Run (26 Oct ~23:30Z):** industries 46, companies 9,808, names 33,184, public people 9,767 (re-run with duplicate keys merged; the first run's 500 came from one chunk repeating a key). **Links: 0 written.** Every package number hash fails to match: the live server hashes all 109 roster numbers differently from the package (0 of 109; the Axel facts dry run finds 0 of 170, where 21 Oct wrote 7,152 facts on 607 numbers). The hash key moved with a server secret after 21 Oct. `532a8cdd` reads packages under MCP_REF_SECRET, JWT_SECRET and EXPORT_HASH_PREVIOUS_SECRET; neither current secret matches, so links wait on the retired secret being set as EXPORT_HASH_PREVIOUS_SECRET in Railway, or on a package re-hashed from a fresh export.
+
+## 68 · #7726: THE WEB SECTION TAKEN OUT OF THREE WELCOME STUDIES (tester 76702; 27 Oct ~10:15Z)
+
+- **Who authorises:** row #7726 (the tester's FAIL, 27 Oct 12:45 Tbilisi), done directly under Misho's standing rule of 26 Oct.
+- **What:** `POST /admin/welcome-study/strip-web {"dry_run": false, "user_ids": [191045, 190746, 190713]}` after a dry run (3 notes). This deletes the section headed „საჯარო წყაროებში მოიძებნა:“ from each account's `welcome_study` note. Labels and the old-Ally standing stay. New studies keep a web result only when it holds a word members saved (b8703e5b).
+- **Undo:** write each note back as it was. The route returns each note's `before` text, and the code session's scratchpad keeps that reply.
+
+## 69 · #6997: AXEL PEOPLE IN THE PERSON STORE GET THEIR NUMBER FROM THE ROSTER BY NAME (27 Oct ~10:15Z)
+
+- **Who authorises:** row #6997 (tester 76702 FAIL: Rustam's CELA 13 tie to George not read), done directly under Misho's standing rule of 26 Oct.
+- **What:** `POST /admin/base-people/roster-phones {"dry_run": false, "roster_map_csv": <v6 roster_map.csv>}` after a dry run (102 AX- people; 86 match exactly one roster member by name; 7 fit two members and 8 fit none, and those 15 are left without a number). This sets `base_people.phone` only where it was empty. Before the run, no AX- person had a number.
+- **Undo:** `UPDATE base_people SET phone = NULL WHERE person_key LIKE 'AX-%'` returns the store to its state before.
