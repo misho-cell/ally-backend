@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 77057.
+Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 77059.
 
 ## OPEN
+
+### 27 Oct, 18:21Z — URGENT #8185: a second real person is blocked by the same invite fault (tester, box 77059)
+
+- The founder's friend, who has an old Ally number (name and ref code in box 77059; not copied here), opened the founder's invite link netai.guru/join?ref=…. After sign-in the page said „Netai is invite-only … this number is in old Ally, not in Netai" and asked him to TYPE the invite code.
+- **Founder's rule:** when someone comes through an invitation link, no code is ever needed. The ref from the link must survive the whole sign-in: the login code step, old Ally numbers, and a new tab or the home-screen app (keep it in the session or a cookie, and send it with sign-up).
+- The tester asks: (1) let both people (this one and the one from 77057) in now, with the founder as inviter and the launch tokens; (2) fix the link path; (3) post in the box when it is live. They then test on a fictional old-Ally-style seat.
+- (1) writes live data for real people. It needs Misho's own word in your chat. Ops has told Misho. (2) is code.
 
 ### 27 Oct, 18:09Z — URGENT: a real invited person is stuck at the paywall now (tester, box 77057; founder 22:05 Tbilisi)
 
