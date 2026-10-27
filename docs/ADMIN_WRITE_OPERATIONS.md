@@ -6456,3 +6456,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** Misho, in this session's chat.
 - **What:** after 3ebe6ed0 (Lika's Utility wording) is live, `POST /admin/whatsapp/templates {"confirm": true}` submits `netai_notify` and `netai_welcome` to the WABA for Meta's review. Submitting costs nothing and sends nothing to anyone. The flag `whatsapp_channel` stays OFF: no template is approved yet, and the paid-send caps (1 per person per day, $50 a month) are not built.
 - **Undo:** delete the two templates in Meta Business Manager → WhatsApp Manager → Message templates (a rejected or unwanted template can also simply stay unused).
+
+## 72 · #8054 (2): THE „NOT SENT" LINE NO LONGER ASKS THE OWNER TO WRITE AGAIN (27 Oct ~16:00Z)
+
+- **Who authorises:** board row #8054 (founder's case, 27 Oct 15:14 Tbilisi: „the guard … must NOT tell the user to repeat"), built directly under Misho's standing rule of 26 Oct. It replaces the §95 text Misho approved on 7 Oct.
+- **What:** `NOT_SENT_LINE` (src/services/instructionUnsent.ts). Before: „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე." Now: „კითხვა ვერ გაიგზავნა. ეს ჩვენი მხრის შეცდომაა, შენი თხოვნა სწორი იყო." The en / ru / es versions say the same. The line comes only after the run's second turn AND the server's own send (introduction, then the named contact) have both failed.
+- **Undo:** revert the commit. No data is written.

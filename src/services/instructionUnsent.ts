@@ -114,12 +114,16 @@ export async function threadAskedSomebody(threadId: number): Promise<boolean> {
  * The tester's 44367 (wish 3): when the turn that was given one more chance
  * still sent nothing, it may not say „I will ask". The owner is told plainly
  * that the question did not go.
+ *
+ * #8054 (2) (founder 27 Oct, 69977): it no longer asks the owner to write it
+ * again. The line comes after the run AND the server's own send both failed,
+ * so the owner already said it right; the fault is ours and is said so.
  */
 export const NOT_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
-  ka: 'კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.',
-  en: 'The question was not sent. Please write the request to me once more.',
-  ru: 'Вопрос не отправлен. Пожалуйста, напишите просьбу ещё раз.',
-  es: 'La pregunta no se envió. Por favor, escríbeme la petición otra vez.',
+  ka: 'კითხვა ვერ გაიგზავნა. ეს ჩვენი მხრის შეცდომაა, შენი თხოვნა სწორი იყო.',
+  en: 'The question did not go out. That is a fault on our side; your request was fine.',
+  ru: 'Вопрос не ушёл. Это ошибка с нашей стороны, твоя просьба была правильной.',
+  es: 'La pregunta no salió. Es un fallo nuestro; tu petición estaba bien.',
 };
 
 /**
