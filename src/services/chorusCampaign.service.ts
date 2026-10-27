@@ -13,6 +13,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { phoneDigits } from './phone';
+import { getInviteLink } from './referralLink.service';
 import {
   campaignsOpenedToday,
   campaignsPerDay,
@@ -594,6 +595,14 @@ export function techniqueHowFor(participantId: number): number {
   return CAMPAIGN_HOW_VALUES[participantId % CAMPAIGN_HOW_VALUES.length] as number;
 }
 
+/**
+ * #8087 (founder 27 Oct, 67882): the suggestion itself carries the inviter's
+ * own link, so „what do I send?" never ends in an explanation without one.
+ */
+export function inviteLinkLine(link: string | undefined): string {
+  return link ? `\n\nშენი მოსაწვევი ბმული, გასაგზავნად მზადაა: ${link}` : '';
+}
+
 const CAMPAIGN_ASK_MESSAGE = (label: string, how: number, returning: boolean): string =>
   (CAMPAIGN_ASK_VARIANTS[how] ?? CAMPAIGN_ASK_VARIANTS[5])?.(label, returning) ?? '';
 
@@ -700,12 +709,18 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
     // Row 40: the same two facts on every variant, taken here because this is
     // the only place that knows both the inviter and the target.
     const shared = await sharedCircleWith(row.inviter_user_id, row.target_phone);
+    const invite = await getInviteLink(String(row.inviter_user_id), 'ka').catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[chorus] invite link not read:', (err as Error).message);
+      return null;
+    });
     await saveThreadMessage(
       thread.id,
       row.inviter_user_id,
       'assistant',
       CAMPAIGN_ASK_MESSAGE(label, how, row.target_returning === true) +
-        whyThemAndWhatIsShared(shared),
+        whyThemAndWhatIsShared(shared) +
+        inviteLinkLine(invite?.link),
     );
     await query(
       `UPDATE invite_campaign_participants
