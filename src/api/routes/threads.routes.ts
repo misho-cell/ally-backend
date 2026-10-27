@@ -105,7 +105,7 @@ import {
   messageHeldNoTokens,
 } from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
-import { enterThread, leaveThread } from '../../services/threadRunQueue';
+import { enterThread, leaveThread, threadRunSince } from '../../services/threadRunQueue';
 import { releaseRunSlot, takeRunSlot } from '../../services/runSlots';
 import { isBareGreeting } from '../../services/greetingTurn';
 import { isToolFreeSmallTalk } from '../../services/smallTalk';
@@ -1080,10 +1080,15 @@ threadsRouter.get(
        * worked out.
        */
       const language = await threadLanguage(threadId).catch(() => null);
+      // #8119: a client coming back to a chat mid-run learns the run is live and
+      // since when, so it shows the steps live (SSE replays 5 min on Last-Event-ID).
+      const runSince = threadRunSince(threadId);
       res.status(200).json({
         success: true,
         data: messages.map(withChoiceNotes),
         ...(language && { language }),
+        run_active: runSince !== undefined,
+        run_started_at: runSince?.toISOString() ?? null,
       });
     } catch (error) {
       // eslint-disable-next-line no-console

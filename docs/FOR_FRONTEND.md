@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 27 October, 16:20Z — #8119: the thread read says whether a run is live, and since when; #8087 link
+
+**#8119 (on the branch, ships today on Misho's „now"; this section reaches main with it).**
+`GET /threads/:id/messages` carries two new top-level fields beside `data` and `language`:
+
+```json
+{ "success": true, "data": [ ... ], "language": "ka",
+  "run_active": true, "run_started_at": "2026-10-27T16:12:03.512Z" }
+```
+
+- `run_active`: true while a run (the owner's turn or a wake) holds this chat on the server.
+- `run_started_at`: when that run began (ISO, UTC), or `null` when `run_active` is false.
+- When the user comes back to a chat with `run_active: true`, keep the working state and the live steps on screen. Reconnect `/threads/stream` with `Last-Event-ID`: the server replays the last 5 minutes, so steps written while the app was closed arrive.
+- Both fields are additive. Paging (`?limit`, `?before`, `?before_id`) is unchanged, and a 404 is still a 404.
+
+**#8087 (server half).** A new invite suggestion („Netai-ზე მოწვევა: …") now ends with the inviter's own join link: „შენი მოსაწვევი ბმული, გასაგზავნად მზადაა: https://www.netai.guru/join?ref=…". It is ordinary message text, so nothing changes in the app.
+
 ## 27 October, 08:10Z — #7063 failed on Giorgi's retest (G-186): three rows now; and #7987 (G-184)
 
 **#7063, „ბოლო სიახლეები“: LIVE `645ac4dc`.** Giorgi's four rules apply together:

@@ -73,6 +73,12 @@ export function threadHolder(threadId: number): string | undefined {
   return holders.get(threadId)?.runId;
 }
 
+/** #8119: when the run that holds this thread began, or undefined when none does. */
+export function threadRunSince(threadId: number): Date | undefined {
+  const since = holders.get(threadId)?.since;
+  return since === undefined ? undefined : new Date(since);
+}
+
 /**
  * Take the thread, waiting for whoever has it.
  *
