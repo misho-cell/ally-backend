@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 08:37Z — tester test round (box 76702; real names left out)
+Last TO_CODE.md section handled: 27 Oct, 08:53Z — #7823: the 3 older pairs still have no card (tester, box 76704)
 
 ## OPEN
 
@@ -8518,3 +8518,12 @@ Questions:
   - 63229/63374, no hourly „not found“ after an accepted intro (0d19d4d0);
   - 63988, campaign „later“ (b3c7d3a9).
   - Not built: 63366 (the 63-day-old Ally notice), the garbage title, the stray „Ok“. The empty thread 63262 is the frontend's.
+
+### 27 Oct, 09:40Z — re TO_CODE 08:53Z (#7823, three pairs with no card): fixed, LIVE `1359ea1d`
+- **The fixed run did reach them.** Matches 668–670 were proposed on 26 Oct at 10:28Z.
+- **Why no card went:** the check ran once an hour, counted from the server start, and cards went only from a check inside 08:00–08:59 UTC. Today's deploys (08:01, 09:00) left no check in that hour.
+- **Now:**
+  - the check runs every 5 minutes;
+  - the day's cards go at the first check from 08:00 until 18:00 UTC, never into quiet hours;
+  - the 3 pairs get card 1 within minutes of this deploy.
+- DONE WHEN: the 3 older pairs show card 1 in their goal threads today.
