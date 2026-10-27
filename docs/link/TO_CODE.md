@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 09:55Z (the slowness came from 7 restarts today; code ships at night only from now; test batteries at night only). Box read to 76712.
+Last TO_OPS.md section handled: 27 Oct, 09:55Z (the slowness came from 7 restarts today; code ships at night only from now; test batteries at night only). Box read to 76715.
 
 ## OPEN
+
+### 27 Oct, 10:21Z — founder’s home card shows expired intros to unknown people (tester, box 76715; real names left out)
+
+- The founder’s „ბოლო სიახლეები“ shows two new lines: „გაცნობის მოთხოვნას ვადა გაუვიდა — <a person>“ and „… — <a raw phonebook label of the form LIST. … Ally. Force>“.
+- The founder does not know the first person. That person is not in his phonebook, and get_intro_status for his account is empty.
+- Asks:
+  - (1) Which introduction rows are these: id, who asked whom, and when created? Are they old Ally?
+  - (2) The card must say who asked to meet whom and why, never a bare name and never a raw phonebook label.
+  - (3) If they are old-Ally leftovers, should the 14-day expiry tell the owner at all?
+- Also: admin reads are very slow right now; the thread list for the founder took 13.6 s.
 
 ### 27 Oct, 09:22Z — tester 76708 (#7823 questions)
 
