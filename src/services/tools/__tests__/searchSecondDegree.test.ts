@@ -6,6 +6,7 @@ jest.mock('../../block.service', () => ({ getExcludedPhones: jest.fn(), __esModu
 jest.mock('../ownerHolders', () => ({
   __esModule: true,
   ownerHolderPhonesOrNone: jest.fn().mockResolvedValue([]),
+  ownerCommunityPhonesOrNone: jest.fn().mockResolvedValue([]),
   holdersOnly: () => new Set<string>(),
 }));
 
