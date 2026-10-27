@@ -1,4 +1,9 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
+import {
+  ContactsLineSeatOutcome,
+  MAX_CONTACTS_LINE_SEATS,
+  runContactsMissingForSeats,
+} from '../../services/contactsMissingLine.service';
 import { stripWebFromStudies } from '../../services/welcomeStudy.service';
 import { fillRosterPhonesByName } from '../../services/basePeople/rosterPhones.service';
 import { GEMINI_WEB_SEARCH_FLAG } from '../../services/tools/webSearchProvider';
@@ -9220,6 +9225,46 @@ adminRouter.post('/ai-notifications/run', async (req: Request, res: Response) =>
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[ai-notifications/run]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The run did not complete' });
+  }
+});
+
+/** #7757 / #7828 (M7): the contacts-missing line, now, on fictional seats only. */
+const CONTACTS_LINE_SEAT_STATUS: Readonly<Record<ContactsLineSeatOutcome, number>> = {
+  [ContactsLineSeatOutcome.BadInput]: 400,
+  [ContactsLineSeatOutcome.NotATestSeat]: 403,
+  [ContactsLineSeatOutcome.Ran]: 200,
+};
+
+const CONTACTS_LINE_SEAT_ERROR: Readonly<Record<ContactsLineSeatOutcome, string>> = {
+  [ContactsLineSeatOutcome.BadInput]: `user_ids: 1 to ${MAX_CONTACTS_LINE_SEATS} seat ids`,
+  [ContactsLineSeatOutcome.NotATestSeat]: 'Only fictional test seats are run here',
+  [ContactsLineSeatOutcome.Ran]: '',
+};
+
+adminRouter.post('/contacts-missing-lines', async (req: Request, res: Response) => {
+  const raw: unknown = (req.body as { user_ids?: unknown }).user_ids;
+  const seatIds = Array.isArray(raw)
+    ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    : [];
+  try {
+    const run = await runContactsMissingForSeats(
+      Array.isArray(raw) && seatIds.length === raw.length ? seatIds : [],
+    );
+    if (run.outcome !== ContactsLineSeatOutcome.Ran) {
+      res
+        .status(CONTACTS_LINE_SEAT_STATUS[run.outcome])
+        .json({ success: false, error: CONTACTS_LINE_SEAT_ERROR[run.outcome] });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[contacts-missing] admin ${(req as AuthenticatedRequest).user.userId} told ${run.told} seat(s)`,
+    );
+    res.status(200).json({ success: true, data: { told: run.told } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[contacts-missing-lines]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The run did not complete' });
   }
 });
