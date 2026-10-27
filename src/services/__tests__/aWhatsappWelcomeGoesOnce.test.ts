@@ -2,6 +2,11 @@ const mockQuery = jest.fn();
 jest.mock('../../db/postgres/client', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
+const mockMayGo = jest.fn();
+jest.mock('../whatsappChannel.service', () => ({
+  ...jest.requireActual('../whatsappChannel.service'),
+  paidTemplateMayGo: (...args: unknown[]) => mockMayGo(...args),
+}));
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -12,6 +17,7 @@ const fetchMock = jest.fn();
 
 beforeEach(() => {
   mockQuery.mockReset();
+  mockMayGo.mockReset().mockResolvedValue(true);
   fetchMock.mockReset();
   global.fetch = fetchMock as unknown as typeof fetch;
   process.env.WHATSAPP_CHANNEL_ON = 'true';
@@ -27,6 +33,17 @@ afterAll(() => {
 
 /** Misho, 25 Oct (via the frontend): a welcome in WhatsApp when the switch is turned on. */
 describe('the WhatsApp welcome', () => {
+  /** Misho, 27 Oct: the welcome is a paid template, held to the same caps. */
+  it('waits, unsent and unmarked, while the paid caps say no', async () => {
+    mockMayGo.mockResolvedValue(false);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ recent: false }] })
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000000' }] });
+    await expect(welcomeInWhatsapp(USER)).resolves.toBe(WelcomeStatus.Capped);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
   it('goes out as the approved template, once, and is recorded', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ recent: false }] })

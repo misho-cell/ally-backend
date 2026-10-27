@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import {
   WhatsAppDirection,
   WhatsAppKind,
+  paidTemplateMayGo,
   phoneOf,
   recordWhatsappMessage,
   sendTemplate,
@@ -29,6 +30,8 @@ export enum WelcomeStatus {
   ChannelOff = 'channel_off',
   AlreadySent = 'already_sent',
   NoPhone = 'no_phone',
+  /** The welcome is a paid template too; it waits while the caps say no. */
+  Capped = 'capped',
   Failed = 'failed',
 }
 
@@ -59,6 +62,7 @@ export async function welcomeInWhatsapp(userId: number): Promise<WelcomeStatus> 
     if (await welcomedRecently(userId)) return WelcomeStatus.AlreadySent;
     const phone = await phoneOf(userId);
     if (phone === null) return WelcomeStatus.NoPhone;
+    if (!(await paidTemplateMayGo(userId))) return WelcomeStatus.Capped;
     const wamid = await sendTemplate(phone, welcomeTemplate(), []);
     await markWelcomed(userId);
     await recordWhatsappMessage(

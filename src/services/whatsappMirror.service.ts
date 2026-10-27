@@ -56,6 +56,7 @@ export async function mirrorToWhatsapp(
   notice: MirroredNotice,
   reading: boolean,
   now: Date = new Date(),
+  highValue = false,
 ): Promise<void> {
   if (reading || !(await whatsappChannelOn())) return;
   const text = whatsappText(notice);
@@ -65,7 +66,7 @@ export async function mirrorToWhatsapp(
       await holdForMorning(userId, text, threadId, now);
       return;
     }
-    await tellInWhatsapp(userId, text, threadId);
+    await tellInWhatsapp(userId, text, threadId, highValue);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[whatsapp] notice for ${userId} not mirrored:`, (err as Error).message);

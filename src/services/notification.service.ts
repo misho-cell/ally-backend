@@ -99,6 +99,12 @@ export interface PushOptions {
    * reading the reply there, so no device of theirs is rung for it.
    */
   readonly askedFrom?: string | null;
+  /**
+   * Misho, 27 Oct: a notice worth a paid WhatsApp template outside the 24 h
+   * window (a question asked of the person, an introduction answered, news on
+   * their goal). Everything else reaches WhatsApp only inside the window.
+   */
+  readonly highValue?: boolean;
 }
 
 /** The device the owner asked from is still connected: they are reading it there. */
@@ -403,6 +409,8 @@ export async function sendPushNotification(
     options.askedFrom === WHATSAPP_DEVICE ||
       hasActiveConnection(userId) ||
       askerIsReading(options.askedFrom, connectedDevices(userId)),
+    new Date(),
+    options.highValue === true,
   );
 
   const result = await query<SubscriptionRow>(

@@ -199,6 +199,8 @@ describe('resolveIntroductionRequest', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '9',
       expect.objectContaining({ title: expect.any(String) }),
+      // An answered introduction is worth a WhatsApp template (Misho, 27 Oct).
+      { highValue: true },
     );
     expect(mockEvent).toHaveBeenCalledWith('7', 'request_resolved', {
       action: 'accept',
@@ -277,7 +279,7 @@ describe('resolveIntroductionRequest', () => {
     expect(update?.[0]).toContain("status = 'declined' AND $1 = 'accepted'");
     expect(update?.[0]).toContain('responded_by_user_id = $4::int');
     expect(update?.[0]).toContain('make_interval(hours => $7::int)');
-    expect(mockPush).toHaveBeenCalledWith('9', expect.anything());
+    expect(mockPush).toHaveBeenCalledWith('9', expect.anything(), { highValue: true });
     const asker = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
     expect(asker?.[3]).not.toContain('ვერ შეძლო');
   });
