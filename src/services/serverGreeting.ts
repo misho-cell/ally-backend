@@ -71,6 +71,13 @@ const HELLO_WORD_RE = /^(¡?)(?:გამარჯობა|Hello|Привет|H
  */
 export const MIRRORED_GREETING_ON = true;
 
+/**
+ * #7789 (3) (Misho, 27 Oct: the tester's DONE WHEN decides — „a hello gets
+ * only the model's short hello"): the import line no longer follows a hello on
+ * an empty phonebook. Back to true adds it again.
+ */
+export const IMPORT_LINE_AFTER_HELLO_ON = false;
+
 const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
 
 const GEORGIAN_TIME_OF_DAY_RE = /^(დილა|საღამო)\s*მშვიდობისა?/u;
@@ -116,7 +123,7 @@ export function greetingText(
   const hello = ASKS_HOW_I_AM_RE.test(greeting)
     ? opening.replace(AFTER_EXCLAMATION_RE, `! ${words.fine} `)
     : opening;
-  return hasContacts ? hello : `${hello} ${words.importContacts}`;
+  return hasContacts || !IMPORT_LINE_AFTER_HELLO_ON ? hello : `${hello} ${words.importContacts}`;
 }
 
 /** The registered name; null when it cannot be read, so the greeting goes without it. */

@@ -1,4 +1,4 @@
-import { namePartOfLabel } from './georgianScriptName';
+import { georgianScriptName, namePartOfLabel } from './georgianScriptName';
 import { query } from '../db/postgres/client';
 import { excludedHolderPhones } from './excludedHolders.service';
 import { geoName } from './georgianCase';
@@ -21,6 +21,15 @@ import { AccountDetails, fetchAccountStates, isMemberPhone } from './tools/membe
 const QUERY_TIMEOUT_MS = 5_000;
 const MAX_NAMES = 12;
 const NAME_SEPARATOR = ', ';
+
+/**
+ * #7789 (2) (Misho's yes, 27 Oct, „ა. კი"): a Georgian line printed account
+ * names as stored, in Latin („Netai-ზე არიან: Davit Gelashvili"). In Georgian
+ * the names are spelt in Georgian letters; other languages keep them as saved.
+ */
+function shownName(name: string, language: RunLanguage): string {
+  return language === 'ka' ? georgianScriptName(name) : name;
+}
 
 export interface MutualContact {
   readonly name: string;
@@ -55,7 +64,8 @@ const WORDS: Readonly<Partial<Record<RunLanguage, GroupWords>>> = {
 export function notOnNetaiLine(names: readonly string[], language: RunLanguage): string | null {
   const words = WORDS[language];
   if (words === undefined || names.length === 0) return null;
-  return `• ${words.notOnNetai}: ${names.join(NAME_SEPARATOR)}`;
+  const shown = names.map((n) => shownName(n, language));
+  return `• ${words.notOnNetai}: ${shown.join(NAME_SEPARATOR)}`;
 }
 
 /** The two groups as the owner reads them; null when nobody was found or the words are not approved. */
@@ -69,7 +79,7 @@ export function mutualGroupsText(
   const names = (onNetai: boolean): string =>
     contacts
       .filter((c) => c.onNetai === onNetai)
-      .map((c) => c.name)
+      .map((c) => shownName(c.name, language))
       .join(NAME_SEPARATOR);
   const lines = [
     words.heading(target),
@@ -386,7 +396,7 @@ export async function mutualGroupsFor(
     const first = names.get(planned.find((d) => names.has(d)) ?? '');
     const reason =
       withReason && language === 'ka' && first !== undefined
-        ? knowsLine({ via: first, to: target, knowsThem: true })
+        ? knowsLine({ via: shownName(first, language), to: target, knowsThem: true })
         : null;
     return groups === null || reason === null ? groups : `${groups}\n${reason}`;
   } catch (err) {

@@ -31,11 +31,11 @@ describe('a time-of-day greeting is answered in kind', () => {
     );
   });
 
-  it('leaves a plain hello and the import line as they are', () => {
+  it('leaves a plain hello as it is, with no import line (#7789)', () => {
     expect(greetingText('ნინო', true, 'ka', 'გამარჯობა', true)).toBe(
       'გამარჯობა, ნინო! რით დაგეხმარო?',
     );
-    expect(greetingText(null, false, 'ka', 'დილა მშვიდობისა', true)).toContain(
+    expect(greetingText(null, false, 'ka', 'დილა მშვიდობისა', true)).not.toContain(
       'კონტაქტები აპში შემოიტანე',
     );
   });

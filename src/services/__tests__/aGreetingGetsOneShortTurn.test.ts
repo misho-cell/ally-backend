@@ -85,7 +85,8 @@ describe('isBareGreeting', () => {
       'გამარჯობა! კარგად ვარ, მადლობა. რით დაგეხმარო?',
     );
     expect(greetingText(null, true, 'en')).toBe('Hello! How can I help?');
-    expect(greetingText(null, false, 'ka')).toContain('კონტაქტები აპში შემოიტანე');
+    // #7789 (3): an empty phonebook gets the same short hello, no import line.
+    expect(greetingText(null, false, 'ka')).toBe('გამარჯობა! რით დაგეხმარო?');
   });
 
   /** Task 695 (31886): the re-ask after a blank says the first try was empty. */

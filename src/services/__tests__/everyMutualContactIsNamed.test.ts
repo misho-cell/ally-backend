@@ -235,8 +235,9 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     const found = [{ name: 'მერაბ ჩიქოვანი', viaPhones: ['+995500000001', '+995500000002'] }];
     const text = await mutualGroupsFor('171', plan, found, 'ka', true);
     expect(text).toContain('მერაბ ჩიქოვანს იცნობენ შენი ეს ნაცნობები:');
-    expect(text).toContain('ვკითხავ: Eka Sharashidze, Luka Gelovani');
-    expect(text).toContain('Eka Sharashidze მერაბ ჩიქოვანს იცნობს.');
+    // #7789 (2): in Georgian the names are spelt in Georgian letters.
+    expect(text).toContain('ვკითხავ: ეკა შარაშიძე, ლუკა გელოვანი');
+    expect(text).toContain('ეკა შარაშიძე მერაბ ჩიქოვანს იცნობს.');
   });
 
   it('draws nothing when the go-betweens lead to two different people', async () => {
