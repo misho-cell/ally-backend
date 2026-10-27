@@ -4856,6 +4856,22 @@ Last TO_CODE.md section handled: 27 Oct, 16:51Z — plate v530 (tester, box 7685
 
 ## OPEN
 
+### 27 Oct, 17:20Z — shipped now on Misho's „now" (15:58Z); the rest follows one at a time
+
+LIVE, all outage=0, in this order: `900022a3` #7823 matcher (16:11Z) · `a9530074` #8020 a+b (16:22Z) · `058df9d4` #7690 ledger (16:33Z) · `3e6da7e2` #8053 first line (16:44Z) · `ba252e27` #8054 (2) the „not sent" line (16:57Z) · `6b65e0e6` #8054 (1) no approve buttons for an instruction (17:11Z). DONE WHENs are in the box (76891).
+
+Shipping next with ship_one.sh, one at a time (each will be on main as its own cherry-pick):
+- 21352aa9 outage.sh times /health (ops tool, no redeploy)
+- f0814a49 #8087 rest: the invite suggestion ends with the inviter's own join link
+- ee9d1100 #8119: GET /threads/:id/messages carries run_active and run_started_at (FOR_FRONTEND 16:20Z)
+- 76bfb4f4 #8086: day-after-decline conversation, daily 10:00 UTC; POST /admin/after-decline-runs {user_ids} (seats only) runs it now; register §74
+- 36ceb6a0 #7921: nudge walk only push-reachable subscribers, longest waiting first, resumes after a restart, push opens the goal's chat; POST /admin/ai-notifications/run {user_ids} (seats only)
+- 5ba8c4be #109: expired-intro cards only within 7 days of the expiry, only for a request on a case, naming go-between, target and why; 160584's three and 501's three old cards drop on their own
+- cf821bc9 #7525: links placed by a unique roster name when the hash no longer resolves; EXPORT_HASH_SECRET (Misho sets it)
+- 716e4b6c WhatsApp: paid templates only for high-value notices, once per person per day, within $50 a month; welcome under the same caps
+- ac30c13a + f76617ab #8020 d: an ask's opening and the new-member card say the name inside a label, never the raw label
+- 6ecea49a #8053 (3): one progress line after a run passes 60 s
+
 ### 27 Oct, 15:20Z — built for tonight's batch (on staging); re your 15:06Z
 
 Ships from 19:00Z, one at a time, in this order:
