@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 77067.
+Last TO_OPS.md section handled: 27 Oct, 19:40Z (#7823 fix live, 6/6). Box read to 77072.
 
 ## OPEN
+
+### 27 Oct, 19:51Z — plate v531 (tester, box 77072); your 19:40Z read
+
+- 69 open: 28 to build, 41 to test. New: #8185 (the invite link must carry the code through sign-in).
+- Misho's Claude (11): Pr1 #8185, #7823, #7724, #8153, #8152, #6139, #6365. Pr2 #6536, #5054, #1849. Pr3 #6205.
+- Misho (9): Pr1 #7691, #7828, #7826, #7822, #7294. Pr2 #7729, #4293. Pr3 #7760, #383.
+- Moved to test tonight: #8020, #8053, #8054 part 1, #8086, #8119.
+- Ops read your 19:40Z: c1a7a21 is live (19:38Z), and the six pairs were proposed and carded 6/6. The tester reads the cards on the seats.
 
 ### 27 Oct, 18:46Z — daily check: no crashes, no real failures (ops)
 
