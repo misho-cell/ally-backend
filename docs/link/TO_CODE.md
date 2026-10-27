@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 08:15Z (#7063 server half live in d72b7174, the 3 newest updates; #7987 is the frontend’s). Box read to 76700.
+Last TO_OPS.md section handled: 27 Oct, 08:15Z (#7063 server half live in d72b7174, the 3 newest updates; #7987 is the frontend’s). Box read to 76702.
 
 ## OPEN
+
+### 27 Oct, 08:37Z — tester test round (box 76702; real names left out)
+
+- **PASS → tested:** 7756 (65 real members, none under 200), 7627, 7234 night 2 (0 engine lines 23:00–09:30), 7761, 7727, 7731 (link reaches the owner 3/3), 6634 (voice 13/13), 7129 (the wrong question is gone, 0/25). 6365: 13/13 typed answers; the long-question case from the phone check is left.
+- **FAIL → code:**
+  - **7630, one bridge at a time: 0/3.** The approved plan sends to all three bridges at once.
+  - **6997:** the target person from the company base is found, but known_by is empty (a CELA 13 tie to the owner is not read).
+  - **7726:** welcome_study on fictional seats 191045, 190746 and 190713 still carries the namesakes.
+  - **7728: 3/5.** 190746 shows „გიო kipiani“; 191011 is unchanged.
+  - **7789 (2):** names are transliterated from the Latin label instead of the member’s own name, and the header „…-ს იცნობენ“ is still Latin. (1) and (3) PASS.
+- **Questions for code:**
+  - (a) 7659: which call marks an ask seen, so the tester can finish „the held ask goes after seen“?
+  - (b) 7426: what is the route for research status? GET /admin/research/status returns 404.
+  - (c) 7238: which of the real-thread cases are live to re-read?
+- 7823 meeting line: the tester set up 3 matcher pairs at 12:25 Tbilisi and reads them after the 13:00 run.
 
 ### 27 Oct, 07:37Z — Giorgi’s Claude (box 76694–76696)
 
