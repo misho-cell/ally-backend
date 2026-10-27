@@ -3,7 +3,7 @@ import { netaiMember } from './netaiMembership';
 import { PACE_UNTIL_SEEN_ON, previousAskUnseen, previousAskUnseenNote } from './paceUntilSeen';
 import { goalWaitsForMorning } from './quietWakeGuard';
 import { ALREADY_ON_CARD } from './answerCardGuard';
-import { georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
+import { georgianScriptName, learnGeorgianSpellings, nameInsideLabel } from './georgianScriptName';
 import { nameAsReaderSaved, nameFromLabel } from './readerSavedName';
 import { MAX_RELAYS_IN_A_CHAIN, relaysBefore } from './relayChain';
 export { MAX_RELAYS_IN_A_CHAIN } from './relayChain';
@@ -220,9 +220,13 @@ async function senderNameForReader(
 ): Promise<string> {
   if (registered === '') return '';
   const saved = await nameAsReaderSaved(Number(toUserId), Number(fromUserId), registered);
-  if (language !== 'ka') return saved;
-  await learnGeorgianSpellings([saved]);
-  return georgianScriptName(saved);
+  // #8020 (d) (case 63857): the reader's label read „ლაშა Kurashvili. ახელ” in a
+  // server line. Only the name inside the label is taken; a label with no
+  // name in it gives way to the member's own Netai name.
+  const name = nameInsideLabel(saved) ?? nameInsideLabel(registered) ?? registered;
+  if (language !== 'ka') return name;
+  await learnGeorgianSpellings([name]);
+  return georgianScriptName(name);
 }
 
 export function askThreadTitle(senderName: string, snippet: string): string {

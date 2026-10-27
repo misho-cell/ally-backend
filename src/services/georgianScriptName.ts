@@ -173,6 +173,22 @@ export function namePartOfLabel(label: string): string | null {
   return isSurname ? `${first} ${next}` : first;
 }
 
+/** The pieces an old-Ally label is cut into: „LIST. Lika Osepashvili. Ally. Force”. */
+const LABEL_PIECES_RE = /[.,;|/]+/u;
+
+/**
+ * #8020 (d), #109: the name inside a phonebook label, whatever the label adds
+ * around it („ლაშა Kurashvili. ახელ”, „LIST. Lika Osepashvili. Ally. Force”);
+ * null when no piece of it opens on a first name.
+ */
+export function nameInsideLabel(label: string): string | null {
+  for (const piece of label.split(LABEL_PIECES_RE)) {
+    const name = namePartOfLabel(piece);
+    if (name !== null) return name;
+  }
+  return null;
+}
+
 /** The first name only, as a Georgian line writes it. */
 export function georgianFirstName(name: string): string {
   const first = withoutAllyWord(name).split(WORD_SPLIT_RE)[0] ?? '';
