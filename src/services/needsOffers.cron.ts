@@ -25,6 +25,15 @@ const CARD_HOUR_UTC = 8;
  */
 const CARD_WINDOW_END_UTC = 18;
 
+/**
+ * OUTAGE 27 Oct ~10:15Z (Misho: „ვერ შედიან"): the hourly matcher run scans
+ * every open goal against every offer in one synchronous loop; since the
+ * 5,000-candidate bound (26 Oct) it holds the event loop for minutes and the
+ * whole server stops answering. Off until the scan is rebuilt to yield; the
+ * daily cards for pairs already proposed still go.
+ */
+export const MATCHER_RUN_ON = false;
+
 let lastRunHour: string | null = null;
 let lastCardDay: string | null = null;
 
@@ -63,7 +72,7 @@ export function startNeedsOffersMatcher(): void {
           console.error('[matcher] cards failed:', (err as Error).message),
         );
     }
-    if (!isMatchHour(now, lastRunHour)) return;
+    if (!MATCHER_RUN_ON || !isMatchHour(now, lastRunHour)) return;
     lastRunHour = runHourOf(now);
     void proposeMatches()
       .then((n) => {
