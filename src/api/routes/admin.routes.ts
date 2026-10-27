@@ -428,6 +428,11 @@ import {
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
 import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
 import {
+  MAX_NUDGE_SEATS,
+  NudgeSeatOutcome,
+  runNudgesForSeats,
+} from '../../services/aiNotification.service';
+import {
   MAX_SEATS_PER_RUN as MAX_AFTER_DECLINE_SEATS,
   runAfterDeclineForSeats,
   SeatRunOutcome,
@@ -9175,6 +9180,46 @@ adminRouter.post('/after-decline-runs', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[after-decline-runs]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The run did not complete' });
+  }
+});
+
+/** #7921 (box 76722): the morning nudge, now, on fictional seats only. */
+const NUDGE_SEAT_STATUS: Readonly<Record<NudgeSeatOutcome, number>> = {
+  [NudgeSeatOutcome.BadInput]: 400,
+  [NudgeSeatOutcome.NotATestSeat]: 403,
+  [NudgeSeatOutcome.Ran]: 200,
+};
+
+const NUDGE_SEAT_ERROR: Readonly<Record<NudgeSeatOutcome, string>> = {
+  [NudgeSeatOutcome.BadInput]: `user_ids: 1 to ${MAX_NUDGE_SEATS} seat ids`,
+  [NudgeSeatOutcome.NotATestSeat]: 'Only fictional test seats are run here',
+  [NudgeSeatOutcome.Ran]: '',
+};
+
+adminRouter.post('/ai-notifications/run', async (req: Request, res: Response) => {
+  const raw: unknown = (req.body as { user_ids?: unknown }).user_ids;
+  const seatIds = Array.isArray(raw)
+    ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    : [];
+  try {
+    const run = await runNudgesForSeats(
+      Array.isArray(raw) && seatIds.length === raw.length ? seatIds : [],
+    );
+    if (run.outcome !== NudgeSeatOutcome.Ran) {
+      res
+        .status(NUDGE_SEAT_STATUS[run.outcome])
+        .json({ success: false, error: NUDGE_SEAT_ERROR[run.outcome] });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ai-notif] admin ${(req as AuthenticatedRequest).user.userId} ran the nudge for ${run.ran} seat(s)`,
+    );
+    res.status(200).json({ success: true, data: { ran: run.ran } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[ai-notifications/run]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The run did not complete' });
   }
 });
