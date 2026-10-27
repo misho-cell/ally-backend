@@ -72,6 +72,7 @@ import {
 import {
   WORKING_LINE_TOOLS,
   forgetWorkingLineRun,
+  postFirstLine,
   postWorkingLineOnce,
 } from './workingLine.service';
 import Anthropic from '@anthropic-ai/sdk';
@@ -13852,6 +13853,33 @@ export function isAnswerRound(roundToolNames: readonly string[]): boolean {
   return roundToolNames.some((name) => ANSWER_ROUND_TOOLS.has(name));
 }
 
+/** The searches whose first round's text is posted at once as a line (#8053). */
+const FIRST_LINE_TOOLS: ReadonlySet<string> = new Set([
+  ...WORKING_LINE_TOOLS,
+  'search_contact_by_name',
+]);
+
+/**
+ * #8053: the text beside the FIRST round of an owner's run is posted at once
+ * as a real line when that round searches. Not on a wake (nobody is waiting),
+ * not beside a plan or choices (the reply carries those), and not in a run that
+ * repeats an open goal (that text is its answer, 1160).
+ */
+export function firstLineIsDue(
+  iteration: number,
+  ownerAbsent: boolean,
+  roundToolNames: readonly string[],
+  repeatsAGoal: boolean,
+): boolean {
+  return (
+    iteration === 1 &&
+    !ownerAbsent &&
+    !repeatsAGoal &&
+    !isAnswerRound(roundToolNames) &&
+    roundToolNames.some((name) => FIRST_LINE_TOOLS.has(name))
+  );
+}
+
 /**
  * The tester's 1133 (E10, 36536): Claude wrote its answer beside set_task_wake
  * („…აღარაფერი გჭირდება generar?"), GPT wrote the final from the same
@@ -14977,7 +15005,13 @@ async function runToolLoop(
       );
       // Not emitted, not persisted, and NOT eligible for the buried-answer
       // rescue — all three, or the sentence simply moves to another screen.
-      if (narration && narrationIsSafeToPublish(roundTools)) {
+      if (
+        narration &&
+        narrationIsSafeToPublish(roundTools) &&
+        firstLineIsDue(iterations, ownerAbsent, roundTools, runRepeatedGoal.has(runId))
+      ) {
+        await postFirstLine(userId, threadId, runId, narration);
+      } else if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         stepTexts.push(narration);
