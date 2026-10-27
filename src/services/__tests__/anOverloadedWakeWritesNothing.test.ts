@@ -103,3 +103,22 @@ describe('a wake whose model call fails', () => {
     });
   });
 });
+
+/** #8020 (case 63857): plan cards were pushed by wakes into a chat holding another member's question. */
+describe('a wake on a goal that sits on a question chat', () => {
+  it('stops before any run or line, and leaves the chat as it was', async () => {
+    (getThread as jest.Mock).mockResolvedValue({
+      id: THREAD_ID,
+      type: 'incoming_ask',
+      status: 'needs_you',
+      status_line: null,
+    } as Thread);
+
+    const result = await wakeTask(TASK_ID, 'ნაბიჯი');
+
+    expect(result).toBe('stopped');
+    expect(processChat).not.toHaveBeenCalled();
+    expect(saveThreadMessage).not.toHaveBeenCalled();
+    expect(setThreadStatus).not.toHaveBeenCalled();
+  });
+});

@@ -582,6 +582,22 @@ describe('a run in the shared conversation', () => {
     expect(names).toContain('respond_to_introduction');
   });
 
+  /** #8020 (case 63857): a question chat opens no goal and shows no plan; a note still can be kept. */
+  it('holds no goal or plan tool in a question chat, and a note tool still', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    const inAsk = (await buildToolsForThread(String(MEDIATOR), 'incoming_ask')).map((t) => t.name);
+    const inChat = (await buildToolsForThread(String(MEDIATOR))).map((t) => t.name);
+
+    for (const name of ['create_task', 'propose_task_plan', 'approve_task_plan']) {
+      expect(inAsk).not.toContain(name);
+    }
+    expect(inAsk).not.toContain('grant_task_permission');
+    expect(inAsk).toContain('save_user_note');
+    expect(inChat).toContain('create_task');
+    expect(inChat).toContain('propose_task_plan');
+  });
+
   it('names the two items apart, so a bare „yes" is asked about', () => {
     const section = buildTwoItemsSection(9001, REQUEST_ID, 'Nika');
 
