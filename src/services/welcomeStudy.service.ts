@@ -207,11 +207,12 @@ export async function stripWebFromStudies(
   userIds: readonly number[],
   dryRun: boolean,
 ): Promise<StrippedStudy[]> {
-  const result = await query<{ user_id: number; value: string }>(
+  // user_private_context.user_id is text: the ids are compared as text.
+  const result = await query<{ user_id: string; value: string }>(
     `SELECT user_id, value FROM user_private_context
-      WHERE key = $1 AND user_id = ANY($2::int[]) AND value LIKE '%' || $3 || '%'
+      WHERE key = $1 AND user_id = ANY($2::text[]) AND value LIKE '%' || $3 || '%'
       LIMIT $4`,
-    [WELCOME_STUDY_KEY, userIds, WEB_SECTION_HEADING.trim(), MAX_STRIP_USERS],
+    [WELCOME_STUDY_KEY, userIds.map(String), WEB_SECTION_HEADING.trim(), MAX_STRIP_USERS],
     STUDY_TIMEOUT_MS,
   );
   if (!dryRun) {
@@ -223,5 +224,5 @@ export async function stripWebFromStudies(
       );
     }
   }
-  return result.rows.map((r) => ({ user_id: r.user_id, before: r.value }));
+  return result.rows.map((r) => ({ user_id: Number(r.user_id), before: r.value }));
 }
