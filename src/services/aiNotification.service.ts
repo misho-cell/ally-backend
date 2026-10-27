@@ -13,6 +13,7 @@ export const AI_NOTIFICATION_PUSH_URL = '/chat';
 
 const NOTIFICATION_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_RECENT_MESSAGES = 12;
+const NUDGE_URL_TIMEOUT_MS = 3_000;
 const MAX_TOP_CONTACTS = 10;
 /** #7921: the people the owner is waiting on, as many as a short push can mention. */
 const MAX_WAITING_ON = 8;
@@ -98,6 +99,35 @@ async function namesWaitedOn(userId: string): Promise<string[]> {
     [userId, WAITING_ON_DAYS, MAX_WAITING_ON],
   );
   return result.rows.map((r) => r.name?.trim() ?? '').filter((n) => n !== '');
+}
+
+/**
+ * #7921 / #1816: a tap opens the conversation the nudge is about — the goal
+ * whose answers the owner is waiting on — or their latest conversation, and
+ * only failing both the chat list.
+ */
+export async function nudgePushUrl(userId: string): Promise<string> {
+  try {
+    const result = await query<{ thread_id: number }>(
+      `SELECT thread_id FROM (
+         SELECT k.thread_id, 1 AS rank, ta.created_at AS at
+           FROM task_asks ta JOIN tasks k ON k.id = ta.task_id
+          WHERE ta.from_user_id = $1::int AND ta.status = 'sent' AND k.thread_id IS NOT NULL
+         UNION ALL
+         SELECT t.id, 2, t.updated_at FROM threads t WHERE t.user_id::text = $1
+       ) c
+       ORDER BY rank, at DESC
+       LIMIT 1`,
+      [userId],
+      NUDGE_URL_TIMEOUT_MS,
+    );
+    const threadId = result.rows[0]?.thread_id;
+    return threadId === undefined ? AI_NOTIFICATION_PUSH_URL : `/chat/${threadId}`;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[ai-notif] push url for ${userId} not read:`, (err as Error).message);
+    return AI_NOTIFICATION_PUSH_URL;
+  }
 }
 
 function formatContext(ctx: UserContext): string {
@@ -352,7 +382,7 @@ export async function sendAiNotification(userId: string): Promise<void> {
     await sendPushNotification(userId, {
       title: content.title,
       body: content.body,
-      url: AI_NOTIFICATION_PUSH_URL,
+      url: await nudgePushUrl(userId),
     });
     await query(`UPDATE ai_notification_log SET push_sent = true WHERE id = $1`, [
       logResult.rows[0].id,
@@ -367,4 +397,47 @@ export async function sendAiNotification(userId: string): Promise<void> {
     `UPDATE ai_notification_settings SET last_sent_at = NOW(), updated_at = NOW() WHERE user_id = $1`,
     [userId],
   );
+}
+
+export enum NudgeSeatOutcome {
+  BadInput = 'bad_input',
+  NotATestSeat = 'not_a_test_seat',
+  Ran = 'ran',
+}
+
+/** The on-demand run takes a few seats, never a sweep. */
+export const MAX_NUDGE_SEATS = 10;
+const SEAT_QUERY_TIMEOUT_MS = 4_000;
+
+/**
+ * #7921 (box 76722): the nudge, now, for fictional seats the morning walk never
+ * reached. Every id must be a test seat; each is written to ai_notification_log
+ * as the walk would, and pushed where the seat has a subscription.
+ */
+export async function runNudgesForSeats(
+  seatIds: readonly number[],
+): Promise<{ readonly outcome: NudgeSeatOutcome; readonly ran: number }> {
+  const unique = [...new Set(seatIds)];
+  if (unique.length === 0 || unique.length > MAX_NUDGE_SEATS) {
+    return { outcome: NudgeSeatOutcome.BadInput, ran: 0 };
+  }
+  const seats = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM test_seats WHERE user_id = ANY($1::int[])`,
+    [unique],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  if ((seats.rows[0]?.n ?? 0) !== unique.length) {
+    return { outcome: NudgeSeatOutcome.NotATestSeat, ran: 0 };
+  }
+  let ran = 0;
+  for (const seatId of unique) {
+    try {
+      await sendAiNotification(String(seatId));
+      ran += 1;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[ai-notif] seat ${seatId}:`, (err as Error).message);
+    }
+  }
+  return { outcome: NudgeSeatOutcome.Ran, ran };
 }
