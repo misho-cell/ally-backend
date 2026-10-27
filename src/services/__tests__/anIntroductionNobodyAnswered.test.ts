@@ -10,7 +10,9 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { queueResult } from '../pendingUpdates.service';
 import {
+  cleanedName,
   expireUnansweredRequests,
+  shortWhy,
   introductionsThatWouldExpire,
   introductionExpiryCounts,
   tellAskersTheirRequestExpired,
@@ -103,7 +105,13 @@ describe('what the sweep does, and what it refuses to do', () => {
    */
   it('queues a card for the asker and nothing for the helper', async () => {
     await tellAskersTheirRequestExpired([
-      { id: 1057, requester_user_id: '501', target_name: 'Nino', days_waiting: 20 },
+      {
+        id: 1057,
+        requester_user_id: '501',
+        target_name: 'Nino',
+        days_waiting: 20,
+        requester_task_id: 4400,
+      },
     ]);
 
     expect(mockQueue).toHaveBeenCalledTimes(1);
@@ -119,8 +127,14 @@ describe('what the sweep does, and what it refuses to do', () => {
 });
 
 describe('what the asker reads', () => {
+  const NOW = new Date('2026-10-27T12:00:00Z');
+  const RECENT = '2026-10-25T12:00:00Z';
   const card = (payload: Record<string, unknown>) =>
-    renderPendingMessage({ kind: 'intro_expired', task_id: null, payload }, 'en');
+    renderPendingMessage(
+      { kind: 'intro_expired', task_id: null, payload: { expired_at: RECENT, ...payload } },
+      'en',
+      NOW,
+    );
 
   it('says it is closed AND that they may ask again', () => {
     const out = card({ who: 'Nino', days_waiting: 20, request_id: 1057 });
@@ -142,6 +156,53 @@ describe('what the asker reads', () => {
   it('says nothing at all when it cannot name who it was about', () => {
     expect(card({ days_waiting: 20 })).toBeNull();
     expect(card({ who: 'Nino' })).toBeNull();
+  });
+
+  /** #109: the 26 Sep sweep's cards were drip-released a month late. */
+  it('is not shown more than a week after the expiry, nor without its date', () => {
+    expect(card({ who: 'Nino', days_waiting: 20, expired_at: '2026-10-19T12:00:00Z' })).toBeNull();
+    expect(card({ who: 'Nino', days_waiting: 20, expired_at: undefined })).toBeNull();
+  });
+
+  /** #109: who was asked to introduce whom, and why. */
+  it('says who was asked to introduce whom, and why', () => {
+    const out = card({
+      who: 'Nino',
+      mediator: 'Giorgi',
+      why: 'a notary for the flat',
+      days_waiting: 20,
+    });
+    expect(out?.text).toContain('You asked Giorgi to introduce you to Nino');
+    expect(out?.text).toContain('a notary for the flat');
+  });
+});
+
+/** #109: what goes on the card, and which requests get none. */
+describe('the expiry card’s payload (#109)', () => {
+  it('cleans a phonebook label into a name', () => {
+    expect(cleanedName('LIST. Lika Osepashvili. Ally. Force')).not.toContain('Ally');
+    expect(cleanedName('Ally Nino')).toBe('Nino');
+    expect(cleanedName('  ')).toBeNull();
+  });
+
+  it('keeps the first sentence of the request, short', () => {
+    expect(shortWhy('I need a notary. Soon, please.')).toBe('I need a notary');
+    expect(shortWhy('')).toBeNull();
+    expect((shortWhy('x'.repeat(200)) ?? '').length).toBeLessThanOrEqual(81);
+  });
+
+  it('queues nothing for a request that was for no case', async () => {
+    mockQueue.mockClear();
+    await tellAskersTheirRequestExpired([
+      {
+        id: 10007,
+        requester_user_id: '501',
+        target_name: 'Nino',
+        days_waiting: 40,
+        requester_task_id: null,
+      },
+    ]);
+    expect(mockQueue).not.toHaveBeenCalled();
   });
 });
 

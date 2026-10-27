@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { namePartOfLabel, withoutAllyWord } from './georgianScriptName';
 import { queueResult } from './pendingUpdates.service';
 
 /**
@@ -31,12 +32,43 @@ const EXPIRED_STATUS = 'expired';
 const EXPIRED_KIND = 'intro_expired';
 /** A sweep touches real people's rows; a runaway one must not touch all of them. */
 const MOST_PER_SWEEP = 50;
+/** #109: the card's „why" is the start of the asker's own words, one line. */
+const WHY_CHARS = 80;
+/** The pieces an old-Ally label is cut into: „LIST. Lika Osepashvili. Ally. Force”. */
+const LABEL_PARTS_RE = /[.,;|/]+/u;
+
+/** #109: a name as a person would write it, not a phonebook label („LIST. Lika … Ally"). */
+export function cleanedName(label: string | null): string | null {
+  if (label === null || label.trim() === '') return null;
+  const parts = label
+    .split(LABEL_PARTS_RE)
+    .map((part) => withoutAllyWord(part).trim())
+    .filter((part) => part !== '');
+  for (const part of parts) {
+    const name = namePartOfLabel(part);
+    if (name !== null) return name;
+  }
+  return parts[0] ?? null;
+}
+
+/** #109: the first sentence of the request, cut to one short line. */
+export function shortWhy(message: string | null): string | null {
+  const first = (message ?? '').split(/[.!?\n]/u)[0]?.trim() ?? '';
+  if (first === '') return null;
+  return first.length > WHY_CHARS ? `${first.slice(0, WHY_CHARS).trimEnd()}…` : first;
+}
 
 export interface ExpiredRequest {
   readonly id: number;
   readonly requester_user_id: string;
   readonly target_name: string | null;
   readonly days_waiting: number;
+  /** #109: who was asked to make the introduction, by their own Netai name. */
+  readonly mediator_name?: string | null;
+  /** #109: the case it was for; a request with none is closed without a card. */
+  readonly requester_task_id?: number | null;
+  /** #109: the asker's own words, for the card's „why". */
+  readonly message?: string | null;
 }
 
 /**
@@ -121,7 +153,10 @@ export async function expireUnansweredRequests(limit = MOST_PER_SWEEP): Promise<
      RETURNING ir.id,
                ir.requester_user_id,
                ir.target_name,
-               FLOOR(EXTRACT(EPOCH FROM (NOW() - ir.created_at)) / 86400)::int AS days_waiting`,
+               FLOOR(EXTRACT(EPOCH FROM (NOW() - ir.created_at)) / 86400)::int AS days_waiting,
+               (SELECT u.name FROM "User" u WHERE u.id = ir.mediator_user_id) AS mediator_name,
+               ir.requester_task_id,
+               ir.message`,
     [EXPIRED_STATUS, UNANSWERED_IS_STALE_DAYS, Math.max(1, Math.min(limit, MOST_PER_SWEEP))],
     EXPIRY_TIMEOUT_MS,
   );
@@ -142,9 +177,14 @@ export async function tellAskersTheirRequestExpired(
 ): Promise<number> {
   let told = 0;
   for (const request of expired) {
+    // #109: a request that was for no case is closed without a card.
+    if (request.requester_task_id === null || request.requester_task_id === undefined) continue;
     await queueResult(request.requester_user_id, null, EXPIRED_KIND, {
       request_id: request.id,
-      who: request.target_name,
+      who: cleanedName(request.target_name),
+      mediator: cleanedName(request.mediator_name ?? null),
+      why: shortWhy(request.message ?? null),
+      expired_at: new Date().toISOString(),
       days_waiting: request.days_waiting,
       instruction:
         `An introduction the user asked for ${request.days_waiting} days ago was never answered, ` +
