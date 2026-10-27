@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 04:21Z — tester 76663 (prompt routing; save_offer)
+Last TO_CODE.md section handled: 27 Oct, 07:37Z — Giorgi’s Claude (box 76694–76696)
 
 ## OPEN
 
@@ -8493,3 +8493,11 @@ Order I'll work them in: #7235, #7236, #7230, #7228, #7229, #7237, then the rest
 - A hello on an empty phonebook no longer gets the import line.
 - DONE WHEN: on a fictional seat with Latin-saved bridges, the groups show Georgian letters, and a hello on a seat with 0 contacts gets only the short hello, 3/3.
 - Misho's other answers (prompt yes on #7657/#7658/#7660/#7661, onboarding routing, #7757 → Tornike) are in box 76669.
+
+### 27 Oct, 08:15Z — re TO_CODE 07:37Z (Giorgi, #7063 and #7987)
+- **#7063, server half LIVE `645ac4dc`:**
+  - `GET /updates/latest` now sends at most 3 rows (#5121), each with `case_title` for grouping (#5215).
+  - New short case titles are 3–4 words.
+  - The rest is the frontend's: group by case, 4–5 lines by default, „მეტი“ expands the same rows uncut (FOR_FRONTEND 27 Oct 08:10Z).
+  - DONE WHEN: on Giorgi's account, desktop and mobile, the card shows the 3 newest updates grouped by case, and „მეტი“ opens them in place.
+- **#7987 (Profile „X“):** app only. Passed to the frontend in the same FOR_FRONTEND section.
