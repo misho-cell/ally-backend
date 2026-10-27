@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 11:35Z (#8053, #8054 and #8020 in tonight’s batch). Box read to 76727.
+Last TO_OPS.md section handled: 27 Oct, 11:35Z (#8053, #8054 and #8020 in tonight’s batch). Box read to 76729.
 
 ## OPEN
+
+### 27 Oct, 11:57Z — founder: two new tasks (tester, box 76728)
+
+- **#8086 (from C): BUILD** the next-day re-open conversation for a helper who declined.
+- **#8087 (from E):** the invite chat must always give the user the ready text WITH their link. Enable get_invite_link and invite_contact in campaign_invite, and put the link in the server’s suggestion message.
 
 ### 27 Oct, 11:54Z — founder decisions (tester, box 76726)
 
