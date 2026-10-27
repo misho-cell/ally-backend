@@ -50,6 +50,18 @@ describe('a reply that says an offer was saved', () => {
     ).toBe(false);
   });
 
+  it('leaves a helper’s „offer them to him" alone (#8218, tester 77127)', () => {
+    const helper = 'ჯერ არავინ ვიცი, დაიმახსოვრე და თუ ვინმე გამოჩნდა, შესთავაზე';
+    expect(
+      offerClaimWithoutTool('დავიმახსოვრე, თუ ვინმე გამოჩნდა, გეტყვი.', ['save_user_note'], helper),
+    ).toBe(false);
+  });
+
+  it('still catches the owner offering in the first person', () => {
+    const own = 'შემიძლია შევთავაზო იურიდიული კონსულტაცია, დაიმახსოვრე';
+    expect(offerClaimWithoutTool('დავიმახსოვრე: იურიდიული კონსულტაცია.', [], own)).toBe(true);
+  });
+
   it('is caught in English too', () => {
     expect(
       offerClaimWithoutTool('I saved your offer.', [], 'Save this as my offer: logistics in Poti'),

@@ -17,6 +17,17 @@ import { NotDeletedLine } from './deletionClaim';
  */
 const OFFER_WORD_RE = /(თავაზ(?!იან)|\boffer|предлож|предлага|\boferta|\bofrec)/iu;
 
+/**
+ * #8218 (tester 77127, prompt v13, 17 of 17 runs): a helper's „ჯერ არავინ ვიცი,
+ * დაიმახსოვრე და თუ ვინმე გამოჩნდა, შესთავაზე" — „offer them to him" — was
+ * taken for the owner offering a service, and the note Netai really saved was
+ * replaced by „not saved". The OWNER's line counts only when it offers
+ * something of their own: the noun („შეთავაზება") or a first-person verb
+ * („ვთავაზობ", „შევთავაზო"). The imperative to Netai („შესთავაზე", „სთავაზე")
+ * carries neither.
+ */
+const OWNER_OFFERS_RE = /(შეთავაზებ|ვთავაზ|\boffer|предлож|предлага|\boferta|\bofrec)/iu;
+
 const SAVED_WORDS: readonly string[] = [
   'დავიმახსოვრე',
   'შევინახე',
@@ -58,7 +69,7 @@ export function offerClaimWithoutTool(
   ownerLine: string,
 ): boolean {
   return (
-    OFFER_WORD_RE.test(ownerLine) &&
+    OWNER_OFFERS_RE.test(ownerLine) &&
     replySpeaksOfTheOffer(reply, ownerLine) &&
     CLAIMS_SAVED_RE.test(reply) &&
     !toolNamesUsed.includes(SAVE_OFFER_TOOL_NAME)
