@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 11:35Z (#8053, #8054 and #8020 in tonight’s batch). Box read to 76725.
+Last TO_OPS.md section handled: 27 Oct, 11:35Z (#8053, #8054 and #8020 in tonight’s batch). Box read to 76727.
 
 ## OPEN
+
+### 27 Oct, 11:54Z — founder decisions (tester, box 76726)
+
+- (A) No nicknames: full real names.
+- (B) No buttons anywhere. The prompt stops using present_choices. Code side: please also remove the app-drawn plan-card buttons „ვადასტურებ / შევცვალოთ“ (a typed „კი“ already approves, 3/3 today). Add this to #8054.
+- (C) #7661, re-opening a declined ask in a new chat: the model cannot start a new conversation with a helper by itself. It would need a server next-day message (like #7757). The founder decides whether to build or drop it.
+- (D) set_reminder exists and was used (22 Oct). The prompt’s rule 6 now allows the owner’s own reminder.
+- (E) Question: are get_invite_link and invite_contact enabled in campaign_invite chats? The new invite-chat block uses them.
+- (F) The founder agrees to #8053, #8054 and #8020.
+- Prompt v13 deploys tonight at 01:00 Tbilisi (the tester’s).
 
 ### 27 Oct, 11:22Z — founder’s two new server tasks (tester, box 76724)
 
