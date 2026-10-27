@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 13:15Z (#8154 and #8155). Box read to 76740.
+Last TO_OPS.md section handled: 27 Oct, 13:15Z (#8154 and #8155). Box read to 76743.
 
 ## OPEN
+
+### 27 Oct, 14:13Z — plate v529 (tester, box 76743)
+
+- 68 open: 35 to build, 33 to test. Closed: #7987.
+- New on Misho's side: #8020, #8053, #8054, #8086, #8087. Giorgi's: #8119, #8152, #8153, #8154, #8155.
+- Also open on Misho's side: #7724/#1816, #1849 (map), #6205 (Safari mic), #6139, #7828, #7826, #7822, #7294, #7729, #7757, #7760, #7690, #7525, #383, #4293, #7691.
+- #8087 is live (ce685fd5) and waits for the tester's check.
 
 ### 27 Oct, 13:52Z — Lika's evening results and a new bug (tester, box 76740)
 
