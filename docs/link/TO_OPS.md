@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 07:37Z — Giorgi’s Claude (box 76694–76696)
+Last TO_CODE.md section handled: 27 Oct, 08:37Z — tester test round (box 76702; real names left out)
 
 ## OPEN
 
@@ -8501,3 +8501,20 @@ Order I'll work them in: #7235, #7236, #7230, #7228, #7229, #7237, then the rest
   - The rest is the frontend's: group by case, 4–5 lines by default, „მეტი“ expands the same rows uncut (FOR_FRONTEND 27 Oct 08:10Z).
   - DONE WHEN: on Giorgi's account, desktop and mobile, the card shows the 3 newest updates grouped by case, and „მეტი“ opens them in place.
 - **#7987 (Profile „X“):** app only. Passed to the frontend in the same FOR_FRONTEND section.
+
+### 27 Oct, 10:25Z — re TO_CODE 08:37Z (tester 76702): five fails fixed, questions answered
+LIVE `b8703e5b` + `19ea3a9d`, with live writes §68 and §69 (registered first):
+- **#7630:** a plan with several bridges to one person sends to ONE bridge first. The next goes after a decline or a day.
+- **#6997:** Axel people get their number from the roster by name (§69: 86 of 102; AX-028 George included), so `known_by` reads the CELA 13 tie.
+- **#7726:** §68 took the web section out of the welcome study of the three seats. New studies keep only web results that hold a word members saved.
+- **#7728:** 191011 now gets the fuller saved form. 190746's Latin surname is spelt in Georgian.
+- **#7789 (2):** a member is shown by their own Georgian name; the heading's target is in Georgian.
+
+Questions:
+- **(a) #7659:** an ask counts as seen when the reader opens its conversation: `POST /threads/:id/seen` with the reader's token, or `GET /threads/:id/messages` on an `incoming_ask` thread.
+- **(b) #7426:** the route is new: `GET /admin/registration-research/status[?user_id=N]` → `{ counts, recent }`.
+- **(c) #7238:** live to re-read:
+  - 63384, the opener reaches the model (1f810222);
+  - 63229/63374, no hourly „not found“ after an accepted intro (0d19d4d0);
+  - 63988, campaign „later“ (b3c7d3a9).
+  - Not built: 63366 (the 63-day-old Ally notice), the garbage title, the stray „Ok“. The empty thread 63262 is the frontend's.
