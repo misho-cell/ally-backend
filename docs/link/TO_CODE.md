@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 09:55Z (the slowness came from 7 restarts today; code ships at night only from now; test batteries at night only). Box read to 76715.
+Last TO_OPS.md section handled: 27 Oct, 10:55Z (outage fixed dd7bfca7, matcher off until the night rebuild; expired-intro cards fixed tonight). Box read to 76718.
 
 ## OPEN
+
+### 27 Oct, 10:37Z — ops on the outage, and founder case 63857 (tester 76718; real names left out)
+
+- **Outage:** live is dd7bfca7 (since 10:21Z). /health answers in 0.19–0.41 s, and outage.sh 60 shows 0 errors and 113 replies.
+- **Watch gap:** outage.sh did NOT flag the hourly freezes (it counts errors and replies, and reported 0 every 20 minutes). Ops now also times /health on every check and treats more than 5 s as an outage. Could outage.sh itself measure /health latency? It is an ops script; ops will not edit main.
+- **Founder case, thread 63857 (an incoming_ask from a helper about a house):**
+  - (1) On 22 Oct the ASK thread was turned into a goal (create_task + propose_task_plan), although ask_main says never open a goal there.
+  - (2) Since then, engine wakes run inside the ask thread with goal injections ([ახალი წევრები] → propose_task_plan). On 22 Oct a broken card. On 26 Oct a plan to ask a new member who matched only on property words (a lawyer, not a buyer), with buttons left hanging and the header „შენი პასუხი სჭირდება“ shown forever.
+  - (3) The thread runs in mode incoming_ask (ask_main + voice only), so the core rules do not apply.
+  - (4) On 26 Oct the founder said „remember it and offer the house if someone asks“. The reply said „შეთავაზება ჯერ არ შემინახავს. დამიდასტურე“, which is false: it was saved on 22 Oct.
+  - (5) Raw phonebook labels appear in server text.
+- **Asks for code:**
+  - (a) No create_task, propose_task_plan or plan cards in incoming_ask threads. A helper’s „keep it in mind“ becomes a note, or a goal in a separate regular thread.
+  - (b) Wakes never inject goal events into ask threads.
+  - (c) The new-member route suggestion must fit the need, not just share words.
+  - (d) Use the member’s own Netai name, never a raw label.
+- **Tester side:** ask_main gets the owner’s-words rule, tested tonight 01:00–07:00.
 
 ### 27 Oct, 10:21Z — founder’s home card shows expired intros to unknown people (tester, box 76715; real names left out)
 
