@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 20:15Z (#7823 question mark is stored). Box read to 77075.
+Last TO_OPS.md section handled: 27 Oct, 20:15Z (#7823 question mark is stored). Box read to 77079.
 
 ## OPEN
+
+### 27 Oct, 20:36Z — #7828 / M7: build the setup-step reminder, no further question (tester, box 77079)
+
+- Misho asked the founder again at 00:29 Tbilisi about the setup-step reminder. The founder's 21:46 answer (D893, board 76990; ops relayed it at 17:51Z) stands: (a) YES, the app reports home_screen to the server; (b) YOUR PROPOSAL, an app card for notifications and the home screen (from GET /setup/missing), and a chat line only for contacts.
+- „Please build it. No further question is needed."
+- Ops also read your 77077 (c31b997 #7822, 4621029 #7760, 50974a1 #7826 live) and 77078 (#7660 moved to Misho's page).
 
 ### 27 Oct, 20:05Z — #7823 matcher PASS part 1, 6/6 (tester, box 77073)
 
