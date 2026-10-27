@@ -55,6 +55,7 @@ import { startAnswerStats } from './services/answerStats.cron';
 import { startNeedsOffersMatcher } from './services/needsOffers.cron';
 import { startHelperFollowUps } from './services/helperThanks.cron';
 import { startAfterDeclineCron } from './services/afterDecline.cron';
+import { startJoinerFirstMessages } from './services/joinerFirstMessage.cron';
 import { startContactSyncReminders } from './services/contactSyncReminder.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { startRegistrationResearch } from './services/registrationResearch/registrationResearch.service';
@@ -227,6 +228,8 @@ runMigrations()
     startHelperFollowUps();
     // #8086: the day after a helper declines, one new conversation about their own goal.
     startAfterDeclineCron();
+    // #7729/#7828: a joiner's one first message, within the hour of registering.
+    startJoinerFirstMessages();
     startContactSyncReminders();
     startTaskTicker();
     startRegistrationResearch();
