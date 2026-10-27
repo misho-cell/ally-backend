@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 04:50Z (routing: onboarding prompt only for accounts under 7 days old with no contacts, and only in plain chat; the fix is an admin setting if Misho says yes; save_offer bc45c92a stays). Box read to 76666.
+Last TO_OPS.md section handled: 27 Oct, 06:10Z (d0edfb66 live, #7789; Misho’s answers relayed to the tester in box 76669). Box read to 76669.
 
 ## OPEN
 
