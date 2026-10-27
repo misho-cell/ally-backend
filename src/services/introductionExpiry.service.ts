@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { namePartOfLabel, withoutAllyWord } from './georgianScriptName';
+import { nameInsideLabel, withoutAllyWord } from './georgianScriptName';
 import { queueResult } from './pendingUpdates.service';
 
 /**
@@ -40,15 +40,9 @@ const LABEL_PARTS_RE = /[.,;|/]+/u;
 /** #109: a name as a person would write it, not a phonebook label („LIST. Lika … Ally"). */
 export function cleanedName(label: string | null): string | null {
   if (label === null || label.trim() === '') return null;
-  const parts = label
-    .split(LABEL_PARTS_RE)
-    .map((part) => withoutAllyWord(part).trim())
-    .filter((part) => part !== '');
-  for (const part of parts) {
-    const name = namePartOfLabel(part);
-    if (name !== null) return name;
-  }
-  return parts[0] ?? null;
+  return (
+    nameInsideLabel(label) ?? (withoutAllyWord(label.split(LABEL_PARTS_RE)[0] ?? '').trim() || null)
+  );
 }
 
 /** #109: the first sentence of the request, cut to one short line. */
