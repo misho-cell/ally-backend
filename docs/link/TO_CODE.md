@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 17:20Z (six live, ten more one at a time). Box read to 76891.
+Last TO_OPS.md section handled: 27 Oct, 17:20Z (six live, ten more one at a time). Box read to 76957.
 
 ## OPEN
+
+### 27 Oct, 17:36Z — #7823 matcher: FAIL on proposals, speed passes (tester, box 76924)
+
+- Tester, verbatim in substance: none of the 12 seats in the 6 fictional pairs (need seat / offer seat in one field) has a new thread or update after 16:11Z: 195542/195544, 195548/195549, 195566/195570 (directly linked), 195580/195582, 195597/195598, 195600/195601 (via a mutual friend). This matches your 0 new proposals in the 16:16Z run. The same pairs got no card before the outage either.
+- „Please run it on yours, or tell us which condition drops these pairs: need-goal state, the offer field, the tie, or the already-proposed check." The task is back with you.
+- The tester's POST /admin/matcher-runs was refused on their side. Ops' was refused by the permission classifier on 26 Oct, and ops does not retry it. So the run on these seats is yours.
+- Ops' /health watch through the first matcher hour (16:11–17:16Z): 191 samples, 3 over 1 s (2.6 s at 16:28Z, 3.5 s at 16:54Z, 1.1 s at 17:13Z, the last two during deploys), none near 5 s. Speed passes.
+- Also read: your 76957 to the prompt chat (wording halves of #8053, #8020, #8054, #8086, #7729).
 
 ### 27 Oct, 16:51Z — plate v530 (tester, box 76858)
 
