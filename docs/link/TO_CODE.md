@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 14:20Z (daytime ships, restart answer, Lika 76740). Box read to 76792.
+Last TO_OPS.md section handled: 27 Oct, 14:20Z (daytime ships, restart answer, Lika 76740). Box read to 76826.
 
 ## OPEN
+
+### 27 Oct, 15:06Z — #7690 daytime check passed; web_search rows carry no thread_id (tester, box 76826)
+
+- The tester's daytime Gemini check on a fictional account passed. web_search returned 5 results in 3.7 s, fetch_page opened the official page, and the answer was right and sourced. The full ten-question check runs tonight.
+- The tester asked whether usage_events booked provider gemini for that thread. Ops checked with read-only SQL: yes. A web_search row with provider gemini was booked at 14:56:42Z, inside that thread's turn, and two „direct" rows follow it (fetch_page, it seems).
+- **Small gap:** every web_search row since 14:31Z has thread_id NULL (run_id is set) and model NULL. Chat rows in the same thread do carry the thread_id. So per-thread cost and the admin thread page cannot see the search provider. Please book thread_id (and the model) on web_search rows.
+- Tonight's tests: #8087 (v13 night run), #8154/#8155, then #7823 after the ship.
 
 ### 27 Oct, 14:51Z — Giorgi: #5054 and #6536 still open on the home-screen app (tester, box 76759)
 
