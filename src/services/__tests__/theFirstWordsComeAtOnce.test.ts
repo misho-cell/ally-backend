@@ -10,7 +10,13 @@ jest.mock('../sse.service', () => ({ __esModule: true, emitMessageAppended: jest
 import { query } from '../../db/postgres/client';
 import { saveServerLine } from '../threads.service';
 import { emitMessageAppended } from '../sse.service';
-import { forgetWorkingLineRun, postFirstLine, postWorkingLineOnce } from '../workingLine.service';
+import {
+  PROGRESS_LINE,
+  forgetWorkingLineRun,
+  postFirstLine,
+  postProgressLineOnce,
+  postWorkingLineOnce,
+} from '../workingLine.service';
 
 /**
  * #8053 (founder 27 Oct): a user waited 1–2 minutes of searching without
@@ -59,5 +65,26 @@ describe('the first words of a run (#8053)', () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ due: true }], rowCount: 1 } as never);
     expect(await postWorkingLineOnce('118509', 69977, 'run-3', 'ka')).toBe(true);
     forgetWorkingLineRun('run-3');
+  });
+});
+
+/** #8053 (3): a run past a minute says once, truthfully, that it is still searching. */
+describe('the progress line (#8053)', () => {
+  it('is not said before a minute', async () => {
+    expect(await postProgressLineOnce('118509', 69977, 'run-p1', 'ka', 59_000)).toBe(false);
+    expect(mockSave).not.toHaveBeenCalled();
+    forgetWorkingLineRun('run-p1');
+  });
+
+  it('is said once after a minute, and never twice in a run', async () => {
+    expect(await postProgressLineOnce('118509', 69977, 'run-p2', 'ka', 61_000)).toBe(true);
+    expect(mockSave).toHaveBeenCalledWith(69977, 118509, PROGRESS_LINE.ka);
+    expect(await postProgressLineOnce('118509', 69977, 'run-p2', 'ka', 95_000)).toBe(false);
+    expect(mockSave).toHaveBeenCalledTimes(1);
+    forgetWorkingLineRun('run-p2');
+  });
+
+  it('carries no dash and promises nothing but the result', () => {
+    for (const line of Object.values(PROGRESS_LINE)) expect(line).not.toMatch(/[—–]/u);
   });
 });

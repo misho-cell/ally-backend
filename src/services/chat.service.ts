@@ -73,6 +73,7 @@ import {
   WORKING_LINE_TOOLS,
   forgetWorkingLineRun,
   postFirstLine,
+  postProgressLineOnce,
   postWorkingLineOnce,
 } from './workingLine.service';
 import Anthropic from '@anthropic-ai/sdk';
@@ -15069,6 +15070,10 @@ async function runToolLoop(
         ownerAbsent,
       );
       scanToolResults(toolResults);
+      // #8053 (3): past a minute, the owner reads once that the search goes on.
+      if (!ownerAbsent) {
+        await postProgressLineOnce(userId, threadId, runId, runLang(runId), Date.now() - startedAt);
+      }
 
       /**
        * The opening searches, if they have landed since the last round.
