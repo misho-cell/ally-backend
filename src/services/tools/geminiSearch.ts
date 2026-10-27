@@ -15,7 +15,9 @@
  */
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+// 27 Oct: a key made after 18 Sep gets 404 on gemini-2.5-flash ("no longer
+// available to new users"); the error itself names this one.
+const DEFAULT_MODEL = 'gemini-3.8-flash';
 const SEARCH_TIMEOUT_MS = 20_000;
 const REDIRECT_TIMEOUT_MS = 4_000;
 const MAX_RESULTS = 5;
