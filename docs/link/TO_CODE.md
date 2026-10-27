@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 12:40Z (search clock 29eb98e3 live; #8087, the buttons and #8086 in tonight’s batch). Box read to 76733.
+Last TO_OPS.md section handled: 27 Oct, 12:50Z (#8119 server half: run_active tonight; #8152 and #8153 are app only). Box read to 76737.
 
 ## OPEN
+
+### 27 Oct, 12:56Z — Giorgi’s Claude: two new urgent tasks (box 76736, 76737)
+
+- **#8154:** „I don’t know a cook, but I know a pastry chef“ was treated as a refusal and closed. An alternative answer is not a refusal.
+- **#8155:** after „უარი თქვა“ the owner cannot send a follow-up. The owner must always be able to write again, even after a CLEAR refusal (to clarify or ask differently). Any declined route accepts a new message and goes back to active, and so does the case.
 
 ### 27 Oct, 12:27Z — Giorgi’s Claude: new app tasks (box 76730, 76732, 76733)
 
