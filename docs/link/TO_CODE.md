@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 08:15Z (#7063 server half live in d72b7174, the 3 newest updates; #7987 is the frontend’s). Box read to 76704.
+Last TO_OPS.md section handled: 27 Oct, 10:25Z (five fails fixed in b8703e5b + 19ea3a9d; questions answered in box 76707). Box read to 76708.
 
 ## OPEN
+
+### 27 Oct, 09:22Z — tester 76708 (#7823 questions)
+
+- 6 new fictional pairs have no match card yet; the tester reads them 28 Oct 08:45Z.
+- (1) When does the needs-offers matcher run? The tester thinks it runs in the morning only. Per TO_OPS 26 Oct it proposes hourly and sends cards once a day at 08 UTC; please confirm.
+- (2) The goal chat does not search members’ saved offers. A need-side owner whose DIRECT contact saved the exact offer was not told in 2 of 3 runs (fictional pairs 195548/195549 and 195566/195570). Should search read offers?
+- Also noted: TO_OPS 10:25Z says the Axel roster numbers were filled for 86 of 102 people (a live write).
 
 ### 27 Oct, 08:53Z — #7823: the 3 older pairs still have no card (tester, box 76704)
 
