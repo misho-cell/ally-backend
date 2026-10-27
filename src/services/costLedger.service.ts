@@ -149,6 +149,8 @@ export interface FixedUsageEvent {
   // Sub-label within the kind (e.g. which MCP tool was called); stored in the
   // model column, which is free-form text and NULL for non-Anthropic events.
   label?: string;
+  // The conversation the spend belongs to, so per-thread cost sees it (tester 76826).
+  threadId?: number | null;
 }
 
 /** Record a fixed-price spend (Tavily search, OTP message, SMS). */
@@ -158,8 +160,8 @@ export async function recordFixedUsage(event: FixedUsageEvent): Promise<void> {
   const cost = round(units * rate);
 
   await query(
-    `INSERT INTO usage_events (user_id, kind, provider, model, units, cost_usd, run_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO usage_events (user_id, kind, provider, model, units, cost_usd, run_id, thread_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       event.userId,
       event.kind,
@@ -168,6 +170,7 @@ export async function recordFixedUsage(event: FixedUsageEvent): Promise<void> {
       units,
       cost,
       event.runId ?? null,
+      event.threadId ?? null,
     ],
   );
 }

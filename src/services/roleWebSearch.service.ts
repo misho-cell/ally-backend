@@ -188,6 +188,7 @@ async function charge(run: RoleSearchRun): Promise<void> {
   await recordFixedUsage({
     userId: run.userId,
     runId: run.runId,
+    threadId: run.threadId,
     kind: 'web_search',
     ...ledger,
   }).catch((err: unknown) => {

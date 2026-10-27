@@ -6496,6 +6496,7 @@ async function weatherFoundFirst(
       kind: 'web_search',
       ...(await webSearchLedger()),
       runId,
+      threadId,
     }).catch(() => {});
     void logToolCall({
       threadId,
@@ -10529,6 +10530,7 @@ async function executeToolCall(
         kind: 'web_search',
         ...(await webSearchLedger()),
         runId,
+        threadId,
       }).catch(() => {});
       // 4720 (§134): a public profile among the top results is read here, not left as a link.
       const found = await withPublicProfile(
@@ -10540,6 +10542,7 @@ async function executeToolCall(
             kind: 'web_search',
             ...(await pageFetchLedger()),
             runId,
+            threadId,
           }).catch(() => {}),
       );
       if (runId !== undefined && hasWebResults(found)) runWebFound.add(runId);
@@ -10576,6 +10579,7 @@ async function executeToolCall(
         kind: 'web_search',
         ...(await pageFetchLedger()),
         runId,
+        threadId,
       }).catch(() => {});
       return fetchPage(input['url'] as string, Number(input['from_character'] ?? 0));
     case 'save_contact_insight':

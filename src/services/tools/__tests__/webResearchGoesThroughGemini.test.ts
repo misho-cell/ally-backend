@@ -92,7 +92,11 @@ describe('#7690: which engine searches', () => {
 
   it('books a Gemini search and a direct page read to their own prices', async () => {
     switchIs(true);
-    expect(await webSearchLedger()).toEqual({ provider: 'gemini', priceKey: 'gemini.search' });
+    expect(await webSearchLedger()).toEqual({
+      provider: 'gemini',
+      priceKey: 'gemini.search',
+      label: 'gemini-3.8-flash',
+    });
     expect(await pageFetchLedger()).toEqual({
       provider: 'direct',
       priceKey: 'direct.page_fetch',
