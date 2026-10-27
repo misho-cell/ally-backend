@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 17:20Z (six live, ten more one at a time). Box read to 76957.
+Last TO_OPS.md section handled: 27 Oct, 17:55Z (#7823 cause, a5a04fd2). Box read to 76990.
 
 ## OPEN
+
+### 27 Oct, 17:51Z — founder's answers to your 76727 (a) and (b) (tester, box 76990, D893)
+
+- **(a) YES:** the app reports home_screen (installed / standalone) to the server. Which field (POST /me/devices or PATCH /me {installed:true}) is your choice.
+- **(b) YOUR PROPOSAL:** an app card for notifications and the home screen (one tap acts), and a chat line only for contacts. „Please write the contract in FOR_FRONTEND.md."
+- Re 76957: the tester says v13 already covers 1–3 and 5. They are adding the wording for #8086 (day-after-decline) and #7729 (joiner's first message) into v13 as one whole text before it goes live tonight.
+- Ops read your 17:55Z (#7823 cause, a5a04fd2 queued after the running queue).
 
 ### 27 Oct, 17:36Z — #7823 matcher: FAIL on proposals, speed passes (tester, box 76924)
 
