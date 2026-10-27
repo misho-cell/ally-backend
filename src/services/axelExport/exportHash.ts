@@ -24,7 +24,12 @@ const HASH_HEX_CHARS = 24;
  * EXPORT_HASH_PREVIOUS_SECRET holds a retired one when neither current
  * secret is it.
  */
-const PAST_SECRET_VARS = ['MCP_REF_SECRET', 'JWT_SECRET', 'EXPORT_HASH_PREVIOUS_SECRET'] as const;
+const PAST_SECRET_VARS = [
+  'EXPORT_HASH_SECRET',
+  'MCP_REF_SECRET',
+  'JWT_SECRET',
+  'EXPORT_HASH_PREVIOUS_SECRET',
+] as const;
 
 function keyOf(secret: string): Buffer {
   return crypto
@@ -33,9 +38,19 @@ function keyOf(secret: string): Buffer {
     .digest();
 }
 
+/**
+ * #7525: the export's OWN secret when EXPORT_HASH_SECRET is set, so rotating
+ * the login or contact-reference secrets never again breaks a package handed
+ * out. Without it, the old order holds and nothing changes.
+ */
 function exportKey(): Buffer {
-  const secret = process.env.MCP_REF_SECRET ?? process.env.JWT_SECRET;
-  if (!secret) throw new Error('MCP_REF_SECRET or JWT_SECRET must be set for the export hash');
+  const secret =
+    process.env.EXPORT_HASH_SECRET ?? process.env.MCP_REF_SECRET ?? process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      'EXPORT_HASH_SECRET, MCP_REF_SECRET or JWT_SECRET must be set for the export hash',
+    );
+  }
   return keyOf(secret);
 }
 

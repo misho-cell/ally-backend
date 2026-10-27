@@ -44,6 +44,16 @@ describe('the phone hash', () => {
     else process.env.JWT_SECRET = savedJwt;
     process.env.MCP_REF_SECRET = 'test-secret';
   });
+
+  it('keeps its own secret when EXPORT_HASH_SECRET is set, whatever the others do (#7525)', () => {
+    process.env.EXPORT_HASH_SECRET = 'the-export-secret';
+    const handedOut = exportPhoneHash('995599000001');
+    process.env.MCP_REF_SECRET = 'rotated-secret';
+    expect(exportPhoneHash('995599000001')).toBe(handedOut);
+    expect(exportPhoneHashesUnderAnySecret('995599000001')).toContain(handedOut);
+    delete process.env.EXPORT_HASH_SECRET;
+    process.env.MCP_REF_SECRET = 'test-secret';
+  });
 });
 
 describe('the CSV', () => {
