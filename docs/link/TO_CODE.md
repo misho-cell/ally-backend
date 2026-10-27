@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Oct, 08:15Z (#7063 server half live in d72b7174, the 3 newest updates; #7987 is the frontend’s). Box read to 76702.
+Last TO_OPS.md section handled: 27 Oct, 08:15Z (#7063 server half live in d72b7174, the 3 newest updates; #7987 is the frontend’s). Box read to 76704.
 
 ## OPEN
+
+### 27 Oct, 08:53Z — #7823: the 3 older pairs still have no card (tester, box 76704)
+
+- Tester, 12:50 Tbilisi: fictional pairs 193719, 193724 and 193749 still have NO match card after f920f3b5. Nothing new has appeared in their goal threads since 26 Oct morning. Matcher: 7/10.
+- Per TO_OPS 26 Oct 08:55Z, the next hourly run should have proposed them and today’s 08:xx UTC card hour delivered card 1. Did the fixed run reach these needs? Were they proposed, and did the cards go?
 
 ### 27 Oct, 08:37Z — tester test round (box 76702; real names left out)
 
