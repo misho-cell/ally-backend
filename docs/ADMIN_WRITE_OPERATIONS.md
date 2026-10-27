@@ -6444,3 +6444,15 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** row #6997 (tester 76702 FAIL: Rustam's CELA 13 tie to George not read), done directly under Misho's standing rule of 26 Oct.
 - **What:** `POST /admin/base-people/roster-phones {"dry_run": false, "roster_map_csv": <v6 roster_map.csv>}` after a dry run (102 AX- people; 86 match exactly one roster member by name; 7 fit two members and 8 fit none, and those 15 are left without a number). This sets `base_people.phone` only where it was empty. Before the run, no AX- person had a number.
 - **Undo:** `UPDATE base_people SET phone = NULL WHERE person_key LIKE 'AX-%'` returns the store to its state before.
+
+## 70 · #7690: WEB SEARCH ANSWERED BY GEMINI (Misho, his own chat, 27 Oct ~13:50Z: „GEMINI_API_KEY ჩავწერე შეგიძლია ჩართო")
+
+- **Who authorises:** Misho, in this session's chat.
+- **What:** `PUT /admin/flags/gemini_web_search {"enabled": true}`. With GEMINI_API_KEY in Railway, web_search and fetch_page go through Gemini with Google Search grounding; Tavily stays the fallback when a Gemini call fails.
+- **Undo:** `PUT /admin/flags/gemini_web_search {"enabled": false}`. The switch is read with a 30 s cache, so Tavily answers again within half a minute, no deploy.
+
+## 71 · WHATSAPP: NETAI'S TWO TEMPLATES SUBMITTED TO META (Misho, his own chat, 27 Oct ~13:50Z: „whatsapp თუ მზად არის გადაიტანე")
+
+- **Who authorises:** Misho, in this session's chat.
+- **What:** after 3ebe6ed0 (Lika's Utility wording) is live, `POST /admin/whatsapp/templates {"confirm": true}` submits `netai_notify` and `netai_welcome` to the WABA for Meta's review. Submitting costs nothing and sends nothing to anyone. The flag `whatsapp_channel` stays OFF: no template is approved yet, and the paid-send caps (1 per person per day, $50 a month) are not built.
+- **Undo:** delete the two templates in Meta Business Manager → WhatsApp Manager → Message templates (a rejected or unwanted template can also simply stay unused).
