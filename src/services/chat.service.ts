@@ -1310,6 +1310,28 @@ export async function approvesNoSavedPlan(
   return goal === null || !goal.hasPlan;
 }
 
+/**
+ * #8054 (1) (founder 27 Oct): after an explicit „ჰკითხე X-ს" the owner was
+ * shown a plan card with „დავიწყო" and asked to approve what they had just
+ * ordered. An instruction naming the owner's own contact is the approval
+ * itself (D316), so approve buttons are not shown for it in that run.
+ */
+export const INSTRUCTION_IS_THE_APPROVAL =
+  "Not shown: the owner's own line is the instruction, and an instruction naming their contact " +
+  'is the approval itself (D316). Send it now (ask_contact or request_introduction) and say in ' +
+  'one line who it went to; no plan card and no approve buttons for it.';
+
+export async function approvesAnInstruction(
+  userId: string,
+  ownerLine: string,
+  labels: readonly string[],
+  ownerAbsent: boolean,
+): Promise<boolean> {
+  if (ownerAbsent || !labels.some(isApproveLabel)) return false;
+  const sentence = contactInstructionIn(ownerLine);
+  return sentence !== null && (await messageNamesOwnContact(userId, sentence));
+}
+
 export function notInThePhonebook(result: object): boolean {
   const found = result as { found?: unknown; results?: unknown };
   if (found.found === false) return true;
@@ -10872,6 +10894,16 @@ async function executeToolCall(
       }
       if (await approvesNoSavedPlan(labels, threadId, ownerAbsent)) {
         return { presented: false, error: NO_PLAN_TO_APPROVE };
+      }
+      if (
+        await approvesAnInstruction(
+          userId,
+          runOwnerLine.get(runId ?? '') ?? '',
+          labels,
+          ownerAbsent,
+        )
+      ) {
+        return { presented: false, error: INSTRUCTION_IS_THE_APPROVAL };
       }
       const foreign = labelWithForeignLetter(labels);
       if (foreign !== null) return { presented: false, error: foreignLetterRefusal(foreign) };
