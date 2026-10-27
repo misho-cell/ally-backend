@@ -1,5 +1,8 @@
 import { query } from '../../db/postgres/client';
 import { numbersByHash } from '../axelLoad/axelBaseLoad.service';
+import { readRoster } from '../axelExport/axelData';
+import { RosterCandidate } from '../basePeople/rosterPhones.service';
+import { nameKey } from '../tools/transliterate';
 import {
   CompanyNameRow,
   CompanyRow,
@@ -187,15 +190,43 @@ interface PlacedLink extends Omit<LinkRow, 'hashes'> {
   readonly phone: string;
 }
 
-/** Each link on every number its tokens resolve to; the numbers never travel (axelBaseLoad). */
-function placeLinks(
+/**
+ * #7525: the number each name belongs to, when exactly one roster member
+ * carries it (the rule §69 placed 86 of 102 AX- people by). Two members with
+ * one name place nobody.
+ */
+export function phonesByUniqueName(roster: readonly RosterCandidate[]): Map<string, string> {
+  const byName = new Map<string, Set<string>>();
+  for (const member of roster) {
+    for (const name of member.names) {
+      const key = nameKey(name);
+      if (key === '') continue;
+      byName.set(key, (byName.get(key) ?? new Set<string>()).add(member.phone));
+    }
+  }
+  const unique = new Map<string, string>();
+  for (const [key, phones] of byName) if (phones.size === 1) unique.set(key, [...phones][0]);
+  return unique;
+}
+
+/**
+ * Each link on every number its tokens resolve to; the numbers never travel
+ * (axelBaseLoad). #7525: a package hashed under a server secret since retired
+ * resolves no token, so a link left without a number is placed by its
+ * person's name when exactly one roster member carries that name.
+ */
+export function placeLinks(
   rows: readonly LinkRow[],
   numbers: ReadonlyMap<string, string>,
   skipped: Record<string, number>,
+  byName: ReadonlyMap<string, string> = new Map(),
 ): PlacedLink[] {
   const placed = new Map<string, PlacedLink>();
   for (const { hashes, ...link } of rows) {
-    const phones = hashes.map((h) => numbers.get(h)).filter((p): p is string => !!p);
+    const hashed = hashes.map((h) => numbers.get(h)).filter((p): p is string => !!p);
+    const named = hashed.length === 0 ? byName.get(nameKey(link.personName)) : undefined;
+    const phones = named === undefined ? hashed : [named];
+    if (named !== undefined) skipped.placed_by_name = (skipped.placed_by_name ?? 0) + 1;
     if (phones.length === 0) skipped.number_not_found = (skipped.number_not_found ?? 0) + 1;
     for (const phone of phones) {
       // One row per (number, company, evidence, role): the table's own key.
@@ -254,7 +285,16 @@ async function loadLinks(
 ): Promise<{ inFile: number; written: number }> {
   const { rows, withoutNumber } = linkRows(linksCsv, personNumbersCsv);
   if (withoutNumber > 0) skipped.person_without_number = withoutNumber;
-  const placed = placeLinks(await withKnownCompany(rows, skipped), await numbersByHash(), skipped);
+  const roster = (await readRoster()).map((m) => ({
+    phone: m.phone,
+    names: [m.name ?? '', ...m.match_names].filter((n) => n.trim() !== ''),
+  }));
+  const placed = placeLinks(
+    await withKnownCompany(rows, skipped),
+    await numbersByHash(),
+    skipped,
+    phonesByUniqueName(roster),
+  );
   return {
     inFile: rows.length + withoutNumber,
     written: dryRun ? placed.length : await writeLinks(placed),

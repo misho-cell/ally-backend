@@ -7,6 +7,10 @@ const mockNumbers = jest.fn();
 jest.mock('../axelLoad/axelBaseLoad.service', () => ({
   numbersByHash: (...a: unknown[]) => mockNumbers(...a),
 }));
+const mockRoster = jest.fn();
+jest.mock('../axelExport/axelData', () => ({
+  readRoster: (...a: unknown[]) => mockRoster(...a),
+}));
 
 import { CompanyBasePart, loadCompanyBasePart } from '../companyBase/companyBaseLoad.service';
 import { linkRows, publicPeopleRows, searchTextOf } from '../companyBase/companyBasePlan';
@@ -45,10 +49,31 @@ describe('the company base loads from the package', () => {
       rows: [{ company_id: 'C-KZ-001' }, { company_id: '204854595' }],
     });
     mockNumbers.mockResolvedValue(new Map([['b'.repeat(24), '+77010000001']]));
+    mockRoster.mockResolvedValue([]);
     const report = await loadCompanyBasePart(CompanyBasePart.Links, LINKS, true, NUMBERS);
     expect(report).toMatchObject({ rows_in_file: 3, rows_written: 1 });
     expect(report.skipped).toEqual({ person_without_number: 1, number_not_found: 1 });
     expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  /** #7525: a package hashed under a retired secret resolves no token; a unique name places it. */
+  it('places a link whose hash no longer resolves by a name only one roster member carries', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [{ company_id: 'C-KZ-001' }, { company_id: '204854595' }],
+    });
+    mockNumbers.mockResolvedValue(new Map());
+    mockRoster.mockResolvedValue([
+      { phone: '+995500000101', name: 'Nino', match_names: [] },
+      { phone: '+995500000102', name: 'Rustam', match_names: [] },
+      { phone: '+995500000103', name: 'Rustam', match_names: [] },
+    ]);
+    const report = await loadCompanyBasePart(CompanyBasePart.Links, LINKS, true, NUMBERS);
+    expect(report).toMatchObject({ rows_written: 1 });
+    expect(report.skipped).toEqual({
+      person_without_number: 1,
+      placed_by_name: 1,
+      number_not_found: 1,
+    });
   });
 
   it('upserts by the file’s own key, so a reload doubles nothing', async () => {
