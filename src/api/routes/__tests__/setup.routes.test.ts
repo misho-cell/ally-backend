@@ -17,6 +17,7 @@ jest.mock('../../../services/setupState.service', () => ({
   ...jest.requireActual('../../../services/setupState.service'),
   recordStep: jest.fn(),
   setupState: jest.fn(),
+  missingSteps: jest.fn(),
 }));
 jest.mock('../../../services/setupTestPush.service', () => ({
   ...jest.requireActual('../../../services/setupTestPush.service'),
@@ -27,7 +28,7 @@ import express from 'express';
 import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 import setupRouter from '../setup.routes';
-import { recordStep, setupState } from '../../../services/setupState.service';
+import { missingSteps, recordStep, setupState } from '../../../services/setupState.service';
 import { sendTestPush, TestPushOutcome } from '../../../services/setupTestPush.service';
 
 const mockRecord = recordStep as jest.MockedFunction<typeof recordStep>;
@@ -71,6 +72,24 @@ const put = (path: string, body: unknown): Promise<Response> =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+
+/** #7757 / #7828: the steps still missing, most important first, for the app's card. */
+describe('GET /setup/missing', () => {
+  it('answers the person’s missing steps in order', async () => {
+    (missingSteps as jest.Mock).mockResolvedValue(['contacts', 'install']);
+    const res = await fetch(`${base}/missing`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: { missing: ['contacts', 'install'] } });
+    expect(missingSteps).toHaveBeenCalledWith(171);
+  });
+
+  it('says 500 without the database error', async () => {
+    (missingSteps as jest.Mock).mockRejectedValue(new Error('relation setup_steps is locked'));
+    const res = await fetch(`${base}/missing`);
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(await res.json())).not.toContain('relation');
+  });
+});
 
 /** 1882 / the frontend's 06:30Z item 10. */
 describe('the setup routes', () => {

@@ -10,6 +10,7 @@ import {
   isGadget,
   isSetupStep,
   isStepStatus,
+  missingSteps,
   recordStep,
   setupState,
 } from '../../services/setupState.service';
@@ -19,6 +20,7 @@ import { pictureFile, picturesFor } from '../../services/setupPictures.service';
 /**
  * 1882 / the frontend's 06:30Z item 10:
  *   GET  /setup/state                              { done_count, total, started_at, server, devices }
+ *   GET  /setup/missing                            #7757: { missing: [step, …] }, most important first
  *   PUT  /setup/devices/:deviceId/steps/:step      { gadget, status } → the new state
  *   POST /setup/test-push                          one test notification to this person
  *   GET  /setup/pictures?gadget=&step=             #6139: the step's pictures in tap order
@@ -43,6 +45,16 @@ setupRouter.get('/state', async (req: Request, res: Response): Promise<void> => 
     // eslint-disable-next-line no-console
     console.error('[GET /setup/state]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Could not read the setup state' });
+  }
+});
+
+setupRouter.get('/missing', async (req: Request, res: Response): Promise<void> => {
+  try {
+    res.status(200).json({ success: true, data: { missing: await missingSteps(userIdOf(req)) } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /setup/missing]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the missing steps' });
   }
 });
 
