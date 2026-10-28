@@ -77,6 +77,17 @@ const RANGES: readonly FictionalRange[] = [
   { prefix: '+441632', digits: 6, from: 960000, to: 960999 },
   { prefix: '+442920180', digits: 3, from: 0, to: 999 },
   { prefix: '+443069990', digits: 3, from: 0, to: 999 },
+  /**
+   * Blocks eighteen to twenty-one, 28 Oct: „no free number left" in all
+   * seventeen (tester box 77389); the founder's daytime full check on prompt
+   * v14 was paused. The last of Ofcom's drama ranges: Tyneside 0191 498
+   * 0000–0999, Northern Ireland 028 9649 6000–6999, freephone 0808 157
+   * 0000–0999 and premium 0909 879 0000–0999. Numbers are ours to decide (§110).
+   */
+  { prefix: '+44191498', digits: 4, from: 0, to: 999 },
+  { prefix: '+442896496', digits: 3, from: 0, to: 999 },
+  { prefix: '+448081570', digits: 3, from: 0, to: 999 },
+  { prefix: '+449098790', digits: 3, from: 0, to: 999 },
 ];
 
 function slotText(range: FictionalRange, slot: number): string {
