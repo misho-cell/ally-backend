@@ -117,7 +117,18 @@ async function allAreTestSeats(userIds: readonly number[]): Promise<boolean> {
   return (result.rows[0]?.n ?? 0) === userIds.length;
 }
 
-/** The line, now, on fictional seats only, so the tester reads it today. */
+/** #7828 (tester, 28 Oct): „never twice" holds on seats too — the ones already told. */
+async function toldAlready(userIds: readonly number[]): Promise<ReadonlySet<number>> {
+  const result = await query<{ user_id: number }>(
+    `SELECT DISTINCT user_id::int AS user_id FROM product_events
+      WHERE event = $1 AND user_id::text = ANY($2::text[])`,
+    [CONTACTS_MISSING_EVENT, userIds.map(String)],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((row) => row.user_id));
+}
+
+/** The line, now, on fictional seats only, so the tester reads it today. Never twice. */
 export async function runContactsMissingForSeats(
   seatIds: readonly number[],
 ): Promise<{ readonly outcome: ContactsLineSeatOutcome; readonly told: number }> {
@@ -128,8 +139,9 @@ export async function runContactsMissingForSeats(
   if (!(await allAreTestSeats(unique))) {
     return { outcome: ContactsLineSeatOutcome.NotATestSeat, told: 0 };
   }
+  const alreadyTold = await toldAlready(unique);
   let told = 0;
-  for (const seatId of unique) {
+  for (const seatId of unique.filter((id) => !alreadyTold.has(id))) {
     try {
       await tellContactsMissing(seatId);
       told += 1;

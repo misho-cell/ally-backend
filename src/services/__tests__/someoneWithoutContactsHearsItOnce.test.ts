@@ -118,8 +118,17 @@ describe('the on-demand run on seats (#7757)', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
+  it('never tells a seat twice (#7828, tester 28 Oct)', async () => {
+    mockQuery.mockResolvedValueOnce(rows([{ n: 2 }])).mockResolvedValueOnce(rows([{ user_id: 3 }]));
+    expect(await runContactsMissingForSeats([3, 4])).toEqual({
+      outcome: ContactsLineSeatOutcome.Ran,
+      told: 1,
+    });
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+
   it('tells each seat', async () => {
-    mockQuery.mockResolvedValueOnce(rows([{ n: 2 }]));
+    mockQuery.mockResolvedValueOnce(rows([{ n: 2 }])).mockResolvedValueOnce(rows([]));
     expect(await runContactsMissingForSeats([3, 4, 3])).toEqual({
       outcome: ContactsLineSeatOutcome.Ran,
       told: 2,
