@@ -19,17 +19,26 @@ export interface StoredThreadFile {
   readonly createdAt: string;
 }
 
+/** The upload as it arrived (#8317). */
+export interface UploadedOriginal {
+  readonly bytes: Buffer;
+  readonly mimeType: string;
+}
+
 export async function saveThreadFile(
   threadId: number,
   userId: number,
   filename: string,
   byteSize: number,
   file: ParsedListFile,
+  original: UploadedOriginal | null = null,
 ): Promise<StoredThreadFile> {
+  // #8317: the upload itself is kept, so the admin can hand back what was sent.
   const result = await query<{ id: number; created_at: Date | string }>(
     `INSERT INTO thread_files
-       (thread_id, user_id, filename, kind, byte_size, columns, rows, rows_cut, text_content)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9)
+       (thread_id, user_id, filename, kind, byte_size, columns, rows, rows_cut, text_content,
+        original, mime_type)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10, $11)
      RETURNING id, created_at`,
     [
       threadId,
@@ -41,6 +50,8 @@ export async function saveThreadFile(
       JSON.stringify(file.rows),
       file.rowsCut,
       file.text,
+      original?.bytes ?? null,
+      original?.mimeType ?? null,
     ],
     FILE_QUERY_TIMEOUT_MS,
   );
