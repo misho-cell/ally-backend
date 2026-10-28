@@ -28,7 +28,7 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
 
   it('offers 3,100 numbers, the old blocks first (third block 2 Oct, fourth 3 Oct)', () => {
     const all = allFictionalNumbers();
-    expect(all).toHaveLength(16100);
+    expect(all).toHaveLength(20100);
     expect(all[1100]).toBe('+442079460000');
     expect(all[2100]).toBe('+441614960000');
     expect(all[3099]).toBe('+441614960999');
@@ -43,8 +43,23 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
         '+441134960000–0999 or +441144960000–0999 or +441154960000–0999 or +441174960000–0999 or ' +
         '+441164960000–0999 or +441214960000–0999 or +441314960000–0999 or ' +
         '+441184960000–0999 or +441414960000–0999 or +441514960000–0999 or ' +
-        '+441632960000–960999 or +442920180000–999 or +443069990000–999',
+        '+441632960000–960999 or +442920180000–999 or +443069990000–999 or ' +
+        '+441914980000–0999 or +442896496000–999 or +448081570000–999 or +449098790000–999',
     );
+  });
+
+  /** 28 Oct, tester box 77389: every block full; the last four Ofcom drama blocks. */
+  it('takes the Tyneside, Northern Ireland, 0808 and 0909 drama blocks, exactly', () => {
+    for (const [first, last, outside] of [
+      ['+441914980000', '+441914980999', '+441914981000'],
+      ['+442896496000', '+442896496999', '+442896497000'],
+      ['+448081570000', '+448081570999', '+448081571000'],
+      ['+449098790000', '+449098790999', '+449098791000'],
+    ]) {
+      expect(isFictionalNumber(first)).toBe(true);
+      expect(isFictionalNumber(last)).toBe(true);
+      expect(isFictionalNumber(outside)).toBe(false);
+    }
   });
 
   /** 26 Oct, tester box 76030 (#7855): every block full; no-area, Cardiff and 0306 drama blocks. */
