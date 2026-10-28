@@ -343,7 +343,8 @@ import {
 } from './taskPlans.service';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
-import { findWarmPath } from './tools/findWarmPath';
+import { findWarmPath, type WarmPathOutcome } from './tools/findWarmPath';
+import { encodeContactRef } from './mcp/contactRef';
 import { findCompaniesForNeed } from './tools/findCompaniesForNeed';
 import { findPeopleInBase } from './tools/findPeopleInBase';
 import { withOldAllyColours } from './tools/withOldAllyColours';
@@ -4998,8 +4999,8 @@ export async function keepUserMessage(
  * runs, referenced or not, so the thread is touched exactly as before.
  */
 const SAVE_AND_TOUCH_SQL = `WITH saved AS (
-    INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text, answered_by)
-    VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9, $10)
+    INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text, answered_by, path_map_id)
+    VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9, $10, $11)
     RETURNING id
   ), touched AS (
     UPDATE threads SET updated_at = NOW() WHERE id = $2
@@ -5070,6 +5071,9 @@ async function saveMessage(
   // row that is not a model's answer, and for everything written before the
   // column existed — „nobody recorded it", not „Claude wrote it".
   answeredBy: string | null = null,
+  // #1849: the sealed id of the person a find_warm_path in this run walked to,
+  // so the app can open their drawn path map (/paths/:id) from the reply.
+  pathMapId: string | null = null,
 ): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
   const result = await query<{ id: number }>(SAVE_AND_TOUCH_SQL, [
@@ -5083,6 +5087,7 @@ async function saveMessage(
     choices === null ? null : JSON.stringify(choices),
     shareText,
     answeredBy,
+    pathMapId,
   ]);
   // The tester's 45147: a run's own answer takes back its own cut-off notice.
   if (role === 'assistant' && kind === 'message' && runId !== null) {
@@ -9752,6 +9757,20 @@ function noteShareText(runId: string | undefined, value: unknown): void {
   runShareText.set(runId, value);
 }
 
+/** #1849: the person this run's find_warm_path reached, as a sealed contact id. */
+const runPathMap = new Map<string, string>();
+
+function notePathMap(runId: string | undefined, userId: string, warm: WarmPathOutcome): void {
+  if (!runId || !warm.found) return;
+  runPathMap.set(runId, encodeContactRef(userId, warm.target.phone));
+}
+
+function takePathMap(runId: string): string | undefined {
+  const id = runPathMap.get(runId);
+  runPathMap.delete(runId);
+  return id;
+}
+
 function takeShareText(runId: string): string | undefined {
   const text = runShareText.get(runId);
   runShareText.delete(runId);
@@ -12712,6 +12731,7 @@ async function executeToolCall(
           ...routesFromWarmPath(warm),
         ]);
       }
+      notePathMap(runId, userId, warm);
       return warm;
     }
     default:
@@ -13744,6 +13764,8 @@ export interface ChatResult {
    * hunting for a link inside the model's prose.
    */
   shareText?: string;
+  /** #1849: the person a find_warm_path reached, as a sealed contact id for /paths/:id. */
+  pathMapId?: string;
   /**
    * 958: what the run still does once its answer is delivered (the wallet
    * debit). Never rejects; a caller that sends the answer awaits it after.
@@ -18786,6 +18808,8 @@ export async function processChat(
    * person to add an attachment here would have copied the wrong one.
    */
   const shareTextHeld = takeShareText(runId);
+  const pathMapHeld = takePathMap(runId);
+  const pathMapId = replySafe ? pathMapHeld : undefined;
   const shareTextRaw = replySafe ? shareTextHeld : undefined;
   const shareText = shareTextRaw === undefined ? undefined : toDisplayText(shareTextRaw);
   /**
@@ -18938,6 +18962,7 @@ export async function processChat(
     shareText ?? null,
     // Row 132: the reply the user reads, stamped with who wrote it.
     answeredBy,
+    pathMapId ?? null,
   );
   lap(postRun, 'reply');
   // The same answer must not be on the screen twice (item H).
@@ -19057,6 +19082,7 @@ export async function processChat(
     ...(storedChoices && { choices: storedChoices }),
     ...(requestCreated && { requestCreated: true }),
     ...(taskResult && { taskResult }),
+    ...(pathMapId !== undefined && { pathMapId }),
     ...(shareText !== undefined && { shareText }),
     ...(ownerDecidesNext && { ownerDecidesNext: true }),
     afterReply,

@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 28 October, 06:10Z — #1849: a reply after a path search links to its drawn map
+
+**Why.** Lika (27 Oct) asked „როგორ მივწვდე გიორგი აბრამიშვილამდე?" and got the bridges in text only. Your path map, `/paths/:id`, has been live since 11 Oct, but it opens only from a contact's page.
+
+**Server (on the branch, ships in tonight's batch; not live yet).** When a run called find_warm_path and reached someone, its final reply carries that person's sealed contact id, the same `c_…` id `/paths/:id` and `/members/:id` already take.
+- Live: the `run_complete` event (and the synchronous reply) gets `"path_map_id": "c_…"`.
+- History: each message from `GET /threads/:id/messages` gets `"path_map_id": "c_…"` or `null`.
+- Example: `{ "event": "run_complete", "reply": "ლიკა იცნობს ნიკას, ნიკა კი გიორგის…", "path_map_id": "c_9f2…" }`
+- No field (or `null`) when the run walked to nobody, and on every other message.
+
+**App, please.** Under an assistant message with a `path_map_id`, show one link, „გზა რუკაზე", that opens `/paths/<path_map_id>`. `GET /paths/:id` answers as it does today: `{ success, data: { paths } }`, with 404 when the person is not reachable from this owner. If the map comes back empty, hide the link rather than showing an empty map. The wording of the link is yours and Giorgi's.
+
 ## 27 October, 22:00Z — four app rows from Giorgi's iPhone (#8152, #8153, #6536, #5054), and a push tap (#7724)
 
 All four are on the board as Misho's app work, so they are yours. None of them needs anything from the server. The screenshots are in the founder's folder (GIORGI_5054_6536_screens_2026-10-27), and the tester's descriptions are below.

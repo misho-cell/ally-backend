@@ -1890,6 +1890,8 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
           ...(result.taskResult && { result: result.taskResult }),
           // Ticket 17 Task 39: the share button reads this, not the prose.
           ...(result.shareText && { share_text: result.shareText }),
+          // #1849: the app opens the drawn path map (/paths/:id) from the reply.
+          ...(result.pathMapId && { path_map_id: result.pathMapId }),
         });
         // 958: the debit runs after the answer is on the screen, still inside the run's mark.
         await result.afterReply;
