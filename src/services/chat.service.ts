@@ -13647,9 +13647,25 @@ async function callClaude(
     }, window);
   };
   resetStall();
+  /**
+   * #8053 (tester 77133): the first sentence is posted when the model's turn
+   * ENDS, because whether it may go out depends on every tool the turn calls.
+   * Before moving that earlier, measure what it would win: the time from the
+   * first tool call starting (the sentence before it is complete) to the end.
+   */
+  let textSeenAt: number | null = null;
+  let firstToolAt: number | null = null;
   stream.on('streamEvent', (event: StreamEventShape) => {
     started = true;
     events += 1;
+    if (textSeenAt === null && event?.content_block?.type === 'text') textSeenAt = Date.now();
+    if (
+      firstToolAt === null &&
+      event?.type === 'content_block_start' &&
+      event.content_block?.type === 'tool_use'
+    ) {
+      firstToolAt = Date.now();
+    }
     // Row 202 third pass: every gap, not only the last, so a call that
     // finished can still say where its longest silence was.
     const gap = Date.now() - lastEventAt;
@@ -13688,6 +13704,13 @@ async function callClaude(
    * Logged only when the longest gap is worth reading, because one line per
    * model call on every run is noise that hides the lines that matter.
    */
+  if (textSeenAt !== null && firstToolAt !== null && firstToolAt > textSeenAt) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[first-words] run ${ctx.runId}: sentence complete at ${firstToolAt - startedAt}ms, ` +
+        `turn done at ${Date.now() - startedAt}ms`,
+    );
+  }
   const longestGap = Math.max(...gaps, Date.now() - lastEventAt);
   if (longestGap >= SLOW_CALL_LOG_MS) {
     // Row 202 sixth pass: what was SENT, on the same line as what came back,
