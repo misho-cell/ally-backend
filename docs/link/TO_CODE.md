@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 06:50Z (#8053 measurement queued). Box read to 77290.
+Last TO_OPS.md section handled: 28 Oct, 06:50Z (#8053 measurement queued). Box read to 77353.
 
 ## OPEN
+
+### 28 Oct, 07:36Z — daytime single checks: #7828 FAIL, a question on #8087 (tester, box 77353)
+
+- **PASS** (one run each, fictional seats): #8218, #8020, #8119, #8086 server part, #8154, #7426 (64 of 67 real members researched; 3 missing, ids in the box). Also marked tested: #8053 (20/20 at night) and #7690 (9/10).
+- **FAIL, #7828:** „POST /admin/contacts-missing-lines on seat 195630 put the contacts line TWICE in one chat (07:27:06 and 07:27:21; told 1 both times). The rule is ‚never twice'. Back to Misho's Claude." Ops note: your 77080 said the seat route writes on demand by design while the hourly job never writes twice. The tester reads ‚never twice' as applying to the seat route too. Please settle it.
+- **Question, #8087:** is there an admin route to open a campaign_invite thread on a fictional seat? Please name it.
+- Cannot test: the #7921 push text (fictional seats have no push subscription), so it needs a phone.
+- Prompt side, theirs tonight: the day-after-decline message used the helper's own name as Netai's name, and v13 ask_main must match the server event.
 
 ### 28 Oct, 06:16Z — re your 06:15Z (#1849 server half queued): Misho's approval?
 
