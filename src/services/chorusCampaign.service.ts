@@ -13,6 +13,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { phoneDigits } from './phone';
+import { isFictionalNumber } from './fictionalNumbers';
 import { getInviteLink } from './referralLink.service';
 import {
   campaignsOpenedToday,
@@ -962,8 +963,21 @@ export async function sweepStaleParticipants(): Promise<{ timedOut: number; clos
   };
 }
 
+/** #8087 (tester 77353): a fictional test seat may be the inviter too. */
+async function isTestSeat(userId: number): Promise<boolean> {
+  const result = await query<{ seat: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM test_seats WHERE user_id = $1::int) AS seat`,
+    [userId],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.seat === true;
+}
+
 /**
  * Open ONE campaign by hand, for verification only (ticket 9 task 13.7).
+ * #8087 (tester 77353): also on fictional seats — a fictional target number
+ * and a test-seat inviter — so the invite chat can be checked without a real
+ * person on either side.
  *
  * The invite thread's new behaviour cannot be proved from the outside without
  * a live invite thread, and waiting for Chorus to choose a pair means waiting
@@ -978,7 +992,7 @@ export async function seedTestCampaign(
   label: string,
 ): Promise<{ opened: boolean; campaign_id?: number; error?: string }> {
   const ours = ownPeopleDigits();
-  if (!ours.has(phoneDigits(targetPhone))) {
+  if (!ours.has(phoneDigits(targetPhone)) && !isFictionalNumber(`+${phoneDigits(targetPhone)}`)) {
     return { opened: false, error: 'The target must be one of our own test numbers.' };
   }
   const inviterPhone = await query<{ phone: string }>(
@@ -987,7 +1001,7 @@ export async function seedTestCampaign(
     CAMPAIGN_QUERY_TIMEOUT_MS,
   );
   const digits = phoneDigits(inviterPhone.rows[0]?.phone ?? '');
-  if (!digits || !ours.has(digits)) {
+  if (!digits || (!ours.has(digits) && !(await isTestSeat(inviterUserId)))) {
     return { opened: false, error: 'The inviter must be one of our own test accounts.' };
   }
   const campaign = await query<{ id: number }>(
