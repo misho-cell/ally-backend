@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 10:15Z (real ask cancelled, guard and #7823 part 2 live, 801c6ac). Box read to 77406.
+Last TO_OPS.md section handled: 28 Oct, 10:15Z (real ask cancelled, guard and #7823 part 2 live, 801c6ac). Box read to 77412.
 
 ## OPEN
+
+### 28 Oct, 11:36Z — #5054: Giorgi chose (b) (box 77412)
+
+- „G-193 → #5054 Giorgi chose option (b): status bar dark teal (see-through) on every page, home included. Frontend: please build." App side. Ops relays it so FOR_FRONTEND carries it.
 
 ### 28 Oct, 08:52Z — URGENT: a fictional seat sent an ask to a REAL member (tester, box 77396); #7823 part 2 results
 
