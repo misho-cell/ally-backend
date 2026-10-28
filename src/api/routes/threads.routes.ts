@@ -1180,17 +1180,15 @@ threadsRouter.post(
         console.error(`[registration-research] user ${userId} not queued:`, (err as Error).message),
       );
 
-      // #7360: in the „Netai" conversation the team answers, not a model. The
-      // words (a typed line or a button) are kept and shown on the admin.
+      // #7360: a reply in the „Netai" conversation is kept and shown on the admin
+      // for the team. #8284 (founder 28 Oct: „even in a closed chat it wakes"): it
+      // no longer stops there — Netai answers it too, like any other message.
       if (await isNetaiThread(threadId)) {
-        await keepUserMessage(userId, threadId, message);
         await recordNetaiReply(threadId, Number(userId), message);
         // #7825: an answer to a message about a goal reaches that goal (switch: NETAI_REPLY_WAKES_GOAL).
         void wakeGoalWithNetaiReply(threadId, Number(userId), message);
         // eslint-disable-next-line no-console
         console.log(`[netai-message] user ${userId} replied in thread ${threadId}`);
-        res.status(200).json({ success: true, data: { kept: true, run: false } });
-        return;
       }
 
       // #7825: an answer to a Netai message typed in another chat is its answer too.

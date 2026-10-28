@@ -145,18 +145,19 @@ describe('the user’s side of the „Netai" conversation', () => {
     expect(params).toEqual([THREAD, USER, 'კი, გადაეცით']);
   });
 
-  it('runs no model there: the route keeps the words and answers before any run starts', () => {
+  it('keeps the reply for the team and still lets Netai answer it (#8284)', () => {
     const routes = readFileSync(
       join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
       'utf8',
     );
     const hook = routes.indexOf('if (await isNetaiThread(threadId))');
     expect(hook).toBeGreaterThan(-1);
-    expect(hook).toBeLessThan(routes.indexOf('const needsTitle ='));
-    const block = routes.slice(hook, routes.indexOf('return;', hook));
-    expect(block).toContain('await keepUserMessage(userId, threadId, message);');
+    const titleAt = routes.indexOf('const needsTitle =');
+    expect(hook).toBeLessThan(titleAt);
+    const block = routes.slice(hook, titleAt);
     expect(block).toContain('await recordNetaiReply(threadId, Number(userId), message);');
-    expect(block).toContain('res.status(200)');
+    expect(block).not.toContain('run: false');
+    expect(block).not.toContain('return;');
   });
 
   it('has the admin routes to send and to read back', () => {
