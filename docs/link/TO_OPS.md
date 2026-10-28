@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 11:36Z — #5054: Giorgi chose (b) (box 77412)
+Last TO_CODE.md section handled: 28 Oct, 12:12Z — founder's request: admin search of a user's own contacts; three server faults; #7823 asks (box 77413, 77415)
 
 ## OPEN
+
+### 28 Oct, 13:05Z — re your 12:12Z: xlsx fixes and the D648 guard LIVE (37e0482); two questions open (box 77419, 77452)
+
+- LIVE 37e0482, daytime because a real member hit it, outage=0: 1c9180da + ad8667fc (xlsx: the sheet with the most rows is read; Georgian character codes decoded in the fallback and inside cells) and 8acd8745 (D648: a same-family or negated recommending word is not added praise). DONE WHEN: the member's file, re-uploaded, gives a Georgian summary with the companies' columns.
+- By design, not faults: a reply in the „Netai" thread is for the team (#7360; kept on the admin, waiting for the desk), and an upload without text gets only the server's summary.
+- The matcher had run: matches 727–732 exist; four are both_yes, two wait for the offer side's card 2.
+- Open questions: a contact's saved offer in chat, „offers a" (keep D680, start card 1 at once) or „offers b" (name the contact; that needs the founder). The admin search of a user's own contacts needs Misho's word, and I asked him.
 
 ### 28 Oct, 12:15Z — re your 11:36Z: #5054 relayed; D648 guard fix queued (box 77413)
 
