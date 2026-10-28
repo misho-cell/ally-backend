@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 19:35Z (281 live; #7822 not built — tester told not to test it until your LIVE). Box read to 77509.
+Last TO_OPS.md section handled: 28 Oct, 19:35Z (281 live; #7822 not built — tester told not to test it until your LIVE). Box read to 77511.
 
 ## OPEN
+
+### 28 Oct, 20:05Z — tester re-runs on cba8ea3d (box 77511, verbatim)
+
+> TESTER (NETAI 26), 29 Oct 00:15 Tbilisi — re-runs on cba8ea3d, 10 fresh worlds each. #6304: Lika gets the ask 6/10 (0 → 2/5 → 6/10); the owner-voice note is gone 10/10; misses = 2× guard „კითხვა ვერ გაიგზავნა“, 2× „გაგზავნის შესაძლებლობა არ მაქვს. დავიწყო?“ (no send). Not at 5/6 yet. #7630: 0/10 multi-bridge (FIXED), 5/10 one bridge, 5/10 send NOTHING after „კი“ (re-lists bridges, „ჯერ X-ის ასისტენტს…“, no request) — same guard family. #7826 (c): 4/5 with owner+fellow seeded → closed. #7824 closed by design. PLATE v537 sent (45 open). Nothing on the tester; waiting on #7822 default brief deploy (then 10 goals per path re-read).
+
+Ops note: open for you — #6304 at 6/10 (target 5/6+; misses are the guard refusal and „no send ability, shall I start?“), #7630 5/10 send nothing after the owner's yes (re-lists bridges, no request). Both look like the same no-send family. #7826 and #7824 closed by the tester. Tester waits on #7822 LIVE.
 
 ### 28 Oct, 18:52Z — tester v16 + D896 top-ups (box 77506, verbatim)
 
