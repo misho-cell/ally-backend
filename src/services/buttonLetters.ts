@@ -80,9 +80,12 @@ export function foreignWordInReply(reply: string, ownerLine: string): string | n
 }
 
 /** The turn that has the reply written again. */
+/** Recognised by its opening: the word makes every copy different (tester 77502). */
+export const FOREIGN_WORD_PREFIX = '(სისტემური შენიშვნა: პასუხში სიტყვა „';
+
 export function foreignWordNudge(word: string): string {
   return (
-    `(სისტემური შენიშვნა: პასუხში სიტყვა „${word}" ქართული ასოებით არ წერია. ` +
+    `${FOREIGN_WORD_PREFIX}${word}" ქართული ასოებით არ წერია. ` +
     'მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ჩვეულებრივი ' +
     'ქართული ასოებით, ასო-ასო შემოწმებული, ბოდიშის გარეშე.)'
   );

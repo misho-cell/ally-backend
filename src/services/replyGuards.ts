@@ -450,9 +450,17 @@ export function wantsSomethingDone(ownerLine: string): boolean {
   return looksLikeGoalRequest(ownerLine) || WANTS_AN_INTRODUCTION_RE.test(ownerLine);
 }
 
+/**
+ * Tester 77502 (#6304): the names make every copy different, so the trail did
+ * not know this note and saved it as the owner's own message (40+ threads in a
+ * week): the owner saw it as typed by them, and the model read it as theirs.
+ * Recognised by its opening, as MEMBERS_IN_THE_BOOK_PREFIX is.
+ */
+export const FAR_FIND_PREFIX = '(სისტემური შენიშვნა: ძებნამ შენი კონტაქტების გავლით იპოვა: ';
+
 export function farFindUnplannedNudge(names: readonly string[], noGoal = false): string {
   return (
-    `(სისტემური შენიშვნა: ძებნამ შენი კონტაქტების გავლით იპოვა: ${names.join(', ')}. ამ მიზანს გეგმა ` +
+    `${FAR_FIND_PREFIX}${names.join(', ')}. ამ მიზანს გეგმა ` +
     'ჯერ არ აქვს და ამ გაშვებაში არაფერი გაგზავნილა. ' +
     (noGoal ? 'ამ საუბარში მიზანი ჯერ არ არის — ჯერ გახსენი create_task-ით. ' : '') +
     'ახლავე გამოიძახე find_warm_path მისი ' +

@@ -66,3 +66,16 @@ describe('a quick answer with no goal', () => {
     expect(wantsSomethingDone('who do I know at TBC?')).toBe(false);
   });
 });
+
+describe('the far-find note is the server’s, never the owner’s (tester 77502)', () => {
+  it('is saved as an event, with the foreign-word note, whatever names or word it carries', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { isModelOnlyNudge } = require('../chat.service') as typeof import('../chat.service');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { foreignWordNudge } = require('../buttonLetters') as typeof import('../buttonLetters');
+    expect(isModelOnlyNudge(farFindUnplannedNudge(['გიორგი ხატიაშვილი'], true))).toBe(true);
+    expect(isModelOnlyNudge(farFindUnplannedNudge(['ზურაბ ქობულაძე']))).toBe(true);
+    expect(isModelOnlyNudge(foreignWordNudge('გამარ健ობა'))).toBe(true);
+    expect(isModelOnlyNudge('ლიკას სთხოვე')).toBe(false);
+  });
+});
