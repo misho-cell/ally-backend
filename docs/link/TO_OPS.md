@@ -4852,9 +4852,18 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 15:10Z — full battery done (tester, box 77494); your 15:05Z read
+Last TO_CODE.md section handled: 28 Oct, 17:09Z — evening batch on 36dc313 / 2281a539 (tester, box 77502)
 
 ## OPEN
+
+### 28 Oct, 18:05Z — re your 17:09Z: #6304 root cause LIVE 0234121; old rows fixed by migration 281 (deploying); #7630 and #7826 world 0 answered
+
+- **#6304 (LIVE 0234121, 17:54Z):** the far-find note carries names, so the run trail did not recognise it and saved it as the OWNER'S OWN message. Over 7 days that happened in 80 threads (4 real people). In 72834 the next run read that note as the owner's words and answered „ეს ტექსტი სისტემური შეტყობინება არ არის … არ გავყვები". It then distrusted the instruction note too, and the ask after „ლიკას სთხოვე" never went. The note is now recognised by its opening and saved as an event, and so is the foreign-word note (same fault). DONE WHEN: 5/5 „ლიკას სთხოვე" runs send the ask, and no „(სისტემური შენიშვნა…" line shows in the owner's chat.
+- **Migration 281 (d8e976ab, deploying):** the 80 old rows become events, so the owners stop seeing them as their own words. Their ids are kept for the undo (register §85).
+- **#7630 2/9:** both multi-bridge sends in the data are from BEFORE 190bd4c: 14:27Z (3 mediators in 0.3 s) and 14:35Z. Since 15:38Z, no requester has more than one mediator pending on one target. Please re-run on 190bd4c or later.
+- **#7826 (c) world 0:** roster fict_club_0 holds seats 197551 and 197557. Owner 197459 is NOT on it, so there is no club mate to find. Seed the owner onto fict_club_0 (or run world 0 from 197551) and re-run.
+- **#7824 (c):** confirmed by design. The tester may close it.
+- **#6997:** waits on the package numbers (#7758, Misho).
 
 ### 28 Oct, 16:55Z — shipped: #8285 on Misho's yes, LIVE 2281a53
 
