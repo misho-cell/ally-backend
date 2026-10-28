@@ -467,6 +467,7 @@ import {
   removePicture,
 } from '../../services/setupPictures.service';
 import { Gadget, isGadget, isSetupStep, SetupStep } from '../../services/setupState.service';
+import { searchUserContacts, UserContactsOutcome } from '../../services/adminUserContacts.service';
 
 /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
 const MAX_SEAT_USER_ID = 2_147_483_647;
@@ -2387,6 +2388,50 @@ adminRouter.post(
     }
   },
 );
+
+// #8285 (founder 28 Oct; Misho's yes 28 Oct ~16:00Z): one user's OWN contacts,
+// searched as that user would, every number taken out — used only to help them.
+//   GET /admin/users/:id/contacts?q=<name|tag|company>
+//   GET /admin/users/:id/contacts?companies=A,B,C   (one search per company, ≤ 20)
+//   → 200 { user_id, searches: [{ query, count, results }] } · 400 bad input · 404 no such user
+function contactQueriesOf(req: Request): string[] {
+  const q = typeof req.query.q === 'string' ? [req.query.q] : [];
+  const companies = typeof req.query.companies === 'string' ? req.query.companies.split(',') : [];
+  return [...q, ...companies];
+}
+
+adminRouter.get('/users/:id/contacts', async (req: Request, res: Response) => {
+  try {
+    const targetId = Number(req.params.id);
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ success: false, error: 'არასწორი მომხმარებლის id' });
+      return;
+    }
+    const out = await searchUserContacts(targetId, contactQueriesOf(req));
+    if (out.outcome === UserContactsOutcome.BadInput) {
+      res.status(400).json({
+        success: false,
+        error: 'q ან companies საჭიროა (მაქს. 20 კომპანია, თითო 80 სიმბოლომდე)',
+      });
+      return;
+    }
+    if (out.outcome === UserContactsOutcome.NoSuchUser) {
+      res.status(404).json({ success: false, error: 'ასეთი მომხმარებელი არ არის' });
+      return;
+    }
+    const adminId = (req as AuthenticatedRequest).user.userId;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[admin-access] admin ${adminId} searched user ${targetId}'s contacts ` +
+        `(${out.searches.length} search(es))`,
+    );
+    res.status(200).json({ success: true, data: { user_id: targetId, searches: out.searches } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin user contacts]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 // M2 (plate v288; Misho, 1 October): the team's task board — every row says
 // who created it. The author comes from the login; only the shared login,

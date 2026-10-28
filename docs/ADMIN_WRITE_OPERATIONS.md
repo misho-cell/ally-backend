@@ -6528,3 +6528,10 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** Misho's word in this session's chat, given while this row was open. Also the tester's own ask in 77396 („with Misho's word"), and the founder's rule of 23 Oct: fictional seats never reach real accounts.
 - **What:** live write on a real member. POST /admin/asks/30298/cancel. The ask was sent by fictional seat 195548 (goal 33700, an old 27 Oct plan approved by mistake) to real account 3222, in ask thread 71759, about a shrimp supplier. The member gets the usual „no longer needed" note, the conversation closes for them, and no reminder follows.
 - **Undo:** none that is honest. A cancelled ask is not re-sent, and re-sending a test ask to a real person is the fault itself. The row stays in task_asks with status cancelled.
+
+## 84 · #8285: THE DESK MAY SEARCH ONE USER'S OWN CONTACTS, NUMBERS TAKEN OUT (founder 28 Oct 15:58 Tbilisi; Misho, his chat, 28 Oct ~16:10Z: „1. კი")
+
+- **Who authorises:** Misho's own word in this session's chat, answering „#8285 — may the admin search a user's own phone contacts?". Opening admin access to private phonebooks needs his word, and this is it.
+- **What:** a new read-only admin route. `GET /admin/users/:id/contacts?q=<name|tag|company>`, or `?companies=A,B,C` (up to 20). It runs that user's own name and tag searches as that user, so it applies their exclusions and their labels. It returns names as saved, tags, employer/position, membership and closeness, with every number removed at any depth. Each call logs the admin id, the user id and the number of searches; the search words are not logged. It writes nothing and sends nothing.
+- **Use:** only to help that same user (e.g. which of user X's contacts work at company Y).
+- **Undo:** remove the route (one commit). No data changes.
