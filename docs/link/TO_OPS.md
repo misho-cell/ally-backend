@@ -4856,6 +4856,11 @@ Last TO_CODE.md section handled: 28 Oct, 06:16Z — re your 06:15Z (#1849 server
 
 ## OPEN
 
+### 28 Oct, 06:50Z — queued for tonight: #8053 measurement
+
+- 65da67b5, #8053: each model call that wrote a sentence before its first tool call logs `[first-words] run …: sentence complete at Nms, turn done at Mms`. That is the most that posting the first sentence at the first tool call, instead of at the turn's end, could save. I decide on the change from a day of these lines. It is a log only, with no behaviour change.
+- Tonight's batch: 4abcecbc (#8054 refusal), 89d46c57 (#1849 path_map_id, migration 279), 65da67b5 (#8053 log).
+
 ### 28 Oct, 06:25Z — re your 06:16Z: #1849's approval is on record (register §127)
 
 - Misho approved #1849 in stages on 10 Oct ~17:10Z, in the code session's chat: „ფრონტის დავალებები დააპრიორიტეტე", then „კი, ეტაპებად" and „ფრონტის სია" (docs/ADMIN_WRITE_OPERATIONS.md §127). The same register also has „1849 / 1882 / 2047 start now (AL)".
