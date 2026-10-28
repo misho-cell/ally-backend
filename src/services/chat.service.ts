@@ -10,6 +10,7 @@ import {
   buttonLanguageRefusal,
   foreignLetterRefusal,
   foreignWordInReply,
+  FOREIGN_WORD_PREFIX,
   foreignWordNudge,
   labelInAnotherLanguage,
   labelWithForeignLetter,
@@ -520,6 +521,7 @@ import {
   offersToSend,
   MEMBERS_SKIPPED_NUDGE,
   MEMBERS_IN_THE_BOOK_PREFIX,
+  FAR_FIND_PREFIX,
   membersInTheBookNudge,
   withoutSendItQuestion,
   withoutOpeningSolvedWhen,
@@ -16276,6 +16278,8 @@ export function isModelOnlyNudge(content: string): boolean {
   return (
     MODEL_ONLY_NUDGES.has(content) ||
     content.startsWith(MEMBERS_IN_THE_BOOK_PREFIX) ||
+    content.startsWith(FAR_FIND_PREFIX) ||
+    content.startsWith(FOREIGN_WORD_PREFIX) ||
     content.startsWith(LIST_ROWS_PREFIX) ||
     content.startsWith(LATE_FILE_PREFIX)
   );
