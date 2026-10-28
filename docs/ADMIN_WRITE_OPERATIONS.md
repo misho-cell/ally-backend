@@ -6522,3 +6522,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** board row #8252 (tester 77388, Pr1, a real user's push), built directly under Misho's 26 Oct standing rule.
 - **What:** model-facing rules for the daily nudge, written in aiNotification.service. Write only what the context really says and invent nothing. When nothing concrete and true exists, answer {"skip": true} and no nudge goes. Address the member with „შენ", never „თქვენ", and never by name or nickname. The old line „if content is thin, still write personal, intriguing text" is gone. Live data: each nudge that goes is now also written as a server line into the chat its push opens (title, then body), so a tap finds it.
 - **Undo:** revert the commit. Nudge lines already written stay in those chats. They can be listed by joining ai_notification_log to conversations on user_id, the text and created_at within a minute.
+
+## 83 · A FICTIONAL SEAT'S ASK TO A REAL MEMBER, CANCELLED (tester 77396, 28 Oct 08:48Z; Misho, his chat, 28 Oct ~08:55Z: „შენი დავალებები ყველაფერი გააკეთე")
+
+- **Who authorises:** Misho's word in this session's chat, given while this row was open. Also the tester's own ask in 77396 („with Misho's word"), and the founder's rule of 23 Oct: fictional seats never reach real accounts.
+- **What:** live write on a real member. POST /admin/asks/30298/cancel. The ask was sent by fictional seat 195548 (goal 33700, an old 27 Oct plan approved by mistake) to real account 3222, in ask thread 71759, about a shrimp supplier. The member gets the usual „no longer needed" note, the conversation closes for them, and no reminder follows.
+- **Undo:** none that is honest. A cancelled ask is not re-sent, and re-sending a test ask to a real person is the fault itself. The row stays in task_asks with status cancelled.
