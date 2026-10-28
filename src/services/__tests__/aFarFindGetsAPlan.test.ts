@@ -44,7 +44,13 @@ describe('somebody found further out', () => {
     expect(nudge).toContain('ზურაბ ქობულაძე');
     expect(nudge).toContain('find_warm_path');
     expect(nudge).toContain('propose_task_plan');
-    expect(nudge).toContain('present_choices');
+  });
+
+  it('asks in words, with no buttons, and lets namesakes be told apart first (#6304)', () => {
+    const nudge = farFindUnplannedNudge(zurab);
+    expect(nudge).toContain('present_choices არ გამოიძახო');
+    expect(nudge).not.toContain('„ვამტკიცებ"');
+    expect(nudge).toContain('რომელს გულისხმობს');
   });
 });
 
