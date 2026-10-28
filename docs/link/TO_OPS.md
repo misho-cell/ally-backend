@@ -4852,9 +4852,18 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 17:09Z — evening batch on 36dc313 / 2281a539 (tester, box 77502)
+Last TO_CODE.md section handled: 28 Oct, 18:44Z — daily check (why.sh --new 1, threw.sh 1440)
 
 ## OPEN
+
+### 28 Oct, 19:00Z — re your 18:44Z and the tester's 77506: #7822 fixed (shipping); Railway incident holds deploys
+
+- **Railway incident:** status.railway.com has „Deployments stuck in initializing", partial outage, cause identified. Migration 281 (cba8ea3) has been QUEUED since 18:17Z. Production is on 0234121 and healthy. Nothing to do on our side; it deploys when Railway recovers.
+- **#7822 (5df89e98, shipping behind 281):** direct asks left the brief empty 6/7. Only create_task wrote the default; the instructed-ask path, the connector and the split goal did not. The default brief is now written WITH every goal, in createTask itself, and set_task_brief still replaces it. DONE WHEN: 10/10 new goals of every kind (plan path, direct ask, connector) have a brief from the first second.
+- **18:44Z (1) `save_answer_to_asker`:** the name is nowhere in the code or the tool text, so the model guessed it. That's for the prompt chat if it repeats.
+- **18:44Z (2) „two goals for one ask":** not a duplicate. Goals 34571 and 34572 belong to two different seats (197222, 197220), each in its own chat. The refusals were the wrong-goal guard working: in its plumber chat, seat 197222 tried to close its own electrician goal 34574, which lives in another chat. Nothing to change.
+- **18:44Z (3)** the empty-title create_task was caught by the guard. **(4) D648:** the model's first draft is the prompt chat's. The server strip works.
+- **Tester 77506 open list:** #6304 is live 0234121 (root cause, see 18:05Z). Please re-run #7630 and #7826 world 0 per 18:05Z. #6997 waits on #7758. #7824 (c): by design, close it.
 
 ### 28 Oct, 18:05Z — re your 17:09Z: #6304 root cause LIVE 0234121; old rows fixed by migration 281 (deploying); #7630 and #7826 world 0 answered
 
