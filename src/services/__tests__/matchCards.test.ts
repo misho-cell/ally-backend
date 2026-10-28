@@ -130,11 +130,17 @@ describe('a typed answer to a match card', () => {
     for (const no of ['არა', 'არა, საჭირო არაა', 'არა, ახლა არ მინდა', 'no', 'нет']) {
       expect(typedMatchAnswer(no)).toBe(MatchTap.No);
     }
+    // Tester 77492: a nine-word decline.
+    for (const no of ['არა, ახლა ძალიან დაკავებული ვარ, იქნებ მოგვიანებით']) {
+      expect(typedMatchAnswer(no)).toBe(MatchTap.No);
+    }
   });
 
-  it('leaves anything longer to the model', () => {
+  it('leaves a question, a „but" or other words to the model', () => {
     expect(typedMatchAnswer('კი, მაგრამ ჯერ მითხარი რა სფეროში მუშაობს ზუსტად')).toBeNull();
     expect(typedMatchAnswer('ვინ არის?')).toBeNull();
+    expect(typedMatchAnswer('არა, ჯერ მითხარი ვინ არის?')).toBeNull();
+    expect(typedMatchAnswer('да, но позже')).toBeNull();
     expect(typedMatchAnswer('კიდევ ერთი კითხვა მაქვს')).toBeNull();
   });
 
