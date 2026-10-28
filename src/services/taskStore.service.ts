@@ -37,11 +37,8 @@ export interface Task {
   thread_id: number | null;
   autonomy: string;
   brief: string | null;
-  /** #7822: the kind of result the goal is after (A–H), and how the delivered result looks. */
-  result_kind?: ResultKind | null;
+  /** #7822: the result line in the owner's words, until the plan's solved_when exists. */
   result_shape?: string | null;
-  /** #7822: the kind's checkpoints, in order, each done or not. */
-  checkpoints?: readonly Checkpoint[] | null;
   next_wake_at: string | null;
   /** Ticket 8 Task 2: the exact question this goal is blocked on, if any. */
   pending_question: string | null;
@@ -89,13 +86,10 @@ export async function createTask(
   threadId?: number,
   autonomy: TaskAutonomy = 'ask_first',
 ): Promise<{ id: number }> {
-  // #7822 (tester 77506: direct asks 6/7 with no brief): every goal starts with
-  // the default brief, whichever path opened it; set_task_brief replaces it.
-  const brief = defaultResultBrief(taskType);
+  // #7822: the owner's words are the result line until the plan's solved_when exists.
   const result = await query<{ id: number }>(
-    `INSERT INTO tasks (user_id, title, description, task_type, thread_id, autonomy,
-                        result_kind, result_shape, checkpoints)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+    `INSERT INTO tasks (user_id, title, description, task_type, thread_id, autonomy, result_shape)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id`,
     [
       userId,
@@ -104,9 +98,7 @@ export async function createTask(
       taskType,
       threadId ?? null,
       autonomy,
-      brief.kind,
-      brief.shape,
-      JSON.stringify(brief.checkpoints),
+      solvedLineFromOwnerWords(title, description),
     ],
     QUERY_TIMEOUT_MS,
   );
@@ -173,7 +165,7 @@ async function retitleThreadIfStale(threadId: number, newTitle: string): Promise
 }
 
 const TASK_COLUMNS = `id, user_id, title, description, task_type, status, permission_granted,
-            thread_id, autonomy, brief, result_kind, result_shape, checkpoints, next_wake_at, pending_question, pending_question_at,
+            thread_id, autonomy, brief, result_shape, next_wake_at, pending_question, pending_question_at,
             plan, plan_proposed, plan_approved_at, plan_version, plan_change_requested_at,
             created_at, last_activity_at`;
 
@@ -321,115 +313,17 @@ export async function setTaskBrief(
 }
 
 /**
- * #7822 (founder 26 Oct, D888–D891): the eight kinds of result the 27 real
- * goal threads came down to. Each has its own chain of checkpoints; the chain
- * itself is the prompt's (the model writes it), the server keeps it.
+ * #7822 (Misho's yes, 28 Oct, after the tester's audit 77586): the goal's result
+ * is the plan's solved_when, and the plan's routes are its checkpoints. Until a
+ * plan exists, the goal carries the owner's own words as its result line, so a
+ * goal opened by a direct ask has one from the first second, whatever path
+ * opened it.
  */
-export enum ResultKind {
-  TrustedProvider = 'A',
-  BuyerSellerMatch = 'B',
-  SpecificPersonOrOrg = 'C',
-  ExpertAdvice = 'D',
-  MeetingOrPresentation = 'E',
-  BringNonMemberIn = 'F',
-  SellWithoutPitching = 'G',
-  ReEngage = 'H',
-}
-
-export interface Checkpoint {
-  readonly step: string;
-  readonly done: boolean;
-}
-
-export interface ResultBrief {
-  readonly kind: ResultKind | null;
-  readonly shape: string | null;
-  readonly checkpoints: readonly Checkpoint[] | null;
-}
-
-const MAX_CHECKPOINTS = 12;
-const MAX_CHECKPOINT_CHARS = 200;
 const MAX_SHAPE_CHARS = 600;
 
-export function isResultKind(v: unknown): v is ResultKind {
-  return typeof v === 'string' && (Object.values(ResultKind) as string[]).includes(v);
-}
-
-/** The model's checkpoints, cleaned: text steps with a done flag, at most MAX_CHECKPOINTS. */
-export function cleanCheckpoints(raw: unknown): Checkpoint[] | null {
-  if (!Array.isArray(raw)) return null;
-  const steps = raw
-    .map((c) => (typeof c === 'object' && c !== null ? (c as Record<string, unknown>) : {}))
-    .map((c) => ({
-      step: String(c.step ?? '')
-        .trim()
-        .slice(0, MAX_CHECKPOINT_CHARS),
-      done: c.done === true,
-    }))
-    .filter((c) => c.step !== '');
-  return steps.length > 0 ? steps.slice(0, MAX_CHECKPOINTS) : null;
-}
-
-/** The first checkpoint not done yet; null when there are none or all are done. */
-export function nextCheckpoint(
-  checkpoints: readonly Checkpoint[] | null | undefined,
-): string | null {
-  return checkpoints?.find((c) => !c.done)?.step ?? null;
-}
-
-/** Saves the result brief beside the free brief; fields not given are kept. */
-export async function setResultBrief(
-  userId: string,
-  taskId: number,
-  brief: ResultBrief,
-): Promise<boolean> {
-  if (!isARealId(taskId)) return false;
-  const result = await query(
-    `UPDATE tasks SET result_kind = COALESCE($3, result_kind),
-                      result_shape = COALESCE($4, result_shape),
-                      checkpoints = COALESCE($5::jsonb, checkpoints),
-                      updated_at = NOW()
-      WHERE id = $1 AND user_id = $2 AND status = 'open'`,
-    [
-      taskId,
-      userId,
-      brief.kind,
-      brief.shape?.slice(0, MAX_SHAPE_CHARS) ?? null,
-      brief.checkpoints === null ? null : JSON.stringify(brief.checkpoints),
-    ],
-    QUERY_TIMEOUT_MS,
-  );
-  return (result.rowCount ?? 0) > 0;
-}
-
-/**
- * #7822 (tester 77135, prompt v13 round 3): the model writes the brief before
- * the plan in only about 5 goals of 10. A goal that gets none starts with this
- * default instead of nothing, and the model's own set_task_brief replaces it.
- * The kind is named only where the goal type says it for sure: a reach goal
- * is a specific person or organisation (C). A solve goal can be any of A–H, so
- * its kind is left for the model.
- */
-export function defaultResultBrief(taskType: 'reach' | 'solve'): ResultBrief {
-  return taskType === 'reach'
-    ? {
-        kind: ResultKind.SpecificPersonOrOrg,
-        shape: 'მფლობელი და ის, ვისაც ეძებს, ერთმანეთს დაუკავშირდნენ ნაცნობის გაცნობით.',
-        checkpoints: [
-          { step: 'ვინ იცნობს მას მფლობელის წრეში', done: false },
-          { step: 'ხიდი თანახმაა გააცნოს', done: false },
-          { step: 'გაცნობა შედგა', done: false },
-        ],
-      }
-    : {
-        kind: null,
-        shape: 'მფლობელს ჰყავს ერთი ან ორი სანდო ადამიანი ამ საქმისთვის, ნაცნობის რეკომენდაციით.',
-        checkpoints: [
-          { step: 'ვინ აკეთებს ამას ან ვინ იცის ვინ აკეთებს, მფლობელის წრეში', done: false },
-          { step: 'ვინ გაუწევს რეკომენდაციას', done: false },
-          { step: 'მფლობელი დაუკავშირდა', done: false },
-        ],
-      };
+export function solvedLineFromOwnerWords(title: string, description: string | null): string {
+  const words = (description ?? '').trim() || title.trim();
+  return words.slice(0, MAX_SHAPE_CHARS);
 }
 
 /** Schedule the task's next self-wake (revisit, reminder, summary deadline). */

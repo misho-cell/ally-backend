@@ -265,10 +265,6 @@ import {
   notePlanChangeRequested,
   findOpenTaskNamedIn,
   setTaskBrief,
-  setResultBrief,
-  isResultKind,
-  cleanCheckpoints,
-  nextCheckpoint,
   setTaskWake,
   wakeTaskNoLaterThan,
   touchTaskActivityForThread,
@@ -1640,12 +1636,12 @@ const OWN_CONTACT_SEARCH_TOOLS: ReadonlySet<string> = new Set([
 const ASK_CONTACT_TOOL: AnthropicTool = {
   name: 'ask_contact',
   description:
-    'NOT FOR AN INTRODUCTION. If the user wants to MEET somebody or be PUT IN TOUCH with them — ' +
-    'including "ask Y to introduce me to X" — that is request_introduction, not this. Sending it ' +
-    'here files the whole thing as an ordinary question: no introduction is created, the ' +
-    'mediator is never offered the accept/decline choice, and nobody is ever connected. The ' +
-    'discriminator is what the user wants at the end — an ANSWER is a question, a RELATIONSHIP ' +
-    'is an introduction. ' +
+    'AN INTRODUCTION GOES AS AN INTRODUCTION. If the user wants to MEET somebody or be PUT IN ' +
+    'TOUCH with them — including "ask Y to introduce me to X" — call request_introduction. On a ' +
+    'goal to reach one person, a question you send here to a bridge is sent by the server as ' +
+    'that introduction, to the person the goal names. A person already handed over by an ' +
+    'introduction (contact_handed_over) is asked here directly. The discriminator is what the ' +
+    'user wants at the end — an ANSWER is a question, a RELATIONSHIP is an introduction. ' +
     "Send a question to one of the user's MEMBER contacts on an open task's behalf (pass the " +
     'phone id from a search result). The recipient gets it as a thread + push and answers in ' +
     'plain text; the answer wakes this task automatically. You MAY write to the same person ' +
@@ -1743,36 +1739,14 @@ const SET_TASK_BRIEF_TOOL: AnthropicTool = {
   description:
     "Rewrite the task's operative brief after every substantive step: goal, plan, what is done, " +
     'whom we asked and what they said, what we are waiting for, and the finish criterion. The ' +
-    'brief is YOUR working memory — the next wake-up run sees it instead of re-reading history.',
+    'brief is YOUR working memory — the next wake-up run sees it instead of re-reading history. ' +
+    "The goal's RESULT — what counts as solved — is not written here: it is the plan's " +
+    "solved_when (propose_task_plan), and the plan's routes are its checkpoints (#7822).",
   input_schema: {
     type: 'object',
     properties: {
       task_id: { type: 'number', description: 'The task id from the system context.' },
       brief: { type: 'string', description: 'The full replacement brief text.' },
-      // #7822: the result brief, kept beside the free brief and shown to every wake.
-      result_kind: {
-        type: 'string',
-        enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-        description:
-          'The kind of result: A trusted provider, B buyer-seller match, C a specific person or ' +
-          "organisation, D an expert's advice, E a meeting or presentation, F bring a non-member " +
-          'in, G sell without pitching, H re-engage. Change it when the goal switches kind.',
-      },
-      result_shape: {
-        type: 'string',
-        description: 'What the delivered result looks like, in one or two sentences.',
-      },
-      checkpoints: {
-        type: 'array',
-        description:
-          "The kind's checkpoints in order, each with done true once reached. Every wake works " +
-          'on the first one not done.',
-        items: {
-          type: 'object',
-          properties: { step: { type: 'string' }, done: { type: 'boolean' } },
-          required: ['step', 'done'],
-        },
-      },
     },
     required: ['task_id', 'brief'],
   },
@@ -2193,19 +2167,14 @@ const FINISH_TASK_TOOL: AnthropicTool = {
    */
   description:
     'Believe the goal is done? ASK the owner — do not close it. Without confirmed: true this ' +
-    'records nothing and the goal stays open; show the owner what was achieved and offer three ' +
-    'buttons: „' +
+    'records nothing and the goal stays open; ask the owner in one sentence, in words (there are ' +
+    'no buttons), whether it is solved, not yet, or should stop. Call again with confirmed: true ' +
+    'only after they say „' +
     SOLVED_LABEL +
-    '" / „' +
-    NOT_YET_LABEL +
-    '" / „' +
-    STOP_LABEL +
-    '". Call again with confirmed: true only after they tap „' +
-    SOLVED_LABEL +
-    '" or say so in their own words. Their „' +
+    '" or the same in their own words. Their „' +
     STOP_LABEL +
     '" is update_task(status closed) instead. When the owner\'s own message ALREADY says it is ' +
-    'solved (the button or their words), call with confirmed: true at once — do not ask who ' +
+    'solved, call with confirmed: true at once — do not ask who ' +
     'solved it and do not ask them to confirm again; the first „solved" counts (D532).',
   input_schema: {
     type: 'object',
@@ -4310,8 +4279,9 @@ const FIND_WARM_PATH_TOOL: AnthropicTool = {
     'to that person, up to 3 hops, point-to-point (D132). Use ONLY once the target is known — ' +
     'named by the user or found by a search — never to discover who to ask. Returns each bridge ' +
     'by name with is_member (a path is relayable only through Netai users). The first bridge is a ' +
-    'direct contact: write to them with ask_contact; each further bridge is asked by their own ' +
-    "assistant before passing it on. If no path: offer an invite or the user's own message.",
+    'direct contact: when that bridge can reach the target themselves, this is an introduction ' +
+    'and goes through request_introduction; only a longer path uses ask_contact for the hops in ' +
+    "between. If no path: offer an invite or the user's own message.",
   input_schema: {
     type: 'object',
     properties: {
@@ -5790,7 +5760,7 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
     `რეჟიმი: ${autonomyLine}\n` +
     planBlock +
     (task.brief ? `\nსამუშაო გეგმა (brief):\n${task.brief}\n` : '') +
-    resultBriefSection(task) +
+    resultLineSection(task, plan !== null) +
     (askLines ? `\nგაგზავნილი კითხვები:\n${askLines}\n` : '') +
     `\nძრავის წესები:\n` +
     askRule +
@@ -11295,15 +11265,7 @@ async function executeToolCall(
       if (!brief) return { updated: false, error: 'Pass a non-empty brief.' };
       const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
       if (taskId === null) return { updated: false, error: BRIEF_NOT_THIS_CONVERSATION };
-      const updated = await setTaskBrief(userId, taskId, brief);
-      // #7822: the result brief rides on the same call; fields not given are kept.
-      const kind = isResultKind(input['result_kind']) ? input['result_kind'] : null;
-      const shape = String(input['result_shape'] ?? '').trim() || null;
-      const checkpoints = cleanCheckpoints(input['checkpoints']);
-      if (updated && (kind !== null || shape !== null || checkpoints !== null)) {
-        await setResultBrief(userId, taskId, { kind, shape, checkpoints });
-      }
-      return { updated };
+      return { updated: await setTaskBrief(userId, taskId, brief) };
     }
     case 'set_reminder':
       return setReminderTool(userId, input, threadId, ownerAbsent);
@@ -11637,11 +11599,11 @@ async function executeToolCall(
           closed: false,
           asked: true,
           error:
-            'Not closed, and the goal stays open — that is correct, not a failure. Show the ' +
-            `owner what was achieved and offer three buttons: „${SOLVED_LABEL}" / ` +
-            `„${NOT_YET_LABEL}" / „${STOP_LABEL}". Call this again with confirmed: true only ` +
-            `after they choose „${SOLVED_LABEL}". „${STOP_LABEL}" is update_task(closed) ` +
-            `instead, and „${NOT_YET_LABEL}" means carry on working.`,
+            'Not closed, and the goal stays open — that is correct, not a failure. Ask the ' +
+            'owner in one sentence, in words (no buttons), whether it is solved, not yet, or ' +
+            `should stop. Call this again with confirmed: true only after they say „${SOLVED_LABEL}" ` +
+            `or the same in their words. „${STOP_LABEL}" is update_task(closed) instead, and ` +
+            `„${NOT_YET_LABEL}" means carry on working.`,
         };
       }
       /**
@@ -16485,27 +16447,16 @@ export const ASK_THREAD_WITHHELD_TOOL_NAMES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * #7822: the result brief as each run of the goal reads it: the kind, how the
- * delivered result looks, and the NEXT checkpoint to work on. Nothing when the
- * goal has none yet.
+ * #7822 (Misho's yes, 28 Oct): the goal's result is the plan's solved_when. Until
+ * a plan exists, the run reads the owner's own words as the result line; with a
+ * plan, the plan block already carries it.
  */
-export function resultBriefSection(task: {
-  readonly result_kind?: string | null;
-  readonly result_shape?: string | null;
-  readonly checkpoints?: readonly { readonly step: string; readonly done: boolean }[] | null;
-}): string {
-  if (!task.result_kind && !task.result_shape && !task.checkpoints?.length) return '';
-  const lines = [
-    task.result_kind ? `შედეგის სახე: ${task.result_kind}` : '',
-    task.result_shape ? `მზა შედეგი ასე გამოიყურება: ${task.result_shape}` : '',
-    task.checkpoints?.length
-      ? `საკონტროლო ნაბიჯები: ${task.checkpoints.map((c) => `${c.done ? '✓' : '○'} ${c.step}`).join('; ')}`
-      : '',
-    nextCheckpoint(task.checkpoints)
-      ? `ახლა იმუშავე შემდეგ ნაბიჯზე: ${nextCheckpoint(task.checkpoints)}`
-      : '',
-  ].filter((line) => line !== '');
-  return `\nშედეგის გეგმა (#7822):\n${lines.join('\n')}\n`;
+export function resultLineSection(
+  task: { readonly result_shape?: string | null },
+  hasPlan: boolean,
+): string {
+  if (hasPlan || !task.result_shape) return '';
+  return `\nრა ჩაითვლება მოგვარებულად (მფლობელის სიტყვებით, სანამ გეგმა არ არის): ${task.result_shape}\n`;
 }
 
 /**
