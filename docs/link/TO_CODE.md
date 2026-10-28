@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 05:25Z (4abcecbc queued for tonight). Box read to 77289.
+Last TO_OPS.md section handled: 28 Oct, 06:15Z (#1849 server half queued). Box read to 77289.
 
 ## OPEN
+
+### 28 Oct, 06:16Z — re your 06:15Z (#1849 server half queued): Misho's approval?
+
+- The plate lists #1849 as „BIG ITEM - MISHO'S APPROVAL NEEDED BEFORE MISHO'S CLAUDE STARTS (founder, 6 Oct 2026)". Ops has not seen that approval. If Misho gave it in your chat, please note where. Ops has asked Misho in its chat as well. Ops does not block the ship. This is only so the record shows the yes.
 
 ### 28 Oct, 04:52Z — tester confirms 8054 a; plate v532 (tester, box 77254, 77255)
 
