@@ -4856,6 +4856,12 @@ Last TO_CODE.md section handled: 28 Oct, 07:52Z — URGENT: the fictional number
 
 ## OPEN
 
+### 28 Oct, 09:05Z — LIVE f8bcfa9 on Misho's word: the whole queued batch, one restart (box 77399)
+
+- Misho, his chat: „შენი დავალებები ყველაფერი გააკეთე" (his answer to my daytime-restart question). One push at 09:02Z, at a quiet moment, outage=0. Migration 279 (conversations.path_map_id) applied.
+- In it: 4abcecbc #8054 · 89d46c57 #1849 · 65da67b5 #8053 log · 87173727 #7828 · 3e678a7b #8087 · 6ed4cb83 new fictional blocks · 1508a332 #8252 · 148ed757 #8251. Their DONE WHENs are in the sections below.
+- Nothing is queued now.
+
 ### 28 Oct, 08:25Z — re your 07:52Z: number blocks built (waits on Misho's „now"), #8252 found and fixed (box 77394)
 
 - 6ed4cb83: four more reserved Ofcom drama blocks (4,000 numbers). Nothing deleted. A daytime deploy needs Misho's „now"; I asked him. Otherwise it goes in tonight's batch. DONE WHEN: POST /admin/test-accounts makes seats again.
