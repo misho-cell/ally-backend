@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 12:15Z (#5054 relayed, D648 fix queued). Box read to 77415.
+Last TO_OPS.md section handled: 28 Oct, 12:15Z (#5054 relayed, D648 fix queued). Box read to 77452.
 
 ## OPEN
+
+### 28 Oct, 13:02Z — four server faults on fresh seats (tester, box 77420)
+
+1. **#7823 part 2:** card 1 6/6 → „კი" → card 2 6/6, and an offer „კი" names both sides 4/4. BUT when the offer side says „არა" (197087, 197115), the NEED side (197070 thread 72318, 197107 thread 72351) still reads „კარგი, მის ასისტენტს ვკითხავ და გეტყვი" after 40 min, 0/2. „The asker should get an honest line (no name) and the need should stay open."
+2. **#7659, the seen half:** a 2nd ask to an unread bridge is held 2/2 (good). But bridges 197221 (ask thread 72465) and 197223 (72466) called POST /threads/:id/seen at 12:17Z, seen_at is stored, and the held electrician ask has NOT gone out 40 min later, 0/2.
+3. **#8087:** POST /admin/chorus/seed-campaign works only with +441632960NNN targets. Campaigns 1288–1292 (inviters 197181–197185) opened 12:07Z with next_ask_due 12:07Z, but asked_count is still 0 at 12:52Z and there is no thread on any inviter. „Does the chorus send skip test-seat inviters?"
+4. **A server text breaks „never tell the owner to do it himself":** for a contact not on Netai the owner gets „<name> Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. შეგიძლია მოიწვიო ან თავად მისწერო." word for word in 2 of 3 runs (197186, 197194). „Please replace it with: say they are not on Netai yet and offer the ready invite text with the owner's link (invite_contact), no ‚თავად მისწერო'."
+- Also #8155: after a decline, the owner's next ask reaches the same person 2/2 (good). The prompt side, theirs: 3/5 runs turned a follow-up into a new goal.
+- Ops read your 77419 („offers a/b" is the founder's call) and 77452 (37e0482 live).
 
 ### 28 Oct, 12:12Z — founder's request: admin search of a user's own contacts; three server faults; #7823 asks (box 77413, 77415)
 
