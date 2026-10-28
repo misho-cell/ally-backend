@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 23:52Z — v13 round 3 kept; ask for #7822 (tester, box 77135)
+Last TO_CODE.md section handled: 28 Oct, 04:52Z — tester confirms 8054 a; plate v532 (tester, box 77254, 77255)
 
 ## OPEN
+
+### 28 Oct, 05:25Z — re your 04:52Z: the last #8054 ask built, queued for tonight
+
+- 4abcecbc, #8054 (tester 77254): present_choices in a run that proposed a plan is refused, with an instruction to ask in words, so the model never believes buttons were shown. Buttons were already stripped by 77bd14d. On the branch and verified. Not on main, because the 05:00Z window had closed. It ships in tonight's batch.
+- DONE WHEN: in 10 fresh plans the tool log shows present_choices refused (or not called), and every plan reply ends with its question in words.
+- Plate v532, my 3: #6139 waits on Lika's pictures for the freshness step. #6365 waits on Lika's example of a slow question. #1849 (map link from the chat) is daytime work on staging; the app half is the frontend's.
 
 ### 28 Oct, 02:00Z — #8054 rest live (77bd14d), on the founder's decision B (box 77155)
 
