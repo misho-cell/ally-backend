@@ -8,7 +8,7 @@ import { nameAsReaderSaved } from '../readerSavedName';
 import { learnGeorgianSpellings } from '../georgianScriptName';
 import { forwardedRequestPush } from '../introOpening';
 import { query } from '../../db/postgres/client';
-import { bridgeAlreadyAsked, oneBridgeAtATimeNote } from '../oneBridgeAtATime';
+import { bridgeAlreadyAsked, oneBridgeAtATimeNote, oneRequestAtATime } from '../oneBridgeAtATime';
 import { foldedLower } from './georgianCase';
 import { buildSearchTerms } from './transliterate';
 import { sendPushNotification } from '../notification.service';
@@ -321,17 +321,20 @@ export async function requestIntroduction(
   context: IntroRequestContext = {},
 ): Promise<object> {
   try {
-    return await requestIntroductionInner(
-      requesterUserId,
-      mediatorName,
-      targetName,
-      message,
-      mediatorPhone,
-      targetUserId,
-      targetPhone,
-      askType,
-      acceptDormant,
-      context,
+    // #7630: the one-bridge check must see a request stored a moment ago in the same turn.
+    return await oneRequestAtATime(requesterUserId, () =>
+      requestIntroductionInner(
+        requesterUserId,
+        mediatorName,
+        targetName,
+        message,
+        mediatorPhone,
+        targetUserId,
+        targetPhone,
+        askType,
+        acceptDormant,
+        context,
+      ),
     );
   } catch (err) {
     // A thrown tool kills the whole model call ("model call failed mid-run —

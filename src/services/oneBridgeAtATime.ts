@@ -50,6 +50,25 @@ export async function bridgeAlreadyAsked(target: BridgeTarget): Promise<PendingB
   return row ? { mediatorName: row.mediator_name ?? '', hoursAgo: row.hours_ago } : null;
 }
 
+/**
+ * Tester 77494 (2/9): bridges listed in one turn are called in parallel
+ * (processToolBlocks runs a turn's tools together), so each request checked
+ * for a pending bridge before any had been stored, and all three went. One
+ * requester's requests run one after another; the next sees the one before.
+ */
+const requesterQueue = new Map<string, Promise<unknown>>();
+
+export function oneRequestAtATime<T>(requesterUserId: string, work: () => Promise<T>): Promise<T> {
+  const before = requesterQueue.get(requesterUserId) ?? Promise.resolve();
+  const turn = before.then(work, work);
+  const settled = turn.catch(() => undefined);
+  requesterQueue.set(requesterUserId, settled);
+  void settled.then(() => {
+    if (requesterQueue.get(requesterUserId) === settled) requesterQueue.delete(requesterUserId);
+  });
+  return turn;
+}
+
 /** What the run is told, and tells the owner in one line. */
 export function oneBridgeAtATimeNote(pending: PendingBridge, targetName: string): string {
   const waitHours = Math.max(1, NEXT_BRIDGE_AFTER_HOURS - pending.hoursAgo);

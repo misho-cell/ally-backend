@@ -6,7 +6,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { bridgeAlreadyAsked, oneBridgeAtATimeNote } from '../oneBridgeAtATime';
+import { bridgeAlreadyAsked, oneBridgeAtATimeNote, oneRequestAtATime } from '../oneBridgeAtATime';
 
 const target = {
   requesterUserId: '2978',
@@ -45,5 +45,40 @@ describe('one person, one bridge at a time', () => {
     expect(guard).toBeGreaterThan(0);
     expect(guard).toBeLessThan(tool.indexOf('INSERT INTO introduction_requests'));
     expect(tool).toContain("reason: 'another_bridge_pending'");
+  });
+});
+
+describe('bridges asked in one turn (tester 77494, 2/9)', () => {
+  it('run one after another for one requester, so the next sees the one before', async () => {
+    const order: string[] = [];
+    let release: () => void = () => undefined;
+    const first = oneRequestAtATime('7', async () => {
+      order.push('first starts');
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      order.push('first ends');
+      return 1;
+    });
+    const second = oneRequestAtATime('7', async () => {
+      order.push('second starts');
+      return 2;
+    });
+    await Promise.resolve();
+    expect(order).toEqual(['first starts']);
+    release();
+    expect(await Promise.all([first, second])).toEqual([1, 2]);
+    expect(order).toEqual(['first starts', 'first ends', 'second starts']);
+  });
+
+  it('a failed request does not stop the next', async () => {
+    const failed = oneRequestAtATime('8', () => Promise.reject(new Error('db down')));
+    await expect(failed).rejects.toThrow('db down');
+    expect(await oneRequestAtATime('8', () => Promise.resolve('next'))).toBe('next');
+  });
+
+  it('wraps request_introduction', () => {
+    const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
+    expect(tool).toContain('return await oneRequestAtATime(requesterUserId, () =>');
   });
 });
