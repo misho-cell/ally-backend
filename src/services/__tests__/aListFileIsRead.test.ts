@@ -150,3 +150,19 @@ describe('a picture renamed .csv (T3631)', () => {
     expect((await parseListFile(csv, 'list.csv')).ok).toBe(true);
   });
 });
+
+/** Tester 77413 (a real member, 28 Oct): instructions on sheet 1, the companies on sheet 2. */
+describe('a list on the second sheet', () => {
+  it('is read from the sheet with the most rows', async () => {
+    const book = new ExcelJS.Workbook();
+    book.addWorksheet('How to').addRow(['Fill in sheet 2']);
+    const list = book.addWorksheet('Companies');
+    list.addRow(['Company', 'City']);
+    list.addRow(['TBC', 'Tbilisi']);
+    list.addRow(['Alfa', 'Batumi']);
+    const buffer = Buffer.from(await book.xlsx.writeBuffer());
+    const parsed = await parseListFile(buffer, 'list.xlsx');
+    expect(parsed.ok && parsed.file.columns).toEqual(['Company', 'City']);
+    expect(parsed.ok && parsed.file.rows).toHaveLength(2);
+  });
+});

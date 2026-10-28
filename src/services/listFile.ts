@@ -199,9 +199,22 @@ async function xlsxCells(buffer: Buffer): Promise<string[][]> {
   }
 }
 
+/**
+ * A real member's file (tester 77413, 28 Oct): sheet 1 held instructions and
+ * the 182 companies were on sheet 2, which was never read. The list is the
+ * sheet with the most filled rows; the first one wins a tie.
+ */
+function fullestSheet(sheets: readonly ExcelJS.Worksheet[]): ExcelJS.Worksheet | undefined {
+  return sheets.reduce<ExcelJS.Worksheet | undefined>(
+    (best, sheet) =>
+      best === undefined || sheet.actualRowCount > best.actualRowCount ? sheet : best,
+    undefined,
+  );
+}
+
 async function excelJsCells(buffer: Buffer): Promise<string[][]> {
   const workbook = await readWorkbook(buffer);
-  const sheet = workbook.worksheets[0];
+  const sheet = fullestSheet(workbook.worksheets);
   if (sheet === undefined) return [];
   const out: string[][] = [];
   sheet.eachRow({ includeEmpty: false }, (row) => {
