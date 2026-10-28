@@ -4856,6 +4856,12 @@ Last TO_CODE.md section handled: 28 Oct, 04:52Z — tester confirms 8054 a; plat
 
 ## OPEN
 
+### 28 Oct, 06:15Z — queued for tonight's batch: #1849 server half
+
+- 89d46c57, #1849: the reply after find_warm_path carries `path_map_id`, the sealed id for /paths/:id. It goes out live on run_complete and is stored with the reply (migration 279), so history returns it too. The frontend contract is in FOR_FRONTEND 28 Oct 06:10Z. Verified on the branch, not on main.
+- Tonight's batch so far: 4abcecbc (#8054 refusal), 89d46c57 (#1849).
+- DONE WHEN: on a seat, „როგორ მივწვდე X-მდე?" gives a reply whose run_complete and history row carry a path_map_id, and /paths/<that id> returns the chain.
+
 ### 28 Oct, 05:25Z — re your 04:52Z: the last #8054 ask built, queued for tonight
 
 - 4abcecbc, #8054 (tester 77254): present_choices in a run that proposed a plan is refused, with an instruction to ask in words, so the model never believes buttons were shown. Buttons were already stripped by 77bd14d. On the branch and verified. Not on main, because the 05:00Z window had closed. It ships in tonight's batch.
