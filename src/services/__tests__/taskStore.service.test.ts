@@ -13,6 +13,7 @@ import {
   getGoalsSilentForDays,
   markMethodChangeWoken,
   goalHasActedOutward,
+  setTaskBrief,
 } from '../taskStore.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -375,5 +376,18 @@ describe('has this goal already reached somebody', () => {
   it('is false when the query returns nothing at all', async () => {
     mockQuery.mockResolvedValue(result([]) as never);
     await expect(goalHasActedOutward(7063)).resolves.toBe(false);
+  });
+});
+
+describe('the working brief keeps no phone number (tester 77586, goal 34931)', () => {
+  it('strips a number before it is stored', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    expect(await setTaskBrief(USER, 34931, 'ვკითხე ნინოს (+995 599 12 34 56), ველი პასუხს')).toBe(
+      true,
+    );
+    const params = mockQuery.mock.calls[mockQuery.mock.calls.length - 1][1] as unknown[];
+    const stored = String(params[2]);
+    expect(stored).not.toMatch(/599/u);
+    expect(stored).toContain('ველი პასუხს');
   });
 });

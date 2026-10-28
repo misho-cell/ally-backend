@@ -8,6 +8,7 @@ import { userLanguage } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
 import { goalNamedIn } from './goalMention';
 import type { TaskPlan } from './taskPlans.service';
+import { stripPhoneNumbers } from './userPrivateContext.service';
 import { GoalWaitReason } from './goalWaitReason';
 import { recordSolvedCases } from './solvedCases.service';
 
@@ -299,7 +300,11 @@ export async function getTaskById(taskId: number): Promise<(Task & { user_id: st
   return result.rows[0] ?? null;
 }
 
-/** The model's operative plan for the task — rewritten as work progresses. */
+/**
+ * The model's operative plan for the task — rewritten as work progresses.
+ * Tester 77586 (goal 34931): a brief carried a phone number; numbers are
+ * stripped at the door, as private context strips them.
+ */
 export async function setTaskBrief(
   userId: string,
   taskId: number,
@@ -309,7 +314,7 @@ export async function setTaskBrief(
   const result = await query(
     `UPDATE tasks SET brief = $3, updated_at = NOW(), last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open'`,
-    [taskId, userId, brief],
+    [taskId, userId, stripPhoneNumbers(brief)],
     QUERY_TIMEOUT_MS,
   );
   return (result.rowCount ?? 0) > 0;

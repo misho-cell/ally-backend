@@ -15,6 +15,8 @@ import {
   introductionSentence,
   introductionTarget,
   introductionThroughNamedBridge,
+  isThePersonToMeet,
+  personToMeetFromLines,
   personToMeetIn,
   introSentSentence,
   nominativeBeforeTan,
@@ -199,5 +201,33 @@ describe('the bridge named after the person asked for (#6304, tester 77511)', ()
     expect(introductionThroughNamedBridge('სთხოვე ნინოს, გამაცნოს რეზო', earlier)).toBeNull();
     expect(introductionThroughNamedBridge('კარგი', earlier)).toBeNull();
     expect(introductionThroughNamedBridge('ლიკას სთხოვე', ['ნოტარიუსი მჭირდება'])).toBeNull();
+  });
+});
+
+describe('a question to a bridge on a goal to meet someone (#6304, tester 77587)', () => {
+  it('reads the person from a goal title in both forms', () => {
+    expect(personToMeetIn('გიორგი ხატიაშვილის გაცნობა (ლიკა ცინცაძის მეშვეობით)')).toBe(
+      'გიორგი ხატიაშვილი',
+    );
+    expect(personToMeetIn('ირაკლი ლაცაბიძესთან გაცნობა ბიზნეს წინადადებისთვის')).toBe(
+      'ირაკლი ლაცაბიძე',
+    );
+    expect(personToMeetIn('გიორგი ხატიაშვილთან გაცნობა')).toBe('გიორგი ხატიაშვილი');
+    expect(personToMeetIn('მისი გაცნობა მინდა')).toBeNull();
+    expect(personToMeetFromLines(['ლიკას სთხოვე', 'გიორგი ხატიაშვილის გაცნობა'])).toBe(
+      'გიორგი ხატიაშვილი',
+    );
+  });
+
+  it('tells the bridge from the person to meet', () => {
+    expect(isThePersonToMeet('ლიკა ლომსაძე', 'გიორგი ხატიაშვილი')).toBe(false);
+    expect(isThePersonToMeet('გიორგი ხატიაშვილი (TBC)', 'გიორგი ხატიაშვილი')).toBe(true);
+  });
+
+  it('is wired into ask_contact before the question checks', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const at = chat.indexOf('const routed = await askOnAReachGoalAsIntroduction(');
+    expect(at).toBeGreaterThan(chat.indexOf("case 'ask_contact': {"));
+    expect(chat.slice(at, at + 400)).toContain('if (routed !== null) return routed;');
   });
 });
