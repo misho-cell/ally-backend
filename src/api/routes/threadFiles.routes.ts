@@ -31,6 +31,7 @@ import { emitThreadUpdated } from '../../services/sse.service';
 import { listWorkbook } from '../../services/listItems.service';
 import { getTaskById } from '../../services/taskStore.service';
 import { noteFileArrived } from '../../services/lateFiles';
+import { answerUploadAloneLater } from '../../services/uploadAloneRun.service';
 
 /**
  * Board #892 (the founder, 4 October): the owner gives Netai a file.
@@ -108,8 +109,10 @@ async function keepAndAnswer(
   up: UploadedFile,
   file: ParsedListFile,
 ): Promise<Record<string, unknown>> {
+  const since = new Date();
   const stored = await saveThreadFile(up.threadId, up.owner, up.filename, up.byteSize, file);
-  await saveThreadMessage(up.threadId, up.owner, 'user', `${ATTACHMENT_MARK} ${up.filename}`);
+  const attachmentLine = `${ATTACHMENT_MARK} ${up.filename}`;
+  await saveThreadMessage(up.threadId, up.owner, 'user', attachmentLine);
   const eventText = fileEventText(stored.id, up.filename, file);
   await saveThreadMessage(up.threadId, up.owner, 'user', eventText, 'event');
   // #1921: a run already answering in this conversation takes the file too.
@@ -118,6 +121,8 @@ async function keepAndAnswer(
   if (title !== null) emitThreadUpdated(String(up.owner), { id: up.threadId, title });
   const summary = listFileSummary(file, up.language);
   const line = await saveServerLine(up.threadId, up.owner, summary);
+  // #8286: a file sent with no words gets a real answer too.
+  answerUploadAloneLater(String(up.owner), up.threadId, attachmentLine, since, up.language);
   return {
     fileId: stored.id,
     filename: up.filename,
