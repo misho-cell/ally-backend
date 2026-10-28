@@ -14171,7 +14171,12 @@ async function serverIntroductionOrNull(
   on: boolean = SERVER_INTRODUCTION_ON,
 ): Promise<ServerIntroduction | DormantGoBetween | null> {
   const ownerLine = await introductionLineOf(threadId, runOwnerLine.get(runId) ?? '');
-  if (!on || !ownerAsksForIntroduction([ownerLine])) return null;
+  if (!on) return null;
+  if (!ownerAsksForIntroduction([ownerLine])) {
+    // eslint-disable-next-line no-console
+    console.log(`[server-intro] run ${runId}: not an introduction, not even with the earlier line`);
+    return null;
+  }
   const goal = await getOpenTaskByThread(threadId).catch(() => null);
   const made = await serverIntroduces(userId, ownerLine, introContextFor(threadId, goal?.id)).catch(
     (err: unknown) => {
@@ -15906,7 +15911,14 @@ async function runToolLoop(
         content: [{ type: 'text' as const, text: finalText }],
       };
       const nudgeTurn = { role: 'user' as const, content: guardNudge };
-      messages.push(cliffhangerTurn, nudgeTurn);
+      // Tester 77651 (73417, 73418): sent bare, the note read as text typed in the
+      // owner's turn, and the model refused it as „not from a verified source".
+      // The run reads it framed as the server's, as the history loader frames it;
+      // the trail keeps the bare note, which is how it is recognised and saved.
+      messages.push(cliffhangerTurn, {
+        role: 'user' as const,
+        content: frameServerTurn(guardNudge),
+      });
       pending.push(cliffhangerTurn, nudgeTurn);
       // The tester's 1153 (38681): the corrected answer is not narration. As a
       // step its first sentence stood on screen as a second bubble, 13 s before
@@ -16361,7 +16373,7 @@ function withSalvageNudge(messages: readonly Anthropic.MessageParam[]): Anthropi
   if (tail && tail.role === 'user') {
     const blocks: Anthropic.ContentBlockParam[] =
       typeof tail.content === 'string' ? [{ type: 'text', text: tail.content }] : [...tail.content];
-    blocks.push({ type: 'text', text: SALVAGE_NUDGE });
+    blocks.push({ type: 'text', text: String(frameServerTurn(SALVAGE_NUDGE)) });
     salvageMessages[salvageMessages.length - 1] = { role: 'user', content: blocks };
   }
   return salvageMessages;
