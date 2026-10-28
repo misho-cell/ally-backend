@@ -16,7 +16,7 @@ threw.sh: nothing threw in 24 h. why.sh: 72 first-time reasons, almost all guard
 1. **Model called a tool that does not exist** — 07:40:28 `save_answer_to_asker` → "Unknown tool" (one test seat). Only `send_answer_to_asker` exists on main. Check whether any prompt/tool text says "save" an answer, or whether the model guessed after a D648 refusal.
 2. **Two near-identical goals for one ask** — 12:15:55/57 update_task refused on goals 34571 and 34572 (both "find a reliable plumber in Tbilisi, pipe repair", test seat). The chat ended up owning one goal while the model tried to update the other; the duplicate goal looks created in the same turn or the next. DONE WHEN: one ask makes one goal.
 3. Minor: 18:18:37 create_task called with an empty title (test seat); guard caught it.
-4. FYI, not new: D648 praise refusals fired 10 times today across 9 test accounts (07:43 ×8, 10:52 ×2, 12:13) — the model still writes „ურჩევს/კარგი/სანდო" first time round.
+4. FYI, not new: D648 praise refusals fired 11 times today, all on test seats (07:43 ×8, 10:52 ×2, 12:13 ×1) — the model still writes „ურჩევს/კარგი/სანდო" first time round.
 
 ### 28 Oct, 17:09Z — evening batch on 36dc313 / 2281a539 (tester, box 77502)
 
