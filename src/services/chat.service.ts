@@ -135,11 +135,11 @@ import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { noteSearchVerdict } from './searchAcceptance';
-import { matchTapOf } from './matchCards';
+import { MatchTap, matchTapOf, typedMatchAnswer } from './matchCards';
 import { thanksTapOf } from './helperThanksCards';
 import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
 import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
-import { settleMatchTap } from './matchFlow.service';
+import { settleMatchTap, settleTypedMatchAnswer } from './matchFlow.service';
 import {
   needThisFactMeets,
   noteSavedFact,
@@ -14744,17 +14744,23 @@ async function answerMatchTap(
   intent: RunIntent | undefined,
 ): Promise<ChatResult | null> {
   const tapped = matchTapOf(userMessage);
-  if (tapped === null) return null;
+  const typed = tapped === null ? typedMatchAnswer(userMessage) : null;
+  if (tapped === null && typed === null) return null;
   try {
     const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
-    const text = await settleMatchTap(userId, threadId, tapped.card, tapped.tap, language);
+    const text =
+      tapped !== null
+        ? await settleMatchTap(userId, threadId, tapped.card, tapped.tap, language)
+        : await settleTypedMatchAnswer(userId, threadId, typed ?? MatchTap.No, language);
     if (text === null) return null;
     if (intent?.alreadyStored !== true) {
       await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
     }
     await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
     // eslint-disable-next-line no-console
-    console.log(`[match] run ${runId}: card ${tapped.card} ${tapped.tap}`);
+    console.log(
+      `[match] run ${runId}: ${tapped ? `card ${tapped.card} ${tapped.tap}` : `typed ${typed}`}`,
+    );
     return { reply: text, language, requestCreated: false };
   } catch (err) {
     // eslint-disable-next-line no-console

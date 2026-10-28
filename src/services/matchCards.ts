@@ -122,3 +122,20 @@ export function matchTapOf(
   }
   return null;
 }
+
+/**
+ * #7823 part 2 (tester 77396, 4 of 6): the cards' buttons are gone (#8054, no
+ * buttons anywhere), so people answer a card by typing „კი" — and only the
+ * exact button label was read. A short typed yes or no now answers the card
+ * that waits in this conversation; anything longer goes to the model as before.
+ */
+const TYPED_YES_RE =
+  /^\s*(?:კი|დიახ|ხო|ჰო|კარგი|yes|yeah|sure|ok|okay|да|конечно|sí|si|claro)(?:[\s,.!]+[\p{L}\p{M}]+){0,2}[\s.!]*$/iu;
+const TYPED_NO_RE =
+  /^\s*(?:არა|არ\s+მინდა|no|nope|нет|не\s+надо)(?:[\s,.!]+[\p{L}\p{M}]+){0,2}[\s.!]*$/iu;
+
+export function typedMatchAnswer(message: string): MatchTap | null {
+  if (TYPED_NO_RE.test(message)) return MatchTap.No;
+  if (TYPED_YES_RE.test(message)) return MatchTap.Yes;
+  return null;
+}

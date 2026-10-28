@@ -211,3 +211,36 @@ export async function expireMatches(): Promise<number> {
   }
   return expired.rows.length;
 }
+
+/**
+ * #7823 part 2: a typed yes or no answers a card only while the card is the
+ * last thing said here — a „კი" days later belongs to whatever came after it.
+ */
+async function cardIsTheLastWord(threadId: number, card: 1 | 2, matchId: number): Promise<boolean> {
+  const at = card === 1 ? 'card1_at' : 'card2_at';
+  const result = await query<{ last: boolean }>(
+    `SELECT NOT EXISTS (
+       SELECT 1 FROM conversations c, matches m
+        WHERE m.id = $2 AND c.thread_id = $1 AND c.role = 'assistant'
+          AND c.created_at > m.${at} + INTERVAL '2 seconds') AS last`,
+    [threadId, matchId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.last === true;
+}
+
+/** A typed answer to whichever card waits here as the last word, card 1 first; null otherwise. */
+export async function settleTypedMatchAnswer(
+  userId: string,
+  threadId: number,
+  answer: MatchTap,
+  language: RunLanguage,
+): Promise<string | null> {
+  for (const card of [1, 2] as const) {
+    const match = await cardedOn(card, userId, threadId);
+    if (match !== null && (await cardIsTheLastWord(threadId, card, match.id))) {
+      return settleMatchTap(userId, threadId, card, answer, language);
+    }
+  }
+  return null;
+}

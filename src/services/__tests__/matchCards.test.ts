@@ -17,6 +17,7 @@ import {
   card2Text,
   MatchTap,
   matchTapOf,
+  typedMatchAnswer,
 } from '../matchCards';
 import { expireMatches, settleMatchTap } from '../matchFlow.service';
 import { isCardHour } from '../needsOffers.cron';
@@ -117,5 +118,35 @@ describe('the taps (1699)', () => {
     expect(isCardHour(new Date('2026-10-09T18:10:00Z'), '2026-10-08')).toBe(false);
     expect(isCardHour(new Date('2026-10-09T07:55:00Z'), '2026-10-08')).toBe(false);
     expect(isCardHour(new Date('2026-10-09T02:05:00Z'), null)).toBe(false);
+  });
+});
+
+/** #7823 part 2 (tester 77396): no buttons any more, so a typed „კი" answers the card. */
+describe('a typed answer to a match card', () => {
+  it('reads a short yes or no, in every language', () => {
+    for (const yes of ['კი', 'კი, ჰკითხე', 'დიახ', 'yes', 'Yes, ask them', 'да', 'sí']) {
+      expect(typedMatchAnswer(yes)).toBe(MatchTap.Yes);
+    }
+    for (const no of ['არა', 'არა, საჭირო არაა', 'no', 'нет']) {
+      expect(typedMatchAnswer(no)).toBe(MatchTap.No);
+    }
+  });
+
+  it('leaves anything longer to the model', () => {
+    expect(typedMatchAnswer('კი, მაგრამ ჯერ მითხარი რა სფეროში მუშაობს ზუსტად')).toBeNull();
+    expect(typedMatchAnswer('ვინ არის?')).toBeNull();
+    expect(typedMatchAnswer('კიდევ ერთი კითხვა მაქვს')).toBeNull();
+  });
+
+  it('is settled by the server in the turn, card 1 first, before the model runs', () => {
+    const { readFileSync } = jest.requireActual<typeof import('fs')>('fs');
+    const { join } = jest.requireActual<typeof import('path')>('path');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('const typed = tapped === null ? typedMatchAnswer(userMessage) : null;');
+    expect(chat).toContain(
+      ': await settleTypedMatchAnswer(userId, threadId, typed ?? MatchTap.No, language);',
+    );
+    const flow = readFileSync(join(__dirname, '..', 'matchFlow.service.ts'), 'utf8');
+    expect(flow).toContain('await cardIsTheLastWord(threadId, card, match.id)');
   });
 });
