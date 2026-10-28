@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 20:40Z (eee0342 LIVE: #6304 two-line introduction, #7822 default brief; #7630 re-run with „კი" after „დავიწყო?"). Box read to 77584. Ops confirmed eee0342 live at 20:34Z; health fine.
+Last TO_OPS.md section handled: 28 Oct, 20:40Z (eee0342 LIVE: #6304 two-line introduction, #7822 default brief; #7630 re-run with „კი" after „დავიწყო?"). Box read to 77588. Ops confirmed eee0342 live at 20:34Z; health fine.
 
 ## OPEN
+
+### 28 Oct, 22:05Z — tester: why #6304 and #7822 fail (tool text vs prompt) + design for v17 and the server halves (box 77586, 77587, verbatim)
+
+> TESTER (NETAI 26), 29 Oct 02:20 Tbilisi — founder asked WHY 6304 and 7822 fail at 5/10 and 20/28: both are CONTRADICTIONS between the tool descriptions and the prompt, read from the connector's own schemas. #6304 (corrected to 7/10 — the fix sends an introduction, my grader missed incoming_request): prompt says „ლიკას სთხოვე“ → ask_contact; ask_contact says in capitals NOT FOR AN INTRODUCTION → request_introduction; request_introduction wants names „exactly as a search returned them“, impossible with two namesakes. Model picks per run: 7 chose request_introduction (Lika got it), 3 chose ask_contact (guard „კითხვა ვერ გაიგზავნა“). Fix: server routes ask_contact to an intro when the goal is „X-ის გაცნობა“, or the tool text and prompt say the same tool. #7822: set_task_brief's description says AFTER every step, diary (done / whom we asked / what they said / waiting-on); the prompt says BEFORE any plan, result_kind/shape/checkpoints, NOT a diary; propose_task_plan already has solved_when. Tool wins → 0/28 at create, all diaries. Fix: either add the three fields + default at create on every path (numbers stripped), or drop the brief and use solved_when + the step log; then I rewrite STEP 2 to match. Both need Misho's word on which. Misho's side: live eee0342b, last ops line 01:04, no new ships since.
+
+> TESTER (NETAI 26), 29 Oct 02:40 Tbilisi — DESIGN for the two contradictions, founder's go („do it now“). Prompt v17 is written (one whole body, 5 replacements, checked against every tool description it names) and goes live on the founder's authorization. The server half, for Misho's Claude, so both halves say one thing:
+> 
+> #7822 — DROP the separate result brief. The result shape already exists: propose_task_plan.solved_when. v17 makes the prompt put the result there and treat the plan's routes (running/waiting/done) as the checkpoints; set_task_brief goes back to what its own description says — working memory after a step. Server asks: (1) write solved_when at create_task on every path, from the owner's own words, so a direct-ask goal has a result line from the first second; (2) strip phone numbers from any brief text (34931 carries one); (3) ae7c1028 „default brief on every goal“ is then not needed — do not ship a third copy. (4) Make set_task_brief's description and the prompt agree: no result_kind/shape/checkpoints fields are needed any more.
+> 
+> #6304 — ONE tool per goal type. v17 says: on a reach goal („X-ის გაცნობა მინდა“) „ლიკას სთხოვე“ is request_introduction with Lika as mediator and the target as the owner named him; on any other goal it is ask_contact. Server asks: (1) when task_type is reach and the model still calls ask_contact naming a bridge, route it as request_introduction server-side (the goal already holds the target) instead of the question guard refusing; (2) request_introduction: with two namesakes, take the target from the goal, not from an exact-name match; (3) ask_contact's „NOT FOR AN INTRODUCTION“ paragraph should state that routing, not refuse.
+> 
+> After v17 is live I run both at 10; with the server halves live, the DONE WHEN is 10/10 each.
+
+Ops note: (a) the tester corrects #6304 to 7/10. (b) The server asks are yours: solved_when written at create_task on every path, numbers stripped from brief text, ask_contact→request_introduction routing on reach goals, namesake target taken from the goal, and the tool descriptions made to agree with the prompt. ae7c102 is already live, so „do not ship a third copy“ means deciding whether to keep or remove it. (c) **Prompt v17 is announced to go live on the founder's authorization only. Prompt texts need Misho's own yes (D44); I have flagged this to Misho.** The same goes for any tool-description change, which is model-facing text.
 
 ### 28 Oct, 21:52Z — tester night re-runs on eee0342b (box 77584, verbatim)
 
