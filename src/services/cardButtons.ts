@@ -1,25 +1,13 @@
-import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
-
 /**
  * #6364, RULE D846 (Giorgi, 19 Oct 21:01 Tbilisi: „დაიმალოს ეგ შორთქათები"):
- * no card carries a shortcut-answer button — not the plan card's others, not
- * the helper's card, not an answer or reminder card. People answer by writing
- * or speaking in the chat field. One exception, confirmed by Giorgi: the plan
- * card keeps its two buttons, „ვადასტურებ" and „შევცვალოთ", exactly as before.
+ * no card carries a shortcut-answer button. The plan card's „ვადასტურებ" and
+ * „შევცვალოთ" were the one exception, until #8054 (founder 27 Oct, box 76726,
+ * decision B): NO BUTTONS ANYWHERE. A typed „კი" approves a plan (3/3 the same
+ * day). People answer by writing or speaking in the chat field.
  *
- * Applied where buttons are stored and where they leave the server (history and
- * live events), so a card written before this rule shows none either.
+ * Applied where buttons leave the server (history, live events and the chat
+ * response), so a card written before this rule shows none either.
  */
-const KEPT_LABELS: ReadonlySet<string> = new Set([
-  ...Object.values(APPROVE_LABEL),
-  ...Object.values(CHANGE_LABEL),
-]);
-
-/** The plan card's own buttons, and nothing else; null when none remain. */
-export function onlyPlanButtons(choices: unknown): string[] | null {
-  if (!Array.isArray(choices)) return null;
-  const kept = choices.filter(
-    (label): label is string => typeof label === 'string' && KEPT_LABELS.has(label.trim()),
-  );
-  return kept.length > 0 ? kept : null;
+export function buttonsShown(_choices: unknown): string[] | null {
+  return null;
 }

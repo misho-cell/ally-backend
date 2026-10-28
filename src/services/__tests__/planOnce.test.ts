@@ -93,14 +93,15 @@ describe('the note follows the conversation, like every other fixed string', () 
     }
   });
 
-  it('names the buttons in the words the owner will actually see', () => {
-    // The old note hardcoded „ვამტკიცებ" and „შევცვალოთ", so an English run was
-    // told to offer buttons that the English run does not have.
-    expect(planAlreadyOnScreenNote('en')).toContain('I approve');
-    expect(planAlreadyOnScreenNote('en')).toContain('Change it');
-    expect(planAlreadyOnScreenNote('ka')).toContain('ვადასტურებ');
-    expect(planAlreadyOnScreenNote('ru')).toContain('Подтверждаю');
-    expect(planAlreadyOnScreenNote('es')).toContain('Lo apruebo');
+  it('asks for the answer in words, never buttons (#8054, founder 27 Oct)', () => {
+    for (const lang of ['ka', 'en', 'ru', 'es'] as const) {
+      expect(planAlreadyOnScreenNote(lang)).toContain('present_choices');
+      expect(planAlreadyOnScreenNote(lang)).toContain('approve_task_plan');
+      expect(planAlreadyOnScreenNote(lang)).not.toMatch(
+        /ვადასტურებ|I approve|Подтверждаю|Lo apruebo/u,
+      );
+    }
+    expect(planAlreadyOnScreenNote('en')).toContain('Do not call present_choices');
   });
 });
 

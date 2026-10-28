@@ -1,4 +1,4 @@
-import { onlyPlanButtons } from './cardButtons';
+import { buttonsShown } from './cardButtons';
 import { choiceNotesFor } from './choiceNotes';
 import { deliverOwedWhatsappReply } from './whatsappReplies.service';
 import { EventEmitter } from 'events';
@@ -540,8 +540,8 @@ export function emitRunComplete(
   runId: string,
   payload: RunCompletePayload,
 ): void {
-  // #6364 (D846): no shortcut-answer button but the plan card's two.
-  const choices = onlyPlanButtons(payload.choices);
+  // #6364 (D846), #8054 (founder 27 Oct): no buttons leave the server.
+  const choices = buttonsShown(payload.choices);
   const safe: RunCompletePayload = {
     reply: displayText(payload.reply),
     options: scrubDeep(payload.options),
@@ -604,8 +604,8 @@ export function emitMessageAppended(
     role: 'assistant',
     kind: payload.kind,
     content: displayText(payload.content),
-    // #6364 (D846): no shortcut-answer button but the plan card's two.
-    choices: scrubDeep(onlyPlanButtons(payload.choices) ?? []),
+    // #6364 (D846), #8054 (founder 27 Oct): no buttons leave the server.
+    choices: scrubDeep(buttonsShown(payload.choices) ?? []),
     ref: scrubDeep(payload.ref),
     ...(payload.createdAt !== undefined && { createdAt: payload.createdAt }),
   });
