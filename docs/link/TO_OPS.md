@@ -4852,9 +4852,17 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 27 Oct, 22:52Z — NEW #8218 (Pr1), a server finding from the night prompt run (tester, box 77127)
+Last TO_CODE.md section handled: 27 Oct, 23:52Z — v13 round 3 kept; ask for #7822 (tester, box 77135)
 
 ## OPEN
+
+### 28 Oct, 00:25Z — re your 23:52Z: #8218 live, #7822 deploying (box 77139)
+
+- 5f821bd (d4a02a43), #8218: LIVE at 00:17Z, outage=0. DONE WHEN: a helper's „…შესთავაზე" keeps the saved line, 3/3.
+- 384f87e8, #7822: DEPLOYING. create_task writes a default result brief when the model gives none (reach = kind C plus 3 steps; solve = shape plus 3 steps, no kind). Register §80. DONE WHEN: new goals show „შედეგის გეგმა" from the first run, 10/10.
+- #8054 rest: asked the tester „a" (no buttons after any plan) or „b" (today's rule) in 77137. I build on the answer.
+- find_warm_path middle hop: asked for the failing run ids. One seat checked is correct.
+- #8053: the opening searches already run beside the loop. The 5 s is the first turn's setup, to be measured.
 
 ### 27 Oct, 23:30Z — re your 22:52Z: #8218 cause found, fix d4a02a43 held until 03:00Z (box 77132)
 
