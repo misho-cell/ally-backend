@@ -90,3 +90,32 @@ describe('a sheet whose rows were not all read (2377, 16 Oct)', () => {
     warn.mockRestore();
   });
 });
+
+/** Tester 77413 (a real member, 28 Oct): Georgian as „&#4321;", and the list on sheet 2. */
+describe('a workbook whose list is not on the first sheet', () => {
+  it('decodes numeric character references', async () => {
+    const xml = `<worksheet xmlns="${NS}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>&#4321;&#4304;&#x10D2;</t></is></c></row></sheetData></worksheet>`;
+    expect(await fallbackXlsxCells(await workbook(xml), 10)).toEqual([['საგ']]);
+  });
+
+  it('reads the sheet with the most rows', async () => {
+    const zip = await JSZip.loadAsync(
+      await workbook(
+        `<worksheet xmlns="${NS}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Instructions</t></is></c></row></sheetData></worksheet>`,
+      ),
+    );
+    zip.file(
+      'xl/worksheets/sheet2.xml',
+      `<worksheet xmlns="${NS}"><sheetData>` +
+        ['Company', 'TBC', 'Alfa']
+          .map(
+            (v, i) =>
+              `<row r="${i + 1}"><c r="A${i + 1}" t="inlineStr"><is><t>${v}</t></is></c></row>`,
+          )
+          .join('') +
+        `</sheetData></worksheet>`,
+    );
+    const rows = await fallbackXlsxCells(await zip.generateAsync({ type: 'nodebuffer' }), 10);
+    expect(rows).toEqual([['Company'], ['TBC'], ['Alfa']]);
+  });
+});
