@@ -79,3 +79,16 @@ describe('the far-find note is the server’s, never the owner’s (tester 77502
     expect(isModelOnlyNudge('ლიკას სთხოვე')).toBe(false);
   });
 });
+
+describe('a note the server adds during a run reads as the server’s (tester 77651)', () => {
+  it('is framed in the run and kept bare in the trail', () => {
+    const { readFileSync } = jest.requireActual<typeof import('fs')>('fs');
+    const { join } = jest.requireActual<typeof import('path')>('path');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('content: frameServerTurn(guardNudge),');
+    expect(chat).toContain('pending.push(cliffhangerTurn, nudgeTurn);');
+    expect(chat).toContain(
+      "blocks.push({ type: 'text', text: String(frameServerTurn(SALVAGE_NUDGE)) });",
+    );
+  });
+});

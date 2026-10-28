@@ -176,7 +176,8 @@ describe('the fallback, wired', () => {
 
   it('is behind one switch, so off is what main did before', () => {
     expect(chat).toContain('on: boolean = SERVER_INTRODUCTION_ON,');
-    expect(chat).toContain('if (!on || !ownerAsksForIntroduction([ownerLine])) return null;');
+    expect(chat).toContain('if (!on) return null;');
+    expect(chat).toContain('if (!ownerAsksForIntroduction([ownerLine])) {');
   });
 });
 

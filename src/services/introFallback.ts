@@ -153,18 +153,30 @@ const DORMANT_REASON = 'dormant_account';
  * the line names no single saved go-between, no readable target, or the
  * request was refused (requestIntroduction's own walls stand).
  */
+/**
+ * Tester 77651 (73404): the server's own introduction returned nothing and said
+ * nothing, so a miss could not be told from a refusal. Each early stop says
+ * which; the reason only, never the owner's words or a number.
+ */
+function notMade(userId: string, reason: string): null {
+  // eslint-disable-next-line no-console
+  console.log(`[server-intro] user ${userId}: not made (${reason})`);
+  return null;
+}
+
 export async function serverIntroduces(
   userId: string,
   ownerLine: string,
   context: IntroRequestContext,
 ): Promise<ServerIntroduction | DormantGoBetween | null> {
   const sentence = introductionSentence(ownerLine);
-  if (sentence === null) return null;
+  if (sentence === null) return notMade(userId, 'no introduction sentence');
   const target = introductionTarget(sentence);
+  if (target === null) return notMade(userId, 'no target read');
   const phone = await oneContactNamed(userId, sentence);
-  if (target === null || phone === null) return null;
+  if (phone === null) return notMade(userId, 'no single contact named');
   const mediator = (await ownersLabel(userId, phone, instructionNamed(sentence) ?? '')).trim();
-  if (mediator === '') return null;
+  if (mediator === '') return notMade(userId, 'no label for the contact');
   const outcome = (await requestIntroduction(
     userId,
     mediator,
