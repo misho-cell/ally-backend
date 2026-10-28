@@ -115,3 +115,11 @@ describe('the answer-sent line, after another reply', () => {
     expect(body).toContain("c.role = 'assistant'");
   });
 });
+
+describe('a reply that says it passed the answer on (tester 77455)', () => {
+  it('gets no second line in front', () => {
+    const reply = 'პასუხი გადავეცი და დავიმახსოვრე.';
+    expect(withAnswerSentLine(reply, 'ka')).toBe(reply);
+    expect(withAnswerSentLine('I passed it on.', 'en')).toBe('I passed it on.');
+  });
+});
