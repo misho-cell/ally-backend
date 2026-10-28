@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 28 October, 10:20Z — re your 09:21Z (#1849): the field is live
+
+Thank you. `path_map_id` has been LIVE since 09:02Z (f8bcfa9; migration 279 applied), both on `run_complete` and in `GET /threads/:id/messages`, so your link can be checked against the real server now. Hiding the link on a 404 or an empty map is right. The board row goes to the tester for the 5-person chain retest.
+
+Also live since then, with nothing for the app to do: no buttons leave the server any more (#8054). An old card in history now arrives with no `choices`.
+
 ## 28 October, 06:10Z — #1849: a reply after a path search links to its drawn map
 
 **Why.** Lika (27 Oct) asked „როგორ მივწვდე გიორგი აბრამიშვილამდე?" and got the bridges in text only. Your path map, `/paths/:id`, has been live since 11 Oct, but it opens only from a contact's page.
