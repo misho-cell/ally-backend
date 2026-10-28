@@ -699,80 +699,123 @@ export async function sendDueCampaignAsks(limit: number): Promise<number> {
     if (askedThisTick.has(row.inviter_user_id)) continue;
     askedThisTick.add(row.inviter_user_id);
     const label = freshLabels.get(row.target_phone) ?? row.target_label?.trim() ?? 'ეს კონტაქტი';
-    const thread = await createThread(
-      String(row.inviter_user_id),
-      'campaign_invite',
-      `Netai-ზე მოწვევა: ${label}`,
-      undefined,
-      { isTask: true, status: 'needs_you', statusLine: 'პასუხს ელოდება' },
-    );
-    const how = techniqueHowFor(row.id);
-    // Row 40: the same two facts on every variant, taken here because this is
-    // the only place that knows both the inviter and the target.
-    const shared = await sharedCircleWith(row.inviter_user_id, row.target_phone);
-    const invite = await getInviteLink(String(row.inviter_user_id), 'ka').catch((err: unknown) => {
-      // eslint-disable-next-line no-console
-      console.warn('[chorus] invite link not read:', (err as Error).message);
-      return null;
-    });
-    await saveThreadMessage(
-      thread.id,
-      row.inviter_user_id,
-      'assistant',
-      CAMPAIGN_ASK_MESSAGE(label, how, row.target_returning === true) +
-        whyThemAndWhatIsShared(shared) +
-        inviteLinkLine(invite?.link),
-    );
-    await query(
-      `UPDATE invite_campaign_participants
-       SET state = 'asked', asked_at = NOW(), thread_id = $2, state_updated_at = NOW(),
-           technique_when = $3, technique_how = $4, technique_reason = $5
-       WHERE id = $1`,
-      // `how` comes from the variant actually sent, never from the env — the
-      // stamp cannot drift from the text if it is read off the same value.
-      [row.id, thread.id, CHORUS_TECHNIQUE.when, how, CHORUS_TECHNIQUE.reason],
-      CAMPAIGN_QUERY_TIMEOUT_MS,
-    );
-    // T9 (ticket 7 task 13): the ask also enters the ONE pending_updates list
-    // (kind 'chorus_ask', released immediately), so any conversation the
-    // inviter opens sees it — the dedicated thread alone is not the surface.
-    // Best-effort: the ask itself already stands in its thread.
-    await queueFollowUp(
-      String(row.inviter_user_id),
-      null,
-      CHORUS_ASK_KIND,
-      {
-        who: label,
-        why: 'an invite-campaign ask is waiting for their answer',
-        thread_id: thread.id,
-        technique_tag: { ...CHORUS_TECHNIQUE, how },
-        instruction:
-          `A Netai invite ask about ${label} is waiting in its own thread. If it fits the ` +
-          'conversation, remind the user once, lightly, that it is there — their answer ' +
-          '(„კი" / „არა" / „უთხარი") is recorded in that thread, never here.',
-      },
-      0,
-    ).catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.error('[chorus] pending-update queue failed:', (err as Error).message),
-    );
-    emitThreadCreated(String(row.inviter_user_id), {
-      id: thread.id,
-      type: thread.type,
-      title: thread.title,
-      is_task: thread.is_task,
-      status: thread.status,
-      status_line: thread.status_line,
-    });
-    void sendPushNotification(String(row.inviter_user_id), {
-      title: 'Netai',
-      body: `${label}-ს იცნობ? მოიწვიე Netai-ზე.`,
-      url: `/chat/${thread.id}`,
-    }).catch(() => undefined);
+    await sendOneCampaignAsk(row, label);
     sent++;
   }
   return sent;
 }
+
+interface DueCampaignAsk {
+  readonly id: number;
+  readonly campaign_id: number;
+  readonly inviter_user_id: number;
+  readonly target_label: string | null;
+  readonly target_phone: string;
+  readonly target_returning: boolean;
+}
+
+/** One participant's ask: its own thread, the message with the link, the stamp, the push. */
+async function sendOneCampaignAsk(row: DueCampaignAsk, label: string): Promise<void> {
+  const thread = await createThread(
+    String(row.inviter_user_id),
+    'campaign_invite',
+    `Netai-ზე მოწვევა: ${label}`,
+    undefined,
+    { isTask: true, status: 'needs_you', statusLine: 'პასუხს ელოდება' },
+  );
+  const how = techniqueHowFor(row.id);
+  // Row 40: the same two facts on every variant, taken here because this is
+  // the only place that knows both the inviter and the target.
+  const shared = await sharedCircleWith(row.inviter_user_id, row.target_phone);
+  const invite = await getInviteLink(String(row.inviter_user_id), 'ka').catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.warn('[chorus] invite link not read:', (err as Error).message);
+    return null;
+  });
+  await saveThreadMessage(
+    thread.id,
+    row.inviter_user_id,
+    'assistant',
+    CAMPAIGN_ASK_MESSAGE(label, how, row.target_returning === true) +
+      whyThemAndWhatIsShared(shared) +
+      inviteLinkLine(invite?.link),
+  );
+  await query(
+    `UPDATE invite_campaign_participants
+       SET state = 'asked', asked_at = NOW(), thread_id = $2, state_updated_at = NOW(),
+           technique_when = $3, technique_how = $4, technique_reason = $5
+       WHERE id = $1`,
+    // `how` comes from the variant actually sent, never from the env — the
+    // stamp cannot drift from the text if it is read off the same value.
+    [row.id, thread.id, CHORUS_TECHNIQUE.when, how, CHORUS_TECHNIQUE.reason],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  // T9 (ticket 7 task 13): the ask also enters the ONE pending_updates list
+  // (kind 'chorus_ask', released immediately), so any conversation the
+  // inviter opens sees it — the dedicated thread alone is not the surface.
+  // Best-effort: the ask itself already stands in its thread.
+  await queueFollowUp(
+    String(row.inviter_user_id),
+    null,
+    CHORUS_ASK_KIND,
+    {
+      who: label,
+      why: 'an invite-campaign ask is waiting for their answer',
+      thread_id: thread.id,
+      technique_tag: { ...CHORUS_TECHNIQUE, how },
+      instruction:
+        `A Netai invite ask about ${label} is waiting in its own thread. If it fits the ` +
+        'conversation, remind the user once, lightly, that it is there — their answer ' +
+        '(„კი" / „არა" / „უთხარი") is recorded in that thread, never here.',
+    },
+    0,
+  ).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[chorus] pending-update queue failed:', (err as Error).message),
+  );
+  emitThreadCreated(String(row.inviter_user_id), {
+    id: thread.id,
+    type: thread.type,
+    title: thread.title,
+    is_task: thread.is_task,
+    status: thread.status,
+    status_line: thread.status_line,
+  });
+  void sendPushNotification(String(row.inviter_user_id), {
+    title: 'Netai',
+    body: `${label}-ს იცნობ? მოიწვიე Netai-ზე.`,
+    url: `/chat/${thread.id}`,
+  }).catch(() => undefined);
+}
+
+/**
+ * #8087 (tester 77420): a seeded test campaign never sent — the live gates
+ * (the founder's yes on the target, a confirmed warm tie, the daily cap) are
+ * for real people and a fictional pair passes none of them. This sends the
+ * pending asks of the named campaigns now, and only where the inviter is a
+ * test seat and the target a reserved fictional number.
+ */
+export async function sendSeatCampaignAsks(campaignIds: readonly number[]): Promise<number> {
+  const due = await query<DueCampaignAsk>(
+    `SELECT p.id, p.campaign_id, p.inviter_user_id, c.target_label, c.target_phone,
+            false AS target_returning
+       FROM invite_campaign_participants p
+       JOIN invite_campaigns c ON c.id = p.campaign_id
+       JOIN test_seats ts ON ts.user_id = p.inviter_user_id
+      WHERE p.state = 'pending' AND c.status = 'open' AND c.id = ANY($1::int[])
+      LIMIT $2`,
+    [[...campaignIds], MAX_SEAT_CAMPAIGNS],
+    CAMPAIGN_QUERY_TIMEOUT_MS,
+  );
+  let sent = 0;
+  for (const row of due.rows.filter((r) => isFictionalNumber(`+${phoneDigits(r.target_phone)}`))) {
+    await sendOneCampaignAsk(row, row.target_label?.trim() || 'ეს კონტაქტი');
+    sent += 1;
+  }
+  return sent;
+}
+
+export const MAX_SEAT_CAMPAIGNS = 10;
 
 const NEXT_STATE: Record<string, Record<string, string>> = {
   asked: { agreed: 'agreed', declined: 'declined' },

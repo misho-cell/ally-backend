@@ -387,6 +387,8 @@ import {
   syncChorusAskTechniqueTags,
   closeStaleCampaigns,
   seedTestCampaign,
+  sendSeatCampaignAsks,
+  MAX_SEAT_CAMPAIGNS,
   currentGlobalDial,
   sharedCirclesForCampaigns,
   withSharedCircles,
@@ -7004,6 +7006,32 @@ adminRouter.post('/chorus/send-asks', async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.error('[admin chorus send-asks]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// #8087 (tester 77420): the pending asks of seeded test campaigns, sent now.
+//   POST /admin/chorus/send-seat-asks { campaign_ids: number[] (1-10) } → { sent }
+//   Only test-seat inviters and reserved fictional targets; real people are never reached.
+adminRouter.post('/chorus/send-seat-asks', async (req: Request, res: Response) => {
+  const raw = (req.body as { campaign_ids?: unknown } | undefined)?.campaign_ids;
+  const ids = Array.isArray(raw) ? raw.map(Number) : [];
+  if (
+    ids.length === 0 ||
+    ids.length > MAX_SEAT_CAMPAIGNS ||
+    !ids.every((id) => Number.isInteger(id) && id > 0)
+  ) {
+    res
+      .status(400)
+      .json({ success: false, error: `campaign_ids: 1 to ${MAX_SEAT_CAMPAIGNS} campaign ids` });
+    return;
+  }
+  try {
+    const sent = await sendSeatCampaignAsks(ids);
+    res.status(200).json({ success: true, data: { sent } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin chorus send-seat-asks]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The asks were not sent' });
   }
 });
 
