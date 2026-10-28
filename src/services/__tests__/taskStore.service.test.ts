@@ -35,8 +35,9 @@ describe('taskStore.service', () => {
     expect(out).toEqual({ id: 7 });
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql as string).toContain('INSERT INTO tasks');
-    // thread binding null (no thread given) + default ask_first autonomy.
-    expect(params as unknown[]).toEqual([
+    // thread binding null (no thread given) + default ask_first autonomy, then
+    // the default brief (#7822).
+    expect((params as unknown[]).slice(0, 6)).toEqual([
       USER,
       'find a lawyer',
       'for my startup',
@@ -44,6 +45,7 @@ describe('taskStore.service', () => {
       null,
       'ask_first',
     ]);
+    expect((params as unknown[]).slice(6)).toHaveLength(3);
   });
 
   it('getMyTasks scopes to the user and passes the optional status filter', async () => {

@@ -6,11 +6,10 @@ jest.mock('../../db/postgres/client', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { resultBriefSection } from '../chat.service';
 import {
   ResultKind,
+  createTask,
   defaultResultBrief,
   cleanCheckpoints,
   isResultKind,
@@ -110,12 +109,15 @@ describe('a goal that gets no brief from the model', () => {
     expect(brief.checkpoints?.every((c) => !c.done)).toBe(true);
   });
 
-  it('is written at create_task, right after the goal is saved', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const created = chat.indexOf('const { id } = await createTask(userId, title, description');
-    const written = chat.indexOf('await setResultBrief(userId, id, defaultResultBrief(taskType))');
-    expect(created).toBeGreaterThan(0);
-    expect(written).toBeGreaterThan(created);
-    expect(written - created).toBeLessThan(400);
+  it('is written with every goal, whichever path opens it (tester 77506: direct asks)', async () => {
+    const mockQuery = query as jest.Mock;
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 41 }], rowCount: 1 });
+    expect(await createTask('7', 'ნოტარიუსი', null, 'solve')).toEqual({ id: 41 });
+    const [sql, params] = mockQuery.mock.calls[mockQuery.mock.calls.length - 1];
+    expect(String(sql)).toContain('result_kind, result_shape, checkpoints');
+    const brief = defaultResultBrief('solve');
+    expect(params).toEqual(
+      expect.arrayContaining([brief.shape, JSON.stringify(brief.checkpoints)]),
+    );
   });
 });
