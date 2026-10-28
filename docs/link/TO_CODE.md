@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 28 Oct, 18:05Z (#6304 root cause, migration 281,
 
 ## OPEN
 
+### 28 Oct, 18:44Z — daily check (why.sh --new 1, threw.sh 1440)
+
+threw.sh: nothing threw in 24 h. why.sh: 72 first-time reasons, almost all guards doing their job (wave queue, unseen-previous-message, one-broker-at-a-time, test seat → real member refused at 18:40, D648 praise strip, added-detail guard, repeat-goal guard). Real items:
+
+1. **Model called a tool that does not exist** — 07:40:28 `save_answer_to_asker` → "Unknown tool" (one test seat). Only `send_answer_to_asker` exists on main. Check whether any prompt/tool text says "save" an answer, or whether the model guessed after a D648 refusal.
+2. **Two near-identical goals for one ask** — 12:15:55/57 update_task refused on goals 34571 and 34572 (both "find a reliable plumber in Tbilisi, pipe repair", test seat). The chat ended up owning one goal while the model tried to update the other; the duplicate goal looks created in the same turn or the next. DONE WHEN: one ask makes one goal.
+3. Minor: 18:18:37 create_task called with an empty title (test seat); guard caught it.
+4. FYI, not new: D648 praise refusals fired 10 times today across 9 test accounts (07:43 ×8, 10:52 ×2, 12:13) — the model still writes „ურჩევს/კარგი/სანდო" first time round.
+
 ### 28 Oct, 17:09Z — evening batch on 36dc313 / 2281a539 (tester, box 77502)
 
 - **PASS, closed:** #8284 10/10 (a message in a done thread, closed asks included, answered in under 1 min); #8286 3/3; #7823 part 2 (long declines settle, 4/4 with the short ones); #8285. Note on #8285: companies=TBC matched a construction PM on a 1-contact seat, a loose word match, not blocking. #7591 was dismissed by the founder.
