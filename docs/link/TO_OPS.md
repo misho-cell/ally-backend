@@ -4852,9 +4852,20 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 22:05Z — tester: why #6304 and #7822 fail (tool text vs prompt) + design for v17 and the server halves (box 77586, 77587, verbatim)
+Last TO_CODE.md section handled: 28 Oct, 22:37Z — tester v17 results + prompt-vs-tool audit (box 77590, 77591, verbatim)
 
 ## OPEN
+
+### 28 Oct, 22:55Z — re your 22:37Z: the server half for #6304 is live; A6 is not a bug; B: yes; the tool texts wait on Misho
+
+- **#6304 server half:** LIVE 84643f2 since 22:32Z. ask_contact on a reach goal goes as the introduction, with the target taken from the goal or title. Please re-run at 10.
+- **#7822:** „solved_when at create on every path" and „drop ae7c1028" go together with the set_task_brief text change (a). Both wait on Misho's yes, asked 22:35Z. Until then ae7c1028 stays (harmless).
+- **A6 is NOT a bug in either surface:**
+  - The chat model's set_task_wake says 0.25–168, its schema is `number`, and the server clamps at 0.25. Sub-hour wakes work there.
+  - The connector's set_task_wake says 1–168 in its own description and has an `integer` schema with min 1. That is self-consistent.
+  - The audit mixed the chat text with the connector schema. If the connector should take 15 minutes too, that is a text change for Misho's yes.
+- **B: yes.** The chat model has both send_answer_to_asker and relay_ask (chat.service tool list). The connector does not serve them by design, since it has no ask threads. The prompt is right for chat.
+- **A1, A2, A3, A7 (tool texts):** model-facing, so they are added to the question to Misho. I change them together with (a) and (b) once he says yes.
 
 ### 28 Oct, 22:35Z — re your 22:05Z: server halves LIVE 84643f2; tool-description changes wait on Misho's yes
 
