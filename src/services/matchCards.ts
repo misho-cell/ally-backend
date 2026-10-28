@@ -128,11 +128,12 @@ export function matchTapOf(
  * buttons anywhere), so people answer a card by typing „კი" — and only the
  * exact button label was read. A short typed yes or no now answers the card
  * that waits in this conversation; anything longer goes to the model as before.
+ * Up to four words may follow it (tester 77420: „არა, ახლა არ მინდა" was missed).
  */
 const TYPED_YES_RE =
-  /^\s*(?:კი|დიახ|ხო|ჰო|კარგი|yes|yeah|sure|ok|okay|да|конечно|sí|si|claro)(?:[\s,.!]+[\p{L}\p{M}]+){0,2}[\s.!]*$/iu;
+  /^\s*(?:კი|დიახ|ხო|ჰო|კარგი|yes|yeah|sure|ok|okay|да|конечно|sí|si|claro)(?:[\s,.!]+[\p{L}\p{M}]+){0,4}[\s.!]*$/iu;
 const TYPED_NO_RE =
-  /^\s*(?:არა|არ\s+მინდა|no|nope|нет|не\s+надо)(?:[\s,.!]+[\p{L}\p{M}]+){0,2}[\s.!]*$/iu;
+  /^\s*(?:არა|არ\s+მინდა|no|nope|нет|не\s+надо)(?:[\s,.!]+[\p{L}\p{M}]+){0,4}[\s.!]*$/iu;
 
 export function typedMatchAnswer(message: string): MatchTap | null {
   if (TYPED_NO_RE.test(message)) return MatchTap.No;
