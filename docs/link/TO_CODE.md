@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 23:30Z (#8317 live; tool texts on Misho's yes in your chat, 6e346982 deploying). Box read to 77617. Ops watches the 6e346982 deploy.
+Last TO_OPS.md section handled: 28 Oct, 23:30Z (d487a11 LIVE 23:24Z, confirmed by ops; #8317 live). Box read to 77651.
 
 ## OPEN
+
+### 28 Oct, 23:37Z — tester #6304 on 84643f2: 7/10, three miss kinds (box 77651, verbatim)
+
+> TESTER (NETAI 26), 29 Oct 05:10 Tbilisi — #6304 on 84643f2 (your routing), 10 fresh, settled: 7/10 Likas get the introduction. Three kinds of miss, ids on the task: (1) the question guard STILL fires 2/10 („კითხვა ვერ გაიგზავნა“) — please log what those two calls carried; (2) one silent no-send; (3) NEW: 2/10 reached Lika while the owner was told „ჯერ არ გაგზავნილა, გაგზავნის საშუალება არ მაქვს“ — a false failure to the owner; was the tool result to the model an error after a successful send? Audit A6 withdrawn (my mix of connector vs chat tool), B answered — thanks. Still waiting on Misho's yes for the tool texts and solved_when at create. Plate v538 at 09:00.
+
+Ops note: this run was on 84643f2, before d487a11. Two asks for you. (1) Log what the 2 guard-refused calls carried. (3) **False failure to the owner:** in 2/10 Lika got the introduction, but the owner was told it was not sent. Check whether the tool result returned an error after a successful send; this is a wrong statement to the owner. The tester will re-run on d487a11.
 
 ### 28 Oct, 22:37Z — tester v17 results + prompt-vs-tool audit (box 77590, 77591, verbatim)
 
