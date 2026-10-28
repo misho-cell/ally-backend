@@ -6516,3 +6516,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** the founder's decision B, relayed by the tester on 27 Oct („NO BUTTONS anywhere … Misho's side: please also remove the app-drawn plan-card buttons „ვადასტურებ / შევცვალოთ" (typed „კი" already approves)"), and ops' 77138.
 - **What:** what real people see changes. No button leaves the server any more, in history, in live events or in the chat response. The plan card's „ვადასტურებ / შევცვალოთ" go too. The model-facing plan notes and tool texts no longer tell the model to call present_choices after a plan. They tell it the owner answers in words, and that approve_task_plan runs only on a clear typed yes. Buttons already stored stay in the database, unshown.
 - **Undo:** revert the commit. Stored buttons show again as before (only the plan card's two, per D846).
+
+## 82 · #8252: THE MORNING NUDGE SAYS ONLY WHAT IS TRUE, AND STAYS IN ITS CHAT (a real member, 28 Oct 09:30 Tbilisi)
+
+- **Who authorises:** board row #8252 (tester 77388, Pr1, a real user's push), built directly under Misho's 26 Oct standing rule.
+- **What:** model-facing rules for the daily nudge, written in aiNotification.service. Write only what the context really says and invent nothing. When nothing concrete and true exists, answer {"skip": true} and no nudge goes. Address the member with „შენ", never „თქვენ", and never by name or nickname. The old line „if content is thin, still write personal, intriguing text" is gone. Live data: each nudge that goes is now also written as a server line into the chat its push opens (title, then body), so a tap finds it.
+- **Undo:** revert the commit. Nudge lines already written stay in those chats. They can be listed by joining ai_notification_log to conversations on user_id, the text and created_at within a minute.

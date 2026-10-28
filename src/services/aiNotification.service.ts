@@ -7,6 +7,9 @@ import { sendPushNotification } from './notification.service';
 import { scrubMechanicalForStorage } from './privacyScrub';
 import anthropic from '../config/anthropic';
 import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
+import { saveServerLine } from './threads.service';
+import { emitMessageAppended } from './sse.service';
+import { randomUUID } from 'crypto';
 
 /** #1816: where a tap on the engagement push lands — the owner's conversation. */
 export const AI_NOTIFICATION_PUSH_URL = '/chat';
@@ -130,6 +133,39 @@ export async function nudgePushUrl(userId: string): Promise<string> {
   }
 }
 
+/**
+ * #8252: the tap opened a chat where the nudge was nowhere. The nudge is now
+ * written into the chat its push opens, so the person reads it again there.
+ * Never fails the nudge.
+ */
+async function keepNudgeInItsChat(
+  userId: string,
+  url: string,
+  content: NotificationContent,
+): Promise<void> {
+  const match = /^\/chat\/(\d+)$/.exec(url);
+  if (match === null) return;
+  const threadId = Number(match[1]);
+  try {
+    const saved = await saveServerLine(
+      threadId,
+      Number(userId),
+      `${content.title}\n${content.body}`,
+    );
+    emitMessageAppended(userId, threadId, randomUUID(), {
+      messageId: String(saved.id),
+      kind: 'pending',
+      content: saved.content,
+      choices: [],
+      ref: { kind: 'ai_nudge' },
+      createdAt: saved.createdAt,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[ai-notif] nudge not kept in chat ${threadId}:`, (err as Error).message);
+  }
+}
+
 function formatContext(ctx: UserContext): string {
   const parts: string[] = [];
 
@@ -173,10 +209,16 @@ function formatContext(ctx: UserContext): string {
   return parts.join('\n\n');
 }
 
+/**
+ * #8252 (a real member, 28 Oct 09:30 Tbilisi): with little context the old
+ * prompt asked for „personal and intriguing" text anyway, and the model
+ * invented a referral that never happened, in broken polite Georgian. Now
+ * nothing true to say means no nudge: the model answers {"skip": true}.
+ */
 async function generateNotificationContent(
   userId: string,
   ctx: UserContext,
-): Promise<NotificationContent> {
+): Promise<NotificationContent | null> {
   const contextText = formatContext(ctx);
 
   const response = await anthropic.messages.create({
@@ -188,13 +230,15 @@ async function generateNotificationContent(
 წესები:
 - title: მაქსიმუმ 50 სიმბოლო
 - body: მაქსიმუმ 100 სიმბოლო
-- თუ კონკრეტული კონტენტი გაქვს (კონტაქტი, მიზანი, შესაძლებლობა) — გამოიყენე
-- თუ კონტენტი მწირია — მაინც პირადი და ინტრიგული ტექსტი დაწერე, რომ მოინდომოს შემოსვლა
+- დაწერე მხოლოდ ის, რაც კონტექსტში მართლა წერია (კონტაქტი, მიზანი, პასუხის მოლოდინი); არაფერი გამოიგონო
+- თუ კონტექსტში კონკრეტული და მართალი არაფერია, გამოიტანე მხოლოდ {"skip": true}
+- მიმართე „შენ"-ით, არასოდეს „თქვენ"-ით; მომხმარებელს სახელით ან მეტსახელით ნუ მიმართავ
+- მარტივი, გამართული ქართული: ერთი აზრი, მოკლე წინადადებები
 - არასოდეს გენერიკულ ტექსტს ("შეამოწმე აპი", "ახალი შეტყობინება")
 - ქართულად
 - ადამიანი დაასახელე მხოლოდ ისე, როგორც „ვისაც ახლა პასუხს ელოდება" სიაშია — პირველად სრული სახელით და გვარით; არ შეამოკლო და არ შეცვალო მართლწერა; სიაში თუ არაა, სახელს ნუ ახსენებ
 
-გამოიტანე მხოლოდ JSON: {"title": "...", "body": "..."}`,
+გამოიტანე მხოლოდ JSON: {"title": "...", "body": "..."} ან {"skip": true}`,
     messages: [
       {
         role: 'user',
@@ -230,7 +274,8 @@ async function generateNotificationContent(
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Claude returned invalid JSON for notification');
 
-  const parsed = JSON.parse(jsonMatch[0]) as { title?: string; body?: string };
+  const parsed = JSON.parse(jsonMatch[0]) as { title?: string; body?: string; skip?: boolean };
+  if (parsed.skip === true) return null;
   if (!parsed.title || !parsed.body) throw new Error('Notification missing title or body');
 
   // A phone draws a notification as plain text, so the marks the chat scrub
@@ -371,18 +416,28 @@ export async function sendAiNotification(userId: string): Promise<void> {
 
   const ctx = await gatherUserContext(userId);
   const content = await generateNotificationContent(userId, ctx);
+  if (content === null) {
+    // Nothing true to say today: no push, and not asked again until the next day.
+    await query(
+      `UPDATE ai_notification_settings SET last_sent_at = NOW(), updated_at = NOW() WHERE user_id = $1`,
+      [userId],
+    );
+    return;
+  }
 
   const logResult = await query<{ id: number }>(
     `INSERT INTO ai_notification_log (user_id, title, body) VALUES ($1, $2, $3) RETURNING id`,
     [userId, content.title, content.body],
   );
 
+  const url = await nudgePushUrl(userId);
+  await keepNudgeInItsChat(userId, url, content);
   try {
     // #1816: a tap opens the conversation, like every other push, not wherever the app defaults.
     await sendPushNotification(userId, {
       title: content.title,
       body: content.body,
-      url: await nudgePushUrl(userId),
+      url,
     });
     await query(`UPDATE ai_notification_log SET push_sent = true WHERE id = $1`, [
       logResult.rows[0].id,
