@@ -653,12 +653,12 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
   ask_contact: {
     title: 'Ask a contact on a task',
     description:
-      'NOT FOR AN INTRODUCTION. If the user wants to MEET somebody or be PUT IN TOUCH with them ' +
-      '— including "ask Y to introduce me to X" and "ask Y to send me X\'s contact" — that is ' +
-      'request_introduction, not this. Sending it here files the whole thing as an ordinary ' +
-      'question: no introduction is created, the mediator is never offered the accept/decline ' +
-      'choice or asked HOW, and nobody is ever connected. The discriminator is what the user ' +
-      'wants at the end — an ANSWER is a question, a RELATIONSHIP is an introduction. ' +
+      'AN INTRODUCTION GOES AS AN INTRODUCTION. If the user wants to MEET somebody or be PUT IN ' +
+      'TOUCH with them — including "ask Y to introduce me to X" and ' +
+      '"ask Y to send me X\'s contact" — call request_introduction: only it offers the mediator the accept/decline ' +
+      'choice and connects anybody. A person already handed over by an introduction ' +
+      '(contact_handed_over) is asked here directly. The discriminator is what the user wants ' +
+      'at the end — an ANSWER is a question, a RELATIONSHIP is an introduction. ' +
       "Sends a question to one of the user's MEMBER contacts on an open task's behalf — they " +
       'get it as a message in their own app and their reply comes back to the task. Only ' +
       "with the user's explicit go-ahead, only to a Netai user (is_member true in search results — " +

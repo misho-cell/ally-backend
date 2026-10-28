@@ -74,16 +74,15 @@ describe('an introduction is not a question, and both tools say so', () => {
     expect(REQUEST_INTRO).toContain('ASK Y TO INTRODUCE ME TO X');
   });
 
-  it('ask_contact says what it is NOT, and what happens if it is used anyway', () => {
-    expect(ASK_CONTACT).toContain('NOT FOR AN INTRODUCTION');
-    // The cost, named: this is what the seat actually observed.
-    expect(ASK_CONTACT).toContain('no introduction is created');
-    expect(ASK_CONTACT).toContain('nobody is ever connected');
+  it('ask_contact says an introduction goes as one, and how the server routes it (#6304, Misho 28 Oct)', () => {
+    expect(ASK_CONTACT).toContain('AN INTRODUCTION GOES AS AN INTRODUCTION');
+    expect(ASK_CONTACT).toContain('sent by the server as that introduction');
+    expect(ASK_CONTACT).toContain('contact_handed_over) is asked here directly');
   });
 
   it('each points at the other by name, so neither can be read alone', () => {
     expect(REQUEST_INTRO).toContain('ask_contact is the wrong one');
-    expect(ASK_CONTACT).toContain('that is request_introduction, not this');
+    expect(ASK_CONTACT).toContain('call request_introduction');
   });
 
   /**
@@ -134,10 +133,10 @@ describe('the connector says the same thing as the chat', () => {
     expect(mcpText('request_introduction')).toContain('ask_contact is the wrong one');
   });
 
-  it('its ask_contact names what it is not, and the share-contact case too', () => {
+  it('its ask_contact sends an introduction to request_introduction, and the share-contact case too', () => {
     const askContact = mcpText('ask_contact');
-    expect(askContact).toContain('NOT FOR AN INTRODUCTION');
-    expect(askContact).toContain('nobody is ever connected');
+    expect(askContact).toContain('AN INTRODUCTION GOES AS AN INTRODUCTION');
+    expect(askContact).toContain('connects anybody');
     // Read as source, so the apostrophe is still escaped here.
     expect(askContact).toContain("ask Y to send me X\\'s contact");
   });
