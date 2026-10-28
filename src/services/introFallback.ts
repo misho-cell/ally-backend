@@ -72,7 +72,11 @@ export function introductionTarget(sentence: string): string | null {
  * introduction, so the server's own introduction never ran and the owner read
  * „კითხვა ვერ გაიგზავნა". The two together are: through Lika, to Giorgi.
  */
-const WANTS_TO_MEET_RE = /^(.{2,80}?)\s+გაცნობა\s+(?:მინდა|მჭირდება|მსურს)/u;
+/** „X-ის გაცნობა მინდა", and a goal's own title „X-ის / X-თან გაცნობა (…)". */
+const WANTS_TO_MEET_RE = /^(.{2,80}?)\s+გაცნობა(?=$|[\s(.,!])/u;
+const TAN_RE = /თან$/u;
+/** Words that point at someone already named, never a name themselves. */
+const POINTING_WORDS: ReadonlySet<string> = new Set(['მისი', 'მათი', 'ამის', 'იმის', 'მისთვის']);
 const GENITIVE_IS_RE = /ის$/u;
 const GENITIVE_S_AFTER_VOWEL_RE = /[აეიოუ]ს$/u;
 const LINE_END_RE = /[\s.!]+$/u;
@@ -83,13 +87,17 @@ function nominativeOfGenitive(word: string): string {
   return GENITIVE_S_AFTER_VOWEL_RE.test(word) ? word.slice(0, -1) : word;
 }
 
-/** The person a „X-ის გაცნობა მინდა" line asks to meet, in the nominative; else null. */
+/** The person a „X-ის გაცნობა მინდა" line or a goal title asks to meet, in the nominative; else null. */
 export function personToMeetIn(line: string): string | null {
   const match = WANTS_TO_MEET_RE.exec(line.trim());
   if (match === null) return null;
   const words = cleanWords(match[1]);
   if (words.length === 0 || words.length > MAX_TARGET_WORDS) return null;
-  const last = nominativeOfGenitive(words.pop() ?? '');
+  if (words.some((w) => POINTING_WORDS.has(w))) return null;
+  const declined = words.pop() ?? '';
+  const last = TAN_RE.test(declined)
+    ? nominativeBeforeTan(declined.slice(0, -3))
+    : nominativeOfGenitive(declined);
   return [...words, last].join(' ');
 }
 
@@ -104,6 +112,28 @@ export function introductionThroughNamedBridge(
     if (target !== null) return `${ownerLine.replace(LINE_END_RE, '')}, გამაცნოს ${target}`;
   }
   return null;
+}
+
+/**
+ * #6304 (tester 77587): on a goal to meet someone, a question sent to a bridge
+ * is that introduction. The person comes from the owner's own „X-ის გაცნობა
+ * მინდა", never from an exact-name match, so two namesakes cannot stop it.
+ */
+export function personToMeetFromLines(ownerLines: readonly string[]): string | null {
+  for (const line of ownerLines) {
+    const target = personToMeetIn(line);
+    if (target !== null) return target;
+  }
+  return null;
+}
+
+const NAME_STEM_CHARS = 4;
+
+/** True when the contact asked is the person to meet themselves, not a bridge. */
+export function isThePersonToMeet(contactName: string, target: string): boolean {
+  const stems = cleanWords(target.toLowerCase()).map((w) => w.slice(0, NAME_STEM_CHARS));
+  const words = cleanWords(contactName.toLowerCase());
+  return stems.length > 0 && stems.every((stem) => words.some((w) => w.startsWith(stem)));
 }
 
 export interface ServerIntroduction {

@@ -570,6 +570,8 @@ import {
   dormantSentence,
   DormantGoBetween,
   introductionThroughNamedBridge,
+  isThePersonToMeet,
+  personToMeetFromLines,
   introSentSentence,
   SERVER_INTRODUCTION_ON,
   ServerIntroduction,
@@ -11211,6 +11213,11 @@ async function executeToolCall(
       const asked = String(input['question'] ?? '');
       // #100: the question keeps every fact the owner wrote; a changed one is rewritten first.
       const ownerLines = await ownerLinesForGoal(task, threadId);
+      const routed = await askOnAReachGoalAsIntroduction(userId, threadId, runId, task, input, {
+        asked,
+        ownerLines,
+      });
+      if (routed !== null) return routed;
       /**
        * 0267 day one (the tester's 58044): 9 of 14 fact-keeping refusals in three days were a
        * quality word the owner never wrote („სანდო"), each a whole model round before the same
@@ -17405,6 +17412,47 @@ async function answerSentAlreadySaid(threadId: number): Promise<boolean> {
     console.warn(`[answer-sent] thread ${threadId}: not read:`, (err as Error).message);
     return false;
   }
+}
+
+/**
+ * #6304 (tester 77587): „ლიკას სთხოვე" on a goal to meet Giorgi was sometimes
+ * called as ask_contact, whose own text says an introduction is not a question,
+ * and the guard then refused it. On a reach goal a question to a bridge is sent
+ * as the introduction it is, to the person the owner named; a question to that
+ * person themselves stays a question.
+ */
+async function askOnAReachGoalAsIntroduction(
+  userId: string,
+  threadId: number | undefined,
+  runId: string | undefined,
+  task: { id: number; task_type: string },
+  input: Record<string, unknown>,
+  ask: { readonly asked: string; readonly ownerLines: readonly string[] },
+): Promise<Record<string, unknown> | null> {
+  if (task.task_type !== 'reach' || typeof input['phone'] !== 'string') return null;
+  const target = personToMeetFromLines(ask.ownerLines);
+  const bridge = String(input['contact_name'] ?? '').trim();
+  if (target === null || bridge === '' || isThePersonToMeet(bridge, target)) return null;
+  const outcome = (await requestIntroduction(
+    userId,
+    bridge,
+    target,
+    ask.asked === '' ? undefined : ask.asked,
+    input['phone'],
+    undefined,
+    undefined,
+    'intro',
+    false,
+    introContextFor(threadId, task.id),
+  )) as Record<string, unknown>;
+  const sent = outcome.success === true;
+  if (sent && runId) runIntroSent.add(runId);
+  if (sent) await markSearchSent(runId, userId, [input['phone']], threadId);
+  // eslint-disable-next-line no-console
+  console.log(
+    `[reach-ask] task ${task.id}: a question to a bridge went as an introduction (${sent})`,
+  );
+  return { ...outcome, sent, sent_as: 'introduction' };
 }
 
 async function ownerLinesForGoal(
