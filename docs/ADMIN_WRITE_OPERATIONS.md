@@ -6535,3 +6535,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** a new read-only admin route. `GET /admin/users/:id/contacts?q=<name|tag|company>`, or `?companies=A,B,C` (up to 20). It runs that user's own name and tag searches as that user, so it applies their exclusions and their labels. It returns names as saved, tags, employer/position, membership and closeness, with every number removed at any depth. Each call logs the admin id, the user id and the number of searches; the search words are not logged. It writes nothing and sends nothing.
 - **Use:** only to help that same user (e.g. which of user X's contacts work at company Y).
 - **Undo:** remove the route (one commit). No data changes.
+
+## 85 · #6304: SERVER NOTES SAVED AS THE OWNER'S OWN WORDS BECOME EVENTS (tester 77502, 28 Oct 17:09Z)
+
+- **Who authorises:** row #6304 (tester FAIL 2/5), done directly under Misho's standing rule of 26 Oct.
+- **What:** migration 281, run once at startup. It covers 80 conversation rows (4 real people, 76 test seats) whose content is a server note: the far-find note or the foreign-word note. They were saved as role user, kind message, so each owner saw the note as if they had typed it. They get kind = 'event', like every other server note: the model still reads them, and the owner no longer sees them. Their ids are kept in server_notes_fixed_281 first.
+- **Undo:** `UPDATE conversations SET kind = 'message' WHERE id IN (SELECT id FROM server_notes_fixed_281);`
