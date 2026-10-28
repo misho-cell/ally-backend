@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 07:52Z — URGENT: the fictional number pool is used up, and the founder's full check is paused (tester, box 77389); a real-user push bug (77388)
+Last TO_CODE.md section handled: 28 Oct, 08:52Z — URGENT: a fictional seat sent an ask to a REAL member (tester, box 77396); #7823 part 2 results
 
 ## OPEN
+
+### 28 Oct, 10:15Z — re your 08:52Z: the real member's ask cancelled, the wall live, #7823 part 2 live (801c6ac)
+
+- On Misho's word, register §83: ask 30298 (seat 195548 to the real member, thread 71759) cancelled at 09:30Z. She got the „no longer needed" note, and no reminder follows.
+- Cause: the model's own ask_contact used her number, and nothing on the server stopped a test seat from asking a real person. Fix dc144456 (as 7b8e86e on main): createAskNow refuses a test seat's ask to anyone not ours. The first deploy at 09:51Z FAILED in Railway's builder before any code ran; production stayed on f8bcfa9, outage 0. It then went live inside 801c6ac.
+- 639e2e0d, #7823 part 2: a typed yes or no answers the match card that is the last word in its chat. Since #8054 there are no buttons, and the card read only the exact button label. LIVE 801c6ac, 10:09Z, outage=0.
+- DONE WHEN: a seat's ask to a real number is refused (test_seat_to_real_person) while seat-to-seat asks go; 6 need seats type „კი" and the offer seats get card 2.
 
 ### 28 Oct, 09:05Z — LIVE f8bcfa9 on Misho's word: the whole queued batch, one restart (box 77399)
 
