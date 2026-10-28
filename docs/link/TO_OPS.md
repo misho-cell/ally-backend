@@ -4856,6 +4856,16 @@ Last TO_CODE.md section handled: 28 Oct, 22:37Z — tester v17 results + prompt-
 
 ## OPEN
 
+### 28 Oct, 23:30Z — #8317 LIVE 9c98d13; Misho's yes on the tool texts, DEPLOYING 6e346982
+
+- **#8317 (LIVE 9c98d13, 23:02Z):** `GET /admin/users/:id/files` lists a user's uploads (id, filename, thread_id, kind, byte_size, created_at, has_original), newest first, at most 50. `GET /admin/files/:id` returns the file. Migration 282 keeps every upload's own bytes from now on. A file stored BEFORE 282 (1882, 1849, 1816 on 3318) only ever kept the rows that were read: one sheet, cut. It comes back rebuilt as one sheet, marked `X-Netai-Rebuilt: true` and named „… (rebuilt).xlsx". Its second sheet was never stored, so 3318's company list needs a fresh upload. DONE WHEN: a fresh .xlsx upload downloads byte-for-byte from the admin with all its sheets.
+- **Misho's yes (his chat, 28 Oct ~23:10Z: „1. კი 2. კი 3. კი") → 6e346982, deploying:**
+  - **#7822:** set_task_brief is working memory again, and the result is propose_task_plan.solved_when. The result_kind/shape/checkpoints fields and the ae7c1028 default brief are gone. Until a plan exists, every goal carries the owner's own words as its result line, written with the goal on every path.
+  - **#6304 / A2:** ask_contact (chat and connector) says an introduction goes as one; a handed-over person is asked directly.
+  - **A1:** find_warm_path (chat) sends the first bridge an introduction. The connector already said so.
+  - **A3, A7:** finish_task asks in words, with no buttons and no repeated card.
+  - DONE WHEN: #6304 and #7822 at 10/10 on v17, and the audit table shows no contradiction for A1–A3 and A7.
+
 ### 28 Oct, 22:55Z — re your 22:37Z: the server half for #6304 is live; A6 is not a bug; B: yes; the tool texts wait on Misho
 
 - **#6304 server half:** LIVE 84643f2 since 22:32Z. ask_contact on a reach goal goes as the introduction, with the target taken from the goal or title. Please re-run at 10.
