@@ -66,6 +66,46 @@ export function introductionTarget(sentence: string): string | null {
   return name.length > 0 && last !== '' ? name.join(' ') : null;
 }
 
+/**
+ * #6304 (tester 77511, 4 of 10): „გიორგი ხატიაშვილის გაცნობა მინდა", then the
+ * owner picks the bridge with „ლიკას სთხოვე". Neither line alone is a whole
+ * introduction, so the server's own introduction never ran and the owner read
+ * „კითხვა ვერ გაიგზავნა". The two together are: through Lika, to Giorgi.
+ */
+const WANTS_TO_MEET_RE = /^(.{2,80}?)\s+გაცნობა\s+(?:მინდა|მჭირდება|მსურს)/u;
+const GENITIVE_IS_RE = /ის$/u;
+const GENITIVE_S_AFTER_VOWEL_RE = /[აეიოუ]ს$/u;
+const LINE_END_RE = /[\s.!]+$/u;
+
+/** „ხატიაშვილის" → „ხატიაშვილი", „ნინოს" → „ნინო"; a name only its last word declines. */
+function nominativeOfGenitive(word: string): string {
+  if (GENITIVE_IS_RE.test(word)) return `${word.slice(0, -2)}ი`;
+  return GENITIVE_S_AFTER_VOWEL_RE.test(word) ? word.slice(0, -1) : word;
+}
+
+/** The person a „X-ის გაცნობა მინდა" line asks to meet, in the nominative; else null. */
+export function personToMeetIn(line: string): string | null {
+  const match = WANTS_TO_MEET_RE.exec(line.trim());
+  if (match === null) return null;
+  const words = cleanWords(match[1]);
+  if (words.length === 0 || words.length > MAX_TARGET_WORDS) return null;
+  const last = nominativeOfGenitive(words.pop() ?? '');
+  return [...words, last].join(' ');
+}
+
+/** The bridge named now and the person asked for before, as one introduction sentence; else null. */
+export function introductionThroughNamedBridge(
+  ownerLine: string,
+  earlierOwnerLines: readonly string[],
+): string | null {
+  if (introductionSentence(ownerLine) !== null || instructionNamed(ownerLine) === null) return null;
+  for (const earlier of earlierOwnerLines) {
+    const target = personToMeetIn(earlier);
+    if (target !== null) return `${ownerLine.replace(LINE_END_RE, '')}, გამაცნოს ${target}`;
+  }
+  return null;
+}
+
 export interface ServerIntroduction {
   readonly mediator: string;
   readonly target: string;

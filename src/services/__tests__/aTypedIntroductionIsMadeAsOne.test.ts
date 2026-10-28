@@ -14,6 +14,8 @@ import { oneContactNamed, ownersLabel } from '../instructedAsk';
 import {
   introductionSentence,
   introductionTarget,
+  introductionThroughNamedBridge,
+  personToMeetIn,
   introSentSentence,
   nominativeBeforeTan,
   SERVER_INTRODUCTION_ON,
@@ -173,5 +175,29 @@ describe('the fallback, wired', () => {
   it('is behind one switch, so off is what main did before', () => {
     expect(chat).toContain('on: boolean = SERVER_INTRODUCTION_ON,');
     expect(chat).toContain('if (!on || !ownerAsksForIntroduction([ownerLine])) return null;');
+  });
+});
+
+describe('the bridge named after the person asked for (#6304, tester 77511)', () => {
+  it('reads „X-ის გაცნობა მინდა" for the person, in the nominative', () => {
+    expect(personToMeetIn('გიორგი ხატიაშვილის გაცნობა მინდა')).toBe('გიორგი ხატიაშვილი');
+    expect(personToMeetIn('ნინოს გაცნობა მჭირდება')).toBe('ნინო');
+    expect(personToMeetIn('ნოტარიუსი მჭირდება')).toBeNull();
+  });
+
+  it('makes „ლიკას სთხოვე" after it one introduction through Lika', () => {
+    const line = introductionThroughNamedBridge('ლიკას სთხოვე', [
+      'რამე სხვა',
+      'გიორგი ხატიაშვილის გაცნობა მინდა',
+    ]);
+    expect(line).toBe('ლიკას სთხოვე, გამაცნოს გიორგი ხატიაშვილი');
+    expect(introductionTarget(line ?? '')).toBe('გიორგი ხატიაშვილი');
+  });
+
+  it('leaves a line that is already an introduction, or names no bridge, alone', () => {
+    const earlier = ['გიორგი ხატიაშვილის გაცნობა მინდა'];
+    expect(introductionThroughNamedBridge('სთხოვე ნინოს, გამაცნოს რეზო', earlier)).toBeNull();
+    expect(introductionThroughNamedBridge('კარგი', earlier)).toBeNull();
+    expect(introductionThroughNamedBridge('ლიკას სთხოვე', ['ნოტარიუსი მჭირდება'])).toBeNull();
   });
 });

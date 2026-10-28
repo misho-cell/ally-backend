@@ -569,6 +569,7 @@ import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
 import {
   dormantSentence,
   DormantGoBetween,
+  introductionThroughNamedBridge,
   introSentSentence,
   SERVER_INTRODUCTION_ON,
   ServerIntroduction,
@@ -14168,13 +14169,39 @@ function personLineForOwner(person: PersonOutcome, language: RunLanguage): strin
  * is off, the line is no introduction, or the request could not be made; the
  * fallback below then does what it always did.
  */
+const EARLIER_OWNER_LINES_READ = 4;
+const EARLIER_OWNER_LINES_TIMEOUT_MS = 3_000;
+
+/** The owner's last few typed lines in this conversation, newest first. */
+async function recentOwnerLines(threadId: number): Promise<string[]> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+      WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
+      ORDER BY created_at DESC LIMIT $2`,
+    [threadId, EARLIER_OWNER_LINES_READ],
+    EARLIER_OWNER_LINES_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => row.content);
+}
+
+/**
+ * #6304: „ლიკას სთხოვე" after „X-ის გაცნობა მინდა" is that introduction through
+ * Lika; the line alone, when it already is one or names no bridge.
+ */
+async function introductionLineOf(threadId: number, ownerLine: string): Promise<string> {
+  if (ownerAsksForIntroduction([ownerLine])) return ownerLine;
+  const earlier = await recentOwnerLines(threadId).catch(() => []);
+  const others = earlier.filter((line) => line.trim() !== ownerLine.trim());
+  return introductionThroughNamedBridge(ownerLine, others) ?? ownerLine;
+}
+
 async function serverIntroductionOrNull(
   userId: string,
   threadId: number,
   runId: string,
   on: boolean = SERVER_INTRODUCTION_ON,
 ): Promise<ServerIntroduction | DormantGoBetween | null> {
-  const ownerLine = runOwnerLine.get(runId) ?? '';
+  const ownerLine = await introductionLineOf(threadId, runOwnerLine.get(runId) ?? '');
   if (!on || !ownerAsksForIntroduction([ownerLine])) return null;
   const goal = await getOpenTaskByThread(threadId).catch(() => null);
   const made = await serverIntroduces(userId, ownerLine, introContextFor(threadId, goal?.id)).catch(
