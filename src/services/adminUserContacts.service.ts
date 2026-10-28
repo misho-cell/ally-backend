@@ -21,6 +21,12 @@ export const MAX_ROWS_PER_SEARCH = 50;
 const NUMBER_KEY_RE = /phone|digits|number/iu;
 /** A value that is a number written out, whatever key holds it. */
 const NUMBER_VALUE_RE = /^\+?\d[\d\s().-]{6,}$/u;
+/** A number inside other text (a source id can carry one): seven digits or more. */
+const NUMBER_INSIDE_RE = /\+?\d[\d\s().-]{5,}\d/gu;
+const NUMBER_MASK = '…';
+const MIN_NUMBER_DIGITS = 7;
+/** A date is not a number to hide, and must not join the number beside it. */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;
 
 export enum UserContactsOutcome {
   Found = 'found',
@@ -58,7 +64,19 @@ export function withoutNumbers(value: unknown): unknown {
     }
     return kept;
   }
-  return value;
+  return typeof value === 'string' ? withNumbersMasked(value) : value;
+}
+
+/** Masks each number in the text, dates kept as they are. */
+function withNumbersMasked(text: string): string {
+  return text
+    .split(/(\d{4}-\d{2}-\d{2})/u)
+    .map((part) => (ISO_DATE_RE.test(part) ? part : part.replace(NUMBER_INSIDE_RE, maskLongDigits)))
+    .join('');
+}
+
+function maskLongDigits(match: string): string {
+  return match.replace(/\D/gu, '').length >= MIN_NUMBER_DIGITS ? NUMBER_MASK : match;
 }
 
 async function userExists(userId: number): Promise<boolean> {
