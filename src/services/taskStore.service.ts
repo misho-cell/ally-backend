@@ -88,11 +88,25 @@ export async function createTask(
   threadId?: number,
   autonomy: TaskAutonomy = 'ask_first',
 ): Promise<{ id: number }> {
+  // #7822 (tester 77506: direct asks 6/7 with no brief): every goal starts with
+  // the default brief, whichever path opened it; set_task_brief replaces it.
+  const brief = defaultResultBrief(taskType);
   const result = await query<{ id: number }>(
-    `INSERT INTO tasks (user_id, title, description, task_type, thread_id, autonomy)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO tasks (user_id, title, description, task_type, thread_id, autonomy,
+                        result_kind, result_shape, checkpoints)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
      RETURNING id`,
-    [userId, title, description, taskType, threadId ?? null, autonomy],
+    [
+      userId,
+      title,
+      description,
+      taskType,
+      threadId ?? null,
+      autonomy,
+      brief.kind,
+      brief.shape,
+      JSON.stringify(brief.checkpoints),
+    ],
     QUERY_TIMEOUT_MS,
   );
   if (threadId !== undefined) {
