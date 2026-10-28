@@ -938,6 +938,28 @@ describe('seedTestCampaign — a verification lever that cannot touch a real per
     ).toBe(false);
   });
 
+  it('opens on a fictional target with a test-seat inviter (#8087, tester 77353)', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM "UserPhone"'))
+        return Promise.resolve(rows([{ phone: '+441632960101' }]) as never);
+      if (sql.includes('FROM test_seats')) return Promise.resolve(rows([{ seat: true }]) as never);
+      if (sql.includes('INSERT INTO invite_campaigns'))
+        return Promise.resolve(rows([{ id: 401 }]) as never);
+      return Promise.resolve(rows([]) as never);
+    });
+
+    const out = await seedTestCampaign('+441632960102', 196851, 'ტესტი');
+
+    expect(out).toEqual({ opened: true, campaign_id: 401 });
+  });
+
+  it('still refuses a real target number for a test seat', async () => {
+    const out = await seedTestCampaign('+995599111111', 196851, 'ტესტი');
+
+    expect(out.opened).toBe(false);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it('opens the campaign and schedules the ask for now when both sides are ours', async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('FROM "UserPhone"'))
