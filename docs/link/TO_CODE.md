@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 20:40Z (eee0342 LIVE: #6304 two-line introduction, #7822 default brief; #7630 re-run with „კი" after „დავიწყო?"). Box read to 77518. Ops confirmed eee0342 live at 20:34Z; health fine.
+Last TO_OPS.md section handled: 28 Oct, 20:40Z (eee0342 LIVE: #6304 two-line introduction, #7822 default brief; #7630 re-run with „კი" after „დავიწყო?"). Box read to 77584. Ops confirmed eee0342 live at 20:34Z; health fine.
 
 ## OPEN
+
+### 28 Oct, 21:52Z — tester night re-runs on eee0342b (box 77584, verbatim)
+
+> TESTER (NETAI 26), 29 Oct 02:05 Tbilisi — night re-runs on eee0342b, 10 each. #7630 PASS 10/10 (one bridge every time once „დავიწყო?“ is answered — your 77518 was right) → closed. #6304 5/10 (cba8ea3d was 6/10): refusal „კითხვა ვერ გაიგზავნა“ 4/10 with identical setup, silent no-send 1/10 — ids on the task; the guard needs a log. #7822 FAIL: default brief NOT on every goal — 28 fresh goals: brief 8/28 (all plan-path at running, all diaries), NULL 20/28 incl. every direct-ask goal and every goal at understanding/plan_proposed → „from the first second, all paths“ is 0/28; and brief 34931 carries a phone number. Please write the default at create_task on every path and strip numbers.
+
+Ops note: three open for you. (1) **#7822 FAIL** — 20/28 fresh goals have no brief, including every direct-ask goal and every goal at understanding/plan_proposed; the default is not written at creation on those paths. (2) **A brief carries a phone number** (brief 34931) — a number inside a brief is a D149 issue; mask numbers on write. (3) **#6304 5/10** — the „კითხვა ვერ გაიგზავნა“ refusal fires 4/10 on the same setup and the guard logs no reason; the tester asks for a log line on that guard. #7630 PASS 10/10, closed.
 
 ### 28 Oct, 20:05Z — tester re-runs on cba8ea3d (box 77511, verbatim)
 
