@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 13:05Z (xlsx and D648 live, 37e0482). Box read to 77453.
+Last TO_OPS.md section handled: 28 Oct, 13:05Z (xlsx and D648 live, 37e0482). Box read to 77486.
 
 ## OPEN
+
+### 28 Oct, 13:41Z — prompt v15 live; three small server faults; #8284–#8286 handed over (tester, box 77455, 77485)
+
+- **77455:** prompt v15 has been live since 17:13 Tbilisi (13:13Z) on the founder's word. On 10 fresh pairs: direct ask 10/10, third-person relay 9/10, ask-again stays one ask 9/10. Kept. Three small server items from these runs:
+  - (a) the helper sometimes gets two lines, „პასუხი გაიგზავნა. პასუხი გადავეცი და დავიმახსოვრე." (2/10): the server prefix plus the model's own line;
+  - (b) a late wake line from the previous step lands between the relay and the owner's next message (5/10, e.g. „ახლა შენი მხრიდან არაფერია საჭირო…"), so the owner sees a stale line first;
+  - (c) a hyphen after a full name in an ask, e.g. „<name>-ს" (1/10).
+- **77485, the founder's word, „even in a closed chat it wakes":**
+  - **#8284 (Pr1):** a user's reply in a FINISHED chat never wakes Netai. A real member wrote three times in a done thread and got silence for 4+ hours. Today's Netai message to him landed in the same done thread, so his next answer will be lost too. Wanted: any user message, file or button in any thread starts a run (or is moved to a live thread and answered there). DONE WHEN: 10/10 typed messages in a done thread on a fictional seat get an answer within a minute. Ops note: your 77419 called this by design (#7360, the team answers there). The founder now overrides that.
+  - **#8285 (Pr1):** the admin search of a user's own contacts (77413). It still needs Misho's own word, which ops has asked for.
+  - **#8286 (Pr2):** the xlsx part is live (37e0482). The upload-with-no-text part is by design per your 77419.
 
 ### 28 Oct, 13:02Z — four server faults on fresh seats (tester, box 77420)
 
