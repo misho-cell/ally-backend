@@ -383,6 +383,36 @@ export async function setResultBrief(
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * #7822 (tester 77135, prompt v13 round 3): the model writes the brief before
+ * the plan in only about 5 goals of 10. A goal that gets none starts with this
+ * default instead of nothing, and the model's own set_task_brief replaces it.
+ * The kind is named only where the goal type says it for sure: a reach goal
+ * is a specific person or organisation (C). A solve goal can be any of A–H, so
+ * its kind is left for the model.
+ */
+export function defaultResultBrief(taskType: 'reach' | 'solve'): ResultBrief {
+  return taskType === 'reach'
+    ? {
+        kind: ResultKind.SpecificPersonOrOrg,
+        shape: 'მფლობელი და ის, ვისაც ეძებს, ერთმანეთს დაუკავშირდნენ ნაცნობის გაცნობით.',
+        checkpoints: [
+          { step: 'ვინ იცნობს მას მფლობელის წრეში', done: false },
+          { step: 'ხიდი თანახმაა გააცნოს', done: false },
+          { step: 'გაცნობა შედგა', done: false },
+        ],
+      }
+    : {
+        kind: null,
+        shape: 'მფლობელს ჰყავს ერთი ან ორი სანდო ადამიანი ამ საქმისთვის, ნაცნობის რეკომენდაციით.',
+        checkpoints: [
+          { step: 'ვინ აკეთებს ამას ან ვინ იცის ვინ აკეთებს, მფლობელის წრეში', done: false },
+          { step: 'ვინ გაუწევს რეკომენდაციას', done: false },
+          { step: 'მფლობელი დაუკავშირდა', done: false },
+        ],
+      };
+}
+
 /** Schedule the task's next self-wake (revisit, reminder, summary deadline). */
 export async function setTaskWake(userId: string, taskId: number, hours: number): Promise<boolean> {
   if (!isARealId(taskId)) return false;

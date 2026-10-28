@@ -6,9 +6,12 @@ jest.mock('../../db/postgres/client', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { resultBriefSection } from '../chat.service';
 import {
   ResultKind,
+  defaultResultBrief,
   cleanCheckpoints,
   isResultKind,
   nextCheckpoint,
@@ -88,5 +91,31 @@ describe('the result brief (#7822)', () => {
     expect(section).toContain('two trusted masseurs');
     expect(section).toContain('ახლა იმუშავე შემდეგ ნაბიჯზე: ask that holder to recommend one');
     expect(resultBriefSection({})).toBe('');
+  });
+});
+
+/** #7822 (tester 77135, v13 round 3): the model wrote the brief in about half the goals. */
+describe('a goal that gets no brief from the model', () => {
+  it('starts with a reach brief: a specific person, three steps to the introduction', () => {
+    const brief = defaultResultBrief('reach');
+    expect(brief.kind).toBe(ResultKind.SpecificPersonOrOrg);
+    expect(brief.checkpoints).toHaveLength(3);
+    expect(nextCheckpoint(brief.checkpoints)).toBe('ვინ იცნობს მას მფლობელის წრეში');
+  });
+
+  it('leaves a solve goal’s kind to the model, with steps but no guessed kind', () => {
+    const brief = defaultResultBrief('solve');
+    expect(brief.kind).toBeNull();
+    expect(brief.shape).not.toBeNull();
+    expect(brief.checkpoints?.every((c) => !c.done)).toBe(true);
+  });
+
+  it('is written at create_task, right after the goal is saved', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const created = chat.indexOf('const { id } = await createTask(userId, title, description');
+    const written = chat.indexOf('await setResultBrief(userId, id, defaultResultBrief(taskType))');
+    expect(created).toBeGreaterThan(0);
+    expect(written).toBeGreaterThan(created);
+    expect(written - created).toBeLessThan(400);
   });
 });

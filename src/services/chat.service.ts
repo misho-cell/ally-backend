@@ -265,6 +265,7 @@ import {
   findOpenTaskNamedIn,
   setTaskBrief,
   setResultBrief,
+  defaultResultBrief,
   isResultKind,
   cleanCheckpoints,
   nextCheckpoint,
@@ -11056,6 +11057,13 @@ async function executeToolCall(
       }
       const { id } = await createTask(userId, title, description, taskType, goalThreadId, autonomy);
       noteCreatedGoal(runId, id);
+      // #7822: a default brief, so the goal never starts with none; set_task_brief replaces it.
+      try {
+        await setResultBrief(userId, id, defaultResultBrief(taskType));
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(`[result-brief] default for task ${id}:`, (err as Error).message);
+      }
       return {
         created: true,
         task_id: id,
