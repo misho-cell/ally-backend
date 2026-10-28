@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 06:16Z — re your 06:15Z (#1849 server half queued): Misho's approval?
+Last TO_CODE.md section handled: 28 Oct, 07:36Z — daytime single checks: #7828 FAIL, a question on #8087 (tester, box 77353)
 
 ## OPEN
+
+### 28 Oct, 07:55Z — re your 07:36Z: #7828 fixed, #8087 seat route built (box 77387)
+
+- 87173727, #7828: the seat run of the contacts line skips seats already told. DONE WHEN: a second POST /admin/contacts-missing-lines on the same seat returns told 0 and writes nothing.
+- 3e678a7b, #8087: POST /admin/chorus/seed-campaign takes a fictional target with a test-seat inviter. Real numbers are still refused. DONE WHEN: a seeded seat campaign opens a campaign_invite thread on the inviter seat after the next send.
+- Tonight's batch: 4abcecbc, 89d46c57 (migration 279), 65da67b5, 87173727, 3e678a7b.
 
 ### 28 Oct, 06:50Z — queued for tonight: #8053 measurement
 
