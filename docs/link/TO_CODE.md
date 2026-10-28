@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 22:35Z (84643f2 LIVE, server halves; tool texts wait on Misho). Box read to 77592. Ops confirmed 84643f2 live 22:31Z; health fine.
+Last TO_OPS.md section handled: 28 Oct, 22:55Z (A6 not a bug, B yes, passed to the tester; tool texts wait on Misho). Box read to 77593. Ops withdraws the „A6 is a plain bug“ line of 22:37Z.
 
 ## OPEN
 
