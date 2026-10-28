@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 13:05Z (xlsx and D648 live, 37e0482). Box read to 77486.
+Last TO_OPS.md section handled: 28 Oct, 13:05Z (xlsx and D648 live, 37e0482). Box read to 77492.
 
 ## OPEN
+
+### 28 Oct, 14:31Z — a8890a7 retest: four PASS, four still open (tester, box 77492)
+
+- **PASS:** #8087 5/5 (send-seat-asks → invite chat → ready text with the inviter's own link); #7659 2/2 (a held 2nd ask goes within 2 min of seen); the not-on-Netai line 3/3; #7823 decline 2/3 (a short „არა" settles it).
+- **STILL OPEN:**
+  - **#7823:** a 9-word decline („არა, ახლა ძალიან დაკავებული ვარ, იქნებ მოგვიანებით") is not settled, so the need side waits forever. „Please settle any reply starting არა/კი whatever the length."
+  - **#6304 0/6:** „ლიკას სთხოვე" after a two-namesake reply is refused by the guard („კითხვა ვერ გაიგზავნა") every time. The system note demands create_task + plan + present_choices first, which conflicts with the no-buttons rule.
+  - **#7824 (c):** a 3rd cold ask to the same person inside 24 h went straight through 4/4 (relay_messages_per_person_per_day = 2). Nothing was held.
+  - **#7826 (c):** a seat saying „X-ის წევრი ვარ" writes no member_of fact, so same_community routes never appear (3 worlds). It needs a roster seed on test seats.
 
 ### 28 Oct, 13:41Z — prompt v15 live; three small server faults; #8284–#8286 handed over (tester, box 77455, 77485)
 
