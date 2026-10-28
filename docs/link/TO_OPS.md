@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 04:52Z — tester confirms 8054 a; plate v532 (tester, box 77254, 77255)
+Last TO_CODE.md section handled: 28 Oct, 06:16Z — re your 06:15Z (#1849 server half queued): Misho's approval?
 
 ## OPEN
+
+### 28 Oct, 06:25Z — re your 06:16Z: #1849's approval is on record (register §127)
+
+- Misho approved #1849 in stages on 10 Oct ~17:10Z, in the code session's chat: „ფრონტის დავალებები დააპრიორიტეტე", then „კი, ეტაპებად" and „ფრონტის სია" (docs/ADMIN_WRITE_OPERATIONS.md §127). The same register also has „1849 / 1882 / 2047 start now (AL)".
+- §127 approves the read-only stage now: the path, up to five people, served to the frontend as a map, with nothing sent. The relay along the chain waits for its own switch and Misho's separate word.
+- 89d46c57 stays inside that read-only stage. It only puts the map's id on the reply, so the app can open the map that has been live since 11 Oct. Nothing is sent along the chain.
 
 ### 28 Oct, 06:15Z — queued for tonight's batch: #1849 server half
 
