@@ -106,11 +106,32 @@ const ENDORSEMENT_STEMS: readonly string[] = [
   'помож',
 ];
 
+/**
+ * #8251 (tester 77409, 7 of 10): „I can't recommend one, but my brother…" went
+ * out as „ვერ ურჩევს", and the Georgian stem was not in her English line, so the
+ * first send was refused every time. A stem counts as hers when any word of its
+ * family is in her line, in any language; and a negated word is not praise.
+ */
+const ENDORSEMENT_FAMILIES: readonly (readonly string[])[] = [
+  ['ვურჩევ', 'გირჩევ', 'მირჩევ', 'ურჩევ', 'რეკომენდ', 'recommend', 'рекоменд'],
+  ['დაგეხმარ', 'დაეხმარ', 'help', 'помож'],
+  ['კარგ', 'good', 'хорош'],
+];
+const NEGATION_RE = /^(?:ვერ|არ|not|can't|cannot|cant|never|не|no)$/u;
+
+function familyOf(stem: string): readonly string[] {
+  return ENDORSEMENT_FAMILIES.find((family) => family.includes(stem)) ?? [stem];
+}
+
 export function endorsementAdded(helperLine: string, sent: string): string[] {
   const own = helperLine.toLowerCase();
-  const added = wordsOf(sent).filter((word) =>
-    ENDORSEMENT_STEMS.some((stem) => word.startsWith(stem) && !own.includes(stem)),
-  );
+  const words = sent.toLowerCase().match(/[\p{L}']+/gu) ?? [];
+  const added = words.filter((word, at) => {
+    if (at > 0 && NEGATION_RE.test(words[at - 1])) return false;
+    return ENDORSEMENT_STEMS.some(
+      (stem) => word.startsWith(stem) && !familyOf(stem).some((kin) => own.includes(kin)),
+    );
+  });
   return [...new Set(added)];
 }
 

@@ -49,3 +49,26 @@ describe('a recommending verb in any person', () => {
     expect(endorsementAdded('ნინო პედიატრი', 'ნინოს, პედიატრს, მირჩევს.')).toEqual(['მირჩევს']);
   });
 });
+
+/** #8251 (tester 77409, 7 of 10): „I can't recommend one" went out as „ვერ ურჩევს". */
+describe('a recommending word the helper did write, or denied', () => {
+  it('is hers in any language of the same family', () => {
+    expect(
+      endorsementAdded('I can recommend Nana, a dentist', 'ლიკა ნანას ურჩევს, სტომატოლოგს.'),
+    ).toEqual([]);
+  });
+
+  it('is not praise when it is denied', () => {
+    expect(
+      endorsementAdded(
+        'ვერავის გეტყვი, მაგრამ ჩემი ძმა ფინანსებშია',
+        'ვერავის ვერ ურჩევს, მაგრამ მისი ძმა ფინანსებში მუშაობს.',
+      ),
+    ).toEqual([]);
+    expect(endorsementAdded('no idea', 'They cannot recommend anyone.')).toEqual([]);
+  });
+
+  it('is still found when nothing of the family is in her line', () => {
+    expect(endorsementAdded('ნანა სტომატოლოგი', 'ნანას ურჩევს.')).toEqual(['ურჩევს']);
+  });
+});
