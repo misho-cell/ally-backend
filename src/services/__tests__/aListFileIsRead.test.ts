@@ -166,3 +166,14 @@ describe('a list on the second sheet', () => {
     expect(parsed.ok && parsed.file.rows).toHaveLength(2);
   });
 });
+
+describe('a cell written as HTML character codes', () => {
+  it('is read as the letters it encodes', async () => {
+    const book = new ExcelJS.Workbook();
+    const sheet = book.addWorksheet('List');
+    sheet.addRow(['BIA Top List &#8212; &#4315;&#4317;&#4315;']);
+    sheet.addRow(['TBC']);
+    const parsed = await parseListFile(Buffer.from(await book.xlsx.writeBuffer()), 'crm.xlsx');
+    expect(parsed.ok && parsed.file.columns).toEqual(['BIA Top List — მომ']);
+  });
+});
