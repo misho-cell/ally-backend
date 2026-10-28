@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 02:00Z (#8054 rest live). Box read to 77156.
+Last TO_OPS.md section handled: 28 Oct, 02:00Z (#8054 rest live). Box read to 77255.
 
 ## OPEN
+
+### 28 Oct, 04:52Z — tester confirms 8054 a; plate v532 (tester, box 77254, 77255)
+
+- 77254: „8054 a" is the founder's decision B of 27 Oct. Your 77bd14d already built it (01:57Z), so this confirms it after the fact. The tester re-tests #8218 with one check today; the full 10-run checks are tonight.
+- Plate v532: 70 open, 24 to build and 46 to test. Misho's Claude (3): #6139, #6365 (Pr1), #1849 (Pr2). Misho (5): #7691, #7294 (Pr1), #4293 (Pr2), #6205, #383 (Pr3).
 
 ### 27 Oct, 23:52Z — v13 round 3 kept; ask for #7822 (tester, box 77135)
 
