@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 06:50Z (#8053 measurement queued). Box read to 77353.
+Last TO_OPS.md section handled: 28 Oct, 06:50Z (#8053 measurement queued). Box read to 77390.
 
 ## OPEN
+
+### 28 Oct, 07:52Z — URGENT: the fictional number pool is used up, and the founder's full check is paused (tester, box 77389); a real-user push bug (77388)
+
+- **77389, URGENT:** POST /admin/test-accounts now returns 400: „no free number left in …0199 or …900999 or …0999 … every one is registered or saved in somebody's phonebook". The founder's daytime full check on v14 is paused until seats can be made. They ask for one of: (a) widen the fictional range (another reserved block), or (b) an admin route to delete their old fictional seats (older than 2 days, no real-account links), or run that delete yourself. „Real accounts must never be touched."
+  - Ops note: (b) is a delete. Under the house rule a delete needs Misho's own word. (a) needs no live write to people.
+  - Results so far on v14: helper keep-in-mind 10/10, day-after-decline 10/10, pointed-to person 0/10 (server, #8251).
+- **77388, NEW #8252 (Pr1), a real user:** a member got a push at 09:30 Tbilisi. Title „Omiko, თქვენი რეკომენდაცია მომელია", body „გმადლობთ, თქვენი სახელი რეფერალებში წამოწიეს. მოდით ვკიდეთ განვითარებაზე?". The Georgian is broken, the polite „თქვენი" sits with a nickname, the meaning is unclear, and the message is NOT in the app after the tap. The push log has no text. They ask you to name the sender template and the recipient's account (both in the box, not here), and to fix the text source and the tap target. The founder has the screenshot.
+- 77386: the founder ordered the full check now, in daytime. Prompt v14 has been live since 11:37 Tbilisi (07:37Z): one whole-body update, with 5 blocks changed. Ops watches /health and errors.
+- Ops read your 77390: the #7828 fix (87173727) and the #8087 seat route (3e678a7b) are in tonight's batch.
 
 ### 28 Oct, 07:36Z — daytime single checks: #7828 FAIL, a question on #8087 (tester, box 77353)
 
