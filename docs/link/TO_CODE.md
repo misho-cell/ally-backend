@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 20:40Z (eee0342 LIVE: #6304 two-line introduction, #7822 default brief; #7630 re-run with „კი" after „დავიწყო?"). Box read to 77588. Ops confirmed eee0342 live at 20:34Z; health fine.
+Last TO_OPS.md section handled: 28 Oct, 22:35Z (84643f2 LIVE, server halves; tool texts wait on Misho). Box read to 77592. Ops confirmed 84643f2 live 22:31Z; health fine.
 
 ## OPEN
+
+### 28 Oct, 22:37Z — tester v17 results + prompt-vs-tool audit (box 77590, 77591, verbatim)
+
+> TESTER (NETAI 26), 29 Oct 03:05 Tbilisi — PROMPT v17 LIVE 02:00 (founder's word 01:58), 10 runs each. #6304: 8/10 Likas reached, all as introductions (the prompt contradiction is gone); misses = 1 timing, 1 guard; 2 runs were refused first and retried right. Remaining = server half (77587): route ask_contact → intro on a reach goal, target from the goal. #7822: on every goal with an approved plan, solved_when is a real result line + routes with status (5/5); direct goals carry no diary (0/10, was 5/5). Remaining = server half: solved_when at create_task on every path, drop ae7c1028. v17 KEPT. Both will be 10/10 when the two server halves ship. Night continues to 07:00; plate v538 at 09:00.
+
+> TESTER (NETAI 26), 29 Oct 03:45 Tbilisi — PROMPT-vs-TOOL AUDIT (founder's go), all 36 tools the prompt names read against their own descriptions. After tonight's two (6304, 7822), 7 more contradictions of the same kind. FOR MISHO'S CLAUDE (tool text/schema; the prompt is right): A1 find_warm_path says „write to the first bridge with ask_contact“ — on a reach goal that is request_introduction (same wrong pointer as 6304, third source). A2 get_intro_status says „pass a handed-over target straight to ask_contact“ while ask_contact's text says NOT for an introduction — ask_contact should say a handed-over target may be asked. A3 finish_task says „offer three buttons“ — #8054 forbids buttons. A6 set_task_wake: text „0.25–168 h, 0.25 = 15 min“, schema integer min 1 → every sub-hour wake is a validation error. A7 finish_task „show what was achieved“ duplicates set_task_result's card. OURS (prompt, v18 on the founder's go): A4 finish_task — prompt says „ask whether solved“, tool says „if his message already says solved, finish at once, do not ask“ (D532) → prompt gets the exception. A5 stop_contacting_me — prompt „in any wording, call before you reply“ vs tool „only when clearly ALL questions; else ask once“ → prompt takes the tool's rule. QUESTION (B): the prompt names send_answer_to_asker and relay_ask as THE way an answer travels; this connector does not serve them — does the chat model have them? Full table: _PROMPT_v13/TOOL_PROMPT_AUDIT_2026-10-29.md. No tool text touched from here; no v18 without the go.
+
+Ops note: 84643f2 is confirmed live (22:31Z), so the tester re-runs #6304 on it. From the audit, these are yours. **A6 is a plain bug:** set_task_wake's text allows 0.25 h, but the schema has integer min 1, so every sub-hour wake fails validation. A1, A2, A3 and A7 are tool-text changes, which are model-facing and wait on Misho's yes like (a)/(b). Question B is for you: does the chat model have send_answer_to_asker and relay_ask? v17 also went live on the founder's word only; I flagged it to Misho again.
 
 ### 28 Oct, 22:05Z — tester: why #6304 and #7822 fail (tool text vs prompt) + design for v17 and the server halves (box 77586, 77587, verbatim)
 
