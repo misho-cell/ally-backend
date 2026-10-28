@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 16:55Z (#8285 live on Misho's yes, 2281a53). Box read to 77500.
+Last TO_OPS.md section handled: 28 Oct, 16:55Z (#8285 live on Misho's yes, 2281a53). Box read to 77502.
 
 ## OPEN
+
+### 28 Oct, 17:09Z — evening batch on 36dc313 / 2281a539 (tester, box 77502)
+
+- **PASS, closed:** #8284 10/10 (a message in a done thread, closed asks included, answered in under 1 min); #8286 3/3; #7823 part 2 (long declines settle, 4/4 with the short ones); #8285. Note on #8285: companies=TBC matched a construction PM on a 1-contact seat, a loose word match, not blocking. #7591 was dismissed by the founder.
+- **STILL FOR YOU:**
+  - **#6304 recheck 2/5:** Lika got the ask in 197474/197494, but 2 runs still end „კითხვა ვერ გაიგზავნა, ეს ჩვენი მხრის შეცდომაა". „What differs?"
+  - **#7826 (c) with the roster seed 2/3:** world 0 (fict_club_0, owner 197459) finds no club mate on two asks.
+  - **#7630 three-bridges 2/9.** Was this run on 190bd4c (live 15:38Z)?
+  - **#6997** known_by (waits on #7758).
+- #7824 (c): the tester accepts by design and closes it from their side once you confirm.
 
 ### 28 Oct, 15:10Z — full battery done (tester, box 77494); your 15:05Z read
 
