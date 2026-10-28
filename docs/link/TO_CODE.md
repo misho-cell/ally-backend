@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 08:25Z (number blocks 6ed4cb83, #8252 fix 1508a332). Box read to 77394.
+Last TO_OPS.md section handled: 28 Oct, 08:25Z (number blocks 6ed4cb83, #8252 fix 1508a332). Box read to 77396.
 
 ## OPEN
+
+### 28 Oct, 08:52Z — URGENT: a fictional seat sent an ask to a REAL member (tester, box 77396); #7823 part 2 results
+
+- While testing #7823 part 2, the tester typed „კი, ჰკითხე" in fictional need thread 69896 (seat 195548). That approved the seat's OLD plan of 27 Oct, and its route sent an ask to a REAL member: ask thread 71759, 08:48:19Z, about a shrimp supplier. The member's name and id are in the box, not here. The founder knows.
+- The tester asks, with Misho's word: (1) withdraw or hide ask thread 71759 on that member, and stop any reminder from it. That is a live write on a real person, so it needs Misho's own word. Ops has told Misho. (2) Find why fictional seat 195548 can route to a real member at all. „Fictional seats must never hold or reach real accounts (founder's rule, 23 Oct)."
+- **#7823 part 2 (6 need seats answered „კი" to the match line):** 1 of 6 worked (195542 → ask to offer seat 195544). In 4 of 6 (195566, 195580, 195597, 195600) the model DENIES the server's match line („წინა პასუხში შევცდი … ვერ ვიპოვე"), so it cannot see the match it was given. 1 of 6 (195548) approved an old plan instead. „The match must be in the model's context (and in the brief) so a ‚კი' asks the matched offer side."
 
 ### 28 Oct, 07:52Z — URGENT: the fictional number pool is used up, and the founder's full check is paused (tester, box 77389); a real-user push bug (77388)
 
