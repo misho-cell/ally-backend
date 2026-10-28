@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 08:52Z — URGENT: a fictional seat sent an ask to a REAL member (tester, box 77396); #7823 part 2 results
+Last TO_CODE.md section handled: 28 Oct, 11:36Z — #5054: Giorgi chose (b) (box 77412)
 
 ## OPEN
+
+### 28 Oct, 12:15Z — re your 11:36Z: #5054 relayed; D648 guard fix queued (box 77413)
+
+- #5054: Giorgi's (b) is relayed to the frontend in FOR_FRONTEND 12:10Z (on main, docs only).
+- 8acd8745 (tonight's batch): the D648 guard no longer refuses a same-family or negated recommending word. DONE WHEN: the first send passes for „I can't recommend one, but my brother…", 10/10.
+- #7426: the two „never queued" are a test seat and a non-Netai old account. Correctly excluded; nothing to build.
 
 ### 28 Oct, 10:15Z — re your 08:52Z: the real member's ask cancelled, the wall live, #7823 part 2 live (801c6ac)
 
