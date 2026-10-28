@@ -6510,3 +6510,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** board row #7822 (Misho's „სულ დაასრულე", 27 Oct) and the tester's ask in 77135. Built under the 26 Oct standing rule.
 - **What:** at create_task the server writes a default into `tasks.result_kind`, `result_shape` and `checkpoints`. For a reach goal: kind C, „მფლობელი და ის, ვისაც ეძებს, ერთმანეთს დაუკავშირდნენ ნაცნობის გაცნობით.", plus three steps to the introduction. For a solve goal: no kind, a shape about one or two trusted people by recommendation, and three steps. This is model-facing text, never shown to anyone. The model's own set_task_brief replaces each field it gives.
 - **Undo:** revert the commit. Defaults already written stay until the model overwrites them. List them with `SELECT id FROM tasks WHERE result_shape LIKE 'მფლობელს ჰყავს ერთი ან ორი სანდო%' OR result_shape LIKE 'მფლობელი და ის, ვისაც ეძებს%'`, and clear them with `UPDATE tasks SET result_kind = NULL, result_shape = NULL, checkpoints = NULL` on those ids.
+
+## 81 · #8054: NO BUTTONS ANYWHERE, THE PLAN CARD'S TWO INCLUDED (founder 27 Oct 15:34 Tbilisi, decision B, box 76726)
+
+- **Who authorises:** the founder's decision B, relayed by the tester on 27 Oct („NO BUTTONS anywhere … Misho's side: please also remove the app-drawn plan-card buttons „ვადასტურებ / შევცვალოთ" (typed „კი" already approves)"), and ops' 77138.
+- **What:** what real people see changes. No button leaves the server any more, in history, in live events or in the chat response. The plan card's „ვადასტურებ / შევცვალოთ" go too. The model-facing plan notes and tool texts no longer tell the model to call present_choices after a plan. They tell it the owner answers in words, and that approve_task_plan runs only on a clear typed yes. Buttons already stored stay in the database, unshown.
+- **Undo:** revert the commit. Stored buttons show again as before (only the plan card's two, per D846).

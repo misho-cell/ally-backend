@@ -3350,8 +3350,29 @@ export function answerSentNote(language: RunLanguage): string {
   );
 }
 
+/**
+ * #8054 (founder 27 Oct, box 76726, decision B): no buttons anywhere. The plan
+ * ends with its one question in words; the owner answers by writing, and a
+ * typed yes is the approval (3/3 the same day). The server used to close every
+ * plan note with „then present_choices — „ვადასტურებ" / „შევცვალოთ"", which
+ * is why the model kept calling it in 7 plans of 10 under a prompt that forbids it.
+ */
+const PLAN_ANSWER_IN_WORDS: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    'ღილაკები არ არის: მფლობელი სიტყვით გიპასუხებს. present_choices არ გამოიძახო. ' +
+    'approve_task_plan გამოიძახე მხოლოდ მაშინ, როცა მფლობელი გეგმას მკაფიოდ დაეთანხმება („კი", „დავიწყოთ").',
+  en:
+    'There are no buttons: the owner answers in words. Do not call present_choices. Call ' +
+    'approve_task_plan only when the owner clearly agrees to the plan („yes", „go ahead").',
+  ru:
+    'Кнопок нет: владелец отвечает словами. Не вызывай present_choices. Вызывай ' +
+    'approve_task_plan только когда владелец ясно согласился с планом («да», «давай»).',
+  es:
+    'No hay botones: el dueño responde con palabras. No llames a present_choices. Llama a ' +
+    'approve_task_plan solo cuando el dueño acepte el plan con claridad («sí», «adelante»).',
+};
+
 export function planInYourReplyNote(language: RunLanguage): string {
-  const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
   const text: Record<RunLanguage, string> = {
     ka:
       'გეგმა შენახულია, მაგრამ ეკრანზე ჯერ არ არის. შენს პასუხში დაწერე ის ერთხელ, ერთი ' +
@@ -3360,7 +3381,8 @@ export function planInYourReplyNote(language: RunLanguage): string {
       'შევეცდები მოვაგვარო, რომ ლიკამ რეკომენდაცია გაგიწიოს და დაგაკავშიროს ნინუცასთან". ' +
       'არ აჩვენო ტექსტი, რომელსაც გაუგზავნი — ფორმულირება შენი საქმეა. არ დაწერო „სიგნალი", ' +
       '„გზა", „მოგვარებულად ჩავთვლი" (D561). ვერსია, სათაურები და ველების სახელები არ დაწერო. ' +
-      'მხოლოდ ერთი კითხვა: გეგმა ამ კითხვით დაასრულე: „{closing}". მერე present_choices — ',
+      'მხოლოდ ერთი კითხვა: გეგმა ამ კითხვით დაასრულე: „{closing}". ' +
+      PLAN_ANSWER_IN_WORDS.ka,
     en:
       'The plan is saved but not on screen yet. Write it in your reply ONCE, as ONE human ' +
       'sentence in your own voice, assistant to assistant: whose assistant you will talk to and ' +
@@ -3368,26 +3390,27 @@ export function planInYourReplyNote(language: RunLanguage): string {
       'arrange for Lika to recommend you and connect you with Ninutsa". Never show the text you ' +
       'will send — the wording is your job. Never the words „signal", „path", „I will count it ' +
       'solved when" (D561). No version number, no headings, no field labels. ONE question only: ' +
-      'end with this one, word for word: „{closing}". Then present_choices — ',
+      'end with this one, word for word: „{closing}". ' +
+      PLAN_ANSWER_IN_WORDS.en,
     ru:
       'План сохранён, но на экране его ещё нет. Напиши его в ответе ОДИН раз, ОДНИМ человеческим ' +
       'предложением, своим голосом, ассистент ассистенту: с чьим ассистентом поговоришь и какого ' +
       'результата постараешься добиться (D663). Не показывай текст, который отправишь, — ' +
       'формулировка твоя забота. Никаких слов «сигнал», «путь», «буду считать решённым» (D561). ' +
       'Без номера версии, заголовков и названий полей. Только ОДИН вопрос: закончи этим: ' +
-      '„{closing}". Затем present_choices — ',
+      '„{closing}". ' +
+      PLAN_ANSWER_IN_WORDS.ru,
     es:
       'El plan está guardado pero aún no está en pantalla. Escríbelo en tu respuesta UNA vez, en ' +
       'UNA frase humana, con tu voz, de asistente a asistente: con qué asistente hablarás y qué ' +
       'resultado intentarás lograr (D663). Nunca muestres el texto que enviarás: la redacción es ' +
       'cosa tuya. Nunca las palabras «señal», «camino», «lo daré por resuelto» (D561). Sin número ' +
       'de versión, títulos ni nombres de campos. UNA sola pregunta: termina con esta: „{closing}". ' +
-      'Luego present_choices — ',
+      PLAN_ANSWER_IN_WORDS.es,
   };
   return (
     text[language].replace('{closing}', PLAN_CLOSING_QUESTION[language]) +
-    buttons +
-    '. ' +
+    ' ' +
     WEB_LEADS_IN_A_PLAN_REPLY
   );
 }
@@ -3403,26 +3426,29 @@ const WEB_LEADS_IN_A_PLAN_REPLY =
   'names in passing.';
 
 export function planAlreadyOnScreenNote(language: RunLanguage): string {
-  const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
   const text: Record<RunLanguage, string> = {
     ka:
       'გეგმა უკვე ეკრანზეა — სერვერმა ის ცალკე შეტყობინებად დაწერა, სრულად. შენს პასუხში ხელახლა ' +
       'ნუ დაწერ: არც სრულად, არც შემოკლებულად, არც სხვა სიტყვებით. დაწერე მხოლოდ ის, რაც იპოვე, ' +
-      'და დასვი ერთი კითხვა. მერე present_choices — ',
+      'და დასვი ერთი კითხვა. ' +
+      PLAN_ANSWER_IN_WORDS.ka,
     en:
       'The plan is already on screen — the server wrote it as its own message, in full. Do not ' +
       'write it again in your reply: not in full, not shortened, not in other words. Write only ' +
-      'what you found, and ask one question. Then present_choices — ',
+      'what you found, and ask one question. ' +
+      PLAN_ANSWER_IN_WORDS.en,
     ru:
       'План уже на экране — сервер записал его отдельным сообщением, полностью. Не пиши его ' +
       'снова в своём ответе: ни полностью, ни сокращённо, ни другими словами. Напиши только то, ' +
-      'что нашёл, и задай один вопрос. Затем present_choices — ',
+      'что нашёл, и задай один вопрос. ' +
+      PLAN_ANSWER_IN_WORDS.ru,
     es:
       'El plan ya está en pantalla — el servidor lo escribió como su propio mensaje, completo. ' +
       'No lo escribas de nuevo en tu respuesta: ni completo, ni resumido, ni con otras palabras. ' +
-      'Escribe solo lo que encontraste y haz una pregunta. Luego present_choices — ',
+      'Escribe solo lo que encontraste y haz una pregunta. ' +
+      PLAN_ANSWER_IN_WORDS.es,
   };
-  return text[language] + buttons + '.';
+  return text[language];
 }
 
 /**
@@ -3626,9 +3652,9 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
     // shows once, in the reply. The result says which case this call is in.
     'The plan shows ONCE. When the result carries `show_plan`, write the plan in your reply in ' +
     'your own words, as plain sentences — no version, no headings, no labels. When it carries ' +
-    '`next` instead, the server already put it on screen: do not write it again. Then offer two ' +
-    'choices (approve / change) via present_choices, and call approve_task_plan only on their ' +
-    'explicit yes.',
+    '`next` instead, the server already put it on screen: do not write it again. End with one ' +
+    'question in words; there are no buttons (#8054), so never call present_choices after a ' +
+    'plan. Call approve_task_plan only on their explicit typed yes.',
   input_schema: {
     type: 'object',
     properties: {
@@ -13877,8 +13903,8 @@ export function createTaskFollowUp(movedTo: number | undefined): Record<string, 
   if (movedTo === undefined) {
     return {
       next:
-        'Now, in THIS run, call propose_task_plan for this task_id and then present_choices ' +
-        'with exactly „ვადასტურებ" and „შევცვალოთ". Do not end your turn with the goal saved ' +
+        'Now, in THIS run, call propose_task_plan for this task_id and end with one question in ' +
+        'words; there are no buttons (#8054). Do not end your turn with the goal saved ' +
         'and no plan on screen: that costs the user a second answer a few seconds later, ' +
         'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
         '— your own message must not repeat it, in any form. Write nobody and start nothing ' +

@@ -1,6 +1,6 @@
 import { isNetaiThread } from './netaiMessage.service';
 import { query } from '../db/postgres/client';
-import { onlyPlanButtons } from './cardButtons';
+import { buttonsShown } from './cardButtons';
 import { languagePreference, threadLanguagePreference } from './languagePreference';
 import {
   carriesLanguage,
@@ -1140,7 +1140,7 @@ export async function getThreadMessages(
     content: shownAsWritten(row, teamWrites)
       ? row.content
       : contentForDisplay(row.role, row.content),
-    choices: onlyPlanButtons(row.choices),
+    choices: buttonsShown(row.choices),
   }));
 }
 

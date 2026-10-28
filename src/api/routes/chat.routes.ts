@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { onlyPlanButtons } from '../../services/cardButtons';
+import { buttonsShown } from '../../services/cardButtons';
 import { randomUUID } from 'crypto';
 import { body, param, validationResult } from 'express-validator';
 import {
@@ -130,14 +130,14 @@ chatRouter.post(
         timeout,
       ]);
 
-      // #6364 (D846): no shortcut-answer button but the plan card's two.
-      const choices = onlyPlanButtons(result.choices);
+      // #6364 (D846), #8054 (founder 27 Oct): no buttons leave the server.
+      const choices = buttonsShown(result.choices);
       res.status(200).json({
         success: true,
         reply: result.reply,
         ...(result.options && { options: result.options }),
         ...(choices && { choices }),
-        ...otherChoiceField(result.choices),
+        ...otherChoiceField(choices),
       });
     } catch (error) {
       // eslint-disable-next-line no-console
