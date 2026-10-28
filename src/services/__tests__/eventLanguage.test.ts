@@ -1,4 +1,9 @@
-import { DAY_ONE_EVENT, PLAN_PROPOSAL_EVENT, introOutcomeEvent } from '../taskEngine.events';
+import {
+  DAY_ONE_EVENT,
+  PLAN_FROM_FINDINGS_EVENT,
+  PLAN_PROPOSAL_EVENT,
+  introOutcomeEvent,
+} from '../taskEngine.events';
 
 /**
  * The engine's events are stored with role „user", so to the model they ARE the
@@ -76,15 +81,15 @@ describe('the engine events the model reads as the owner', () => {
     }
   });
 
-  it('names the buttons the product actually offers today', () => {
-    // The Georgian text said „დამტკიცებულია" — the OLD approve label, replaced
-    // by „ვამტკიცებ". It was telling the model to offer a wording the product
-    // no longer uses, which is how unrecognised labels reach a plan card.
-    expect(PLAN_PROPOSAL_EVENT.ka).toContain('ვამტკიცებ');
-    expect(PLAN_PROPOSAL_EVENT.ka).not.toContain('დამტკიცებულია');
-    expect(PLAN_PROPOSAL_EVENT.en).toContain('I approve');
-    expect(PLAN_PROPOSAL_EVENT.ru).toContain('Подтверждаю');
-    expect(PLAN_PROPOSAL_EVENT.es).toContain('Lo apruebo');
+  it('asks for the yes in words, with no buttons (#8054, tester 77492 #6304)', () => {
+    for (const event of [PLAN_PROPOSAL_EVENT, PLAN_FROM_FINDINGS_EVENT]) {
+      for (const language of ['ka', 'en', 'ru', 'es'] as const) {
+        expect(event[language]).toMatch(
+          /present_choices (?:არ გამოიძახო)|do not call present_choices|не вызывай present_choices|no llames a present_choices/u,
+        );
+        expect(event[language]).not.toMatch(/ვამტკიცებ"|I approve|Подтверждаю|Lo apruebo/u);
+      }
+    }
   });
 });
 
