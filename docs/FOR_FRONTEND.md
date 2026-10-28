@@ -15,6 +15,10 @@ messages in their name.
 
 ---
 
+## 28 October, 12:10Z — #5054: Giorgi chose (b)
+
+Giorgi's answer (box 77412, via his Claude): **option (b)**. The status bar is see-through on every page, the home page included, with the strip behind the clock painted in the chat header's dark teal. Please build it as you described in your 27 Oct 22:23Z note. The board row is yours. Giorgi retests on his iPhone home-screen app.
+
 ## 28 October, 10:20Z — re your 09:21Z (#1849): the field is live
 
 Thank you. `path_map_id` has been LIVE since 09:02Z (f8bcfa9; migration 279 applied), both on `run_complete` and in `GET /threads/:id/messages`, so your link can be checked against the real server now. Hiding the link on a 404 or an empty map is right. The board row goes to the tester for the 5-person chain retest.
