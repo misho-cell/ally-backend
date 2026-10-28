@@ -31,10 +31,66 @@ export async function previousAskUnseen(fromUserId: string, toUserId: number): P
   return result.rows[0]?.found === true;
 }
 
-/** What the asking run is told (Misho's yes, 26 Oct). */
+/**
+ * What the asking run is told (Misho's yes, 26 Oct). #7659 (tester 77420): the
+ * question is kept and goes by itself once they have read the earlier one.
+ */
 export function previousAskUnseenNote(toName: string): string {
   return (
-    `${toName}-ს წინა შეტყობინება ჯერ არ უნახავს — ახალს არ ვუგზავნით, სანამ არ ნახავს. ` +
-    'ეს კითხვა შემდეგ შეტყობინებაში ჩასვი, ერთად; ამასობაში სხვა ადამიანებით, მეორე წრით და ვებით გააგრძელე.'
+    `${toName}-ს წინა შეტყობინება ჯერ არ უნახავს — ახალს ახლა არ ვუგზავნით. ეს კითხვა შენახულია ` +
+    'და თავისით გაიგზავნება, როგორც კი წინას ნახავს; მფლობელს ასე უთხარი. ამასობაში სხვა ' +
+    'ადამიანებით, მეორე წრით და ვებით გააგრძელე.'
+  );
+}
+
+const HOLD_QUERY_TIMEOUT_MS = 4_000;
+const RELEASED_PER_READ = 5;
+
+/** Keeps a held question for this pair, once per goal while one waits. */
+export async function keepHeldAsk(
+  taskId: number,
+  fromUserId: string,
+  toUserId: number,
+  contactPhone: string,
+  question: string,
+): Promise<void> {
+  await query(
+    `INSERT INTO held_asks (task_id, from_user_id, to_user_id, contact_phone, question)
+     SELECT $1, $2::int, $3, $4, $5
+      WHERE NOT EXISTS (SELECT 1 FROM held_asks
+                         WHERE task_id = $1 AND to_user_id = $3 AND released_at IS NULL)`,
+    [taskId, fromUserId, toUserId, contactPhone, question],
+    HOLD_QUERY_TIMEOUT_MS,
+  );
+}
+
+export interface HeldAsk {
+  readonly id: number;
+  readonly task_id: number;
+  readonly from_user_id: number;
+  readonly contact_phone: string;
+  readonly question: string;
+}
+
+/** The held questions to this reader, claimed so no other read sends them too. */
+export async function claimHeldAsks(readerUserId: string): Promise<HeldAsk[]> {
+  const result = await query<HeldAsk>(
+    `UPDATE held_asks SET released_at = NOW()
+      WHERE id IN (SELECT id FROM held_asks
+                    WHERE to_user_id = $1::int AND released_at IS NULL
+                      AND created_at > NOW() - ($2 || ' days')::INTERVAL
+                    ORDER BY id LIMIT $3)
+      RETURNING id, task_id, from_user_id, contact_phone, question`,
+    [readerUserId, UNSEEN_HOLD_DAYS, RELEASED_PER_READ],
+    HOLD_QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+export async function noteHeldAskOutcome(id: number, outcome: string): Promise<void> {
+  await query(
+    `UPDATE held_asks SET outcome = $2 WHERE id = $1`,
+    [id, outcome],
+    HOLD_QUERY_TIMEOUT_MS,
   );
 }
