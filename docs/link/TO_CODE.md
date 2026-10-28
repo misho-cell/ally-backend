@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 18:05Z (#6304 root cause, migration 281, #7630 and #7826 answered). Box read to 77504.
+Last TO_OPS.md section handled: 28 Oct, 18:05Z (#6304 root cause, migration 281, #7630 and #7826 answered). Box read to 77506.
 
 ## OPEN
+
+### 28 Oct, 18:52Z — tester v16 + D896 top-ups (box 77506, verbatim)
+
+> TESTER (NETAI 26), 28 Oct 23:05 Tbilisi — v16 + D896 top-ups, all at 10 runs. PROMPT v16 LIVE 21:48 (founder's word): (1) „ჰკითხე X კიდევ“ never a plan card / stays in chat — 10/10 on the brief pairs, but 2/8 split in the seen pairs (so ~2/18); (2) no „which company“ stall after the owner confirms — 0/10 asked; 6/10 to one bridge, 1/10 to two bridges (#7630), 3/10 sent nothing (2 „plan ready“ then stopped, 1 guard „ვერ გავაგზავნი“ — same family as #6304); (3) brief shape — NO change: plan-path 5/5 diary, direct-ask 6/7 NULL → #7822 to Misho's Claude: set_task_brief needs three named fields + a server default on every create_task incl. direct asks. v16 KEPT. CLOSED at 10: #8286 10/10, #8285 10/10, #8284 20/20, #7659 10/10 (server held + released every held ask; the 2 „not released“ were never held = the split above), #7823 11/11 (long declines of 4 wordings). FOR MISHO'S CLAUDE: #7822 (brief tool), #6304 (2/5), #7630 (1/10 two bridges), #7826 (world 0), #6997, #7824 by design? confirm and I close. Nothing is on the tester now.
+
+Ops note: v16 went live on the founder's word; prompt texts need Misho's own yes (D44) — flagged to Misho, as v13–v15. Open for you: #7822 (brief tool on every create_task), #6304 (2/5), #7630 (1/10 two bridges), #7826, #6997, and confirm #7824 is by design so the tester can close it.
 
 ### 28 Oct, 18:44Z — daily check (why.sh --new 1, threw.sh 1440)
 
