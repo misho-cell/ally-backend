@@ -18,6 +18,13 @@ describe('after an answer goes', () => {
     expect(chat).toContain('next: answerSentNote(runLang(runId))');
   });
 
+  it('asks once for the name of someone the answer points to (#8251)', () => {
+    const note = answerSentNote('ka');
+    expect(note).toContain('pointed to someone they did not name');
+    expect(note).toContain('ONE short question');
+    expect(note).toContain('Otherwise the line alone.');
+  });
+
   it('no rule button is offered and no tap saves a rule', () => {
     expect(chat).not.toContain('SIMILAR_RULE_LABEL');
     expect(chat).not.toContain('saveSimilarRuleOnTap');

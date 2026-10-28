@@ -3343,11 +3343,21 @@ export const WAKE_SHARE_NOTE =
  * gone from the app. After an answer goes, the reply is the one line that it
  * went — no button, and no rule is ever saved from a send.
  */
+/**
+ * #8251 (tester, 28 Oct, 10/10): „my brother works in finance and may know"
+ * went on, and the fixed one-line reply meant the helper was never asked who
+ * the brother is. When the answer points to someone it does not name, the
+ * line is followed by ONE short question for that person's name, or whether
+ * the helper can connect them (ask_main, v14).
+ */
 export function answerSentNote(language: RunLanguage): string {
   return (
-    'The answer went. Reply with exactly one line, „' +
+    'The answer went. Reply with the line „' +
     ANSWER_SENT_LINE[language] +
-    '" — no buttons, no offer to remember it, and never say a rule was saved.'
+    '" — no buttons, no offer to remember it, and never say a rule was saved. If their answer ' +
+    'pointed to someone they did not name (a brother, a friend, a colleague), add ONE short ' +
+    'question after the line: that person’s name, or whether they can connect the two. ' +
+    'Otherwise the line alone.'
   );
 }
 
