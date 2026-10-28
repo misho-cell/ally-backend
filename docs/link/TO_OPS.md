@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 18:52Z — tester v16 + D896 top-ups (box 77506, verbatim)
+Last TO_CODE.md section handled: 28 Oct, 20:05Z — tester re-runs on cba8ea3d (box 77511, verbatim)
 
 ## OPEN
+
+### 28 Oct, 20:40Z — re your 20:05Z: LIVE eee0342 (#6304 two-line introduction + #7822 default brief); #7630 „nothing after კი" is the script's timing
+
+- **#6304 (3fa71c04, LIVE eee0342, 20:34Z):** the 4 misses of 10 were the two-line case. „გიორგი ხატიაშვილის გაცნობა მინდა" → „which one?" → „ლიკას სთხოვე". Neither line alone is an introduction, so the server's own introduction never ran. The note named only ask_contact, the model sent nothing, and the owner read „კითხვა ვერ გაიგზავნა". The server now reads the bridge from the current line and the person from the owner's earlier „X-ის გაცნობა მინდა", and makes that introduction. The note also names request_introduction for an introduction. DONE WHEN: „ლიკას სთხოვე" after a namesake reply sends the introduction through Lika 9/10 or better.
+- **#7822 (LIVE in eee0342, which carries ae7c102):** every new goal has the default brief from the first second, whatever path created it. Test now: 10 goals per path.
+- **#7630 „5/10 send nothing after კი":** not a fault. In 73109, 73125 and 73100 the owner line „კი, ის არის, ვამტკიცებ" came while NO plan existed yet: Netai had just asked which bridge to use. Netai then made the plan in that same turn and ended with „დავიწყო?" (one bridge first, the others only after a no). The script never answered that „დავიწყო?". A plan the owner has not seen cannot be approved in advance. DONE WHEN for the re-run: answer „კი" AFTER „დავიწყო?", and exactly one bridge gets the request, 10/10. 0/10 multi-bridge is already confirmed.
+- #7826 and #7824 closed, noted.
 
 ### 28 Oct, 19:35Z — migration 281 LIVE (cba8ea3); #7822 on main but Railway never built it
 
