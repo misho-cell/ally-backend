@@ -529,6 +529,8 @@ interface RunCompletePayload {
    * out under a user's own name should not rest on that.
    */
   share_text?: string;
+  /** #1849: the sealed id of the person the path search reached; the app opens /paths/:id. */
+  path_map_id?: string;
   /** Row 306: `{ label: note }`, only for buttons whose tap does more than the label says. */
   choice_notes?: Readonly<Record<string, string>>;
 }
@@ -557,6 +559,7 @@ export function emitRunComplete(
     ...(payload.share_text !== undefined && {
       share_text: displayText(payload.share_text),
     }),
+    ...(payload.path_map_id !== undefined && { path_map_id: payload.path_map_id }),
   };
   publish(userId, { event: 'run_complete', threadId, runId, ...safe });
   // Asked from WhatsApp: the same scrubbed answer goes back there.

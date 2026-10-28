@@ -77,6 +77,8 @@ export interface ThreadMessage {
    * fall back to a bare URL. Null on every other message.
    */
   share_text: string | null;
+  /** #1849: the sealed id of the person this reply's path search reached; opens /paths/:id. */
+  path_map_id: string | null;
   /**
    * Which prompt answered this turn (ticket 9 task 34): the run's mode, and
    * `name@ISO` per block it loaded. Null on a message whose run predates the
@@ -1120,7 +1122,7 @@ export async function getThreadMessages(
        -- cannot see is a column that does not exist for the people whose
        -- question it was written to answer.
        SELECT id, role, content, kind, run_id, created_at, choices, share_text,
-              answered_by
+              answered_by, path_map_id
        FROM conversations
        WHERE thread_id = $1 AND content != ''${kindFilter}${cursorClause}
        ORDER BY created_at DESC, id::text DESC
