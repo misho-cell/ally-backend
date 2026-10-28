@@ -64,6 +64,7 @@ import {
   sendDueCampaignAsks,
   closeStaleCampaigns,
   seedTestCampaign,
+  sendSeatCampaignAsks,
   recordCampaignResponse,
   sweepStaleParticipants,
   attributeCampaignJoin,
@@ -1067,5 +1068,33 @@ describe('the ask that is actually sent carries it', () => {
       .replace(/\/\/[^\n]*/g, '');
     expect(code).toContain('whyThemAndWhatIsShared(shared)');
     expect(code).toContain('sharedCircleWith(row.inviter_user_id, row.target_phone)');
+  });
+});
+
+/** #8087 (tester 77420): a seeded test campaign's ask is sent on demand, never a real person's. */
+describe('sendSeatCampaignAsks', () => {
+  it('reads only test-seat inviters of the named campaigns', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+    expect(await sendSeatCampaignAsks([1288, 1289])).toBe(0);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('JOIN test_seats ts ON ts.user_id = p.inviter_user_id');
+    expect(params[0]).toEqual([1288, 1289]);
+  });
+
+  it('skips a real target number even for a test seat', async () => {
+    mockQuery.mockResolvedValueOnce(
+      rows([
+        {
+          id: 9,
+          campaign_id: 1288,
+          inviter_user_id: 197181,
+          target_label: 'X',
+          target_phone: '+995599111111',
+          target_returning: false,
+        },
+      ]) as never,
+    );
+    expect(await sendSeatCampaignAsks([1288])).toBe(0);
+    expect(mockCreateThread).not.toHaveBeenCalled();
   });
 });
