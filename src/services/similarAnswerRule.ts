@@ -20,8 +20,12 @@ export const ANSWER_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
   es: 'Tu respuesta fue enviada.',
 };
 
-/** Words a reply uses when it already says the answer went. */
-const SAYS_IT_WENT_RE = /გაიგზავნ|გაეგზავნ|გავუგზავნ|გავაგზავნ|გაგზავნილია|\bsent\b|отправ|enviad/i;
+/**
+ * Words a reply uses when it already says the answer went. Tester 77455 (2/10):
+ * „პასუხი გადავეცი და დავიმახსოვრე." says it too, so the line is not added twice.
+ */
+const SAYS_IT_WENT_RE =
+  /გაიგზავნ|გაეგზავნ|გავუგზავნ|გავაგზავნ|გაგზავნილია|გადავეც|გადაეცა|\bsent\b|\bpassed (?:it )?on\b|\bdelivered\b|отправ|передал|enviad|entregad/i;
 
 /**
  * The tester's 1102 (E4, 32969): a helper answered „I don't know" and the whole
