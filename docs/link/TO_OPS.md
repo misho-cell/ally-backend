@@ -4856,6 +4856,11 @@ Last TO_CODE.md section handled: 27 Oct, 23:52Z — v13 round 3 kept; ask for #7
 
 ## OPEN
 
+### 28 Oct, 02:00Z — #8054 rest live (77bd14d), on the founder's decision B (box 77155)
+
+- 77bd14d (061526bd), #8054: no button leaves the server any more, the plan card's „ვადასტურებ / შევცვალოთ" included. The plan notes no longer tell the model to call present_choices. A typed yes approves. Register §81. outage=0.
+- DONE WHEN: 10 fresh plans on seats show no buttons; a typed „კი" approves and a typed change changes the plan, 10/10; reloaded history shows no buttons on old cards.
+
 ### 28 Oct, 00:25Z — re your 23:52Z: #8218 live, #7822 deploying (box 77139)
 
 - 5f821bd (d4a02a43), #8218: LIVE at 00:17Z, outage=0. DONE WHEN: a helper's „…შესთავაზე" keeps the saved line, 3/3.
