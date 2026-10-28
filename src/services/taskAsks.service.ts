@@ -31,6 +31,8 @@ import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from '.
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
 import { phoneDigits } from './phone';
+import { isFictionalNumber } from './fictionalNumbers';
+import { ownPeopleDigits } from './targetScoring.service';
 import { isDeceasedOrBlockedFor } from './block.service';
 import { looksLikeContactInstruction } from './goalIntent';
 import { questionForReader, relayedForReader } from './askTranslation.service';
@@ -269,6 +271,7 @@ export interface TaskAsk {
 // to paraphrased error strings.
 export type AskRefusalReason =
   | 'empty_question'
+  | 'test_seat_to_real_person'
   | 'task_not_open'
   | 'consent_pending'
   | 'recipient_not_member'
@@ -1084,6 +1087,44 @@ async function ownerNamedThemOutsidePlan(
   return named;
 }
 
+const TEST_SEAT_TO_REAL_PERSON =
+  'Not sent: this is a fictional test account, and the person is a real member. A test account ' +
+  'asks only other test accounts. Tell the owner plainly that this route is not available here.';
+
+/**
+ * True when a fictional test seat would ask someone who is not one of ours:
+ * not a reserved fictional number, not another test seat, not a review number.
+ * A real member's ask costs one indexed read. If the check cannot be read the
+ * ask goes on, as it would have before this guard, and the failure is logged.
+ */
+export async function testSeatReachesARealPerson(
+  fromUserId: string,
+  phone: string,
+): Promise<boolean> {
+  if (!/^\d+$/.test(fromUserId)) return false;
+  const digits = phoneDigits(phone);
+  if (isFictionalNumber(`+${digits}`) || ownPeopleDigits().has(digits)) return false;
+  try {
+    const seat = await query<{ seat: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM test_seats WHERE user_id = $1::int) AS seat`,
+      [fromUserId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    if (seat.rows[0]?.seat !== true) return false;
+    const ours = await query<{ ours: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM "UserPhone" up JOIN test_seats ts ON ts.user_id = up."userId"
+                       WHERE up.phone = ANY($1::text[])) AS ours`,
+      [[`+${digits}`, digits]],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return ours.rows[0]?.ours !== true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[ask] test-seat guard unreadable:', (err as Error).message);
+    return false;
+  }
+}
+
 async function createAskNow(
   fromUserId: string,
   taskId: number,
@@ -1108,6 +1149,14 @@ async function createAskNow(
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
     return { sent: false, reason: 'empty_question', error: 'Pass a non-empty question.' };
+
+  // Founder's rule (23 Oct), tester 77396 (28 Oct): a fictional seat approved an
+  // old plan and its ask reached a REAL member. A test seat asks test people only.
+  if (await testSeatReachesARealPerson(fromUserId, contactPhone)) {
+    // eslint-disable-next-line no-console
+    console.warn(`[ask] task ${taskId}: refused, a test seat may not ask a real person`);
+    return { sent: false, reason: 'test_seat_to_real_person', error: TEST_SEAT_TO_REAL_PERSON };
+  }
 
   // 3268: a person the owner marked deceased or blocked is never asked, on any path.
   if (await isDeceasedOrBlockedFor(fromUserId, contactPhone)) {
