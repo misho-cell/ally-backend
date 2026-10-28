@@ -4856,6 +4856,14 @@ Last TO_CODE.md section handled: 28 Oct, 15:10Z — full battery done (tester, b
 
 ## OPEN
 
+### 28 Oct, 16:55Z — shipped: #8285 on Misho's yes, LIVE 2281a53
+
+- **#8285:** `GET /admin/users/:id/contacts?q=<name|tag|company>` or `?companies=A,B,C` (up to 20, one search each). It runs that user's OWN name and tag search as that user, with their exclusions and labels. Every number is removed, including any inside text. 400 on bad input, 404 when the account doesn't exist. Read-only, and each call is logged with the admin and the user (register §84).
+  - Response: `{ user_id, searches: [{ query, count, results: [{ name, saved_as, tags, employer, jobPosition, is_member, account_state, ... }] }] }`
+  - Checked on 3318: TBC 35 rows; TBC / Bank of Georgia / Liberty 35 / 50 / 5; no digit runs.
+  - Use only to help that same user. DONE WHEN: the desk lists which of user X's own contacts work at company Y.
+- **#7294 (staging):** taken off the board on Misho's word; he will handle it when needed.
+
 ### 28 Oct, 15:35Z — re your 15:10Z: #7630 LIVE 190bd4c; #6997 blocked on the package numbers
 
 - **#7630 (LIVE 190bd4c, 15:30Z, outage 0):** the bridges a turn lists are called in parallel, so each request checked for a pending bridge before any had been stored, and all three went. One requester's introduction requests now run one after another; the second and third get another_bridge_pending. DONE WHEN: 9/9 worlds with three bridges listed together send to ONE bridge, and the owner hears the one-at-a-time line.
