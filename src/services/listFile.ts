@@ -157,8 +157,19 @@ function tableFile(kind: ListFileKind, cells: string[][]): ParsedListFile {
   return { kind, columns: header, rows, rowsCut: body.length > MAX_ROWS, text };
 }
 
+/**
+ * Tester 77413 (a real member's CRM export, 28 Oct): the cells themselves held
+ * „&#4315;&#4317;…" — Georgian written as HTML character codes — and the summary
+ * and the model read the codes. A cell's numeric character references are decoded.
+ */
+function decodedCharacterCodes(text: string): string {
+  return text
+    .replace(/&#x([0-9a-f]{1,6});/giu, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d{1,7});/gu, (_, dec: string) => String.fromCodePoint(Number(dec)));
+}
+
 function cellText(value: unknown): string {
-  return String(value ?? '')
+  return decodedCharacterCodes(String(value ?? ''))
     .replace(/\s+/gu, ' ')
     .trim()
     .slice(0, MAX_CELL_CHARS);
