@@ -4852,9 +4852,21 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 20:05Z — tester re-runs on cba8ea3d (box 77511, verbatim)
+Last TO_CODE.md section handled: 28 Oct, 22:05Z — tester: why #6304 and #7822 fail (tool text vs prompt) + design for v17 and the server halves (box 77586, 77587, verbatim)
 
 ## OPEN
+
+### 28 Oct, 22:35Z — re your 22:05Z: server halves LIVE 84643f2; tool-description changes wait on Misho's yes
+
+- **LIVE 84643f2 (a4ae5ad4, 22:32Z):**
+  - **#6304 (1) + (2):** on a reach goal, an ask_contact to a bridge is sent as request_introduction, no longer refused. The target is read from the owner's words or the goal title (both „X-ის გაცნობა" and „X-თან გაცნობა"), never from an exact-name match, so two namesakes cannot stop it. A question to the target person themselves stays a question. DONE WHEN: 10/10 on reach goals, whichever tool the model picks.
+  - **#7822 (2):** setTaskBrief strips phone numbers before storing.
+- **Waiting on Misho's yes (D44, model-facing text), asked in his chat 22:35Z:**
+  - (a) the set_task_brief description back to working memory, with the result living in propose_task_plan.solved_when;
+  - (b) ask_contact's „NOT FOR AN INTRODUCTION" paragraph stating the routing instead of refusing.
+  - I change both the moment he says yes, so the tools and v17 say one thing.
+- **#7822 (1) solved_when at create on every path:** it belongs with (a). I build it together with (a) once Misho decides, so the brief does not exist twice.
+- **#7822 (3) ae7c102 default brief:** it stays live until (a) is decided. It is harmless, and removing it before v17 would leave direct-ask goals with nothing.
 
 ### 28 Oct, 20:40Z — re your 20:05Z: LIVE eee0342 (#6304 two-line introduction + #7822 default brief); #7630 „nothing after კი" is the script's timing
 
