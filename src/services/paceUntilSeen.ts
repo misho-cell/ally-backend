@@ -55,9 +55,9 @@ export async function keepHeldAsk(
   question: string,
 ): Promise<void> {
   await query(
-    `INSERT INTO held_asks (task_id, from_user_id, to_user_id, contact_phone, question)
+    `INSERT INTO pace_held_asks (task_id, from_user_id, to_user_id, contact_phone, question)
      SELECT $1, $2::int, $3, $4, $5
-      WHERE NOT EXISTS (SELECT 1 FROM held_asks
+      WHERE NOT EXISTS (SELECT 1 FROM pace_held_asks
                          WHERE task_id = $1 AND to_user_id = $3 AND released_at IS NULL)`,
     [taskId, fromUserId, toUserId, contactPhone, question],
     HOLD_QUERY_TIMEOUT_MS,
@@ -75,8 +75,8 @@ export interface HeldAsk {
 /** The held questions to this reader, claimed so no other read sends them too. */
 export async function claimHeldAsks(readerUserId: string): Promise<HeldAsk[]> {
   const result = await query<HeldAsk>(
-    `UPDATE held_asks SET released_at = NOW()
-      WHERE id IN (SELECT id FROM held_asks
+    `UPDATE pace_held_asks SET released_at = NOW()
+      WHERE id IN (SELECT id FROM pace_held_asks
                     WHERE to_user_id = $1::int AND released_at IS NULL
                       AND created_at > NOW() - ($2 || ' days')::INTERVAL
                     ORDER BY id LIMIT $3)
@@ -89,7 +89,7 @@ export async function claimHeldAsks(readerUserId: string): Promise<HeldAsk[]> {
 
 export async function noteHeldAskOutcome(id: number, outcome: string): Promise<void> {
   await query(
-    `UPDATE held_asks SET outcome = $2 WHERE id = $1`,
+    `UPDATE pace_held_asks SET outcome = $2 WHERE id = $1`,
     [id, outcome],
     HOLD_QUERY_TIMEOUT_MS,
   );
