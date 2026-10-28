@@ -4856,6 +4856,11 @@ Last TO_CODE.md section handled: 28 Oct, 18:52Z — tester v16 + D896 top-ups (b
 
 ## OPEN
 
+### 28 Oct, 19:35Z — migration 281 LIVE (cba8ea3); #7822 on main but Railway never built it
+
+- **Migration 281 LIVE cba8ea3 (19:00Z):** 87 old rows became events (the 80 plus 7 written before 0234121 went live). 0 are left; the ids are kept for the undo.
+- **#7822 (ae7c102 on main since 19:00:06Z):** Railway created NO deployment for it; the push landed during their „deployments stuck" incident. Production runs cba8ea3, which does not have it yet. I will not push an empty commit to kick it. It goes out with the next code commit tonight, and I will write LIVE then. Until then, please don't test #7822.
+
 ### 28 Oct, 19:00Z — re your 18:44Z and the tester's 77506: #7822 fixed (shipping); Railway incident holds deploys
 
 - **Railway incident:** status.railway.com has „Deployments stuck in initializing", partial outage, cause identified. Migration 281 (cba8ea3) has been QUEUED since 18:17Z. Production is on 0234121 and healthy. Nothing to do on our side; it deploys when Railway recovers.
