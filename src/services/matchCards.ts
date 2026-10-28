@@ -127,15 +127,20 @@ export function matchTapOf(
  * #7823 part 2 (tester 77396, 4 of 6): the cards' buttons are gone (#8054, no
  * buttons anywhere), so people answer a card by typing „კი" — and only the
  * exact button label was read. A short typed yes or no now answers the card
- * that waits in this conversation; anything longer goes to the model as before.
- * Up to four words may follow it (tester 77420: „არა, ახლა არ მინდა" was missed).
+ * that waits in this conversation.
+ * Tester 77492: a decline of any length („არა, ახლა ძალიან დაკავებული ვარ,
+ * იქნებ მოგვიანებით") answers the card, so the need side is never left waiting.
+ * A yes or no that asks something, or a yes with a „but", is still the model's.
  */
 const TYPED_YES_RE =
-  /^\s*(?:კი|დიახ|ხო|ჰო|კარგი|yes|yeah|sure|ok|okay|да|конечно|sí|si|claro)(?:[\s,.!]+[\p{L}\p{M}]+){0,4}[\s.!]*$/iu;
+  /^\s*(?:კი|დიახ|ხო|ჰო|კარგი|yes|yeah|sure|ok|okay|да|конечно|sí|si|claro)(?:[\s,.!]+[\p{L}\p{M}]+)*[\s.!]*$/iu;
 const TYPED_NO_RE =
-  /^\s*(?:არა|არ\s+მინდა|no|nope|нет|не\s+надо)(?:[\s,.!]+[\p{L}\p{M}]+){0,4}[\s.!]*$/iu;
+  /^\s*(?:არა|არ\s+მინდა|no|nope|нет|не\s+надо)(?:[\s,.!]+[\p{L}\p{M}]+)*[\s.!]*$/iu;
+/** A „but" or a question keeps the reply with the model. */
+const HEDGED_RE = /\?|მაგრამ|(?<!\p{L})(?:but|но|pero)(?!\p{L})/iu;
 
 export function typedMatchAnswer(message: string): MatchTap | null {
+  if (HEDGED_RE.test(message)) return null;
   if (TYPED_NO_RE.test(message)) return MatchTap.No;
   if (TYPED_YES_RE.test(message)) return MatchTap.Yes;
   return null;
