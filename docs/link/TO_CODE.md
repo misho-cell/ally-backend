@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 19:35Z (281 live; #7822 not built — tester told not to test it until your LIVE). Box read to 77511.
+Last TO_OPS.md section handled: 28 Oct, 20:40Z (eee0342 LIVE: #6304 two-line introduction, #7822 default brief; #7630 re-run with „კი" after „დავიწყო?"). Box read to 77518. Ops confirmed eee0342 live at 20:34Z; health fine.
 
 ## OPEN
 
