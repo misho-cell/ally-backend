@@ -10153,6 +10153,15 @@ const runsWhereNothingWent = new Set<string>();
 const runMentionedNote = new Map<string, string>();
 /** The tester's 1119 (F3): the open goal this run's message repeats, by id. */
 const runRepeatedGoal = new Map<string, number>();
+/**
+ * #8054 (tester 77254, founder's decision B): a run that proposed a plan ends
+ * with its question in words. present_choices in that run is refused, so the
+ * model is told to ask instead of believing buttons were shown.
+ */
+const runsThatProposedAPlan = new Set<string>();
+const PLAN_ASKS_IN_WORDS =
+  'Refused: there are no buttons after a plan (#8054). End your reply with the plan’s one ' +
+  'question in words; the owner answers by writing, and approve_task_plan runs on their typed yes.';
 
 function clearRunState(runId: string): void {
   runSearchCalls.delete(runId);
@@ -10217,6 +10226,7 @@ function clearRunState(runId: string): void {
   runWithheldByOwnerLine.delete(runId);
   runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
   runFirstSearchAt.delete(runId);
+  runsThatProposedAPlan.delete(runId);
 }
 
 /**
@@ -10947,6 +10957,9 @@ async function executeToolCall(
             .filter((i): i is string => typeof i === 'string')
             .map(withEscapesAsLetters)
         : [];
+      if (runId !== undefined && runsThatProposedAPlan.has(runId)) {
+        return { presented: false, error: PLAN_ASKS_IN_WORDS };
+      }
       if (thankedThisRun(runId) && labels.includes(SOLVED_LABEL)) {
         // eslint-disable-next-line no-console
         console.log(`[helper-thanks] run ${runId}: „solved?" buttons refused after the thanks`);
@@ -11844,6 +11857,7 @@ async function executeToolCall(
       return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
     }
     case 'propose_task_plan': {
+      if (runId !== undefined) runsThatProposedAPlan.add(runId);
       const taskId = Number(input['task_id']);
       // Ticket 20 row 117: the owner's own words outrank the plan. Refused
       // rather than silently emptied — the model must be told, so its message
@@ -13071,6 +13085,8 @@ async function processToolBlocks(
   // #397: one status line per source, replaced in place.
   const stage = ownerAbsent || !shown ? null : stageOfTools(toolBlocks.map((b) => b.name));
   if (stage !== null) await showSearchStage(userId, threadId, runId, stage, runLang(runId));
+  // #8054: a plan proposed in this same step counts before its handler has run.
+  if (toolBlocks.some((b) => b.name === 'propose_task_plan')) runsThatProposedAPlan.add(runId);
   /**
    * ROW 249 — A CARD THAT COULD NOT MEAN ANYTHING, OFFERED IN THE SAME BREATH
    * AS THE APPROVAL IT CONTRADICTS.

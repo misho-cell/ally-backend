@@ -42,3 +42,30 @@ describe('#6364 is applied where buttons leave the server', () => {
     expect(route).toContain('...otherChoiceField(choices),');
   });
 });
+
+/** #8054 (tester 77254): present_choices in a run that proposed a plan is refused. */
+describe('a run that proposed a plan', () => {
+  const { readFileSync } = jest.requireActual<typeof import('fs')>('fs');
+  const { join } = jest.requireActual<typeof import('path')>('path');
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('marks itself when propose_task_plan runs, or is called in the same step', () => {
+    const handler = chat.slice(chat.indexOf("case 'propose_task_plan': {"));
+    expect(handler.slice(0, 200)).toContain('runsThatProposedAPlan.add(runId)');
+    expect(chat).toContain(
+      "if (toolBlocks.some((b) => b.name === 'propose_task_plan')) runsThatProposedAPlan.add(runId);",
+    );
+  });
+
+  it('refuses present_choices and tells the model to ask in words', () => {
+    const handler = chat.slice(chat.indexOf("case 'present_choices': {"));
+    expect(handler.slice(0, 900)).toContain('runsThatProposedAPlan.has(runId)');
+    expect(handler.slice(0, 900)).toContain('error: PLAN_ASKS_IN_WORDS');
+  });
+
+  it('forgets the mark when the run ends', () => {
+    const start = chat.indexOf('function clearRunState(runId: string): void {');
+    const clear = chat.slice(start, chat.indexOf('\n}\n', start));
+    expect(clear).toContain('runsThatProposedAPlan.delete(runId)');
+  });
+});
