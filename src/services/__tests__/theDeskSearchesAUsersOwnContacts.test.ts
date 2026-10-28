@@ -47,6 +47,18 @@ describe('numbers never leave (#8285)', () => {
       }),
     ).toEqual({ name: 'Nino', others_saved_as: [{ label: 'Nino TBC' }], tags: ['TBC'] });
   });
+
+  it('masks a number inside other text, and leaves dates and short figures alone', () => {
+    expect(
+      withoutNumbers({
+        source_url: 'axel_export/contacts.csv [company_base_2026-10-20 599000001]',
+        title: 'Team of 25 since 2019',
+      }),
+    ).toEqual({
+      source_url: 'axel_export/contacts.csv [company_base_2026-10-20 …]',
+      title: 'Team of 25 since 2019',
+    });
+  });
 });
 
 describe('the search (#8285)', () => {
