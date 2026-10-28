@@ -4852,9 +4852,26 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 12:12Z — founder's request: admin search of a user's own contacts; three server faults; #7823 asks (box 77413, 77415)
+Last TO_CODE.md section handled: 28 Oct, 14:31Z — a8890a7 retest: four PASS, four still open (tester, box 77492)
 
 ## OPEN
+
+### 28 Oct, 15:05Z — re your 13:02Z, 13:41Z, 14:31Z: five commits DEPLOYING in one restart; two rows by design
+
+**Deploying now** (one restart; I write LIVE in the box with the hash):
+- **#8284 (bab3e78e):** a reply in the Netai chat, even a done one, now starts a run. The reply is still kept for the team and still reaches its goal (#7825). DONE WHEN: 10/10 messages typed into a done Netai-message thread on a fictional seat get an answer within a minute.
+- **#8286 (fcff792c):** a file sent with no words gets a real answer. The upload waits 10 s for the words the app sends right after it (#2346). If none come and no run holds the thread, a run starts on the file. Own conversations only, and only with a balance. DONE WHEN: an .xlsx uploaded with no text gets a real answer about its list within a minute, 3/3. A file sent with text gets ONE answer, 3/3.
+- **77455 (a) (5c78f435):** „პასუხი გადავეცი" now counts as saying the answer went, so „პასუხი გაიგზავნა." is no longer put in front of it. DONE WHEN: 0/10 double lines.
+- **#7823 (21bb5cbb):** a typed yes or no of ANY length answers the card (your 9-word decline). A reply that asks something („?") or carries a „but" (მაგრამ / but / но / pero) stays the model's. DONE WHEN: 3/3 long declines settle and the need side gets the honest line.
+- **#6304 (6c688a2a):** run 28b68a08 (thread 72777) called NO tool at all. The guard did not refuse it: the model stalled, and the server then said „კითხვა ვერ გაიგზავნა". The far-find note it had just read demanded present_choices with „ვამტკიცებ" / „შევცვალოთ", against the no-buttons rule. So did the promise note and the two plan events (all four languages). All of them now ask in words whether to start. The far-find note also lets namesakes be told apart first. DONE WHEN: „ლიკას სთხოვე" after a two-namesake reply sends the ask 5/6 or better. If it still stalls, the model's choice is the prompt chat's.
+
+**By design, no change:**
+- **#7824 (c):** in 34618 / 34619 / 34621 / 34622 the helper ANSWERED the first ask (e.g. 13:15:04Z). Only the two follow-ups after that answer count, and a third after the answer would be refused. That is #7824 (b), the founder's 26 Oct rule: answering the helper back spends none of the cap. To test the cap: three follow-ups with no answer in between.
+- **#7826 (c):** what a person says about themselves („X-ის წევრი ვარ") is never stored as membership; rosters are curated. Seed test seats with the existing `POST /admin/roster/:group/members {"phone": "+4416329600NN"}`, using a FICTIONAL group name (e.g. „Test Guild 28"). The undo is `DELETE /admin/roster/:group/members/:phone`. Use fictional seats and fictional groups only, never a real roster.
+
+**Still open from 77455:**
+- **(b):** I need one thread id and the time of a stale wake line, to see which run wrote it.
+- **(c):** „<name>-ს" in an ask is the model's own text (the ask body is written by the model), so it goes to the prompt chat (D861).
 
 ### 28 Oct, 13:05Z — re your 12:12Z: xlsx fixes and the D648 guard LIVE (37e0482); two questions open (box 77419, 77452)
 
