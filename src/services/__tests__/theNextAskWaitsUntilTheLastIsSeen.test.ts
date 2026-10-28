@@ -29,10 +29,10 @@ describe('the next ask waits until the last one is seen', () => {
     expect(await previousAskUnseen('7', 42)).toBe(false);
   });
 
-  it('names the person and keeps the question for the next message', () => {
+  it('names the person and says the question goes once they have read the last', () => {
     const note = previousAskUnseenNote('ნიკა');
     expect(note).toContain('ნიკა');
-    expect(note).toContain('შემდეგ შეტყობინებაში');
+    expect(note).toContain('თავისით გაიგზავნება, როგორც კი წინას ნახავს');
   });
 
   it("is on (Misho, 26 Oct), never holds a relay or the card, and holds the owner's line too", () => {
@@ -46,5 +46,20 @@ describe('the next ask waits until the last one is seen', () => {
     expect(head).not.toContain('fromOwnersLine !== true');
     expect(head).not.toContain('!ownerAddedSomething');
     expect(gate.slice(0, 800)).toContain("reason: 'previous_ask_unseen'");
+  });
+});
+
+/** #7659 (tester 77420, 0/2): the held question was refused and never went after seen. */
+describe('a held question goes once the earlier one is seen', () => {
+  it('is kept when held, and sent from markAsksSeen through createAsk', () => {
+    const held = asks.slice(asks.indexOf("reason: 'previous_ask_unseen',") - 900);
+    expect(held.slice(0, 1000)).toContain(
+      'await keepHeldAsk(taskId, fromUserId, toUserId, contactPhone, trimmed)',
+    );
+    const seen = asks.slice(asks.indexOf('export async function markAsksSeen('));
+    expect(seen.slice(0, 700)).toContain('if (seen > 0) void sendHeldAsks(readerUserId);');
+    const send = asks.slice(asks.indexOf('export async function sendHeldAsks('));
+    expect(send.slice(0, 900)).toContain('await createAsk(');
+    expect(send.slice(0, 900)).toContain('await claimHeldAsks(readerUserId)');
   });
 });

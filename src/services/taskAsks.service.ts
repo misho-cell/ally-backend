@@ -1,6 +1,13 @@
 import { isSmallTalk } from './smallTalk';
 import { netaiMember } from './netaiMembership';
-import { PACE_UNTIL_SEEN_ON, previousAskUnseen, previousAskUnseenNote } from './paceUntilSeen';
+import {
+  PACE_UNTIL_SEEN_ON,
+  claimHeldAsks,
+  keepHeldAsk,
+  noteHeldAskOutcome,
+  previousAskUnseen,
+  previousAskUnseenNote,
+} from './paceUntilSeen';
 import { goalWaitsForMorning } from './quietWakeGuard';
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { georgianScriptName, learnGeorgianSpellings, nameInsideLabel } from './georgianScriptName';
@@ -1560,7 +1567,8 @@ async function createAskNow(
       error:
         'ვერ გაიგზავნა: ამ ადამიანს ანგარიში აქვს, მაგრამ Netai ჯერ არ გახსნია — კითხვა ' +
         'უპასუხოდ დარჩებოდა. მისი ანგარიშის შესახებ არაფერი თქვა. სწორი გზა მოწვევაა: ' +
-        'invite_contact-ით შესთავაზე მფლობელს მოსაწვევი ტექსტი, ან თავად მისწეროს.',
+        'invite_contact-ით შესთავაზე მფლობელს მზა მოსაწვევი ტექსტი მისი ბმულით. მფლობელს ' +
+        'არ უთხრა, რომ თავად მისწეროს.',
     };
   }
 
@@ -1886,6 +1894,10 @@ async function createAskNow(
     // eslint-disable-next-line no-console
     console.log(
       `[ask] task ${taskId}: held — the previous message to this person is unseen (#7659)`,
+    );
+    await keepHeldAsk(taskId, fromUserId, toUserId, contactPhone, trimmed).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[ask] task ${taskId}: held question not kept:`, (err as Error).message),
     );
     return {
       sent: false,
@@ -4099,7 +4111,34 @@ export async function markAsksSeen(askThreadId: number, readerUserId: string): P
     [askThreadId, readerUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
-  return result.rowCount ?? 0;
+  const seen = result.rowCount ?? 0;
+  if (seen > 0) void sendHeldAsks(readerUserId);
+  return seen;
+}
+
+/**
+ * #7659 (tester 77420): the reader has now seen the earlier message, so the
+ * questions held behind it go — each through createAsk, which checks every
+ * gate again (an asker with another unseen ask to them still waits).
+ */
+export async function sendHeldAsks(readerUserId: string): Promise<number> {
+  let sent = 0;
+  try {
+    for (const held of await claimHeldAsks(readerUserId)) {
+      const outcome = await createAsk(
+        String(held.from_user_id),
+        held.task_id,
+        held.contact_phone,
+        held.question,
+      );
+      await noteHeldAskOutcome(held.id, outcome.sent ? 'sent' : (outcome.reason ?? 'not_sent'));
+      if (outcome.sent) sent += 1;
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ask] held questions to ${readerUserId} not sent:`, (err as Error).message);
+  }
+  return sent;
 }
 
 /** One open question addressed to this member, as the answer path needs it. */

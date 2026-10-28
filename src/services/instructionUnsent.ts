@@ -130,16 +130,18 @@ export const NOT_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
  * T2509 (WIDE GATE, conv 42888): the person named is not on Netai, so nothing
  * can go to them — „write it again" was the wrong answer. Neutral on purpose:
  * whether they have an account is not said (taskAsks, recipient_not_on_netai).
+ * Tester 77420 (28 Oct): never „write to them yourself" — the line offers the
+ * ready invitation with the owner's own link instead.
  */
 export const NOT_ON_NETAI_LINE: Readonly<Record<RunLanguage, (name: string) => string>> = {
   ka: (name) =>
-    `${name} Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. შეგიძლია მოიწვიო ან თავად მისწერო.`,
+    `${name} Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. თუ გინდა, მოსაწვევ ტექსტს შენი ბმულით მოგიმზადებ.`,
   en: (name) =>
-    `${name} is not on Netai yet, so I could not send the question. You can invite them or write to them yourself.`,
+    `${name} is not on Netai yet, so I could not send the question. If you like, I will prepare the invitation with your link.`,
   ru: (name) =>
-    `${name} пока нет в Netai, поэтому я не смог отправить вопрос. Можешь пригласить или написать сам.`,
+    `${name} пока нет в Netai, поэтому я не смог отправить вопрос. Если хочешь, подготовлю приглашение с твоей ссылкой.`,
   es: (name) =>
-    `${name} todavía no está en Netai, así que no pude enviar la pregunta. Puedes invitarle o escribirle tú.`,
+    `${name} todavía no está en Netai, así que no pude enviar la pregunta. Si quieres, preparo la invitación con tu enlace.`,
 };
 
 /**
