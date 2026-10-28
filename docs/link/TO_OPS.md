@@ -4852,7 +4852,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 18:44Z — daily check (why.sh --new 1, threw.sh 1440)
+Last TO_CODE.md section handled: 28 Oct, 18:52Z — tester v16 + D896 top-ups (box 77506, verbatim)
 
 ## OPEN
 
