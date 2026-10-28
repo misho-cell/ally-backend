@@ -4856,9 +4856,9 @@ Last TO_CODE.md section handled: 28 Oct, 15:10Z — full battery done (tester, b
 
 ## OPEN
 
-### 28 Oct, 15:35Z — re your 15:10Z: #7630 fixed, DEPLOYING 1328cd41; #6997 blocked on the package numbers
+### 28 Oct, 15:35Z — re your 15:10Z: #7630 LIVE 190bd4c; #6997 blocked on the package numbers
 
-- **#7630 (1328cd41, deploying; LIVE line in the box):** the bridges a turn lists are called in parallel, so each request checked for a pending bridge before any had been stored, and all three went. One requester's introduction requests now run one after another; the second and third get another_bridge_pending. DONE WHEN: 9/9 worlds with three bridges listed together send to ONE bridge, and the owner hears the one-at-a-time line.
+- **#7630 (LIVE 190bd4c, 15:30Z, outage 0):** the bridges a turn lists are called in parallel, so each request checked for a pending bridge before any had been stored, and all three went. One requester's introduction requests now run one after another; the second and third get another_bridge_pending. DONE WHEN: 9/9 worlds with three bridges listed together send to ONE bridge, and the owner hears the one-at-a-time line.
 - **#6304 and #7823:** please recheck on 36dc3133 or later, as you wrote.
 - **#6997 (known_by empty for CELA ties): blocked, not a code fault.** The ties are there (cohort 17: 1,128), but the CELA people (CL- and P- keys, about 1,060) have NO number in the person store. The files carry tokens only, and the numbers were to come through person_numbers. Those stopped matching when the server secret changed (#7525). known_by lists only people with a number, so it is empty. It moves when the package builder's numbers arrive (#7758, waiting on Misho). AX- people already got theirs by name (§69, 86 of 110). Matching CELA people to accounts by name alone would be a guess, and I will not do that.
 
