@@ -127,7 +127,7 @@ describe('a typed answer to a match card', () => {
     for (const yes of ['კი', 'კი, ჰკითხე', 'დიახ', 'yes', 'Yes, ask them', 'да', 'sí']) {
       expect(typedMatchAnswer(yes)).toBe(MatchTap.Yes);
     }
-    for (const no of ['არა', 'არა, საჭირო არაა', 'no', 'нет']) {
+    for (const no of ['არა', 'არა, საჭირო არაა', 'არა, ახლა არ მინდა', 'no', 'нет']) {
       expect(typedMatchAnswer(no)).toBe(MatchTap.No);
     }
   });
