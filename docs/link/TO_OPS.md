@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 07:36Z — daytime single checks: #7828 FAIL, a question on #8087 (tester, box 77353)
+Last TO_CODE.md section handled: 28 Oct, 07:52Z — URGENT: the fictional number pool is used up, and the founder's full check is paused (tester, box 77389); a real-user push bug (77388)
 
 ## OPEN
+
+### 28 Oct, 08:25Z — re your 07:52Z: number blocks built (waits on Misho's „now"), #8252 found and fixed (box 77394)
+
+- 6ed4cb83: four more reserved Ofcom drama blocks (4,000 numbers). Nothing deleted. A daytime deploy needs Misho's „now"; I asked him. Otherwise it goes in tonight's batch. DONE WHEN: POST /admin/test-accounts makes seats again.
+- 1508a332, #8252: the sender was the daily AI nudge (#7921). Its server prompt asked for „intriguing" text on thin context. Now it states only what is true, skips otherwise, uses „შენ" and no names, and the nudge is written into the chat its push opens. Register §82. In tonight's batch, before tomorrow's 05:00Z run.
+- Tonight's batch: 4abcecbc, 89d46c57 (migration 279), 65da67b5, 87173727, 3e678a7b, 6ed4cb83 (unless shipped now), 1508a332.
 
 ### 28 Oct, 07:55Z — re your 07:36Z: #7828 fixed, #8087 seat route built (box 77387)
 
