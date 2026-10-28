@@ -17,7 +17,12 @@ import {
   ParsedListFile,
   parseListFile,
 } from '../../services/listFile';
-import { fileEventText, saveThreadFile } from '../../services/threadFiles.service';
+import {
+  fileEventText,
+  saveThreadFile,
+  UploadedOriginal,
+} from '../../services/threadFiles.service';
+
 import {
   ATTACHMENT_MARK,
   getThread,
@@ -55,6 +60,8 @@ const upload = multer({
 });
 
 const MAX_FILENAME_CHARS = 120;
+/** #8317: an upload whose type the browser did not say is kept as plain bytes. */
+const DEFAULT_MIME_TYPE = 'application/octet-stream';
 
 /**
  * Multer hands the name over as Latin-1, so a Georgian file name arrives as
@@ -102,6 +109,7 @@ interface UploadedFile {
   readonly filename: string;
   readonly byteSize: number;
   readonly language: RunLanguage;
+  readonly original: UploadedOriginal | null;
 }
 
 /** Store the read file, put it in the conversation, and answer with one line. */
@@ -110,7 +118,14 @@ async function keepAndAnswer(
   file: ParsedListFile,
 ): Promise<Record<string, unknown>> {
   const since = new Date();
-  const stored = await saveThreadFile(up.threadId, up.owner, up.filename, up.byteSize, file);
+  const stored = await saveThreadFile(
+    up.threadId,
+    up.owner,
+    up.filename,
+    up.byteSize,
+    file,
+    up.original,
+  );
   const attachmentLine = `${ATTACHMENT_MARK} ${up.filename}`;
   await saveThreadMessage(up.threadId, up.owner, 'user', attachmentLine);
   const eventText = fileEventText(stored.id, up.filename, file);
@@ -165,6 +180,10 @@ threadFilesRouter.post(
         filename,
         byteSize: upload?.size ?? 0,
         language,
+        original:
+          upload === undefined
+            ? null
+            : { bytes: upload.buffer, mimeType: upload.mimetype || DEFAULT_MIME_TYPE },
       };
       res.status(201).json({ success: true, data: await keepAndAnswer(up, outcome.file) });
     } catch (error) {

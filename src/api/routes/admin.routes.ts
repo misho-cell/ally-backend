@@ -467,6 +467,7 @@ import {
   removePicture,
 } from '../../services/setupPictures.service';
 import { Gadget, isGadget, isSetupStep, SetupStep } from '../../services/setupState.service';
+import { fileForAdmin, userFiles } from '../../services/adminFiles.service';
 import { searchUserContacts, UserContactsOutcome } from '../../services/adminUserContacts.service';
 
 /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
@@ -2388,6 +2389,56 @@ adminRouter.post(
     }
   },
 );
+
+// #8317 (desk C-32c, founder's priority 1): a member's uploads, listed and downloaded.
+//   GET /admin/users/:id/files → 200 { user_id, files: [{ id, filename, thread_id, kind,
+//        byte_size, created_at, has_original }] }  (newest first, at most 50)
+//   GET /admin/files/:id → the file as uploaded; a file kept before migration 282 comes
+//        rebuilt from what was read, with header X-Netai-Rebuilt: true · 404 none
+adminRouter.get('/users/:id/files', async (req: Request, res: Response) => {
+  try {
+    const targetId = Number(req.params.id);
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ success: false, error: 'არასწორი მომხმარებლის id' });
+      return;
+    }
+    const files = await userFiles(targetId);
+    res.status(200).json({ success: true, data: { user_id: targetId, files } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin user files]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.get('/files/:id', async (req: Request, res: Response) => {
+  try {
+    const fileId = Number(req.params.id);
+    if (!Number.isInteger(fileId) || fileId <= 0) {
+      res.status(400).json({ success: false, error: 'არასწორი ფაილის id' });
+      return;
+    }
+    const file = await fileForAdmin(fileId);
+    if (file === null) {
+      res.status(404).json({ success: false, error: 'ასეთი ფაილი არ არის' });
+      return;
+    }
+    const adminId = (req as AuthenticatedRequest).user.userId;
+    // eslint-disable-next-line no-console
+    console.log(`[admin-access] admin ${adminId} downloaded file ${fileId}`);
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+    );
+    res.setHeader('X-Netai-Rebuilt', String(file.rebuilt));
+    res.status(200).send(file.body);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin file download]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 // #8285 (founder 28 Oct; Misho's yes 28 Oct ~16:00Z): one user's OWN contacts,
 // searched as that user would, every number taken out — used only to help them.
