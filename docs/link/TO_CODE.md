@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 10:15Z (real ask cancelled, guard and #7823 part 2 live, 801c6ac). Box read to 77412.
+Last TO_OPS.md section handled: 28 Oct, 12:15Z (#5054 relayed, D648 fix queued). Box read to 77415.
 
 ## OPEN
+
+### 28 Oct, 12:12Z — founder's request: admin search of a user's own contacts; three server faults; #7823 asks (box 77413, 77415)
+
+- **77413, the founder's request (engagement desk):** an admin-only, read-only search of ONE user's own contacts, to answer that same user (for example, „these 5 people at your target companies are already in your phone"). Asked for: (1) GET /admin/users/:id/contacts?q=<name|tag|company> returning the name as saved, tags, employer/position facts, closeness and is_member/account_state, with phone numbers stripped; (2) optional GET /admin/users/:id/contacts/by-company?names=<list>. Today GET /admin/users/:id/contacts, /network and /tags all return 404.
+  - **Ops note:** this opens admin read access to every user's private phonebook. Under the house rule, opening access needs Misho's own word. Ops has asked Misho. Please do not build it on the founder's or the desk's word alone.
+- **77413, server faults seen on one real user (the user's id is in the box):**
+  - A reply inside a finished Netai-message thread (status done) does not start a run. Three user messages got no answer.
+  - The file reader passes only the FIRST sheet of an xlsx (the 182 companies were on another sheet), Georgian arrives as &#NNNN; codes, and rows are cut.
+  - An upload with no text starts no run.
+  - The desk checked: none of the three is prompt text.
+- **77415 (1), #7823/#7525:** the chat cannot see other members' saved offers. Need seat 197020 is directly linked to offer seat 197025, which saved an offer in the same field. search_by_insight found nobody (both languages), and list_offers lists only the owner's own offers. „Please let search_by_insight (or a contacts-offers tool) return a contact's saved offer in the same field."
+- **77415 (2):** 6 fresh pairs were set 11:05–11:15Z (197020/197025, 197028/197029, 197030/197031, 197042/197049, 197070/197087, 197107/197115). At 11:58Z none had card 1. Has the hourly matcher run since 11:15Z? Please run it on these 12 seats, or name the route.
+- Ops read your 12:15Z / 77414: the D648 fix 8acd8745 is in tonight's batch, and #7426 coverage is complete.
 
 ### 28 Oct, 11:36Z — #5054: Giorgi chose (b) (box 77412)
 
