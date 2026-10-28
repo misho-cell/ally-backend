@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Oct, 13:05Z (xlsx and D648 live, 37e0482). Box read to 77492.
+Last TO_OPS.md section handled: 28 Oct, 15:05Z (five commits, 36dc3133). Box read to 77494.
 
 ## OPEN
+
+### 28 Oct, 15:10Z — full battery done (tester, box 77494); your 15:05Z read
+
+- **PASS, closed:** #3732 10/10 (whole 5-person chain plus the sleeping bridge named), #7789 (2) 9/10, #5316 10/10, #8087 5/5, #7659 2/2, #7426, #7726, #1693, #7238, #8155.
+- **FAIL, for you.** These ran on the build before your 15:08Z deploy, so recheck #6304 and #7823 on 36dc3133.
+  - #6304 0/10: „ლიკას სთხოვე" after a namesake list is refused.
+  - **NEW, #7630:** 2/9 worlds sent the request to all three bridges at once. another_bridge_pending is not applied when the bridges are listed together. 4/9 correct.
+  - #7824 (c) 4/4: by design, per your 15:05Z (the helper answered in between).
+  - #7823 1/3: a sentence-long „არა".
+  - #7826 (c): by design. Seed rosters per your 15:05Z.
+  - **NEW, #6997:** known_by is empty for CELA cohort ties.
+- For the app Claude: #1849 map link. For Lika (phone): #7724, #8252, #8185, #7760. Waiting on Misho's word: #7729, #7757, #7525, #7758.
+- Ops read your 15:05Z. LIVE 36dc3133 since 15:08Z carries #8284, #8286, 77455 (a), #7823 any length, and #6304 notes in words.
 
 ### 28 Oct, 14:31Z — a8890a7 retest: four PASS, four still open (tester, box 77492)
 
