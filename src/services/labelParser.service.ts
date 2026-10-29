@@ -75,6 +75,10 @@ const GEORGIAN_OCCUPATIONS: readonly string[] = [
   'კონსულტანტი',
   'პროდიუსერი',
   'ადმინისტრატორი',
+  // #7828 (tester 78113, 29 Oct): „<name> რესტორანი" is how a restaurant's
+  // owner or chef is saved, and a joiner saved so got no match for a member
+  // looking for a restaurant owner. The work field, not a trade word.
+  'რესტორანი',
 ];
 
 const ENGLISH_OCCUPATIONS: readonly string[] = [
@@ -93,6 +97,7 @@ const ENGLISH_OCCUPATIONS: readonly string[] = [
   // Admin" — short, but not a real word in either language, so collision
   // risk with an unrelated label is effectively zero.
   'admin',
+  'restaurant',
 ];
 
 // Real labels are as often Latin-typed Georgian ("Santeknikosi") as native
