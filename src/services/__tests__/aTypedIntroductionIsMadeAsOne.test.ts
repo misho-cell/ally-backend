@@ -232,3 +232,25 @@ describe('a question to a bridge on a goal to meet someone (#6304, tester 77587)
     expect(chat.slice(at, at + 400)).toContain('if (routed !== null) return routed;');
   });
 });
+
+describe('„ლიკას სთხოვე" is introduced by the server before the run (tester 77818, #6304)', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('runs right after the match-card answers, for the owner only', () => {
+    const at = chat.indexOf('const bridgeIntroduced = !ownerAbsent');
+    expect(at).toBeGreaterThan(chat.indexOf('if (matchSettled !== null) return matchSettled;'));
+    expect(chat).toContain('if (bridgeIntroduced !== null) return bridgeIntroduced;');
+  });
+
+  it('reads only typed owner lines, never the trail’s empty rows (73535)', () => {
+    expect(chat).toContain("AND btrim(content) <> '' AND content NOT LIKE $3");
+  });
+
+  it('leaves a whole introduction sentence, and anything unsure, to the model', () => {
+    const at = chat.indexOf('async function answerBridgeIntroduction(');
+    const body = chat.slice(at, chat.indexOf('\n}\n', at));
+    expect(body).toContain('if (ownerAsksForIntroduction([userMessage])) return null;');
+    expect(body).toContain('if (sentence === null) return null;');
+    expect(body).toContain('if (made === null) return null;');
+  });
+});
