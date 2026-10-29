@@ -1,5 +1,7 @@
 import { query } from '../db/postgres/client';
+import { openaiClient } from '../config/openai';
 import { recordClaudeUsage } from './costLedger.service';
+import { finalAnswerModel, toLedgerUsage } from './finalAnswer.service';
 import { detectRunLanguage, RunLanguage } from './runLanguage';
 import { emitThreadUpdated } from './sse.service';
 import {
@@ -14,6 +16,9 @@ import {
 const DESCRIPTION_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haiku-4-5-20251001';
 const DESCRIPTION_MAX_TOKENS = 220;
 const DESCRIPTION_TIMEOUT_MS = 15_000;
+/** Reasoning models spend part of the budget thinking before they write. */
+const GPT_DESCRIPTION_MAX_TOKENS = 1_500;
+const OPENAI_PROVIDER = 'openai';
 const QUERY_TIMEOUT_MS = 5_000;
 /**
  * #6535 / #5413 failed again (Giorgi, G-151, 20 Oct evening): the description
@@ -71,7 +76,52 @@ function ownersLanguage(facts: CaseFacts): string {
   return LANGUAGE_NAMES[detectRunLanguage(ownerText || (facts.title ?? ''))];
 }
 
-async function describe(
+/**
+ * Misho, 29 Oct: the description is written by the same GPT model that writes
+ * the chat's answers (CHAT_FINAL_ANSWER_MODEL), whose Georgian reads better.
+ * With no GPT model or key, or when GPT gives nothing usable, the small Claude
+ * model writes it as before.
+ */
+async function describeWithGpt(
+  userId: string,
+  threadId: number,
+  facts: CaseFacts,
+): Promise<string | null> {
+  const model = finalAnswerModel();
+  const client = openaiClient();
+  if (model === '' || client === null) return null;
+  try {
+    const response = await client.chat.completions.create(
+      {
+        model,
+        max_completion_tokens: GPT_DESCRIPTION_MAX_TOKENS,
+        messages: [
+          { role: 'system', content: caseDescriptionPrompt(ownersLanguage(facts)) },
+          { role: 'user', content: caseFactsText(facts) },
+        ],
+      },
+      { timeout: DESCRIPTION_TIMEOUT_MS },
+    );
+    await recordClaudeUsage({
+      userId,
+      kind: 'case_description',
+      provider: OPENAI_PROVIDER,
+      model,
+      usage: toLedgerUsage(response.usage),
+      threadId,
+    }).catch(() => undefined);
+    return cleanCaseDescription(response.choices[0]?.message?.content ?? '');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[case-description] thread ${threadId}: GPT failed, Claude writes it:`,
+      (err as Error).message,
+    );
+    return null;
+  }
+}
+
+async function describeWithClaude(
   userId: string,
   threadId: number,
   facts: CaseFacts,
@@ -95,6 +145,17 @@ async function describe(
   }).catch(() => undefined);
   const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('\n');
   return cleanCaseDescription(raw);
+}
+
+async function describe(
+  userId: string,
+  threadId: number,
+  facts: CaseFacts,
+): Promise<string | null> {
+  return (
+    (await describeWithGpt(userId, threadId, facts)) ??
+    (await describeWithClaude(userId, threadId, facts))
+  );
 }
 
 /**
