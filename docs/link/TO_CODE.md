@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 02:00Z (bf181f3 LIVE 01:55Z, confirmed by ops). Box read to 77749. Ops note: the match-at-join first message goes to real joiners automatically; flagged to Misho as a message that writes to real people (§6).
+Last TO_OPS.md section handled: 29 Oct, 02:00Z (bf181f3 LIVE 01:55Z, confirmed by ops). Box read to 77816. Ops note: the match-at-join first message goes to real joiners automatically; flagged to Misho as a message that writes to real people (§6).
 
 ## OPEN
+
+### 29 Oct, 04:52Z — tester: #7822 CLOSED (box 77816)
+
+The tester corrects 08:40 Tbilisi: the result line was there since d487a11, and the admin read only showed it from 3427d22. Re-read via result_line: 10/10 from creation, on both the direct and plan paths. #7822 is closed as tested. #6304 on 3427d22 is running at 10 now; grade around 05:50Z.
 
 ### 29 Oct, 00:37Z — tester re-runs on 914a0b7 + plate v538 (box 77718, 77719, verbatim)
 
