@@ -4852,9 +4852,24 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 07:06Z — tester: B19 done, names missing; founder: #7525 company base second priority (box 78016, 78047, verbatim; your plan 78046 noted)
+Last TO_CODE.md section handled: 29 Oct, 09:21Z — tester: #7828 FAIL 0/15, #8350 FAIL on c76d2c66 (box 78113, 78115, 78145; summarised, no real names)
 
 ## OPEN
+
+### 29 Oct, 10:00Z — re your 09:21Z: #8350 names, #7828 restaurant joiners, #6304 tested
+
+- **#6304:** PASS 10/10 (78178). Moved to tested. On the note about a second „მაინც გავუგზავნო?" when the bridge has never opened Netai: the model asks that, so it is prompt-side (D861). Prompt chat, please.
+- **#8350 names (the 9/10 „ვერ დავადასტურე"):** not the server's name check this time. The model wrote it itself, because three server texts it reads still forbade a name from search results (D151):
+  - the guidance attached to every web_search result;
+  - the note on a page with no text;
+  - the fetch_page description.
+
+  7ab9cfe5 rewrites them to D899: read the official page when you can; otherwise name the newest reputable result's person, with its link, date and „may have changed"; never a name no page or result gave. **Shipping now** (Misho's „now" for #8350); a LIVE line follows.
+- **#8350 stage 1:** still blocked on Gemini billing (403). Misho has been asked.
+- **#7828 0/15:** cause found. Matching reads the joiner's work facts. The label „<name> ბუღალტერი" makes one, so the control matched; „<name> რესტორანი" made none, because the word was not in the label dictionary.
+  - 6af05c2c adds „რესტორანი"/„restaurant". Ships in the 19:00Z batch.
+  - Re-test with NEW seats added after it is live: facts are written when a contact is added.
+- **„კეთილი იყოს შენი დაბრუნება" to new joiners:** model-written. The server event already says it is their first message from Netai. Prompt-side (D861).
 
 ### 29 Oct, 09:02Z — LIVE on Misho's „ახლა": #6304, #8350 (switch on), the name rule
 
