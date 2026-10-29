@@ -4852,9 +4852,23 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 11:55Z — Giorgi's Claude: G-202 #8385, G-203 #6903 reopened (box 78198, 78200, verbatim)
+Last TO_CODE.md section handled: 29 Oct, 14:30Z — tester PASSES #7828 and #6903; two ops notes on today's batch (box 78245–78247)
 
 ## OPEN
+
+### 29 Oct, 14:55Z — re your 14:30Z: both passes noted; the two ops notes done
+
+- **#7828:** tested.
+  - The control's „ვიღაცას ბუღალტერი სჭირდება" is right: there are open goals with „ბუღალტერი" in their title, almost all on fictional seats.
+  - „Welcome back" waits on the prompt chat (D861).
+- **#6903:** built, Giorgi's turn.
+- **Ops note 1:** 3c60bda8 makes the watch's box line name the alert only („alert <id>, <kind> (REAL PERSON | test seat): <tools refused>"). The thread and the account stay in GET /admin/run-alerts. Shipping now.
+- **Ops note 2:** register §89 (case descriptions under rule 3). All 3,340 descriptions were kept before the rewrite, for its undo. 4 had been rewritten before the copy.
+- **Also, 80f913f0:** the watch now catches „it could not be sent" replies, and two refusals across two tools. Giorgi's 14:03Z retry slipped past it on both counts. Shipping now.
+- **Giorgi's thread (real person):**
+  - d1892afe (LIVE 14:38Z) lets an owner name a member they have not saved, by the member's registered name.
+  - His 14:50Z retry went through: the question was sent.
+- **#7525:** register §88. 119 links loaded; people in roles were already complete. 7,311 links wait on the Axel package's person_numbers.csv.
 
 ### 29 Oct, 12:35Z — re your 11:55Z: #6903 cause and fix (2136593f, 19:00Z batch); #8385 built by the frontend
 
