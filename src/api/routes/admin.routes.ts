@@ -7,6 +7,7 @@ import {
 import { stripWebFromStudies } from '../../services/welcomeStudy.service';
 import { fillRosterPhonesByName } from '../../services/basePeople/rosterPhones.service';
 import { GEMINI_WEB_SEARCH_FLAG } from '../../services/tools/webSearchProvider';
+import { WORLD_ANSWER_FLAG } from '../../services/worldAnswer.service';
 import {
   PhoneRepair,
   repairRestoredPhone,
@@ -559,6 +560,8 @@ const MANAGED_APP_FLAGS = [
   WHATSAPP_CHANNEL_FLAG,
   // #7690 (founder, 25 Oct): web research through Gemini; Tavily is the fallback.
   GEMINI_WEB_SEARCH_FLAG,
+  // #8350 (founder, 29 Oct): the web's answer first, then the route. Off until turned on.
+  WORLD_ANSWER_FLAG,
 ] as const;
 
 /**

@@ -451,7 +451,10 @@ import {
   WAY_IN_TOOL_NOTE,
   WayIn,
   OpeningSearches,
+  goalAsksToReachAPerson,
 } from './openingSearch.service';
+import { askTheWorld, worldAnswerSwitchOn } from './worldAnswer.service';
+import { WorldAnswer, worldAnswerMessage, worldAnswerSection } from './worldAnswer';
 import {
   buildRoleSearchSection,
   RoleQueries,
@@ -13867,6 +13870,59 @@ async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Prom
   return buildRoleSearchSection(finds);
 }
 
+/**
+ * #8350 (founder, 29 Oct): an ask about the world is answered from the web
+ * first. Only on a goal just opened from a stated need, as the opening searches
+ * are, and never when the owner asks to reach a person or names people to ask:
+ * their people's names are not the web's to read (row 253).
+ */
+function worldAnswerIsDue(goalOpened: boolean, ownerLine: string): boolean {
+  return (
+    goalOpened &&
+    !needsNoOpeningSearch(ownerLine) &&
+    !asksTheWeather(ownerLine) &&
+    !goalAsksToReachAPerson(ownerLine) &&
+    !ownerLineNamesPeopleToAsk(ownerLine)
+  );
+}
+
+/** The web's answer to the owner's ask, when the switch is on; null otherwise. Never throws. */
+async function worldAnswerFor(
+  userId: string,
+  threadId: number,
+  runId: string,
+  ownerLine: string,
+  language: RunLanguage,
+): Promise<WorldAnswer | null> {
+  if (!(await worldAnswerSwitchOn())) return null;
+  return askTheWorld({ userId, runId, threadId }, ownerLine, language);
+}
+
+/** What the answer says and the numbers its pages print become this run's to name. */
+function noteWorldAnswer(runId: string, answer: WorldAnswer): void {
+  registerWebResult(runId, { results: answer.sources });
+  recordRunEvidence(runId, answer.text);
+  for (const person of answer.people) {
+    recordRunEvidence(runId, `${person.name} ${person.role} ${person.organisation}`);
+  }
+}
+
+/** The answer, posted as its own message above the run's reply. Never throws. */
+async function postWorldAnswer(
+  userId: string,
+  threadId: number,
+  runId: string,
+  answer: WorldAnswer,
+): Promise<void> {
+  const text = wrapAllowedNumbers(worldAnswerMessage(answer, runLang(runId)), runId);
+  const posted = await postFirstLine(userId, threadId, runId, text);
+  // eslint-disable-next-line no-console
+  console.log(
+    `[world-answer] run ${runId} thread ${threadId}: ${posted ? 'posted' : 'not posted'} ` +
+      `(${answer.sources.length} pages, ${answer.people.length} people)`,
+  );
+}
+
 interface LateOpeningSearch {
   /** The prompt section, once the search has landed — once, and never twice. */
   takeIfReady(): string | null;
@@ -18030,6 +18086,10 @@ export async function processChat(
     autoGoalId === null || needsNoOpeningSearch(userMessage) || asksTheWeather(userMessage)
       ? null
       : startOpeningSearches(userId, userMessage, runId, threadId);
+  // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
+  const worldAnswerWork = worldAnswerIsDue(autoGoalId !== null && !ownerAbsent, userMessage)
+    ? worldAnswerFor(userId, threadId, runId, userMessage, language)
+    : Promise.resolve(null);
   // #5248 (D825): a goal at a lender about a loan is searched by ROLE before the
   // first answer, and this one is waited for — the answer must start from it.
   const roleQueries = lateSearch === null ? null : roleSearchQueries(userMessage);
@@ -18307,6 +18367,8 @@ export async function processChat(
    * refused and the run asked „ეს სწორად გავიგე?" instead of asking them.
    */
   const repeatedGoal = ownerLineNamesPeopleToAsk(userMessage) ? null : goalForRequest.repeats;
+  const worldAnswer = await worldAnswerWork;
+  if (worldAnswer !== null) noteWorldAnswer(runId, worldAnswer);
   if (repeatedGoal !== null) runRepeatedGoal.set(runId, repeatedGoal.id);
   const sameRequestAgain =
     (repeatedGoal === null
@@ -18320,7 +18382,8 @@ export async function processChat(
         `never that a plan is ready or waits for their yes unless a plan was proposed.`) +
     // #1123: told in THIS run only, so no always-on line reads as „cannot send" (#1090).
     (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '') +
-    (await roleSection);
+    (await roleSection) +
+    (worldAnswer === null ? '' : worldAnswerSection(worldAnswer));
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.
   const systemPrompt = joinSystemPrompt(
@@ -18430,6 +18493,9 @@ export async function processChat(
       runId,
     );
   }
+
+  // #8350: after the owner's own line is stored, so the thread reads in the order it happened.
+  if (worldAnswer !== null) await postWorldAnswer(userId, threadId, runId, worldAnswer);
 
   // eslint-disable-next-line no-console
   console.log(
