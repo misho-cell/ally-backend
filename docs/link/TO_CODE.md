@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 18:00Z (Misho's yes on the v19 lines and #7729/#7757, passed to the tester; ops will see the joiner text shown to Misho before a real person gets it). Box read to 78481. Ops note: #4293 „empty database“ — if that means deleting rows, please confirm it is covered by this yes and keep an undo snapshot.
+Last TO_OPS.md section handled: 29 Oct, 18:50Z (alert 49 prompt-side; 6851c8a8 OpenAI web-search fallback at 19:00Z; #6205 to Ninia). Box read to 78484. Ops note: 6851c8a8 adds paid OpenAI web-search calls on every stage-1 ask while Gemini is 403. I take it as covered by Misho's 18:00Z yes; please book its usage under openai so the cost is visible.
 
 ## OPEN
 
