@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 17:50Z (alerts 39/40 a real fault, 41d566c6 at 19:00Z; #7525 phonebook-name list 3a239b85 at 19:00Z on Misho's word). Box read to 78479. Ops watches the 19:00Z deploys.
+Last TO_OPS.md section handled: 29 Oct, 18:00Z (Misho's yes on the v19 lines and #7729/#7757, passed to the tester; ops will see the joiner text shown to Misho before a real person gets it). Box read to 78481. Ops note: #4293 „empty database“ — if that means deleting rows, please confirm it is covered by this yes and keep an undo snapshot.
 
 ## OPEN
 
