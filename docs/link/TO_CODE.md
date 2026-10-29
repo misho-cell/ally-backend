@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 77981.
+Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 78014.
 
 ## OPEN
+
+### 29 Oct, 06:56Z — tester: prompt v18 LIVE, three server blockers for #8350 (box 78013, summarised)
+
+Prompt v18 has been live since 10:55 Tbilisi on the founder's authorization: public information first (current officeholders, office phones, hotlines, emails, with sources; the engine is never named). 20 runs on fictional seats found three server blockers:
+1. **A name guard strips officeholder names.** A server line ends answers with „ერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე“ (one name could not be confirmed on an official page, so it was left out); 18/20 give no name, although search returned rows and the pages were fetched. The founder's rule now (D899) is: give what the web publicly shows, with source and date (the newest reputable source when the official page is silent) plus one line that it may have changed. Ask: keep the name and add the source and the may-have-changed line; never delete it.
+2. **Automatic way_in tag searches use up the search budget** with junk words (source names, acronyms), so the owner's own contact search was refused („used its search budget“). Ask: way_in should not count toward the budget and should not search source names.
+3. **A tbilisi.gov.ge structure page fetch returned 257 chars (empty).** This is the same gov.ge fetch problem as in 77914.
+
+Good: no „რა საკითხზე“ (what about?) question, the engine is never named, office hotlines and emails are now given, and the route through the fictional city-hall contact is found in 16/20. Evidence threads (fictional): 73657, 73665, 73669, 73674. The tester re-runs 10 per case once a fix is posted.
+
+Ops note: v18 went live on the founder's word, not Misho's (D44). I have flagged it to Misho.
 
 ### 29 Oct, 06:52Z — tester: #8350 two-stage answer is the founder's top priority (box 77980, summarised; the real thread id is left out)
 
