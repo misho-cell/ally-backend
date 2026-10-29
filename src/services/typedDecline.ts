@@ -1,3 +1,5 @@
+import { isSmallTalk } from './smallTalk';
+
 /**
  * 3433 (QA-026, 8 Oct, fresh pairs): a helper's typed no was stored as an
  * ANSWER. „აზრზე არ ვარ" (owner 180219) and „არა, ვერ მოვახერხებ, სხვას
@@ -54,8 +56,36 @@ const REFUSAL_RE = new RegExp(
 /** Something in the line that may be the help after all. */
 const CARRIES_SOMETHING_RE = /\d|მაგრამ|თუმცა|\bbut\b|\bно\b|\bpero\b/iu;
 
+/**
+ * #8154 FAILED on Giorgi's account (29 Oct 19:11 Tbilisi, G-208): „ქართველი
+ * ფეხბურთელები არ ვიცი. შემიძლია კალათბურთელი შემოგთავაზო" — a no to the
+ * question and an offer of something else, with no „but". The ask was marked
+ * declined and the route closed. An offer word, or a second sentence that is
+ * not itself a no, keeps it an answer.
+ */
+const OFFERS_SOMETHING_RE =
+  /შემიძლია|შემოგთავაზ|გთავაზობ|შემიძლი|\bcan\s+offer\b|\bcould\s+offer\b|\bi\s+can\s+(?:suggest|introduce|connect)\b|\bi\s+know\s+an?\b|могу\s+предложить|могу\s+познакомить|puedo\s+ofrecer|puedo\s+presentar/iu;
+const SENTENCE_RE = /[^.!?…\n]+/gu;
+/** A wish after a no is still a no: „წარმატებები!", „good luck". */
+const WISH_RE = /წარმატ|იმედია\s+იპოვ|good\s+luck|best\s+of\s+luck|удач|suerte/iu;
+const MIN_SENTENCE_CHARS = 8;
+
+function laterSentenceCarriesSomething(said: string): boolean {
+  const sentences = (said.match(SENTENCE_RE) ?? []).map((x) => x.trim()).filter(Boolean);
+  return sentences
+    .slice(1)
+    .some(
+      (x) =>
+        x.length >= MIN_SENTENCE_CHARS &&
+        !REFUSAL_RE.test(x) &&
+        !isSmallTalk(x) &&
+        !WISH_RE.test(x),
+    );
+}
+
 export function isTypedDecline(message: string): boolean {
   const said = message.trim();
   if (said.length === 0 || said.length > TYPED_DECLINE_MAX_CHARS) return false;
-  return REFUSAL_RE.test(said) && !CARRIES_SOMETHING_RE.test(said);
+  if (!REFUSAL_RE.test(said) || CARRIES_SOMETHING_RE.test(said)) return false;
+  return !OFFERS_SOMETHING_RE.test(said) && !laterSentenceCarriesSomething(said);
 }

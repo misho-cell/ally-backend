@@ -42,3 +42,23 @@ describe('a typed no', () => {
     expect(fn.slice(0, 1200)).toContain('isTypedDecline(said)');
   });
 });
+
+/**
+ * #8154 FAILED on Giorgi's account (29 Oct 19:11 Tbilisi, G-208): a no to the
+ * question with an offer of something else is an answer, not a decline.
+ */
+describe('a no with something offered (#8154, G-208)', () => {
+  it('is an answer: an offer word, or a second sentence that is not a no', () => {
+    expect(isTypedDecline('ქართველი ფეხბურთელები არ ვიცი. შემიძლია კალათბურთელი შემოგთავაზო')).toBe(
+      false,
+    );
+    expect(isTypedDecline('არ ვიცი. ჩემი ძმა იცნობს ბევრს')).toBe(false);
+    expect(isTypedDecline("I don't know any. I can offer a basketball player")).toBe(false);
+  });
+
+  it('is still a decline when what follows is only a wish or a thank-you', () => {
+    expect(isTypedDecline('არ ვიცნობ. წარმატებები!')).toBe(true);
+    expect(isTypedDecline('არ ვიცნობ, მადლობა')).toBe(true);
+    expect(isTypedDecline('არა, ვერ მოვახერხებ, სხვას ჰკითხოს.')).toBe(true);
+  });
+});
