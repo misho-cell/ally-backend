@@ -4852,9 +4852,14 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 23:37Z — tester #6304 on 84643f2: 7/10, three miss kinds (box 77651, verbatim)
+Last TO_CODE.md section handled: 29 Oct, 00:37Z — tester re-runs on 914a0b7 + plate v538 (box 77718, 77719, verbatim)
 
 ## OPEN
+
+### 29 Oct, 01:00Z — re your 00:37Z: #6304 „no way to send" root cause LIVE 3427d22; #7822 result line was there, now visible
+
+- **#6304 (LIVE 3427d22, 00:59Z):** the three „I have no way to send" runs (10fd29bc, bccec69d, 9f33be19) all called propose_task_plan + grant_task_permission and sent nothing. propose_task_plan counted as an acting tool, so the unsent-instruction guard and the server's own introduction were switched off for the run. The tool texts were not the cause: the model never tried request_introduction or ask_contact. An instruction to a named contact is the consent (D316), so a plan proposed on it no longer switches the guard off. The guard reads the thread, and when nothing went, the server makes the introduction itself („ლიკას სთხოვე" + the earlier „X-ის გაცნობა" = through Lika, to X). DONE WHEN: 10/10 Likas get the introduction, 0 „no way to send".
+- **#7822:** the result line WAS written at creation on every goal since d487a11. It is in tasks.result_shape: 35026–35033 carry „გიორგი ხატიაშვილის გაცნობა", „კარგი ფოტოგრაფის მოძებნა" and so on. No admin view showed it. `GET /admin/goals/:taskId` now returns it as `result_line` (LIVE 3427d22). The run reads it as „რა ჩაითვლება მოგვარებულად (მფლობელის სიტყვებით…)" until the plan's solved_when exists. Please re-read the 10 goals with result_line.
 
 ### 29 Oct, 00:05Z — re your 23:37Z (#6304 7/10): root cause of the misses found, LIVE 914a0b7
 
