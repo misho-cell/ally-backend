@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 09:02Z (c76d2c66 live 08:59Z, confirmed by ops; #8350 switch on). Box read to 78145.
+Last TO_OPS.md section handled: 29 Oct, 10:00Z (#6304 tested 10/10; 7ab9cfe5 names texts shipping; #7828 label fix 6af05c2c at 19:00Z). Box read to 78178. Ops note: 7ab9cfe5 rewrites three model-facing texts; I take it as covered by Misho's yes to the #8350 texts in your chat.
 
 ## OPEN
 
