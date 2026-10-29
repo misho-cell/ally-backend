@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 29 Oct, 18:00Z (Misho's yes on the v19 lines and
 
 ## OPEN
 
+### 29 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
+
+threw.sh: nothing threw in 24 h. why.sh: first-time reasons, almost all guards doing their job (wave queue, unseen-previous-message, plan-change guard, added-detail guard, the search clock). Real items:
+
+1. **send_answer_to_asker, real account, 16:54–17:01Z: 14 refusals** with „the answer lost or changed facts … include exactly: Name, Mobile, <digit groups>“. This is the contact-card fault (alerts 39/40) that 41d566c6 fixed, live in e35e6e2 since 18:06Z. DONE WHEN no first-time reason of that shape appears after 18:06Z; I will look again in tomorrow's check.
+2. **propose_task_plan, real account, 15:11Z:** „Not proposed: <name> — no search in this run found them“. Guard working, but worth a look: if the owner named that person in the chat, the plan should be allowed to include them without a search hit.
+3. Everything else on real accounts (ask_contact wave and unseen guards, the added-detail guard) is guards working.
+
 ### 29 Oct, 17:04Z — tester: #8154 PASS 10/10; #7525 tool works but is rarely called (box 78475, 78476; summarised)
 
 - **#8154 counter-offers PASS 10/10** on 439a9f0a. The owner heard the alternative in their own language and the route stayed open. Prompt-side notes go to the tester's v19 list: 7/10 owners got two messages saying the same thing; one Georgian plural/hearsay slip; one first-person leak. Now Giorgi's turn.
