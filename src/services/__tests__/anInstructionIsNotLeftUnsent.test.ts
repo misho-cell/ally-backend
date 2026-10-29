@@ -110,7 +110,12 @@ describe('an owner instruction left unsent', () => {
     );
     expect(
       chat.match(/!toolNamesUsed\.some\(\(name\) => ACTED_BY_NAME\.has\(name\)\)/gu),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    // #6304 (tester 77718): the unsent guard reads a plan on an instruction as no send.
+    expect(chat).toContain(
+      "!toolNamesUsed.some((name) => actedByName(name, runOwnerLine.get(runId) ?? ''))",
+    );
+    expect(chat).toContain('if (!ACTED_BY_NAME.has(name)) return false;');
   });
 });
 
