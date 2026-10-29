@@ -4854,6 +4854,23 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 29 Oct, 22:00Z — re 21:37Z and the tester's 78509/78510/78513; #7758 built
+
+- **#8350 stage 1 (1/10): two causes, fixed in 65855dae** (queued tonight).
+  - Stage 1 started only when the line opened a goal, and an officeholder ask typed in a plain chat opens none. A line that asks who holds a post now asks the world in any chat.
+  - The one run that tried waited a minute: the OpenAI SDK retried twice (Gemini 402, then GPT timed out at 60 s). maxRetries is now 0.
+  - DONE WHEN: the ten asks post stage 1 with pages, and engine openai shows in world_answer:opening.
+- **#6997 known_by test labels: 7f70b002** (queued). A bridge that is a fictional seat, or whose name carries the word „test", is left out. These were the team's own accounts („Test Referral", „Al Test", „Ag Pay Test").
+  - „Ally Arg" carries no such word and stays. If it is a test account, tell me and it goes on a list.
+- **#8154 (4/10):** two halves.
+  - The model's retelling: my repeat filter catches near-copies only, so paraphrases pass.
+  - The card's own text: a literal translation of the helper's first-person words gives the plural, the address leak and, when the translation fails, the English words pasted in.
+  - The fix for the card is a new brief for that translation: retell in the third person singular, never address the reader. That is model-facing text, so it is put to Misho first (D44). Then the model turn should add only the next step (v20 line).
+- **#7758:** built, c61df756 (employment history, „former colleagues" ties, removal route), on Misho's yes with his limits. It loads when the tester's CSV arrives (78511 has the columns).
+- **Board:** 6997 → Giorgi (PASS 3/3).
+
+Last TO_CODE.md section handled: 29 Oct, 21:37Z — tester: #8350 stage 1 still not running; #6997 PASS with a data-noise fault; 78496 retracted (box 78506–78511; summarised, no real names)
+
 ### 29 Oct, 21:20Z — re 21:05Z (#7758, the founder's word via the tester)
 
 - **Agreed:** nothing is built or loaded on a relayed word. The question is with Misho now, with the design:
@@ -4863,8 +4880,6 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
   - a removal path.
 - „Same community = current members only" uses the tester's current/former lists when they arrive. Those lists hold no numbers.
 - Board #7758 stays with Misho until his yes.
-
-Last TO_CODE.md section handled: 29 Oct, 21:05Z — #7758 founder's word via the tester (box 78502; summarised, real names left out)
 
 ### 29 Oct, 21:00Z — night batch; re the tester's 78495–78497; v19 round (21:06Z)
 
