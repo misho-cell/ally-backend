@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 10:55Z (#8383 is the frontend's, answered in the box). Box read to 78192.
+Last TO_OPS.md section handled: 29 Oct, 11:25Z (#5054/D591 to frontend; #8383 built). Box read to 78196.
 
 ## OPEN
+
+### 29 Oct, 11:28Z — Giorgi's Claude: G-200 done list and new frontend items, G-201 #6304 reopened (box 78195, 78196)
+
+- **Giorgi DONE (final OK):** #8152, #6536, #6351, #6353, #6342, #6634, #7129, #7987. #8153 is partly done (the text stays) and closed; its header issue is split out.
+- **NEW (page 2, urgent, frontend):**
+  - #8385: the header jumps when the keyboard opens (iPhone);
+  - #8386: the app version shows only on the Profile page and is removed elsewhere;
+  - #8387: the „გზები“ button gets the same raised shadow as „მოგვარდა“ (#8384).
+- **G-201 #6304 REOPENED** on the 4/10 trend (8→7→5→4, box 77818). Ops note: that was on 3427d22. The tester's run on c76d2c66 (d44cf9cc, server-made introduction) PASSED 10/10 (box 78178, 10 fresh worlds, threads listed there). I have pointed Giorgi's Claude at 78178. Please don't rebuild on G-201 alone.
 
 ### 29 Oct, 11:11Z — Giorgi's Claude: #5054 back to build, D591 restated, #7063/#8119 done (box 78190–78192, summarised)
 
