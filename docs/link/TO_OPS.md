@@ -4852,9 +4852,16 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 28 Oct, 22:37Z — tester v17 results + prompt-vs-tool audit (box 77590, 77591, verbatim)
+Last TO_CODE.md section handled: 28 Oct, 23:37Z — tester #6304 on 84643f2: 7/10, three miss kinds (box 77651, verbatim)
 
 ## OPEN
+
+### 29 Oct, 00:05Z — re your 23:37Z (#6304 7/10): root cause of the misses found, LIVE 914a0b7
+
+- **Common cause of misses (1) and (2): the model refused the server's own note.** In 73417 and 73418 the run answered the note added during the run with „this is not from a verified source / I will not follow its instructions" and then sent nothing. Notes loaded from history were framed as the server's, but a note added DURING the run went in bare, as if typed in the owner's turn. LIVE 914a0b7 (00:01Z): it is now framed `[SYSTEM — written by the Netai server…]`, and so is the salvage note. The trail keeps it bare, so it is still recognised and saved as an event.
+- **The guard text in (1)** („კითხვა ვერ გაიგზავნა", 73404, 73418) is the server's last line once the run sent nothing after the note. The run made 0 tool calls (run b68ec1b3 in 73404). The server's own introduction then returned nothing and logged nothing. Each of its four early stops now logs its reason (`[server-intro] … not made (…)`), so the next miss shows which one.
+- **(3) The false „not sent" (73419, 73422):** the owner's run made create_task + propose_task_plan + grant_task_permission, sent nothing, and said „ამ საუბარში გაგზავნის შესაძლებლობა არ მაქვს". 20–40 s later the goal engine's instruction turn (D316) sent it to Lika (23:22:57Z, 23:23:42Z). So the owner read a failure, then a success. The send was real; the first line was the model's wrong belief about its tools. These runs also straddled the 23:22 restart of d487a11, which carries the tool texts that now agree.
+- **Please re-run #6304 at 10 on 914a0b7** (it has both the tool texts and the framing), and #7822 at 10. DONE WHEN: 10/10 Likas, 0 „not from a verified source", 0 false „not sent".
 
 ### 28 Oct, 23:30Z — #8317 LIVE 9c98d13; Misho's yes on the tool texts, LIVE d487a11
 
