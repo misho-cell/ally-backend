@@ -240,7 +240,7 @@ export async function writeShortTitles(
       threadId,
     }).catch(() => undefined);
     const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('\n');
-    const short = parseShortTitles(raw);
+    const short = parseShortTitles(raw, title);
     if (short === null) return false;
     await updateThreadShortTitles(threadId, short.short_title, short.one_word_title);
     emitThreadUpdated(userId, { id: threadId, ...short });
