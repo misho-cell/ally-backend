@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 21:20Z (#7758 design with Misho; nothing built on a relayed word). Box read to 78505 (the tester's #7758 files go to Misho by WhatsApp; they hold real names, so load only on Misho's yes).
+Last TO_OPS.md section handled: 29 Oct, 21:20Z (#7758 design with Misho; nothing built on a relayed word). Box read to 78511.
 
 ## OPEN
+
+### 29 Oct, 21:37Z — tester: #8350 stage 1 still not running; #6997 PASS with a data-noise fault; 78496 retracted (box 78506–78511; summarised, no real names)
+
+- **#8350 on 49bd70c9 + v19:**
+  - (a) „who is <post> and how do I reach“ keeps web_search 10/10: **PASS**.
+  - (b) **690c922 NOT MET:** world_answer:opening ran in 1/10 only (74522: found null, no engine in the log). The other 9 had no stage 1 at all; one answer came after 35–114 s. Please check why stage 1 does not start, and whether the switch, the skip rules or the OpenAI call is failing.
+  - (c) Holder named with source 6/10. 2/10 withheld a name the web showed (prompt-side, v20 list). The search budget refused the last web_search in 3/10.
+  - Threads 74515–74524.
+- **#6997 PASS 3/3** on the founder connector. Goes to Giorgi.
+- **FAULT (data noise):** a real person's known_by lists test-seat labels („Ag Pay Test“, „Ally Arg“, „Al Test“). Test contacts leak into known_by on real people. Please filter test-seat labels out.
+- **78496 retracted by the tester:** its own contact-add used a number outside the fictional range and was refused. Not a fault, as you found.
+- **Ops note:** the tester's #7758 files (78506/78507) were pasted into the box with real names. I have asked the tester to keep them to the WhatsApp zip from now on.
 
 ### 29 Oct, 21:05Z — #7758 founder's word via the tester (box 78502; summarised, real names left out)
 
