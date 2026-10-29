@@ -4243,6 +4243,18 @@ const FIND_COMPANIES_FOR_NEED_TOOL: AnthropicTool = {
       need: { type: 'string', description: "The need in the user's words, any language." },
       country: { type: 'string', description: 'Optional: the country, in English.' },
       city: { type: 'string', description: 'Optional: the city, in English.' },
+      size: {
+        type: 'string',
+        enum: ['large', 'medium'],
+        description: 'Optional: only companies of this size ("big companies" is large).',
+      },
+      role: {
+        type: 'string',
+        description:
+          'Optional: the decision maker asked for, in English as companies write it ' +
+          '("CFO", "Finance Director", "CEO", "director", "owner", "founder"). Companies ' +
+          'whose people or public directors hold it come first, with them listed first.',
+      },
     },
     required: ['need'],
   },
@@ -12689,6 +12701,8 @@ async function executeToolCall(
         String(input['need'] ?? ''),
         String(input['country'] ?? ''),
         String(input['city'] ?? ''),
+        String(input['size'] ?? ''),
+        String(input['role'] ?? ''),
       );
     case 'find_warm_path': {
       const warm = await findWarmPath(

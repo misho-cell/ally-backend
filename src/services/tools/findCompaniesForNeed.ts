@@ -20,6 +20,13 @@ const MAX_INDUSTRIES = 2;
 const MAX_COMPANIES = 8;
 const MAX_PEOPLE_PER_COMPANY = 4;
 const MAX_PUBLIC_ROLES_PER_COMPANY = 3;
+/** The base's size bands (companies.size_band); anything else is no filter. */
+export enum CompanySize {
+  Large = 'large',
+  Medium = 'medium',
+}
+/** #7525 (founder D879): a role is matched inside the stored one: „director" in „Finance Director". */
+const MAX_ROLE_CHARS = 40;
 /** A Georgian word's case ending is dropped before matching: ტრანსპორტით → ტრანსპორტ. */
 const GEORGIAN_ENDING = /(ის|ში|ზე|ით|ად|ს|მ|ი|ა|ე|ო)$/u;
 
@@ -28,14 +35,43 @@ export interface IndustryWords {
   readonly words: readonly string[];
 }
 
-/** The need's own words, lower case, case endings off, the short ones dropped. */
-export function needWords(need: string): string[] {
+/**
+ * Words every company description could carry: „big Georgian companies"
+ * names no trade, and matching „companies" ranked strangers above the
+ * companies where the user has people (#7525).
+ */
+const WORDS_NAMING_NO_TRADE: ReadonlySet<string> = new Set([
+  'company',
+  'companies',
+  'firm',
+  'firms',
+  'business',
+  'businesses',
+  'big',
+  'large',
+  'georgian',
+  'კომპანი',
+  'კომპანიებ',
+  'ფირმ',
+  'ბიზნეს',
+  'დიდ',
+  'მსხვილ',
+  'ქართულ',
+]);
+
+/** Every word of the need, lower case, case endings off, the short ones dropped. */
+function allNeedWords(need: string): string[] {
   const words = need
     .toLocaleLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .map((w) => (/[ა-ჿ]/u.test(w) ? w.replace(GEORGIAN_ENDING, '') : w))
     .filter((w) => w.length >= MIN_WORD_CHARS);
   return [...new Set(words)].slice(0, MAX_NEED_WORDS);
+}
+
+/** The need's words that can name a trade. */
+export function needWords(need: string): string[] {
+  return allNeedWords(need).filter((w) => !WORDS_NAMING_NO_TRADE.has(w));
 }
 
 /** An industry's synonyms as single lower-case words, both languages. */
@@ -70,6 +106,28 @@ export function countryInNeed(words: readonly string[], countries: readonly stri
   return lower.find((c) => words.some((w) => c.startsWith(w) || w.startsWith(c))) ?? '';
 }
 
+/** Who and what the search is narrowed to, beyond the need's own words. */
+export interface CompanyFilter {
+  readonly country: string;
+  readonly city: string;
+  readonly size: CompanySize | '';
+  readonly role: string;
+}
+
+/** A size the base knows, or no filter. */
+export function sizeFilter(value: string): CompanySize | '' {
+  const v = value.trim().toLowerCase();
+  return v === CompanySize.Large || v === CompanySize.Medium ? v : '';
+}
+
+/** A role to look for, as a LIKE fragment with its wildcards escaped; '' for none. */
+export function roleFilter(value: string): string {
+  return value
+    .trim()
+    .slice(0, MAX_ROLE_CHARS)
+    .replace(/[\\%_]/gu, (c) => `\\${c}`);
+}
+
 interface IndustryRow {
   readonly industry_id: string;
   readonly industry: string;
@@ -86,6 +144,7 @@ interface CompanyHit {
   readonly country: string;
   readonly city: string;
   readonly website: string;
+  readonly size_band: string;
   readonly hits: number;
   readonly people: number;
 }
@@ -129,58 +188,79 @@ async function readCountries(): Promise<string[]> {
 
 /**
  * The companies in those industries (or, with none, any company whose
- * description carries the words), in that place, most words first, then the
- * ones with our people.
+ * description carries the words), in that place and size, most words first,
+ * then the ones holding the role asked for, then the ones with our people.
+ * With a size or a role asked for, a need whose words match nothing still
+ * lists companies („CFOs of big Georgian companies").
  */
+const COMPANIES_SQL = `WITH scored AS (
+   SELECT c.company_id, c.name_en, c.legal_name_ka, c.what_it_does, c.industry_id,
+          c.country, c.city, c.website, c.size_band,
+          (SELECT count(*) FROM unnest($2::text[]) w
+            WHERE c.search_text LIKE '%' || w || '%')::int AS hits,
+          (SELECT count(*) FROM person_company_links l
+            WHERE l.company_id = c.company_id AND l.status = 'confirmed')::int AS people,
+          ($7 <> '' AND (
+             EXISTS (SELECT 1 FROM person_company_links l WHERE l.company_id = c.company_id
+                       AND l.status = 'confirmed' AND l.role ILIKE '%' || $7 || '%')
+             OR EXISTS (SELECT 1 FROM company_public_people p WHERE p.company_id = c.company_id
+                       AND p.current_or_former <> 'former' AND p.role ILIKE '%' || $7 || '%')
+          )) AS holds_role
+     FROM companies c
+    WHERE (cardinality($1::text[]) = 0 OR c.industry_id = ANY($1) OR c.industry_2_id = ANY($1))
+      AND ($3 = '' OR c.country ILIKE $3)
+      AND ($4 = '' OR c.city ILIKE $4 || '%')
+      AND ($6 = '' OR c.size_band = $6))
+ SELECT * FROM scored
+  WHERE (cardinality($1::text[]) > 0 OR hits > 0 OR $6 <> '' OR $7 <> '')
+    AND ($7 = '' OR holds_role)
+  ORDER BY hits DESC, holds_role DESC, people DESC, company_id
+  LIMIT $5`;
+
 async function readCompanies(
   industryIds: readonly string[],
   words: readonly string[],
-  country: string,
-  city: string,
+  filter: CompanyFilter,
 ): Promise<CompanyHit[]> {
   const result = await query<CompanyHit>(
-    `WITH scored AS (
-       SELECT c.company_id, c.name_en, c.legal_name_ka, c.what_it_does, c.industry_id,
-              c.country, c.city, c.website,
-              (SELECT count(*) FROM unnest($2::text[]) w
-                WHERE c.search_text LIKE '%' || w || '%')::int AS hits,
-              (SELECT count(*) FROM person_company_links l
-                WHERE l.company_id = c.company_id AND l.status = 'confirmed')::int AS people
-         FROM companies c
-        WHERE (cardinality($1::text[]) = 0 OR c.industry_id = ANY($1) OR c.industry_2_id = ANY($1))
-          AND ($3 = '' OR c.country ILIKE $3)
-          AND ($4 = '' OR c.city ILIKE $4 || '%'))
-     SELECT * FROM scored
-      WHERE cardinality($1::text[]) > 0 OR hits > 0
-      ORDER BY hits DESC, people DESC, company_id
-      LIMIT $5`,
-    [industryIds, words, country.toLocaleLowerCase(), city.toLocaleLowerCase(), MAX_COMPANIES],
+    COMPANIES_SQL,
+    [
+      industryIds,
+      words,
+      filter.country.toLocaleLowerCase(),
+      filter.city.toLocaleLowerCase(),
+      MAX_COMPANIES,
+      filter.size,
+      filter.role,
+    ],
     COMPANY_QUERY_TIMEOUT_MS,
   );
   return result.rows;
 }
 
-async function readPeople(companyIds: readonly string[]): Promise<PersonHit[]> {
+async function readPeople(companyIds: readonly string[], role: string): Promise<PersonHit[]> {
   const result = await query<PersonHit>(
     `SELECT company_id, phone, person_name, role, tie, evidence
        FROM person_company_links
       WHERE company_id = ANY($1::text[]) AND status = 'confirmed'
-      ORDER BY company_id, (tie = 'current') DESC, person_name
+      ORDER BY company_id, ($2 <> '' AND role ILIKE '%' || $2 || '%') DESC,
+               (tie = 'current') DESC, person_name
       LIMIT 200`,
-    [companyIds],
+    [companyIds, role],
     COMPANY_QUERY_TIMEOUT_MS,
   );
   return result.rows;
 }
 
-async function readPublicRoles(companyIds: readonly string[]): Promise<PublicRole[]> {
+async function readPublicRoles(companyIds: readonly string[], role: string): Promise<PublicRole[]> {
   const result = await query<PublicRole>(
     `SELECT company_id, name_ka, name_latin, role
        FROM company_public_people
       WHERE company_id = ANY($1::text[]) AND current_or_former <> 'former'
-      ORDER BY company_id, (role ILIKE 'director%' OR role ILIKE 'ceo%') DESC
+      ORDER BY company_id, ($2 <> '' AND role ILIKE '%' || $2 || '%') DESC,
+               (role ILIKE 'director%' OR role ILIKE 'ceo%') DESC
       LIMIT 200`,
-    [companyIds],
+    [companyIds, role],
     COMPANY_QUERY_TIMEOUT_MS,
   );
   return result.rows;
@@ -200,6 +280,7 @@ export interface CompanyResult {
   readonly what_it_does: string;
   readonly industry: string | null;
   readonly place: string;
+  readonly size: string;
   readonly website: string;
   readonly people: readonly CompanyPerson[];
   readonly public_roles: readonly string[];
@@ -229,6 +310,7 @@ function companyResult(
     what_it_does: c.what_it_does,
     industry: c.industry_id,
     place: [c.city, c.country].filter((p) => p !== '').join(', '),
+    size: c.size_band,
     website: c.website,
     people: people
       .filter((p) => p.company_id === c.company_id)
@@ -255,22 +337,31 @@ export async function findCompaniesForNeed(
   need: string,
   countryGiven = '',
   city = '',
+  size = '',
+  role = '',
 ): Promise<FindCompaniesResult> {
   const words = needWords(need);
   const [industries, countries] = await Promise.all([readIndustries(), readCountries()]);
   const industryIds = industriesForNeed(words, industries);
-  const country = countryGiven.trim() || countryInNeed(words, countries);
-  const companies = await readCompanies(industryIds, words, country, city.trim());
+  const filter: CompanyFilter = {
+    country: countryGiven.trim() || countryInNeed(allNeedWords(need), countries),
+    city: city.trim(),
+    size: sizeFilter(size),
+    role: roleFilter(role),
+  };
+  const companies = await readCompanies(industryIds, words, filter);
   const ids = companies.map((c) => c.company_id);
   const [people, roles] =
-    ids.length === 0 ? [[], []] : await Promise.all([readPeople(ids), readPublicRoles(ids)]);
+    ids.length === 0
+      ? [[], []]
+      : await Promise.all([readPeople(ids, filter.role), readPublicRoles(ids, filter.role)]);
   const exclusions = await fetchExclusionsForPhones(
     userId,
     people.map((p) => p.phone),
   );
   return {
     industries: industryIds,
-    country,
+    country: filter.country,
     companies: companies.map((c) => companyResult(c, people, roles, exclusions)),
     note: NOTE,
   };
