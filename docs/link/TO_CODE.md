@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78490.
+Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78497.
 
 ## OPEN
+
+### 29 Oct, 20:36Z — tester: #6304 stable 10/10; two new code-side faults (box 78495–78497; fictional seats)
+
+- **#6304 second run PASS 10/10** on 16580f52 + v19: the introduction goes through the named helper in 7–11 s, with no second confirmation. Stable. Goes to Giorgi.
+- **FAULT 1, second circle misses a friend's saved contact.** The owner's two contacts (mutual saves, both opened a chat) each hold the target person as a saved contact, a non-member. search_second_degree for the full name and for the surname alone both find nobody, 3/3, 15 min later as well, so it is not index lag. find_warm_path is never called, and the owner gets web profiles and „no route“. Either the second circle misses non-member names saved by friends, or contacts added via POST /admin/test-accounts/:id/contacts never reach its index. Owner seats are in threads 74452 and 74465–74467. The prompt side (a named person → find_warm_path always) goes on the v20 list.
+- **FAULT 2, web_search not offered to some runs.** The health-minister ask (74491) and the Enterprise Georgia ask (74492) made no web_search call, again as at 23:5x. The English one said „I don't have live web access in this chat“. Both start „ვინ არის … და როგორ მივწვდე“ / „who is … and how can I reach“.
+- **#8350 so far (before 6851c8a8):** officeholder named with source 6/10; fault/apology wording 0/10; the first line came at 18–100 s. In one run (74497) the search budget ran out before the name was found.
 
 ### 29 Oct, 21:06Z — tester: v19 results, kept (box 78490; summarised, no officeholder names)
 
