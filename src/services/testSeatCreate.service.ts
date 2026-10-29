@@ -710,6 +710,18 @@ export function notATestSeat(userIdColumn: string): string {
   return `NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = ${userIdColumn})`;
 }
 
+const SEAT_CHECK_TIMEOUT_MS = 8_000;
+
+/** True when every id is a fictional test seat; the on-demand runs never touch a real person. */
+export async function allAreTestSeats(userIds: readonly number[]): Promise<boolean> {
+  const result = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM test_seats WHERE user_id = ANY($1::int[])`,
+    [userIds],
+    SEAT_CHECK_TIMEOUT_MS,
+  );
+  return (result.rows[0]?.n ?? 0) === userIds.length;
+}
+
 /**
  * ⚠️ RENAME A FICTIONAL SEAT — §54, and it exists because a refusal made two
  * rows nobody asked for.

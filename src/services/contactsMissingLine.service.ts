@@ -5,7 +5,7 @@ import { recordProductEvent } from './productEvents.service';
 import { isQuietHour } from './pushQuietHours';
 import { RunLanguage } from './runLanguage';
 import { emitMessageAppended } from './sse.service';
-import { notATestSeat } from './testSeatCreate.service';
+import { allAreTestSeats, notATestSeat } from './testSeatCreate.service';
 import { getOrCreateDefaultThread, saveServerLine, userLanguage } from './threads.service';
 
 /**
@@ -106,15 +106,6 @@ export enum ContactsLineSeatOutcome {
   BadInput = 'bad_input',
   NotATestSeat = 'not_a_test_seat',
   Ran = 'ran',
-}
-
-async function allAreTestSeats(userIds: readonly number[]): Promise<boolean> {
-  const result = await query<{ n: number }>(
-    `SELECT COUNT(*)::int AS n FROM test_seats WHERE user_id = ANY($1::int[])`,
-    [userIds],
-    QUERY_TIMEOUT_MS,
-  );
-  return (result.rows[0]?.n ?? 0) === userIds.length;
 }
 
 /** #7828 (tester, 28 Oct): „never twice" holds on seats too — the ones already told. */
