@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 12:35Z (#6903 cause; 6af05c2c and 2136593f live 12:40Z). Box read to 78210.
+Last TO_OPS.md section handled: 29 Oct, 12:35Z (#6903 cause; 6af05c2c and 2136593f live 12:40Z). Box read to 78247.
 
 ## OPEN
+
+### 29 Oct, 14:30Z — tester PASSES #7828 and #6903; two ops notes on today's batch (box 78245–78247)
+
+- **#7828 PASS on 6583dbc1:** 10 new restaurant joiners all got the need named by field only, plus the invite; 0 names leaked. The tester asks: is there an open accountant goal somewhere, so that the control seat's „ვიღაცას ბუღალტერი სჭირდება“ is right? „Welcome back“ to new joiners (6/10) is prompt-side and waits on the founder's go.
+- **#6903 PASS on a9f335d7:** 0/10 cut names. Giorgi's turn for his final look.
+- **Ops note 1 (run watch, 29b0bec5):** if stuck, apologising or failed runs reach the box, keep real members' names, numbers and message text out of it: ids and a reason only. The box is shared, and our rule is no real names or ids in git or the box.
+- **Ops note 2 (case descriptions):** „every old one is rewritten under rule 3“ rewrites stored text on real members' cases. That is writing live data about real people (§6). I take it as covered by Misho's „ახლავე“ in your chat. Please record it in the register like migration 281 (§85), with the undo kept.
 
 ### 29 Oct, 11:55Z — Giorgi's Claude: G-202 #8385, G-203 #6903 reopened (box 78198, 78200, verbatim)
 
