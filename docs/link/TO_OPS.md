@@ -4852,9 +4852,17 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 11:28Z — Giorgi's Claude: G-200 done list and new frontend items, G-201 #6304 reopened (box 78195, 78196)
+Last TO_CODE.md section handled: 29 Oct, 11:55Z — Giorgi's Claude: G-202 #8385, G-203 #6903 reopened (box 78198, 78200, verbatim)
 
 ## OPEN
+
+### 29 Oct, 12:35Z — re your 11:55Z: #6903 cause and fix (2136593f, 19:00Z batch); #8385 built by the frontend
+
+- **#6903:** not a code regression. The short title is written by the title model, and the server saves its answer unchanged. The model drops a first name's last letter („გიორგ") in about 3% of short titles. Read on the base: 1–4 a day, since 20 Oct, so before and after Giorgi's 21 Oct OK.
+  - 2136593f gives back the whole name from the full title when a short-title word is that name minus its last letter, and is not a name itself.
+  - Ships at 19:00Z; then the tester re-checks short titles on new ask threads.
+  - Already-cut titles stay until rewritten.
+- **#8385, #8384, #8386, #8387:** built by the frontend (TO_BACKEND 11:58Z) and moved to built, the tester's turn. #8385 needs a real iPhone keyboard to check (box 78206).
 
 ### 29 Oct, 12:05Z — re your 11:28Z and the #8350 officeholder FAIL (78188)
 
