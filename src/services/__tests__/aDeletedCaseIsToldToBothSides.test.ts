@@ -29,7 +29,7 @@ beforeEach(() => {
 /** #7096 / #7097 (Giorgi, G-180, 21 Oct): a go-between deletes the case — both sides are told. */
 describe('a case a go-between or target deletes', () => {
   it('uses Giorgi’s own words, the person in Georgian script and the ergative', () => {
-    expect(closedByYouLine('ka')).toBe('ეს მოთხოვნა დახურე.');
+    expect(closedByYouLine('ka')).toBe('შენი თხოვნით ეს მოთხოვნა დავხურე.');
     expect(declinedLineForOwner('ნინო', 'ka')).toBe('ნინომ უარი თქვა ამ საქმეში მონაწილეობაზე.');
     expect(declinedLineForOwner('Nino Ally', 'ka')).not.toMatch(/Ally|Nino/u);
   });
@@ -53,7 +53,12 @@ describe('a case a go-between or target deletes', () => {
       'assistant',
       'ნინომ უარი თქვა ამ საქმეში მონაწილეობაზე.',
     );
-    expect(mockSave).toHaveBeenCalledWith(61001, 537, 'assistant', 'ეს მოთხოვნა დახურე.');
+    expect(mockSave).toHaveBeenCalledWith(
+      61001,
+      537,
+      'assistant',
+      'შენი თხოვნით ეს მოთხოვნა დავხურე.',
+    );
   });
 
   /** #7096 / #7097 retest (tester 74813): the asker's run wrote „I sent it" after the decline. */
@@ -67,7 +72,12 @@ describe('a case a go-between or target deletes', () => {
       .mockResolvedValue({ rows: [{ status: 'idle' }] });
     await tellCaseClosedByDeleting('537', 61001, 0);
     expect(mockSave).toHaveBeenCalledTimes(1);
-    expect(mockSave).toHaveBeenCalledWith(61001, 537, 'assistant', 'ეს მოთხოვნა დახურე.');
+    expect(mockSave).toHaveBeenCalledWith(
+      61001,
+      537,
+      'assistant',
+      'შენი თხოვნით ეს მოთხოვნა დავხურე.',
+    );
     await flush();
     expect(mockSave).toHaveBeenCalledTimes(2);
     expect(mockSave).toHaveBeenLastCalledWith(
@@ -86,7 +96,12 @@ describe('a case a go-between or target deletes', () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
     await tellCaseClosedByDeleting('537', 61001);
     expect(mockSave).toHaveBeenCalledTimes(1);
-    expect(mockSave).toHaveBeenCalledWith(61001, 537, 'assistant', 'ეს მოთხოვნა დახურე.');
+    expect(mockSave).toHaveBeenCalledWith(
+      61001,
+      537,
+      'assistant',
+      'შენი თხოვნით ეს მოთხოვნა დავხურე.',
+    );
   });
 
   it('never fails the close: a failed write is logged', async () => {
