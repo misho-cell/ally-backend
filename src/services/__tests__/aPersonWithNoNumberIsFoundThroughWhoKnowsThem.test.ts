@@ -184,6 +184,13 @@ describe('a need finds a person with no number, with who can reach them', () => 
     );
     expect(hitCall?.[1]).toEqual([['cargo', 'freight'], 'kazakhstan', expect.any(Number)]);
     expect(hitCall?.[2]).toBeGreaterThan(0);
+    // Tester 78510: a test account is nobody's route.
+    const tieCall = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM base_person_ties'),
+    );
+    expect(String(tieCall?.[0])).toContain('o.name !~* $4');
+    expect(String(tieCall?.[0])).toContain('FROM test_seats s');
+    expect((tieCall?.[1] as unknown[])[3]).toBe('\\mtest\\M');
   });
 
   it('reads nothing for a need with no usable word', async () => {
