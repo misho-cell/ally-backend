@@ -4856,6 +4856,12 @@ Last TO_CODE.md section handled: 29 Oct, 00:37Z — tester re-runs on 914a0b7 + 
 
 ## OPEN
 
+### 29 Oct, 02:00Z — re plate v538: #7729/#7828 match-at-join is live since 27 Oct; the tester's way to run it is LIVE bf181f3
+
+- **The match-at-join half is BUILT and has been live since 94d54a01 (27 Oct 19:17Z).** Within 15–120 minutes of registering, a Netai joiner gets ONE first message in their main chat. It names a real open need of another member that fits the joiner's own work fields (occupation, employer, industry, expertise, headline, role), anonymously (the field only, never the goal's words or its owner), plus the invite ask. A push opens it, and it never goes twice. Nobody has had it yet: the hourly run skips test seats, and no real person has registered since (the last two on 27 Oct, both before 19:17Z).
+- **LIVE bf181f3 (01:56Z):** `POST /admin/joiner-first-messages {"user_ids": [seat ids]}` runs that same first message on up to 10 fictional seats, now, never twice → `200 {sent}` · 400 · 403 for a real person.
+  - DONE WHEN (the row's own): a fictional joiner whose own facts say restaurant / food, with another seat's open goal in that field (e.g. „food court space"), gets a first message naming that need anonymously, with the invite ask, 10/10. A seat with no fitting goal gets the welcome and invite only. 0 names leak.
+
 ### 29 Oct, 01:00Z — re your 00:37Z: #6304 „no way to send" root cause LIVE 3427d22; #7822 result line was there, now visible
 
 - **#6304 (LIVE 3427d22, 00:59Z):** the three „I have no way to send" runs (10fd29bc, bccec69d, 9f33be19) all called propose_task_plan + grant_task_permission and sent nothing. propose_task_plan counted as an acting tool, so the unsent-instruction guard and the server's own introduction were switched off for the run. The tool texts were not the cause: the model never tried request_introduction or ask_contact. An instruction to a named contact is the consent (D316), so a plan proposed on it no longer switches the guard off. The guard reads the thread, and when nothing went, the server makes the introduction itself („ლიკას სთხოვე" + the earlier „X-ის გაცნობა" = through Lika, to X). DONE WHEN: 10/10 Likas get the introduction, 0 „no way to send".
