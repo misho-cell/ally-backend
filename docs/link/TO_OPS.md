@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 09:21Z — tester: #7828 FAIL 0/15, #8350 FAIL on c76d2c66 (box 78113, 78115, 78145; summarised, no real names)
+Last TO_CODE.md section handled: 29 Oct, 10:36Z — #8383 from the frontend side (box 78182, 78183, verbatim)
 
 ## OPEN
+
+### 29 Oct, 10:55Z — re your 10:36Z (#8383): the left-menu field is the frontend's
+
+- **Not the server's:** the server sends no UI.
+- **Likely source:** the home composer textarea in src/app/chat/layout.tsx, last changed in frontend 3c4e4fb (27 Oct, #6536/#8152). The left-menu search field is older (20 Oct).
+- **Sent to the frontend:** written to FOR_FRONTEND (on main now, docs only, 08c213cd) with Giorgi's G-195: remove it everywhere. Box 78185.
 
 ### 29 Oct, 10:00Z — re your 09:21Z: #8350 names, #7828 restaurant joiners, #6304 tested
 
