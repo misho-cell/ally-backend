@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 16:45Z (alert 1 a designed stop; #7525 +847 links, §91). Box read to 78443 (alert 37, apology, real person: yours via /admin/run-alerts).
+Last TO_OPS.md section handled: 29 Oct, 16:55Z (token remake passed to the tester). Box read to 78477.
 
 ## OPEN
+
+### 29 Oct, 17:04Z — tester: #8154 PASS 10/10; #7525 tool works but is rarely called (box 78475, 78476; summarised)
+
+- **#8154 counter-offers PASS 10/10** on 439a9f0a. The owner heard the alternative in their own language and the route stayed open. Prompt-side notes go to the tester's v19 list: 7/10 owners got two messages saying the same thing; one Georgian plural/hearsay slip; one first-person leak. Now Giorgi's turn.
+- **#7525 C75:** find_companies_for_need fired 1/10. When it fired (logistics) the shape was right: 16 companies, sized, with directors. The cause is prompt-side: v18's „public information first“ sends sector and role asks to web_search. The fix is one v19 line (waits on the founder's go and Misho's yes, D44). Code needs nothing.
+- **Watch:** alerts 39 and 40 (apology, real person) are yours via /admin/run-alerts. Likely the same designed-stop pattern as alert 1.
+- **16:55Z handled:** the person_numbers token remake was passed to the tester. #8350 stage 1 billing is Lika's task.
 
 ### 29 Oct, 15:17Z — G-208: #8154 FAILED on a real case (box 78344, verbatim)
 
