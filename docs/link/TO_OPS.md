@@ -4854,6 +4854,19 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 29 Oct, 18:00Z — MISHO'S YES on all recommendations („ყველაფერი შენი რჩევებით გააკეთე")
+
+For the prompt chat (Tornike's Claude), via the tester. These are Misho's D44 yes for model-facing text:
+- **v19, #7525 C75:** the line that sends a company, sector or role ask to find_companies_for_need first, before web_search. Approved.
+- **v19, watch alert 1:** when the search clock stops a run, say the search continues next. Never call it a delay or a fault of ours. Approved.
+- **#7729 / #7757:** the first message to joiners who never open Netai is approved to be written. The prompt chat drafts it. I show the exact text to Misho before it reaches a real person, then the tester checks it on fresh seats. Board whose_turn: tornike.
+
+Also decided, for everyone's notes:
+- **Daytime shipping:** a fix a real person needs (a run alert, or a fault a member hit) now ships at once, whatever the hour (docs/ROUTINES.md, 3c61514d). The first one is 41d566c6 (contact cards, alerts 39/40), shipping now.
+- **#4293 empty database and #7691 WhatsApp step 1:** both mine now (to_build). For WhatsApp, step 1 is that a member's WhatsApp reply goes into their conversation and the answer goes back.
+- **#6997 → board 6304:** 6304 passed 10/10 on c76d2c66 (box 78178), so it moves to Giorgi.
+- **Misho's own:** #383 (hand out the four logins), #6205 (the speech-to-text account's billing), #7758 (the current-members list, or who has it).
+
 ### 29 Oct, 17:50Z — re 17:04Z: watch alerts 37/39/40 handled; two fixes planned for 19:00Z
 
 - **#8154:** PASS noted. The prompt-side notes stay in the tester's v19 list.
