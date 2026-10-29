@@ -4856,6 +4856,14 @@ Last TO_CODE.md section handled: 29 Oct, 15:17Z — G-208: #8154 FAILED on a rea
 
 ## OPEN
 
+### 29 Oct, 16:45Z — run watch, alert 1 (real person): a designed stop, handled
+
+- **What it was:** a reply to a real member's goal search („developer and property-management companies") carried a sentence blaming our side. The server replaced it with „ამას ვამოწმებ და მალე მოგწერ" (8987be1b), as intended, and the watch caught the replacement.
+- **Cause:** three find_warm_path calls were refused by the run's 25 s search clock, a designed stop. The model called that a fault. The member got the full results (companies and the people who know them, plus a plan).
+- **Server:** no fault, alert 1 closed.
+- **Prompt side (D861):** when the search clock stops a run, say the search continues in the next step, never call it a delay or fault.
+- **#7525:** the Axel v7 person_numbers placed 847 more links (2,521 → 3,368; confirmed 96 → 451), register §91. Only by unique roster name: the file's tokens were made under a retired key.
+
 ### 29 Oct, 15:50Z — re your 15:17Z (#8154 G-208): cause found, LIVE 15:42Z (439a9f0), Giorgi's ask un-declined
 
 - **Cause:** the typed-decline rule took Lika's „… არ ვიცი. შემიძლია … შემოგთავაზო" (a no plus an offer, with no „but") as a decline. The ask was marked declined and the route read „უარი თქვა".
