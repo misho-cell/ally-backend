@@ -9,6 +9,8 @@
  * („ჩემგან ყვეკაფერზე კია", §140). Older conversations are filled by
  * POST /admin/short-titles/backfill (Misho's yes, 14 Oct).
  */
+import { GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
+
 export const SHORT_TITLES_ON = true;
 
 /** #5215 (Giorgi, again 27 Oct, G-186): three or four words. */
@@ -46,8 +48,29 @@ function cleanLine(line: string, maxWords: number, maxChars: number): string | n
   return text.length >= 2 && text.length <= maxChars ? text : null;
 }
 
+/**
+ * #6903 reopened (Giorgi, G-203, 29 Oct): „კარგი მზარეული გიორგ რესტორნისთვის".
+ * The model drops a name's last letter in about one short title in thirty
+ * („გიორგ", from „გიორგი" in the full title), since 20 Oct. A word that is
+ * not a name itself, but is a first name from the full title with its last
+ * letter cut, gets the whole name back.
+ */
+export function withWholeNames(line: string, title: string): string {
+  const names = (title.match(/[\p{L}]+/gu) ?? []).filter((w) =>
+    GEORGIAN_FIRST_NAMES.has(w.toLowerCase()),
+  );
+  return line
+    .split(' ')
+    .map((word) => {
+      if (GEORGIAN_FIRST_NAMES.has(word.toLowerCase())) return word;
+      const whole = names.find((n) => n.length === word.length + 1 && n.startsWith(word));
+      return whole ?? word;
+    })
+    .join(' ');
+}
+
 /** The model's two lines as the two titles; null when either is unusable. */
-export function parseShortTitles(raw: string): ShortTitles | null {
+export function parseShortTitles(raw: string, title = ''): ShortTitles | null {
   const lines = raw
     .split('\n')
     .map((l) => l.trim())
@@ -57,5 +80,5 @@ export function parseShortTitles(raw: string): ShortTitles | null {
   const oneWord = cleanLine(lines[1], 1, ONE_WORD_TITLE_MAX_CHARS);
   return short === null || oneWord === null
     ? null
-    : { short_title: short, one_word_title: oneWord };
+    : { short_title: withWholeNames(short, title), one_word_title: withWholeNames(oneWord, title) };
 }

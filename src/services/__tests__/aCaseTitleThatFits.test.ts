@@ -6,6 +6,7 @@ import {
   SHORT_TITLE_MAX_CHARS,
   SHORT_TITLES_ON,
   shortTitlesPrompt,
+  withWholeNames,
 } from '../shortTitles';
 
 /** 4919 (Giorgi, 13 Oct): 2–3 words on a desktop, one on a phone, naming the case. */
@@ -46,5 +47,25 @@ describe("after Misho's yes (§140)", () => {
     const threads = readFileSync(join(__dirname, '..', 'threads.service.ts'), 'utf8');
     expect(threads).toContain('SET title = $1, short_title = NULL, one_word_title = NULL');
     expect(threads).toContain('t.short_title,\n       t.one_word_title,');
+  });
+});
+
+/**
+ * #6903 reopened (Giorgi, G-203, 29 Oct): the model drops a name's last letter
+ * now and then; the full title has the name whole, and it is put back.
+ */
+describe('a name the model cut (#6903)', () => {
+  it('gets its last letter back from the full title', () => {
+    expect(
+      parseShortTitles(
+        'კარგი მზარეული გიორგ რესტორნისთვის\nმზარეული',
+        'გიორგი ტურაშვილი: იცნობ კარგ მზარეულს?',
+      )?.short_title,
+    ).toBe('კარგი მზარეული გიორგი რესტორნისთვის');
+  });
+
+  it('leaves a word that is a name itself, and words that are not names', () => {
+    expect(withWholeNames('ოთარ და გიორგ', 'ოთარი და გიორგი')).toBe('ოთარ და გიორგი');
+    expect(withWholeNames('ახალ რესტორანს', 'ახალი რესტორანი')).toBe('ახალ რესტორანს');
   });
 });
