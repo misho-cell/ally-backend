@@ -669,7 +669,8 @@ import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { withPlanDecisionAgain } from './planDecisionReoffer';
 import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
 import { ANSWER_SENT_FORMS, ANSWER_SENT_LINE, withAnswerSentLineOnce } from './similarAnswerRule';
-import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
+import { isAnswerCardEvent, withoutCardRepeat, withoutEarlySolvedCard } from './answerCardGuard';
+import { latestAnswerCard } from './answerCard.service';
 import { DID_NOT_FINISH_REASONS, furtherOutCount, matchShapeOf } from './resultShape';
 import {
   CACHE_ONE_HOUR,
@@ -18927,6 +18928,16 @@ export async function processChat(
     // eslint-disable-next-line no-console
     console.log(`[answer-card] run ${runId}: finish card removed — nobody has been connected yet`);
     cleanedFinal = earlySolved.text;
+  }
+  // #8154: the card already told the owner the answer; the reply does not tell it again.
+  if (isAnswerCardEvent(userMessage)) {
+    const card = await latestAnswerCard(threadId).catch(() => null);
+    const unrepeated = card === null ? null : withoutCardRepeat(cleanedFinal, card);
+    if (unrepeated !== null) {
+      // eslint-disable-next-line no-console
+      console.log(`[answer-card] run ${runId}: the card's answer was not told twice`);
+      cleanedFinal = unrepeated;
+    }
   }
   // 56697: a reply that leaves a waiting plan with no question and no buttons asks again.
   const planAgain =

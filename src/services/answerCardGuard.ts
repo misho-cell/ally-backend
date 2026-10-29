@@ -109,3 +109,59 @@ function lastSentenceStart(text: string): number {
 }
 
 const SENTENCE_ENDS: readonly string[] = ['.', '!', '?', '\n'];
+
+/*
+ * #8154 (tester, v19 round, 29 Oct: two messages 7/7): the server's card had
+ * already told the owner „<owner>, ვესაუბრე <H>-ის ასისტენტს და მითხრა, რომ …",
+ * and the run's reply told it again before its question. The event says not to
+ * repeat the answer, and the model repeats it anyway — so the server holds it:
+ * a sentence of the reply that is mostly the card's own words comes off.
+ */
+const CARD_WORD_MIN_CHARS = 4;
+/** Letters a word is compared by, so a case ending does not hide a repeat. */
+const CARD_STEM_CHARS = 5;
+/** A sentence this short says too little to call a repeat. */
+const CARD_REPEAT_MIN_WORDS = 3;
+/** The share of a sentence's words found on the card that makes it a repeat. */
+const CARD_REPEAT_SHARE = 0.6;
+const CARD_SENTENCE_SPLIT_RE = /((?<=[.!?…])\s+|\n+)/u;
+const CARD_WORD_RE = /[\p{L}\p{N}]+/gu;
+
+function cardStems(text: string): string[] {
+  return (text.toLowerCase().match(CARD_WORD_RE) ?? [])
+    .filter((w) => w.length >= CARD_WORD_MIN_CHARS)
+    .map((w) => w.slice(0, CARD_STEM_CHARS));
+}
+
+function repeatsCard(sentence: string, card: ReadonlySet<string>): boolean {
+  const stems = cardStems(sentence);
+  if (stems.length < CARD_REPEAT_MIN_WORDS) return false;
+  const onCard = stems.filter((s) => card.has(s)).length;
+  return onCard / stems.length >= CARD_REPEAT_SHARE;
+}
+
+/**
+ * Pure: the reply without the sentences that retell the card, or null when it
+ * retold nothing. A reply that was nothing but the card keeps its last sentence,
+ * so the owner is never left with an empty turn.
+ */
+export function withoutCardRepeat(reply: string, cardText: string): string | null {
+  const card = new Set(cardStems(cardText));
+  if (card.size === 0) return null;
+  const parts = reply.trim().split(CARD_SENTENCE_SPLIT_RE);
+  const kept: string[] = [];
+  let dropped = false;
+  for (let i = 0; i < parts.length; i += 2) {
+    const sentence = parts[i];
+    if (sentence.trim() !== '' && repeatsCard(sentence, card)) {
+      dropped = true;
+      continue;
+    }
+    kept.push(sentence + (parts[i + 1] ?? ''));
+  }
+  if (!dropped) return null;
+  const rest = kept.join('').trim();
+  if (rest !== '') return rest;
+  const sentences = parts.filter((_, i) => i % 2 === 0 && parts[i].trim() !== '');
+  return sentences[sentences.length - 1].trim();
+}
