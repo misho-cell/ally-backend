@@ -23,6 +23,13 @@ const MAX_PLACES = 300;
 /** Enough per person that the owner and his own contacts are among them before ranking. */
 const MAX_TIES_PER_PERSON = 100;
 const MAX_TIE_ROWS = MAX_PEOPLE * MAX_TIES_PER_PERSON;
+/**
+ * Tester 78510 (#6997, founder connector): a real person's known_by listed
+ * „Test Referral", „Al Test", „Ag Pay Test" — the team's own test accounts,
+ * which hold real numbers. A test account is nobody's route: a fictional seat,
+ * or an account whose name carries the word „test".
+ */
+const TEST_ACCOUNT_NAME_RE = '\\mtest\\M';
 
 interface PersonHit {
   readonly person_key: string;
@@ -146,11 +153,13 @@ async function readBridges(keys: readonly string[]): Promise<TieRow[]> {
                UNION
                SELECT to_key, from_key, tie FROM base_person_ties
                 WHERE to_key = ANY($1::text[])) t
-         JOIN base_people o ON o.person_key = t.other_key AND o.phone IS NOT NULL) ranked
+         JOIN base_people o ON o.person_key = t.other_key AND o.phone IS NOT NULL
+        WHERE o.name !~* $4
+          AND NOT EXISTS (SELECT 1 FROM test_seats s WHERE 'U-' || s.user_id = o.person_key)) ranked
       WHERE n <= $2
       ORDER BY person_key, name
       LIMIT $3`,
-    [[...keys], MAX_TIES_PER_PERSON, MAX_TIE_ROWS],
+    [[...keys], MAX_TIES_PER_PERSON, MAX_TIE_ROWS, TEST_ACCOUNT_NAME_RE],
     BASE_QUERY_TIMEOUT_MS,
   );
   return result.rows;
