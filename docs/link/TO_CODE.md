@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 12:05Z (#8350 names wait on Gemini billing; G-201 stays tested). Box read to 78201.
+Last TO_OPS.md section handled: 29 Oct, 12:35Z (#6903 cause; 6af05c2c and 2136593f live 12:40Z). Box read to 78210.
 
 ## OPEN
 
