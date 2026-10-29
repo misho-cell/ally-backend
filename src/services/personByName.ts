@@ -74,6 +74,16 @@ const GET_TO_A_NAMED_PERSON_RE =
 
 const SENTENCE_END_RE = /(?<=[.!?…])\s+/u;
 
+/**
+ * #8350 (tester 78497, threads 74491-74492, 2 of 10 twice): „ვინ არის ჯანდაცვის
+ * მინისტრი ახლა და როგორ მივწვდე მის აპარატს" and „who is the current head of
+ * Enterprise Georgia and how can I reach them" lost the web tools, and the reply
+ * said „I don't have live web access". The owner asks WHO holds a post: there
+ * is no name to reach through the network yet, and finding it is the web's job.
+ */
+const ASKS_WHO_RE =
+  /(?<![\p{L}\p{M}])(?:ვინ\s+(?:არის|არიან|ხელმძღვანელობს|მართავს|უძღვება|განაგებს|იკავებს)|who\s+(?:is|are|heads|runs|leads|manages)|кто\s+(?:сейчас\s+)?(?:возглавляет|руководит|является))(?![\p{L}\p{M}])/iu;
+
 function asksToMeetOrReach(sentence: string): boolean {
   return MEET_OR_REACH_RE.test(sentence) || GET_TO_A_NAMED_PERSON_RE.test(sentence);
 }
@@ -83,5 +93,8 @@ export function asksForAPersonByName(ownerLine: string): boolean {
   // The trade is read only in the sentence that asks; another sentence describes the person.
   return ownerLine
     .split(SENTENCE_END_RE)
-    .some((sentence) => asksToMeetOrReach(sentence) && !namesATrade(sentence));
+    .some(
+      (sentence) =>
+        asksToMeetOrReach(sentence) && !namesATrade(sentence) && !ASKS_WHO_RE.test(sentence),
+    );
 }
