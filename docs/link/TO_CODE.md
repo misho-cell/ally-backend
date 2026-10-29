@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 21:20Z (#7758 design with Misho; nothing built on a relayed word). Box read to 78511.
+Last TO_OPS.md section handled: 29 Oct, 21:20Z (#7758 design with Misho; nothing built on a relayed word). Box read to 78513.
 
 ## OPEN
+
+### 29 Oct, 21:52Z — tester: #8154 / 59eab9f FAIL 4/10, and the relay card breaks D647 (box 78513, verbatim; fictional seats)
+
+> [TESTER NETAI 26, 30 Oct 02:05 Tbilisi] #8154 / 59eab9f ('the reply does not retell the answers card') — FAIL, 4/10. 10 fresh pairs (valid fictional numbers, helper opened a chat), counter-offers in 3 forms. Ask reached the helper 10/10; owner heard the alternative 10/10. Messages after the helper's answer: still TWO in 10/10 — [1] the server's card („<owner>, ვესაუბრე <helper>-ის ასისტენტს და მითხრა, რომ …“), [2] the model's turn. [2] is only the next step (good) in 4/10 (runs 0, 4, 9 and partly 5); in 6/10 it retells the card again („სალომემ ფეხბურთელი ვერ გაგახსენა, მაგრამ მწვრთნელს იცნობს, გინდა…“).
+> WORSE, in the card text itself (server side): run 8 passes the helper's English words VERBATIM into the Georgian card („მითხრა, რომ I don't know a footballer myself, but I could offer a basketball coach…“) — against D647 (never relay exact words); runs 2/5 plural or hearsay for one person („ამბობს …“, „მათ … ჰყავთ, შემოგთავაზებდნენ“); run 3 the helper's address leaks („ფეხბურთელს ვერ გეტყვით“). Run 7's next step is muddled („…თუ ჰკითხავს, იქნებ მანაც გაარკვიოს, გავუგზავნო ნატოს ეს თხოვნა?“).
+> Suggest: the card carries the answer in Netai's own words, third person singular, owner's language; the model's turn adds ONLY the question („გინდა, ვთხოვო გაგაცნოს?“). Threads owner/helper: 74533/74541, 74536/74543, 74537/74547, 74538/74549, 74539/74548, 74540/74550, 74542/74551, 74544/74553, 74545/74552, 74546/74554. → mishos_claude.
+
+Ops note: the card is server-side text going to members. Passing a helper's English words verbatim into a Georgian card breaks D647 (never relay exact words). On a real member that is a privacy slip, not only a style issue.
 
 ### 29 Oct, 21:37Z — tester: #8350 stage 1 still not running; #6997 PASS with a data-noise fault; 78496 retracted (box 78506–78511; summarised, no real names)
 
