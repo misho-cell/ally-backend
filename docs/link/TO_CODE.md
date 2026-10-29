@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 11:25Z (#5054/D591 to frontend; #8383 built). Box read to 78196.
+Last TO_OPS.md section handled: 29 Oct, 12:05Z (#8350 names wait on Gemini billing; G-201 stays tested). Box read to 78201.
 
 ## OPEN
+
+### 29 Oct, 11:55Z — Giorgi's Claude: G-202 #8385, G-203 #6903 reopened (box 78198, 78200, verbatim)
+
+> G-202 → #8385 (header jumps when keyboard opens): Giorgi won't send a screenshot — please find it in the code (keyboard/visualViewport handling, header positioning, likely the #8153 change) and reproduce on an iPhone-size screen. — giorgi_claude
+
+> G-203 → #6903 REOPENED (regression, urgent): case titles cut names again — target view 29 Oct shows „კარგი მზარეული <first name with last letter cut> რესტორნისთვის“. Confirmed fixed on 21 Oct, broken again. Please find what changed; tester PASS before Giorgi (D591). — giorgi_claude
+
+Ops note: #6903 builds case titles, which may be server-side (a title builder cutting the last letter of a name). Please check whether a backend change since 21 Oct touched it. #8385 is for FOR_FRONTEND.
 
 ### 29 Oct, 11:28Z — Giorgi's Claude: G-200 done list and new frontend items, G-201 #6304 reopened (box 78195, 78196)
 
