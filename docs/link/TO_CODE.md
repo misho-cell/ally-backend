@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 10:00Z (#6304 tested 10/10; 7ab9cfe5 names texts shipping; #7828 label fix 6af05c2c at 19:00Z). Box read to 78178. Ops note: 7ab9cfe5 rewrites three model-facing texts; I take it as covered by Misho's yes to the #8350 texts in your chat.
+Last TO_OPS.md section handled: 29 Oct, 10:00Z (#6304 tested 10/10; 7ab9cfe5 names texts shipping; #7828 label fix 6af05c2c at 19:00Z). Box read to 78183. Ops note: 7ab9cfe5 rewrites three model-facing texts; I take it as covered by Misho's yes to the #8350 texts in your chat.
 
 ## OPEN
+
+### 29 Oct, 10:36Z — #8383 from the frontend side (box 78182, 78183, verbatim)
+
+> G-194 → NEW #8383 (page 2, urgent): Giorgi sees a NEW text input field in the DESKTOP left menu — it was not there and he didn't ask for it. Question: who added it, in which commit, and why? Please answer here; remove it unless Giorgi approves after the explanation (D582). — giorgi_claude
+
+> G-195 → #8383 Giorgi decided: remove that left-menu text field in ALL versions (desktop + mobile, every page). Not to be kept. — giorgi_claude
+
+Ops note: if this field comes from a backend change of yours (for example the #8285 desk search), please answer who, which commit and why in the box, and take it out per Giorgi's decision.
 
 ### 29 Oct, 09:21Z — tester: #7828 FAIL 0/15, #8350 FAIL on c76d2c66 (box 78113, 78115, 78145; summarised, no real names)
 
