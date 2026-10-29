@@ -88,6 +88,11 @@ function asksToMeetOrReach(sentence: string): boolean {
   return MEET_OR_REACH_RE.test(sentence) || GET_TO_A_NAMED_PERSON_RE.test(sentence);
 }
 
+/** Does the line ask who holds a post („ვინ არის …", „who heads …")? */
+export function asksWhoHoldsAPost(line: string): boolean {
+  return line.split(SENTENCE_END_RE).some((sentence) => ASKS_WHO_RE.test(sentence));
+}
+
 /** Does the owner's line ask to meet or reach somebody it names, not a trade? */
 export function asksForAPersonByName(ownerLine: string): boolean {
   // The trade is read only in the sentence that asks; another sentence describes the person.

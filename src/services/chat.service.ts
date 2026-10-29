@@ -303,7 +303,7 @@ import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRou
 import { contactsReminderSection } from './contactsReminderSection';
 import { createUploadLink } from './contactUploadLinks.service';
 import { CONTACTS_UPLOAD_LINK_DESCRIPTION } from './contactsUploadLinkText';
-import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+import { asksForAPersonByName, asksWhoHoldsAPost, WEB_TOOL_NAMES } from './personByName';
 import { namesakesIn } from './namesakeButtons';
 import {
   FoundPerson,
@@ -13899,9 +13899,14 @@ async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Prom
  * are, and never when the owner asks to reach a person or names people to ask:
  * their people's names are not the web's to read (row 253).
  */
+/**
+ * Tester 78509 (#8350, 9 of 10 with no stage 1): „ვინ არის ჯანდაცვის მინისტრი…"
+ * typed in an ordinary chat opens no goal, so the web's answer never started.
+ * A line that asks who holds a post asks the world, goal or not.
+ */
 function worldAnswerIsDue(goalOpened: boolean, ownerLine: string): boolean {
   return (
-    goalOpened &&
+    (goalOpened || asksWhoHoldsAPost(ownerLine)) &&
     !needsNoOpeningSearch(ownerLine) &&
     !asksTheWeather(ownerLine) &&
     !goalAsksToReachAPerson(ownerLine) &&
@@ -18115,9 +18120,10 @@ export async function processChat(
       ? null
       : startOpeningSearches(userId, userMessage, runId, threadId);
   // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
-  const worldAnswerWork = worldAnswerIsDue(autoGoalId !== null && !ownerAbsent, userMessage)
-    ? worldAnswerFor(userId, threadId, runId, userMessage, language)
-    : Promise.resolve(null);
+  const worldAnswerWork =
+    !ownerAbsent && worldAnswerIsDue(autoGoalId !== null, userMessage)
+      ? worldAnswerFor(userId, threadId, runId, userMessage, language)
+      : Promise.resolve(null);
   // #5248 (D825): a goal at a lender about a loan is searched by ROLE before the
   // first answer, and this one is waited for — the answer must start from it.
   const roleQueries = lateSearch === null ? null : roleSearchQueries(userMessage);

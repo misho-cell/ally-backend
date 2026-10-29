@@ -175,6 +175,8 @@ describe('the run (#8350)', () => {
     const body = due.slice(0, due.indexOf('\n}'));
     expect(body).toContain('!goalAsksToReachAPerson(ownerLine)');
     expect(body).toContain('!ownerLineNamesPeopleToAsk(ownerLine)');
+    // Tester 78509: „who is <post>" asks the world even in a chat with no goal.
+    expect(body).toContain('(goalOpened || asksWhoHoldsAPost(ownerLine))');
     expect(body).toContain('!needsNoOpeningSearch(ownerLine)');
   });
 

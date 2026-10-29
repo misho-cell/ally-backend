@@ -63,7 +63,8 @@ export async function openaiWebAnswer(
   if (model === '' || client === null) return null;
   const response = await client.responses.create(
     { model, input: prompt, tools: [{ type: WEB_SEARCH_TOOL }] },
-    { timeout: timeoutMs },
+    // Tester 78509: the SDK's two retries made a 20 s budget a 60 s wait before the run.
+    { timeout: timeoutMs, maxRetries: 0 },
   );
   return {
     text: response.output_text.trim(),
