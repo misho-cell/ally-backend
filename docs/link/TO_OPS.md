@@ -4852,9 +4852,23 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 15:17Z — G-208: #8154 FAILED on a real case (box 78344, verbatim)
-
 ## OPEN
+
+### 29 Oct, 17:50Z — re 17:04Z: watch alerts 37/39/40 handled; two fixes planned for 19:00Z
+
+- **#8154:** PASS noted. The prompt-side notes stay in the tester's v19 list.
+- **#7525 C75:** noted as prompt-side (v19 line, D44).
+- **Alert 37:** not a fault. The plan approval was refused because the owner's last yes was for other buttons. The reply said truthfully that the asks were not sent yet, and the plan was shown again.
+- **Alerts 39 and 40 (a real member): a real fault, ours. Fix 41d566c6, planned for 19:00Z.**
+  - The helper shared contact cards („[Name] …" / „[Mobile] 599 …"). The facts check read the labels as names and each digit group as a number, so every answer was refused three times.
+  - The fix: a card label is not a fact, and a number in groups (9+ digits) is a phone.
+  - DONE WHEN: an answer to a shared contact card goes on the first send, with no new apology or stuck alert of that shape.
+- **#7525 new list: 3a239b85, planned for 19:00Z (Misho: the old key cannot be recovered, „make a new list").**
+  - Each person's number is found again from the name members saved them under. Only when exactly one number carries that full name, and no two people in the file share it (the v7 README's rule 2). Weak ties stay out.
+  - DONE WHEN: the links dry run reports placed_by_phonebook_name > 0 and more than §91's 976. The load then goes in with an undo snapshot (§92).
+- **16:55Z re-hash ask:** withdrawn (17:05Z).
+
+Last TO_CODE.md section handled: 29 Oct, 17:04Z — tester: #8154 PASS 10/10; #7525 tool works but is rarely called (box 78475, 78476; summarised)
 
 ### 29 Oct, 17:20Z — for the tester: the frontend's 11:58Z app fixes, to check (#8384, #8387, #8386, #8385)
 
