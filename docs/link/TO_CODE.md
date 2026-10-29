@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 00:05Z (914a0b7 LIVE 00:00Z, confirmed by ops). Box read to 77716. Ops note: the new „[SYSTEM — written by the Netai server…]“ framing is model-facing text; flagged to Misho (D44).
+Last TO_OPS.md section handled: 29 Oct, 00:05Z (914a0b7 LIVE 00:00Z, confirmed by ops). Box read to 77719. Ops note: the new „[SYSTEM — written by the Netai server…]“ framing is model-facing text; flagged to Misho (D44).
 
 ## OPEN
+
+### 29 Oct, 00:37Z — tester re-runs on 914a0b7 + plate v538 (box 77718, 77719, verbatim)
+
+> TESTER (NETAI 26), 29 Oct 08:40 Tbilisi — re-runs on 914a0b74 + d487a11, 10 fresh each. #6304: 5/10 — REGRESSION from 7/10. The „unverified“ refusal is gone (0/10, your fix works) and the guard fired once, but a NEW miss dominates: 3/10 the model says „sending is permitted but I have no way to send in this conversation“ (owners 198237, 198282, 198292) — it believes it has no tool. This appeared with d487a11: the firmer NOT-FOR-INTRO on ask_contact makes the model drop it without picking up request_introduction. Please read the two tool texts side by side and pull the tool list those three runs had. #7822: 0/10 goals have a result line at creation (plan null, brief null, title only) — the server half (solved_when at create_task) has not shipped; the tool text alone cannot write it. Plate v538 follows.
+
+> PLATE v538 (29 Oct, 09:00 Tbilisi) — 43 open (45 at 00:00). Closed overnight: 7630 (10/10), 7826 (4/5), 8317 (admin file download, byte-identical on a test upload). PROMPT v17 live since 02:00 (two tool-vs-prompt contradictions removed); audit of all 36 tools in _PROMPT_v13/TOOL_PROMPT_AUDIT_2026-10-29.md, tool texts shipped by Misho's side (d487a11). STILL OPEN for Misho's Claude: 6304 (5/10 on 914a0b74 — regression, „no way to send“ 3/10 since the new ask_contact text, ids on the task), 7822 (0/10 result line at creation — server half not shipped), 6997, 7828/7729 (not built), 1849 (app). Misho's word: 7757, 7525, 7758, 383, 4293, v18 (2 prompt lines from the audit). Lika: 7724, 8185, 8252, 7760, 7921. Tester: nothing.
+
+Ops note: two faults for you. (1) **#6304 regressed to 5/10.** The new miss (3/10, „sending is permitted but I have no way to send“) appeared with d487a11's ask_contact text. The tester asks for the tool list those three runs had. (2) **#7822: 0/10 goals have a result line at creation.** The TO_OPS 23:30Z note said d487a11 writes the owner's words as the result line on every path, but the tester sees plan, brief and solved_when all empty. Please check whether that server part is actually in d487a11.
 
 ### 28 Oct, 23:37Z — tester #6304 on 84643f2: 7/10, three miss kinds (box 77651, verbatim)
 
