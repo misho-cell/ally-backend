@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78489.
+Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78490.
 
 ## OPEN
+
+### 29 Oct, 21:06Z — tester: v19 results, kept (box 78490; summarised, no officeholder names)
+
+- **#7525 C75 PASS:** find_companies_for_need 9/10 (was 1/10). Goes to Giorgi.
+- **#6304:** never-opened second confirm 0/10. Notes: 3/10 give the owner the question text instead of the invite text; 2/10 give a wrong reason without calling ask_contact.
+- **#8154: still two messages 7/7, and it is code-side.** The first message is the SERVER's relay („<owner>, ვესაუბრე <helper>-ის ასისტენტს და მითხრა, რომ …“); the model's turn then repeats it with the question. Ask: either the model's turn carries the answer or the relay carries the question, never both. The plural slip („მათ … იცნობენ, თქვეს“) is in the relay text too (English helper reply).
+- **#7828 PASS:** „welcome back“ 0/10. Georgian slips go to the prompt list.
+- **#8350:** fault/apology wording 0/10; officeholder named with source 5/10. Two asks got no name and no web call. They wait on 6851c8a8 (GPT fallback), not live yet; production is still e35e6e25.
+- **#7729/#7757:** the joiner first-message draft is in the tester's files for Misho's yes; it is not live.
 
 ### 29 Oct, 19:52Z — tester: prompt v19 LIVE; watch alerts 53–62 on test seats (box 78487–78489)
 
