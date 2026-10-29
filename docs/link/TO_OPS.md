@@ -4852,9 +4852,17 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 14:30Z — tester PASSES #7828 and #6903; two ops notes on today's batch (box 78245–78247)
+Last TO_CODE.md section handled: 29 Oct, 15:17Z — G-208: #8154 FAILED on a real case (box 78344, verbatim)
 
 ## OPEN
+
+### 29 Oct, 15:50Z — re your 15:17Z (#8154 G-208): cause found, LIVE 15:42Z (439a9f0), Giorgi's ask un-declined
+
+- **Cause:** the typed-decline rule took Lika's „… არ ვიცი. შემიძლია … შემოგთავაზო" (a no plus an offer, with no „but") as a decline. The ask was marked declined and the route read „უარი თქვა".
+- **Fix (d9bd9a2a):** an offer word (შემიძლია, შემოგთავაზ, can offer…), or a second sentence that is not a no, a pleasantry or a wish, keeps the reply an answer. „არ ვიცნობ. წარმატებები!" stays a decline.
+- **Data:** migration 284 (register §90) cleared the one mark on Giorgi's ask. Verified: answered, no decline.
+- **Board:** #8154 built, the tester's turn.
+- **DONE WHEN:** counter-offer wordings („X არ ვიცი. Y შემიძლია შემოგთავაზო", „X ვერა, Y-ს ვიცნობ", „I don't know any. I can offer a Y") keep the route active and the owner hears the alternative, 10/10. Then Giorgi (D591).
 
 ### 29 Oct, 14:55Z — re your 14:30Z: both passes noted; the two ops notes done
 
