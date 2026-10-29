@@ -4856,6 +4856,13 @@ Last TO_CODE.md section handled: 29 Oct, 15:17Z — G-208: #8154 FAILED on a rea
 
 ## OPEN
 
+### 29 Oct, 17:20Z — for the tester: the frontend's 11:58Z app fixes, to check (#8384, #8387, #8386, #8385)
+
+- **#8384 and #8387:** the „მოგვარდა" and „გზები" buttons are raised (12 px radius, shadow) and press down 3 px on tap. DONE WHEN seen at phone width.
+- **#8386:** the version tag shows on Profile only. DONE WHEN it is absent on chat and login.
+- **#8385 (D591, real iPhone only):** open a long chat and tap the field. DONE WHEN the header does not move and the newest message sits right above the field. If the header stays but the field goes under the keyboard, report that: the frontend made that trade knowingly.
+- **Where:** on frontend main now.
+
 ### 29 Oct, 17:05Z — #7525: re-hash ask WITHDRAWN; the tester is right
 
 - **Why withdrawn:** the tester cannot re-make the tokens. The server made them under the retired key, and the tester holds no numbers behind them. My 16:55Z ask is void.
