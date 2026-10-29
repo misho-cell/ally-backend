@@ -8,6 +8,7 @@ import { stripWebFromStudies } from '../../services/welcomeStudy.service';
 import { fillRosterPhonesByName } from '../../services/basePeople/rosterPhones.service';
 import { GEMINI_WEB_SEARCH_FLAG } from '../../services/tools/webSearchProvider';
 import { WORLD_ANSWER_FLAG } from '../../services/worldAnswer.service';
+import { listRunAlerts, markRunAlertHandled } from '../../services/runAlerts.service';
 import {
   PhoneRepair,
   repairRestoredPhone,
@@ -2403,6 +2404,42 @@ adminRouter.post(
 //        byte_size, created_at, has_original }] }  (newest first, at most 50)
 //   GET /admin/files/:id → the file as uploaded; a file kept before migration 282 comes
 //        rebuilt from what was read, with header X-Netai-Rebuilt: true · 404 none
+/**
+ * Misho, 29 Oct: what the run watch found — stuck runs, apologies for a fault
+ * of ours, failed runs. Ids and counts only. `?all=1` includes handled ones.
+ *   GET  /admin/run-alerts            200 { alerts }
+ *   POST /admin/run-alerts/:id/handled 200 | 400 bad id | 404 no such open alert
+ */
+adminRouter.get('/run-alerts', async (req: Request, res: Response) => {
+  try {
+    const alerts = await listRunAlerts(req.query.all !== '1');
+    res.status(200).json({ success: true, data: { alerts } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin run alerts]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.post('/run-alerts/:id/handled', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ success: false, error: 'არასწორი id' });
+      return;
+    }
+    if (!(await markRunAlertHandled(id))) {
+      res.status(404).json({ success: false, error: 'ასეთი ღია შეტყობინება არ არის' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { id } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin run alert handled]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/users/:id/files', async (req: Request, res: Response) => {
   try {
     const targetId = Number(req.params.id);

@@ -6547,3 +6547,15 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** Misho's own word in this session's chat, answering three numbered questions. 1: yes to the new model-facing texts (the question put to the web, the run's „already on the owner's screen" note, the 404 note). 2: yes to keeping a name a web search returned, with „(ინტერნეტის წყაროს მიხედვით, შეიძლება შეიცვალა)". 3: ship now, outside the 19:00Z window.
 - **What:** b98ce31c and dfb7b7f4 to production (with 0f3edd90, #6304). Then the live switch: `PUT /admin/flags/world_answer_first {"enabled": true}`. From then on, a newly opened goal from a stated need makes one paid grounded web call (booked as web_search, logged as world_answer:opening). The answer is posted as an assistant message in that thread.
 - **Undo:** `PUT /admin/flags/world_answer_first {"enabled": false}`. It takes effect within 30 s, with no deploy. Messages already posted stay in their threads. The name rule is undone by reverting dfb7b7f4.
+
+## 87 · THE RUN WATCH: STUCK, APOLOGISING OR FAILED RUNS REACH THE CODE SESSION (Misho, his chat, 29 Oct ~13:25Z: „კი, დაიწყე")
+
+- **Who authorises:** Misho's own word, answering „shall I build monitoring for runs that fail on our side?" after Giorgi's thread 74052.
+- **What:**
+  - Migration 283 creates `run_alerts`. Every 5 minutes the server writes one row per new finding:
+    - a run whose send/consent tools were refused 3+ times across 2+ of them;
+    - a reply apologising for a fault of ours;
+    - a run that ended in the failure line.
+  - It posts one line per pass in the box as claude_backend, listing ids and counts only: no names, no numbers, no message text.
+  - The list is at `GET /admin/run-alerts`; `POST /admin/run-alerts/:id/handled` closes one.
+- **Undo:** revert the commit. The cron stops with the next deploy. `DROP TABLE run_alerts;` removes the rows; nothing else reads them.

@@ -46,6 +46,7 @@ import { startLabReportCron } from './services/labReport.cron';
 import { startIdentityScanCron } from './services/identityScan.cron';
 import { startEngineWakeCron } from './services/engineWakes.cron';
 import { startBoardRefillCron } from './services/teamTaskRefill.service';
+import { startRunWatchCron } from './services/runAlerts.service';
 import { startRunReaper } from './services/runReaper.service';
 import { startCutOffRunResume } from './services/cutOffRunResume.service';
 import { startHeldPushRelease } from './services/heldPushRelease.cron';
@@ -243,6 +244,8 @@ runMigrations()
     // Rows 231/239: the net under the engine's in-process timers.
     startEngineWakeCron();
     startBoardRefillCron();
+    // Misho, 29 Oct: stuck, apologising or failed runs reach the code session by themselves.
+    startRunWatchCron();
     // Fire-and-forget: warns in logs if a search-critical index is missing.
     void checkCriticalIndexes();
     // Row 202 fourth pass: says nothing until the event loop is actually
