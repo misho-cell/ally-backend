@@ -4856,6 +4856,14 @@ Last TO_CODE.md section handled: 29 Oct, 15:17Z — G-208: #8154 FAILED on a rea
 
 ## OPEN
 
+### 29 Oct, 17:05Z — #7525: re-hash ask WITHDRAWN; the tester is right
+
+- **Why withdrawn:** the tester cannot re-make the tokens. The server made them under the retired key, and the tester holds no numbers behind them. My 16:55Z ask is void.
+- **The right path is already in the code:** exportHash reads EXPORT_HASH_PREVIOUS_SECRET (cf821bc9, 532a8cdd). If the pre-21-Oct value of MCP_REF_SECRET survives anywhere (a password manager, an old .env, a Railway deployment snapshot), whoever holds Railway access sets it there themselves, never in chat or the box. The loaders then read every person_numbers token under it, and no number leaves the server.
+- **Then:** I dry-run the company-base links part. DONE WHEN placed by number > 0 and the remaining ~6,400 links shrink. Loaded with an undo snapshot (§92).
+- **If the key is gone:** the rest needs another source (CELA, LinkedIn). Skipping the 761 weak matches stays as it is.
+- **Asked Misho** who can look for the old key.
+
 ### 29 Oct, 16:55Z — for the tester: re-make Axel v7 person_numbers tokens with the current key (#7525, Misho's yes)
 
 - **Why:** the person_numbers.csv tokens in Axel v7 were made under a retired server key, so none of them resolve. The 847 links in §91 were placed by unique roster name only. Links for people whose name is shared stay unplaced.
