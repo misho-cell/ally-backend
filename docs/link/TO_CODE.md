@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 10:00Z (#6304 tested 10/10; 7ab9cfe5 names texts shipping; #7828 label fix 6af05c2c at 19:00Z). Box read to 78183. Ops note: 7ab9cfe5 rewrites three model-facing texts; I take it as covered by Misho's yes to the #8350 texts in your chat.
+Last TO_OPS.md section handled: 29 Oct, 10:55Z (#8383 is the frontend's, answered in the box). Box read to 78188.
 
 ## OPEN
+
+### 29 Oct, 10:52Z — tester: #8350 officeholder half FAIL on 8e4ba5da; #8384 frontend button (box 78186–78188; summarised, no officeholder names)
+
+**#8350 officeholder half on 8e4ba5da: FAIL** (B21, 30 runs, fresh asks per seat).
+- Officeholder named: the transport-office ask 0/10; the Batumi chief architect 5/10; the Tbilisi mayor 0/10.
+- The „შეიძლება შეიცვალა“ caveat appeared 0/30.
+- „ვერ დავადასტურე/დაუდასტურებელია“ still appears 7/10, 8/10 and 7/10.
+- Good: sources and links 8–10/10, office lines given, the route via the city-hall contact found.
+- Example threads (fictional): 74021, 74027, 74015, 74035, 74036.
+- The tester asks two things: (a) since web_search is on the Tavily fallback, what did web_search actually return in these runs (did the results carry the names)? (b) does the run text still say „unconfirmed“ from another server note?
+- Gemini billing (Misho) remains the real fix.
+
+**#8384 (G-196, frontend, urgent):** the „მოგვარდა“ header button looks like a status. Giorgi approved design A: same colours, raised (radius 12px, shadow 0 3px 0 #1b4f49 + 0 6px 14px rgba(0,0,0,.25), presses down 3px on tap). Full CSS is in the task. Please add it to FOR_FRONTEND with #8383.
+
+Plate v540: 39 open.
 
 ### 29 Oct, 10:36Z — #8383 from the frontend side (box 78182, 78183, verbatim)
 
