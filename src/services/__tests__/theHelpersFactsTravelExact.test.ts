@@ -2,7 +2,7 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { factsOf, missingFacts, missingFactsRefusal } from '../answerFacts';
+import { factNumbersOf, factsOf, missingFacts, missingFactsRefusal } from '../answerFacts';
 import { withoutQuotedCopy } from '../replyGuards';
 
 /**
@@ -135,5 +135,24 @@ describe('a surname the helper wrote', () => {
         'ზაზა გამოგონილს იცნობს, ვაკეში მუშაობს.',
       ),
     ).toEqual([]);
+  });
+});
+
+describe('a shared contact card (run watch, alerts 39 and 40)', () => {
+  const card = '[Name] Zaza Gamogonili\n[Mobile] 599 00 00 00';
+
+  it('holds the name, not the labels or the digit groups', () => {
+    const written = factsOf(card).map((f) => f.written);
+    expect(written).toEqual(['Zaza', 'Gamogonili']);
+    expect(missingFacts(card, 'Zaza Gamogonili-ს ნომერი გამოგიგზავნე.')).toEqual([]);
+  });
+
+  it('reads a number in groups as a phone, with or without the country code', () => {
+    expect(factNumbersOf('+995 599 00 00 00')).toEqual([]);
+    expect(factNumbersOf('599-00-00-00')).toEqual([]);
+  });
+
+  it('still holds a price written in groups', () => {
+    expect(factNumbersOf('ფასი 15 000 000 ლარი')).toEqual(['15', '000', '000']);
   });
 });

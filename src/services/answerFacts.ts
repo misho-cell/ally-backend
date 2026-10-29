@@ -16,6 +16,17 @@ const CASE_ENDING_CHARS = 2;
 const MIN_STEM_CHARS = 3;
 
 const NUMBER_RE = /\d+(?:[.,:/-]\d+)*/gu;
+/**
+ * Run watch, alerts 39 and 40 (29 Oct, a real member): a shared contact card
+ * („[Name] …" / „[Mobile] 599 12 34 56") was read as nine facts — the labels as
+ * brand words and each digit group as a number of its own — and every answer
+ * was refused three times. A card label is not a fact, and a number written in
+ * groups is still a phone number.
+ */
+const CARD_LABEL_RE = /^[ \t]*\[[A-Za-z][A-Za-z ]{1,19}\][ \t]*/gmu;
+const GROUPED_NUMBER_RE = /\+?\d{2,4}(?:[ -]\d{2,4}){2,}/gu;
+/** Fewer digits than a Georgian number in groups („15 000 000" is a price). */
+const GROUPED_PHONE_DIGITS_MIN = 9;
 const LINK_RE = /(?:https?:\/\/\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.]+)/giu;
 const LATIN_WORD_RE = /\b[A-Za-z][A-Za-z'’-]{2,}\b/gu;
 const WORD_RE = /[\p{L}]+/gu;
@@ -170,8 +181,18 @@ export function withoutLinks(text: string): string {
   return text.replace(LINK_RE, ' ');
 }
 
+function withoutCardLabels(text: string): string {
+  return text.replace(CARD_LABEL_RE, ' ');
+}
+
+function withoutGroupedPhones(text: string): string {
+  return text.replace(GROUPED_NUMBER_RE, (n) =>
+    n.replace(/\D/gu, '').length >= GROUPED_PHONE_DIGITS_MIN ? ' ' : n,
+  );
+}
+
 function numbersOf(line: string): AnswerFact[] {
-  return [...withoutLinks(line).matchAll(NUMBER_RE)]
+  return [...withoutGroupedPhones(withoutLinks(line)).matchAll(NUMBER_RE)]
     .map((m) => m[0])
     .filter((n) => n.replace(/\D/gu, '').length < PHONE_DIGITS_MIN)
     .map((n) => ({ written: n, mustAppear: n }));
@@ -230,7 +251,7 @@ function isLatinName(word: LatinWord, capitalisedMidSentence: ReadonlySet<string
 }
 
 function latinWordsOf(line: string): AnswerFact[] {
-  const withoutLinks = line.replace(LINK_RE, ' ');
+  const withoutLinks = withoutCardLabels(line.replace(LINK_RE, ' '));
   const onlyCapitalised = isMostlyLatin(withoutLinks);
   const words = latinWordsIn(withoutLinks);
   const capitalisedMidSentence = new Set(
