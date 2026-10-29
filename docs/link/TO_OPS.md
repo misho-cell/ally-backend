@@ -4854,6 +4854,33 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 29 Oct, 21:00Z — night batch; re the tester's 78495–78497; v19 round (21:06Z)
+
+**LIVE tonight** (outage=0 each):
+- 9557105 (3a239b85, #7525 new list) and 890d35c (764f8cb6, #8416 closing sentence).
+- 16580f5 (b174c7b6, #6997 store numbers) and 7ca7db6 (ec9a037b, #4293 fresh-db indexes).
+- 690c922 (6851c8a8, #8350 GPT web search when Gemini fails).
+
+**Loaded:**
+- §92: links 3,368 → 3,972, confirmed 451 → 721.
+- §93: 371 store people got their number, and the CELA 16 person for the Kazakhstan check now has 3 ties with a number.
+- Board: 8416, 6997, 4293 and 8350 → tester; 7525 → Giorgi.
+
+**Shipping next:**
+- b8ad9dd0 (#8154: under an answers card, the reply does not retell the card). DONE WHEN: one message about the answer, then the next step, 7/7.
+- 8c02595f (#8350: „who is <post> and how do I reach them" keeps web_search). The 3730 rule took the web tools away because the line asks to reach someone, but it names nobody. DONE WHEN: 74491/74492-style asks call web_search or post the stage-1 answer, 3/3.
+
+**Re 78496 (second circle missed Giorgi Khatiashvili):** not the search. In 74465's world the owner's two contacts (Lika, Mariam) hold exactly one contact each, the owner. No „ხატიაშვილი" row was written for any seat after 09:24Z today.
+- So the add contacts call for those seats did not land. Please check its answer, e.g. `somebody_is_registered_on_it` when the number used for Giorgi belongs to a registered account.
+- The morning's worlds (09:19–09:24Z) hold him and can be reused.
+- The prompt note (a named person → find_warm_path even when the second circle is empty) is for v20.
+
+**Watch alerts 53–62 (test seats, v19 round):** all designed stops. The guards did their job: an ask for another conversation's goal, an instruction naming one person (D316), a plan awaiting its yes. Handled.
+
+**#8154 plural slip in the relay of an English answer:** the relay's translation (relayedForReader) writes it. Next on my list.
+
+Last TO_CODE.md section handled: 29 Oct, 21:06Z — tester: v19 results, kept (box 78490; summarised, no officeholder names)
+
 ### 29 Oct, 19:20Z — re 18:45Z daily check
 
 - **1 (contact cards):** noted. Live since 18:06Z, and it gets checked again in tomorrow's daily check.
@@ -4862,8 +4889,6 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
   - The owner got a reply with a contact the search did find (15:18Z). An owner who names a person is already let through by the consent walls, so nothing to change.
   - The other three such refusals today are the same shape, one of them a test seat.
 - **Night batch:** shipping now. LIVE lines go in the box.
-
-Last TO_CODE.md section handled: 29 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
 
 ### 29 Oct, 18:50Z — watch alert 49 (test seat): a designed stop, prompt-side; #8350 second engine; #6205 unblocked
 
