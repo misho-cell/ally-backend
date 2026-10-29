@@ -6582,3 +6582,13 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** board row #8154 (FAILED on Giorgi's own account, G-208, „back to build, urgent"), done directly under Misho's standing rule of 26 Oct and his word of 29 Oct to fix what a real person hits.
 - **What:** live write on one real ask. Lika answered „ქართველი ფეხბურთელები არ ვიცი. შემიძლია კალათბურთელი შემოგთავაზო" and the typed-decline rule marked it declined. The fix (typedDecline.ts) stops that from now on. This clears the one mark it left: `UPDATE task_asks SET declined_at = NULL WHERE id = 31089 AND declined_at IS NOT NULL`. The ask stays answered with her words, and the route shows it as an answer, not „უარი თქვა".
 - **Undo:** `UPDATE task_asks SET declined_at = '2026-10-29T15:11:30Z' WHERE id = 31089;`
+
+## 91 · #7525: LINKS PLACED WITH THE AXEL v7 person_numbers.csv (Misho uploaded it in his chat, 29 Oct ~16:00Z)
+
+- **Who authorises:** Misho's „4 კი" (the rest of the company base) and his upload of NETAI_AXEL_PERSON_NUMBERS_v7_FOR_MISHO_2026-10-29.zip into this session.
+- **What:** `POST /admin/company-base/load` part links, with person_numbers.csv. Only roster / roster — likely / strong ties load; the 761 weak ones are skipped by the loader.
+  - Dry run: 976 links written. Every one was placed by a unique roster name (the rule §69 used): the file's number tokens resolve to no live number, because they were made under a retired server key.
+  - 4,939 rows have tokens that resolve to nothing, and 1,515 have no token at all; both stay out.
+  - Upsert on (phone, company, evidence, role).
+- **Kept first:** all 2,521 person_company_links rows as they stood, in the session's scratchpad (undo91/links.json).
+- **Undo:** delete the person_company_links rows not in that copy, and restore the refreshed fields from it.
