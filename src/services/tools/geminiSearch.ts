@@ -46,6 +46,7 @@ interface GroundingSupport {
 
 export interface GeminiResponse {
   candidates?: {
+    content?: { parts?: { text?: string }[] };
     groundingMetadata?: {
       groundingChunks?: GroundingChunk[];
       groundingSupports?: GroundingSupport[];
@@ -108,32 +109,53 @@ async function pageAddress(url: string): Promise<string> {
   }
 }
 
-/** One grounded search. Throws GeminiSearchError when Gemini cannot answer; the caller decides what follows. */
-export async function geminiSearch(query: string, apiKey: string): Promise<GeminiHit[]> {
+/** Pure: the text of a grounded answer, its parts joined. */
+export function answerText(data: GeminiResponse): string {
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  return parts
+    .map((part) => part.text ?? '')
+    .join('')
+    .trim();
+}
+
+/** Each hit with its page's own address in place of a Google redirect link. */
+export async function withPageAddresses(hits: readonly GeminiHit[]): Promise<GeminiHit[]> {
+  const addresses = await Promise.all(hits.map((h) => pageAddress(h.url)));
+  return hits.map((h, i) => ({ ...h, url: addresses[i] }));
+}
+
+/** One call with Grounding with Google Search. Throws GeminiSearchError when Gemini cannot answer. */
+export async function groundedCall(
+  prompt: string,
+  apiKey: string,
+  timeoutMs: number = SEARCH_TIMEOUT_MS,
+): Promise<GeminiResponse> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
-  let data: GeminiResponse;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${GEMINI_ENDPOINT}/${geminiModel()}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       signal: controller.signal,
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: SEARCH_INSTRUCTION + query }] }],
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         tools: [{ google_search: {} }],
       }),
     });
     if (!response.ok) {
       throw new GeminiSearchError(`Gemini error ${response.status}: ${await response.text()}`);
     }
-    data = (await response.json()) as GeminiResponse;
+    return (await response.json()) as GeminiResponse;
   } catch (err) {
     if (err instanceof GeminiSearchError) throw err;
     throw new GeminiSearchError((err as Error).message);
   } finally {
     clearTimeout(timer);
   }
-  const hits = groundedHits(data);
-  const addresses = await Promise.all(hits.map((h) => pageAddress(h.url)));
-  return hits.map((h, i) => ({ ...h, url: addresses[i] }));
+}
+
+/** One grounded search. Throws GeminiSearchError when Gemini cannot answer; the caller decides what follows. */
+export async function geminiSearch(query: string, apiKey: string): Promise<GeminiHit[]> {
+  const data = await groundedCall(SEARCH_INSTRUCTION + query, apiKey);
+  return withPageAddresses(groundedHits(data));
 }
