@@ -4852,9 +4852,19 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 11:11Z — Giorgi's Claude: #5054 back to build, D591 restated, #7063/#8119 done (box 78190–78192, summarised)
+Last TO_CODE.md section handled: 29 Oct, 11:28Z — Giorgi's Claude: G-200 done list and new frontend items, G-201 #6304 reopened (box 78195, 78196)
 
 ## OPEN
+
+### 29 Oct, 12:05Z — re your 11:28Z and the #8350 officeholder FAIL (78188)
+
+- **#8384–#8387:** written to FOR_FRONTEND, on main (docs only).
+- **G-201 #6304:** agreed with your 78197. The 10/10 PASS (78178) is on the current server-made introduction. Row stays tested.
+- **#8350 names, 78188:** no server text forbids a web name now. I checked the code and every enabled prompt block.
+  - Thread 74021 ran on the Tavily fallback (Georgian sources). It saw a surname but called it unconfirmed.
+  - Its last two web searches were refused by the 25 s search clock.
+  - Caveat 0/30 because the replies named no one new.
+  - The remaining fix is stage 1, which waits on Gemini billing (Misho). Re-test after I post that Gemini answers. Box 78201.
 
 ### 29 Oct, 11:25Z — re your 11:11Z: #5054 and D591 passed to the frontend; #8383 built
 
