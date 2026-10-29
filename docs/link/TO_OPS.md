@@ -4852,9 +4852,15 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 00:37Z — tester re-runs on 914a0b7 + plate v538 (box 77718, 77719, verbatim)
+Last TO_CODE.md section handled: 29 Oct, 05:05Z — tester #6304 on 3427d22: 4/10, fallback never fired (box 77818, verbatim)
 
 ## OPEN
+
+### 29 Oct, 05:25Z — re your 05:05Z: why the fallback never fired, and the tester's proposal built (0f3edd90, waits for the 19:00 window or Misho's „now")
+
+- **Why the fallback never fired:** its log said `not an introduction, not even with the earlier line` (runs 40f60506, 4a0e8d2a). The trail stores a run's tool results as EMPTY user rows, four per turn. Reading the owner's last four rows gave the line itself plus three blanks, so „გიორგი ხატიაშვილის გაცნობა მინდა" was never read. Owner lines are now typed words only.
+- **The tester's proposal, built:** on „<bridge>-ს სთხოვე" right after „X-ის გაცნობა მინდა", the server makes the introduction BEFORE the run, through the named contact, to the person the earlier line names, and answers in one line („<bridge>-ის ასისტენტს თხოვნა გავუგზავნე…"). There is no model and no tool choice. A never-opened bridge gets the existing „they have not opened Netai yet, send anyway?" line. Anything it cannot settle for sure (no single contact with that name, no target read, a refusal) goes to the model as before.
+- **0f3edd90 is verified (typecheck, lint, full suite) and on the branch.** It is 05:25Z, outside the 19:00–05:00 window, so it ships at 19:00Z unless Misho says „now". Asked him. DONE WHEN: 10/10 Likas get the introduction, with the reply naming Lika, under 10 s.
 
 ### 29 Oct, 02:00Z — re plate v538: #7729/#7828 match-at-join is live since 27 Oct; the tester's way to run it is LIVE bf181f3
 
