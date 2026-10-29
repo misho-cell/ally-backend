@@ -8,12 +8,15 @@ jest.mock('../axelLoad/axelBaseLoad.service', () => ({
   numbersByHash: (...a: unknown[]) => mockNumbers(...a),
 }));
 const mockRoster = jest.fn();
+const mockPhonebooks = jest.fn();
 jest.mock('../axelExport/axelData', () => ({
   readRoster: (...a: unknown[]) => mockRoster(...a),
+  readPhonebooks: (...a: unknown[]) => mockPhonebooks(...a),
 }));
 
 import { CompanyBasePart, loadCompanyBasePart } from '../companyBase/companyBaseLoad.service';
 import { linkRows, publicPeopleRows, searchTextOf } from '../companyBase/companyBasePlan';
+import { labelNameKeys } from '../companyBase/phonebookNames';
 
 const HASH = 'a'.repeat(24);
 const LINKS =
@@ -21,17 +24,21 @@ const LINKS =
   `P-1,Rustam,C-KZ-001,TransCaspian,Executive Director,current,CELA public web,confirmed,0,web,\n` +
   `${HASH},Nino,204854595,TBC,,saved with company name,phone label,possible,1,label,\n` +
   `P-9,Nobody,204854595,TBC,,current,fact,confirmed,0,web,\n` +
-  `P-2,Bad,204854595,TBC,,current,fact,maybe,0,web,\n`;
+  `P-2,Bad,204854595,TBC,,current,fact,maybe,0,web,\n` +
+  `P-7,Giorgi Gamogonili,204854595,TBC,Director,current,fact,confirmed,0,web,\n`;
 const NUMBERS = `person_key,number_hash,tie\nP-1,${'b'.repeat(24)},strong\nP-9,${'c'.repeat(24)},weak\n`;
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => {
+  jest.resetAllMocks();
+  mockPhonebooks.mockResolvedValue([]);
+});
 
 /** D847 (TECH_TASK_COMPANY_BASE §3): the package's company files become the base. */
 describe('the company base loads from the package', () => {
   it('ties a link to a number by its own token or the person’s loadable token; a weak tie is no number', () => {
-    const { rows, withoutNumber } = linkRows(LINKS, NUMBERS);
-    expect(rows.map((r) => r.hashes)).toEqual([['b'.repeat(24)], [HASH]]);
-    expect(withoutNumber).toBe(1);
+    const { rows, weaklyTied } = linkRows(LINKS, NUMBERS);
+    expect(rows.map((r) => r.hashes)).toEqual([['b'.repeat(24)], [HASH], []]);
+    expect(weaklyTied).toBe(1);
   });
 
   it('keeps only public roles, and a description everyone can search', () => {
@@ -51,8 +58,8 @@ describe('the company base loads from the package', () => {
     mockNumbers.mockResolvedValue(new Map([['b'.repeat(24), '+77010000001']]));
     mockRoster.mockResolvedValue([]);
     const report = await loadCompanyBasePart(CompanyBasePart.Links, LINKS, true, NUMBERS);
-    expect(report).toMatchObject({ rows_in_file: 3, rows_written: 1 });
-    expect(report.skipped).toEqual({ person_without_number: 1, number_not_found: 1 });
+    expect(report).toMatchObject({ rows_in_file: 4, rows_written: 1 });
+    expect(report.skipped).toEqual({ person_weakly_tied: 1, number_not_found: 2 });
     expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 
@@ -70,9 +77,9 @@ describe('the company base loads from the package', () => {
     const report = await loadCompanyBasePart(CompanyBasePart.Links, LINKS, true, NUMBERS);
     expect(report).toMatchObject({ rows_written: 1 });
     expect(report.skipped).toEqual({
-      person_without_number: 1,
-      placed_by_name: 1,
-      number_not_found: 1,
+      person_weakly_tied: 1,
+      placed_by_member_name: 1,
+      number_not_found: 2,
     });
   });
 
@@ -84,5 +91,60 @@ describe('the company base loads from the package', () => {
     expect(report.rows_written).toBe(1);
     const [sql] = mockQuery.mock.calls[0] as [string];
     expect(sql).toContain('ON CONFLICT (industry_id) DO UPDATE');
+  });
+});
+
+/** #7525 (Misho, 29 Oct): the old key is gone, so the list is made again from the members' phonebooks. */
+describe('the new list: a person found by the name members saved them under', () => {
+  const companies = { rows: [{ company_id: 'C-KZ-001' }, { company_id: '204854595' }] };
+
+  it('reads a label’s name from its edges, in either order, and not from inside it', () => {
+    expect(labelNameKeys('Giorgi Gamogonili TBC')).toContain('giorgi gamogonili');
+    expect(labelNameKeys('TBC Giorgi Gamogonili')).toContain('giorgi gamogonili');
+    expect(labelNameKeys('Gamogonili Giorgi')).toContain('giorgi gamogonili');
+    expect(labelNameKeys('Nino Giorgi Gamogonili Jr')).not.toContain('giorgi gamogonili');
+  });
+
+  it('places a link on the one number whose label carries the full name', async () => {
+    mockQuery.mockResolvedValue(companies);
+    mockNumbers.mockResolvedValue(new Map());
+    mockRoster.mockResolvedValue([
+      { user_id: 1, phone: '+995500000101', name: 'Nino', match_names: [] },
+    ]);
+    mockPhonebooks.mockResolvedValue([
+      { owner_id: 1, contact_digits: '995500000201', label: 'Giorgi Gamogonili TBC' },
+      { owner_id: 1, contact_digits: '995500000201', label: 'გიორგი გამოგონილი' },
+    ]);
+    const report = await loadCompanyBasePart(CompanyBasePart.Links, LINKS, true, NUMBERS);
+    expect(report.skipped).toMatchObject({ placed_by_member_name: 1, placed_by_phonebook_name: 1 });
+  });
+
+  it('places nobody when two numbers carry the name', async () => {
+    mockQuery.mockResolvedValue(companies);
+    mockNumbers.mockResolvedValue(new Map());
+    mockRoster.mockResolvedValue([
+      { user_id: 1, phone: '+995500000101', name: 'X', match_names: [] },
+    ]);
+    mockPhonebooks.mockResolvedValue([
+      { owner_id: 1, contact_digits: '995500000201', label: 'Giorgi Gamogonili' },
+      { owner_id: 1, contact_digits: '995500000202', label: 'Giorgi Gamogonili Bank' },
+    ]);
+    const report = await loadCompanyBasePart(CompanyBasePart.Links, LINKS, true, NUMBERS);
+    expect(report.skipped.placed_by_phonebook_name).toBeUndefined();
+  });
+
+  it('places nobody when two people in the file share the name', async () => {
+    mockQuery.mockResolvedValue(companies);
+    mockNumbers.mockResolvedValue(new Map());
+    mockRoster.mockResolvedValue([
+      { user_id: 1, phone: '+995500000101', name: 'X', match_names: [] },
+    ]);
+    mockPhonebooks.mockResolvedValue([
+      { owner_id: 1, contact_digits: '995500000201', label: 'Giorgi Gamogonili' },
+    ]);
+    const twoPeople =
+      LINKS + `P-8,Giorgi Gamogonili,C-KZ-001,TransCaspian,,current,fact,confirmed,0,web,\n`;
+    const report = await loadCompanyBasePart(CompanyBasePart.Links, twoPeople, true, NUMBERS);
+    expect(report.skipped.placed_by_phonebook_name).toBeUndefined();
   });
 });

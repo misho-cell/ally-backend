@@ -69,6 +69,8 @@ export interface PublicPersonRow {
 
 /** A tie of one of our people to a company, before the server finds the number. */
 export interface LinkRow {
+  /** The package's person key: one person may hold many links. */
+  readonly personKey: string;
   readonly hashes: readonly string[];
   readonly companyId: string;
   readonly personName: string;
@@ -178,27 +180,40 @@ export function tokensByPerson(personNumbersCsv: string): Map<string, string[]> 
   return out;
 }
 
+/** People the Axel package ties to a number only weakly: a name, no second signal. */
+export function weaklyTiedPeople(personNumbersCsv: string): Set<string> {
+  const weak = new Set<string>();
+  for (const r of csvRecords(personNumbersCsv)) {
+    if (!LOADABLE_TIES.has(r.tie ?? '')) weak.add((r.person_key ?? '').trim());
+  }
+  return weak;
+}
+
 /**
  * The links, each with the number tokens it can sit on: the key itself when it
- * is a token, else the person's loadable tokens. A link with neither is counted
- * and left out — there is no number to hold it.
+ * is a token, else the person's loadable tokens. #7525 (Misho, 29 Oct: „make a
+ * new list"): a person the package never tied to a number keeps the link with
+ * no token, for the loader to place by the name members saved them under. A
+ * person tied only weakly stays out (tester, 29 Oct: skipping those is right).
  */
 export function linkRows(
   linksCsv: string,
   personNumbersCsv: string,
-): { rows: LinkRow[]; withoutNumber: number } {
+): { rows: LinkRow[]; weaklyTied: number } {
   const tokens = tokensByPerson(personNumbersCsv);
+  const weak = weaklyTiedPeople(personNumbersCsv);
   const rows: LinkRow[] = [];
-  let withoutNumber = 0;
+  let weaklyTied = 0;
   for (const r of csvRecords(linksCsv)) {
     const key = (r.person_key ?? '').trim();
     if (key === '' || (r.company_id ?? '') === '' || !STATUSES.has(r.status ?? '')) continue;
     const hashes = HASH_RE.test(key.toLowerCase()) ? [key.toLowerCase()] : (tokens.get(key) ?? []);
-    if (hashes.length === 0) {
-      withoutNumber += 1;
+    if (hashes.length === 0 && weak.has(key)) {
+      weaklyTied += 1;
       continue;
     }
     rows.push({
+      personKey: key,
       hashes,
       companyId: r.company_id,
       personName: cut(r.person_name),
@@ -210,5 +225,5 @@ export function linkRows(
       source: cut(r.source),
     });
   }
-  return { rows, withoutNumber };
+  return { rows, weaklyTied };
 }

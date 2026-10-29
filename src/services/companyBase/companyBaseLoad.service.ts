@@ -1,7 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { numbersByHash } from '../axelLoad/axelBaseLoad.service';
-import { readRoster } from '../axelExport/axelData';
-import { RosterCandidate } from '../basePeople/rosterPhones.service';
+import { readPhonebooks, readRoster } from '../axelExport/axelData';
+import { normalizePhone } from '../phone';
 import { nameKey } from '../tools/transliterate';
 import {
   CompanyNameRow,
@@ -15,6 +15,13 @@ import {
   linkRows,
   publicPeopleRows,
 } from './companyBasePlan';
+import {
+  NamedNumber,
+  NamePlacement,
+  NamesOnANumber,
+  labelNameKeys,
+  phonesByUniqueName,
+} from './phonebookNames';
 
 /**
  * D847 — loads the company base, one file at a time (TECH_TASK §3: industries,
@@ -190,44 +197,42 @@ interface PlacedLink extends Omit<LinkRow, 'hashes'> {
   readonly phone: string;
 }
 
-/**
- * #7525: the number each name belongs to, when exactly one roster member
- * carries it (the rule §69 placed 86 of 102 AX- people by). Two members with
- * one name place nobody.
- */
-export function phonesByUniqueName(roster: readonly RosterCandidate[]): Map<string, string> {
-  const byName = new Map<string, Set<string>>();
-  for (const member of roster) {
-    for (const name of member.names) {
-      const key = nameKey(name);
-      if (key === '') continue;
-      byName.set(key, (byName.get(key) ?? new Set<string>()).add(member.phone));
-    }
+/** Name keys carried by two or more different people in the file: such a name places nobody. */
+function sharedNames(rows: readonly LinkRow[]): Set<string> {
+  const keysByName = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const key = nameKey(row.personName);
+    keysByName.set(key, (keysByName.get(key) ?? new Set<string>()).add(row.personKey));
   }
-  const unique = new Map<string, string>();
-  for (const [key, phones] of byName) if (phones.size === 1) unique.set(key, [...phones][0]);
-  return unique;
+  return new Set([...keysByName].filter(([, people]) => people.size > 1).map(([key]) => key));
+}
+
+function bump(skipped: Record<string, number>, reason: string): void {
+  skipped[reason] = (skipped[reason] ?? 0) + 1;
 }
 
 /**
  * Each link on every number its tokens resolve to; the numbers never travel
  * (axelBaseLoad). #7525: a package hashed under a server secret since retired
  * resolves no token, so a link left without a number is placed by its
- * person's name when exactly one roster member carries that name.
+ * person's name when exactly one number carries it (phonebookNames) and no
+ * other person in the file has that name.
  */
 export function placeLinks(
   rows: readonly LinkRow[],
   numbers: ReadonlyMap<string, string>,
   skipped: Record<string, number>,
-  byName: ReadonlyMap<string, string> = new Map(),
+  byName: ReadonlyMap<string, NamedNumber> = new Map(),
 ): PlacedLink[] {
+  const shared = sharedNames(rows);
   const placed = new Map<string, PlacedLink>();
   for (const { hashes, ...link } of rows) {
     const hashed = hashes.map((h) => numbers.get(h)).filter((p): p is string => !!p);
-    const named = hashed.length === 0 ? byName.get(nameKey(link.personName)) : undefined;
-    const phones = named === undefined ? hashed : [named];
-    if (named !== undefined) skipped.placed_by_name = (skipped.placed_by_name ?? 0) + 1;
-    if (phones.length === 0) skipped.number_not_found = (skipped.number_not_found ?? 0) + 1;
+    const key = nameKey(link.personName);
+    const named = hashed.length === 0 && !shared.has(key) ? byName.get(key) : undefined;
+    const phones = named === undefined ? hashed : [named.phone];
+    if (named !== undefined) bump(skipped, named.from);
+    if (phones.length === 0) bump(skipped, 'number_not_found');
     for (const phone of phones) {
       // One row per (number, company, evidence, role): the table's own key.
       placed.set([phone, link.companyId, link.evidence, link.role].join('\u0000'), {
@@ -277,26 +282,41 @@ async function withKnownCompany<T extends { readonly companyId: string }>(
   return kept;
 }
 
+/** Every name a number is known by: the roster's own names, and the labels members saved. */
+async function namesOnNumbers(): Promise<NamesOnANumber[]> {
+  const roster = await readRoster();
+  const ids = roster.map((m) => m.user_id).filter((id): id is number => id !== null);
+  const labels = await readPhonebooks(ids);
+  return [
+    ...roster.map((m) => ({
+      phone: m.phone,
+      names: [m.name ?? '', ...m.match_names].map(nameKey),
+      from: NamePlacement.Member,
+    })),
+    ...labels.map((r) => ({
+      phone: normalizePhone(r.contact_digits),
+      names: labelNameKeys(r.label ?? ''),
+      from: NamePlacement.Phonebook,
+    })),
+  ];
+}
+
 async function loadLinks(
   linksCsv: string,
   personNumbersCsv: string,
   dryRun: boolean,
   skipped: Record<string, number>,
 ): Promise<{ inFile: number; written: number }> {
-  const { rows, withoutNumber } = linkRows(linksCsv, personNumbersCsv);
-  if (withoutNumber > 0) skipped.person_without_number = withoutNumber;
-  const roster = (await readRoster()).map((m) => ({
-    phone: m.phone,
-    names: [m.name ?? '', ...m.match_names].filter((n) => n.trim() !== ''),
-  }));
+  const { rows, weaklyTied } = linkRows(linksCsv, personNumbersCsv);
+  if (weaklyTied > 0) skipped.person_weakly_tied = weaklyTied;
   const placed = placeLinks(
     await withKnownCompany(rows, skipped),
     await numbersByHash(),
     skipped,
-    phonesByUniqueName(roster),
+    phonesByUniqueName(await namesOnNumbers()),
   );
   return {
-    inFile: rows.length + withoutNumber,
+    inFile: rows.length + weaklyTied,
     written: dryRun ? placed.length : await writeLinks(placed),
   };
 }
