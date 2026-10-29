@@ -430,6 +430,7 @@ import {
   applyOfficeholderGate,
   clearRunEvidence,
   recordRunEvidence,
+  recordRunWebSnippetEvidence,
   recordRunLinkedinEvidence,
 } from './officeholderGate';
 import { stripProcessOpener } from './replyOpener';
@@ -12861,6 +12862,8 @@ async function runOneToolBlock(
   else {
     recordRunEvidence(runId, profileEvidence(raw) ?? '');
     recordRunLinkedinEvidence(runId, linkedinEvidence(raw));
+    // #8350 (D899): a name a search returned is kept, with „may have changed".
+    recordRunWebSnippetEvidence(runId, JSON.stringify(raw));
   }
   // Ticket 20 row 139, Tornike's rule: a number found on a public web page may
   // be shown, with the page it came from. Registered here, at the one place a
@@ -13901,9 +13904,10 @@ async function worldAnswerFor(
 /** What the answer says and the numbers its pages print become this run's to name. */
 function noteWorldAnswer(runId: string, answer: WorldAnswer): void {
   registerWebResult(runId, { results: answer.sources });
-  recordRunEvidence(runId, answer.text);
+  // Web material, not a page the run read: its names are kept with „may have changed" (D899).
+  recordRunWebSnippetEvidence(runId, answer.text);
   for (const person of answer.people) {
-    recordRunEvidence(runId, `${person.name} ${person.role} ${person.organisation}`);
+    recordRunWebSnippetEvidence(runId, `${person.name} ${person.role} ${person.organisation}`);
   }
 }
 
@@ -13943,6 +13947,10 @@ function startOpeningSearches(
       // Question A (tester 953): what the opening web search published is
       // allowed for this run, exactly as the model's own web_search is.
       if (found.webRaw !== undefined) registerWebResult(runId, found.webRaw);
+      // #8350 (D899): a name the opening search returned is kept, with „may have changed".
+      if (found.webRaw !== undefined) {
+        recordRunWebSnippetEvidence(runId, JSON.stringify(found.webRaw));
+      }
       // Row 154: the verdicts still join the run's collection for the „From
       // the web" message, whenever they arrive. If the run finishes first the
       // message simply does not carry them, which is what it already does when

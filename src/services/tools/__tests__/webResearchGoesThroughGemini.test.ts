@@ -148,4 +148,18 @@ describe('#7690: a search with the switch on', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0][0])).toBe('https://nbg.gov.ge/en/board');
   });
+
+  it('says a page that does not exist does not, without the extractor (#8350, tester 78013)', async () => {
+    switchIs(true);
+    process.env.TAVILY_API_KEY = 'tavily-test-key';
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 404, text: async () => 'Error report' });
+    const page = (await fetchPage('https://city.example.ge/structure/136')) as {
+      content: string | null;
+      note: string;
+    };
+    delete process.env.TAVILY_API_KEY;
+    expect(page.content).toBeNull();
+    expect(page.note).toContain('does not exist');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

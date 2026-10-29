@@ -172,15 +172,35 @@ export function isBlockedFetchHost(hostname: string): boolean {
 }
 
 /**
+ * #8350 (tester 78013, 29 Oct): a guessed address on a city's site answered
+ * 404, and the extractor handed its error page to the model as the page — 257
+ * characters of „Error report". An address that does not exist is said so.
+ */
+const PAGE_GONE_STATUSES: ReadonlySet<number> = new Set([404, 410]);
+const NO_SUCH_PAGE_NOTE =
+  'This address does not exist on the site (404). Do not guess page addresses: open a page ' +
+  'a search returned, or search for the page.';
+
+interface RawPage {
+  readonly text: string;
+  readonly gone: boolean;
+}
+
+/**
  * Last-resort page read when Tavily's extractor comes back empty: plain GET +
  * crude tag strip. Gov pages that defeat the extractor often still carry
  * their roster in plain markup, so even rough text beats an empty answer.
  */
 async function fetchRawPageText(url: string): Promise<string> {
+  return (await fetchRawPage(url)).text;
+}
+
+async function fetchRawPage(url: string): Promise<RawPage> {
+  const none: RawPage = { text: '', gone: false };
   try {
-    if (isBlockedFetchHost(new URL(url).hostname)) return '';
+    if (isBlockedFetchHost(new URL(url).hostname)) return none;
   } catch {
-    return '';
+    return none;
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
@@ -189,17 +209,18 @@ async function fetchRawPageText(url: string): Promise<string> {
       signal: controller.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AllyBot/1.0)' },
     });
-    if (!response.ok) return '';
+    if (!response.ok) return { text: '', gone: PAGE_GONE_STATUSES.has(response.status) };
     const html = await response.text();
-    return html
+    const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&nbsp;/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+    return { text, gone: false };
   } catch {
-    return '';
+    return none;
   } finally {
     clearTimeout(timer);
   }
@@ -448,7 +469,9 @@ export async function fetchPage(url: string, fromCharacter = 0, startAt?: RegExp
   // #7690: with Gemini searching, a page is read by our own fetch first;
   // Tavily's extractor is only the fallback for a page that gives no text.
   if ((await webSearchProvider()) === WebSearchProvider.Gemini) {
-    const direct = await fetchRawPageText(target);
+    const raw = await fetchRawPage(target);
+    if (raw.gone) return { url: target, content: null, note: NO_SUCH_PAGE_NOTE };
+    const direct = raw.text;
     if (direct) return pageResult(target, direct, firstRead(direct, fromCharacter, startAt));
     if (!TAVILY_API_KEY) return { url: target, content: null, note: NO_TEXT_NOTE };
   }
