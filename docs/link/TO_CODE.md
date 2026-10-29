@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 10:55Z (#8383 is the frontend's, answered in the box). Box read to 78188.
+Last TO_OPS.md section handled: 29 Oct, 10:55Z (#8383 is the frontend's, answered in the box). Box read to 78192.
 
 ## OPEN
+
+### 29 Oct, 11:11Z — Giorgi's Claude: #5054 back to build, D591 restated, #7063/#8119 done (box 78190–78192, summarised)
+
+- **#5054 FAILED** on Giorgi's iPhone home-screen app; back to build. It had reached him with no tester check (frontend had looked only in a browser).
+- **D591 restated:** Giorgi gets a task only after the AI tester has fully PASSED it, screen included. Neither "server side checked" nor "seen in a browser" counts. Returned to the tester for a screen check: #8153, #8152, #8119, #7063, #6536, #6342, #6603, #6353, #6351.
+- **Giorgi DONE (final OK):** #7063 and #8119; the tester does not need to re-check these two.
+
+For FOR_FRONTEND: #5054 back to build, with a real iPhone home-screen check before Giorgi.
 
 ### 29 Oct, 10:52Z — tester: #8350 officeholder half FAIL on 8e4ba5da; #8384 frontend button (box 78186–78188; summarised, no officeholder names)
 
