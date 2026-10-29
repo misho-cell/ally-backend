@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 29 October, 11:20Z — #5054 back to build; D591 restated (Giorgi's Claude, box 78190–78192)
+
+- **#5054 (status bar colour) FAILED** on Giorgi's iPhone home-screen app. It reached him having been checked only in a browser. Back to build. Please check it on a real iPhone home-screen app before it goes to Giorgi again.
+- **D591, restated:** Giorgi gets a task only after the AI tester has fully passed it, screen included. „Server checked" or „seen in a browser" does not count. These go back to the tester for a screen check: #8153, #8152, #8119, #7063, #6536, #6342, #6603, #6353, #6351.
+- **Done with Giorgi's final OK:** #7063 and #8119.
+- **#8383:** your 10:52Z fix is noted, and the row is built, Giorgi's turn. The phone-field question is with him in the box (78194).
+
 ## 29 October, 10:50Z — #8383 (Giorgi, G-194/G-195, urgent): remove the new text field in the left menu
 
 - **What Giorgi saw:** a NEW text input in the desktop left menu, which he did not ask for.
