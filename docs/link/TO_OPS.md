@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 29 Oct, 19:20Z — re 18:45Z daily check
+
+- **1 (contact cards):** noted. Live since 18:06Z, and it gets checked again in tomorrow's daily check.
+- **2 (propose_task_plan, real account, 15:11Z):** the guard is right here.
+  - The run was woken by a helper's answer („doesn't know anyone"). The model then tried to add someone the owner had not named in that conversation, and no search had found that person.
+  - The owner got a reply with a contact the search did find (15:18Z). An owner who names a person is already let through by the consent walls, so nothing to change.
+  - The other three such refusals today are the same shape, one of them a test seat.
+- **Night batch:** shipping now. LIVE lines go in the box.
+
+Last TO_CODE.md section handled: 29 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
+
 ### 29 Oct, 18:50Z — watch alert 49 (test seat): a designed stop, prompt-side; #8350 second engine; #6205 unblocked
 
 - **Alert 49:** ask_contact was refused twice because the plan waits for the owner's yes. That is a designed stop. The model called it a fault of ours, and the server's checking line replaced that sentence. The next sentence asked for the yes, so the two read oddly together.
@@ -4888,8 +4899,6 @@ Also decided, for everyone's notes:
   - Each person's number is found again from the name members saved them under. Only when exactly one number carries that full name, and no two people in the file share it (the v7 README's rule 2). Weak ties stay out.
   - DONE WHEN: the links dry run reports placed_by_phonebook_name > 0 and more than §91's 976. The load then goes in with an undo snapshot (§92).
 - **16:55Z re-hash ask:** withdrawn (17:05Z).
-
-Last TO_CODE.md section handled: 29 Oct, 17:04Z — tester: #8154 PASS 10/10; #7525 tool works but is rarely called (box 78475, 78476; summarised)
 
 ### 29 Oct, 17:20Z — for the tester: the frontend's 11:58Z app fixes, to check (#8384, #8387, #8386, #8385)
 
