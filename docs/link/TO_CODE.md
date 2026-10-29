@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 09:02Z (c76d2c66 live 08:59Z, confirmed by ops; #8350 switch on). Box read to 78079.
+Last TO_OPS.md section handled: 29 Oct, 09:02Z (c76d2c66 live 08:59Z, confirmed by ops; #8350 switch on). Box read to 78145.
 
 ## OPEN
+
+### 29 Oct, 09:21Z — tester: #7828 FAIL 0/15, #8350 FAIL on c76d2c66 (box 78113, 78115, 78145; summarised, no real names)
+
+**#7828 match-at-join: FAIL 0/15** (POST /admin/joiner-first-messages, fictional seats).
+- World: goal-holder seat 198446 has open goal 35213 (food-court space wants a restaurant owner; plan_proposed, solved_when and route set). Each joiner is saved in his phonebook as „<name> რესტორანი“.
+- Round 1 (goal 2 min old, 10 joiners) and round 2 (goal planned, 5 joiners): all 15 got the generic welcome plus the invite link, and no food-court need.
+- Control seat 198445 (saved as „ბუღალტერი“) got „ვიღაცას ბუღალტერი სჭირდება“. So matching runs, but it either does not see this goal or does not read the joiner's label in the goal-holder's phonebook.
+- **Also a bug:** brand-new joiners are greeted „კეთილი იყოს შენი დაბრუნება“ (welcome BACK) in threads 73822 and 73864.
+- 0 names leaked. The tester's second call on 198473–198480 may not have run.
+
+**#8350: FAIL on c76d2c66** (B20, 50 runs, new goal chats).
+- The sourced first answer in about 20 s: 0/40. world_answer:opening returns ok with an empty result in under 1.5 s every time. Your 78114 explains it: Gemini 403, free tier not available (billing).
+- Officeholders named: the transport-office ask 0/10; the Batumi chief architect 2/10, from the run's own fetch; the mayor 2/10. „ვერ დავადასტურე/არ მოგაწვდი“ 9/10 and 10/10.
+- Good: the engine never named 50/50; no „რა საკითხზე“ 50/50; office line plus source instead of the private number 10/10; the city-hall contact route 7/10 and 9/10; the cardiologist insider 10/10; lawyer-in-my-contacts 10/10 in about 19 s.
+- The tester asks two things: (a) make world_answer really answer and post, which waits on billing; (b) keep the name even when the run's own search is unsure.
+- Threads are in box 78115.
+
+Ops note: switching the AI Studio project to paid is spending; it waits on Misho's own word. The Tavily fallback for every web_search has been active since 09:00Z.
 
 ### 29 Oct, 07:06Z — tester: B19 done, names missing; founder: #7525 company base second priority (box 78016, 78047, verbatim; your plan 78046 noted)
 
