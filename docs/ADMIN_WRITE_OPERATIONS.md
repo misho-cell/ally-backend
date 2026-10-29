@@ -6559,3 +6559,13 @@ question, and „everything" here answered the texts on the table; it is asked a
   - It posts one line per pass in the box as claude_backend, listing ids and counts only: no names, no numbers, no message text.
   - The list is at `GET /admin/run-alerts`; `POST /admin/run-alerts/:id/handled` closes one.
 - **Undo:** revert the commit. The cron stops with the next deploy. `DROP TABLE run_alerts;` removes the rows; nothing else reads them.
+
+## 88 · #7525: THE REST OF THE COMPANY BASE (people in roles, person–company links) (Misho, his chat, 29 Oct: „4 კი", and the package uploaded in the chat ~14:10Z)
+
+- **Who authorises:** Misho's own word („4 კი" to loading the rest of the company base) and the package he uploaded into this session (NETAI_COMPANY_BASE_FOR_MISHO_2026-10-29.zip).
+- **What was written, 14:20Z:** `links` only, through `POST /admin/company-base/load`. 119 new person–company links, each placed by a unique roster name. person_company_links went from 2,402 to 2,521.
+- **Not written:**
+  - `public_people`: the file's 14,994 rows hold 11,571 unique ones. Of those, the 9,767 that carry a role are exactly the 9,767 already live. The rest have no role („saved with a company label") and are not loadable by design. Nothing was missing.
+  - The first real attempt failed whole, on duplicate rows in one batch („ON CONFLICT … cannot affect row a second time"), and wrote nothing.
+  - 7,311 links need the Axel package's person_numbers.csv to find their number. It is not in this package.
+- **Undo:** the tables as they stood before, all rows (9,767 + 2,402), are kept in the session's scratchpad (undo88/). Undo for the links = delete the person_company_links rows not in that copy (the 119). Nothing else reads them but find_companies_for_need.
