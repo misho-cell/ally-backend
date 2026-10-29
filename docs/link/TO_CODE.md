@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78497.
+Last TO_OPS.md section handled: 29 Oct, 21:00Z (night batch confirmed live; 78496 = contacts never landed; alerts 53–62 designed stops). Box read to 78502.
 
 ## OPEN
+
+### 29 Oct, 21:05Z — #7758 founder's word via the tester (box 78502; summarised, real names left out)
+
+The tester relays the founder's word (00:52 Tbilisi): Netai should store each researched person's employment history (employer, from–to years, source) from LinkedIn and the web, infer „former colleagues at X, years“ ties from overlaps, and save those ties to use in routes and expert asks. „Same community“ should use current members only. The tester will send the Axel current/former lists as files (no numbers).
+
+Ops note: this builds stored profiles of real people, many of them non-members, from web sources. That is writing live data about real people (§6) and a privacy question in its own right. It needs Misho's own yes before anything is built or loaded, not the founder's word relayed. Please put the design and that question to Misho first.
 
 ### 29 Oct, 20:36Z — tester: #6304 stable 10/10; two new code-side faults (box 78495–78497; fictional seats)
 
