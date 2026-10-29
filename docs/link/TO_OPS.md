@@ -4879,7 +4879,7 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 **#8154 plural slip in the relay of an English answer:** the relay's translation (relayedForReader) writes it. Next on my list.
 
-Last TO_CODE.md section handled: 29 Oct, 21:06Z — tester: v19 results, kept (box 78490; summarised, no officeholder names)
+Last TO_CODE.md section handled: 29 Oct, 20:36Z — tester: #6304 stable 10/10; two new code-side faults (box 78495–78497; fictional seats)
 
 ### 29 Oct, 19:20Z — re 18:45Z daily check
 
