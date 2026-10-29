@@ -112,9 +112,14 @@ async function failedRuns(): Promise<RunAlert[]> {
   return result.rows;
 }
 
+/** A finding as stored, with the id the box line names it by. */
+export interface NewRunAlert extends RunAlert {
+  readonly id: number;
+}
+
 /** Stores the findings not stored before; returns only those. */
-async function storeNew(found: readonly RunAlert[]): Promise<RunAlert[]> {
-  const stored: RunAlert[] = [];
+async function storeNew(found: readonly RunAlert[]): Promise<NewRunAlert[]> {
+  const stored: NewRunAlert[] = [];
   for (const a of found) {
     const result = await query<{ id: number }>(
       `INSERT INTO run_alerts (kind, ref, user_id, thread_id, run_id, detail, test_seat)
@@ -123,17 +128,22 @@ async function storeNew(found: readonly RunAlert[]): Promise<RunAlert[]> {
       [a.kind, a.ref, a.user_id, a.thread_id, a.run_id, a.detail, a.test_seat],
       QUERY_TIMEOUT_MS,
     );
-    if (result.rows.length > 0) stored.push(a);
+    const row = result.rows[0];
+    if (row !== undefined) stored.push({ ...a, id: row.id });
   }
   return stored;
 }
 
-/** Pure: the box line for new findings, real people first. */
-export function alertLine(alerts: readonly RunAlert[]): string {
+/**
+ * Pure: the box line for new findings, real people first. The box is shared,
+ * so it names the alert, never the member's thread or account (ops, 29 Oct);
+ * those are in GET /admin/run-alerts.
+ */
+export function alertLine(alerts: readonly NewRunAlert[]): string {
   const ordered = [...alerts].sort((a, b) => Number(a.test_seat) - Number(b.test_seat));
   const lines = ordered.slice(0, MAX_ALERTS_IN_ONE_POST).map((a) => {
     const who = a.test_seat ? 'test seat' : 'REAL PERSON';
-    return `- ${a.kind}, thread ${a.thread_id ?? '-'} (${who}): ${a.detail}`;
+    return `- alert ${a.id}, ${a.kind} (${who}): ${a.detail}`;
   });
   const more = ordered.length - lines.length;
   return (
@@ -144,7 +154,7 @@ export function alertLine(alerts: readonly RunAlert[]): string {
 }
 
 /** One pass: finds, stores what is new, posts one box line when anything is. */
-export async function watchRunsOnce(): Promise<RunAlert[]> {
+export async function watchRunsOnce(): Promise<NewRunAlert[]> {
   const found = (await Promise.all([stuckRuns(), apologies(), failedRuns()])).flat();
   const fresh = await storeNew(found);
   if (fresh.length > 0) await postHandoff(HandoffAuthor.ClaudeBackend, alertLine(fresh), null);
