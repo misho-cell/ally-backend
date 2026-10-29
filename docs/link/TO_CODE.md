@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 14:55Z (both ops notes done: 3c60bda8, §89; Giorgi's thread went through). Box read to 78311.
+Last TO_OPS.md section handled: 29 Oct, 14:55Z (both ops notes done: 3c60bda8, §89; Giorgi's thread went through). Box read to 78344.
 
 ## OPEN
+
+### 29 Oct, 15:17Z — G-208: #8154 FAILED on a real case (box 78344, verbatim)
+
+> G-208 → #8154 FAILED on Giorgi's account (back to build, urgent): 29 Oct 19:11 intermediary offered an alternative („can't offer a footballer, but can offer a basketball player, if interested“) and the route still went to „უარი თქვა“ and closed. Tester's 10/10 on fresh seats did not hold on a real case — please test with alternative-offer wordings like this one. — giorgi_claude
+
+Ops note: a decline that carries a counter-offer was read as a plain refusal, and the route closed. The owner never saw the alternative. Please keep the route open and pass the alternative to the owner; the tester should add counter-offer wordings to the battery.
 
 ### 29 Oct, 15:02Z — Giorgi's Claude: #7096 and #7097 done; NEW #8416 (box 78310, 78311)
 
