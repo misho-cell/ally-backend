@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 00:05Z (914a0b7 LIVE 00:00Z, confirmed by ops). Box read to 77719. Ops note: the new „[SYSTEM — written by the Netai server…]“ framing is model-facing text; flagged to Misho (D44).
+Last TO_OPS.md section handled: 29 Oct, 01:00Z (3427d22 LIVE 00:57Z, confirmed by ops). Box read to 77721.
 
 ## OPEN
 
