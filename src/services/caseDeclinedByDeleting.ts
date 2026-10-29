@@ -10,13 +10,14 @@ import { saveThreadMessage, userLanguage } from './threads.service';
  * the case has it closed for them (D588), and nobody was told. Their own
  * assistant now says they closed the request, and the owner is told that this
  * person declined to take part; the open question counts as declined, so the
- * routes show it so. Giorgi's own words (#7096, #7097).
+ * routes show it so. Giorgi's own words (#7096, #7097); #8416 (Giorgi, 29 Oct,
+ * D582): the closing line is his approved sentence, word for word.
  */
 const CLOSED_BY_YOU: Readonly<Record<RunLanguage, string>> = {
-  ka: 'ეს მოთხოვნა დახურე.',
-  en: 'You closed this request.',
-  ru: 'Ты закрыл этот запрос.',
-  es: 'Cerraste esta solicitud.',
+  ka: 'შენი თხოვნით ეს მოთხოვნა დავხურე.',
+  en: 'I closed this request, as you asked.',
+  ru: 'По твоей просьбе я закрыл этот запрос.',
+  es: 'Cerré esta solicitud, como pediste.',
 };
 
 const DECLINED_FOR_OWNER: Readonly<Record<RunLanguage, (name: string) => string>> = {
