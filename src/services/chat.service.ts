@@ -455,6 +455,7 @@ import {
   goalAsksToReachAPerson,
 } from './openingSearch.service';
 import { askTheWorld, worldAnswerSwitchOn } from './worldAnswer.service';
+import { withoutOurSideApology } from './ourSideApology';
 import { WorldAnswer, worldAnswerMessage, worldAnswerSection } from './worldAnswer';
 import {
   buildRoleSearchSection,
@@ -10311,15 +10312,19 @@ export function scrubFinal(text: string, runId: string | undefined): string {
   // #432: a working note the model wrote to itself in another script comes off
   // before anything else reads the final.
   // #365: a bare „nothing found" opening moves after what was found.
-  const withoutNote = withoutStrayGeorgianCapitals(
-    withNothingFoundLast(
-      withoutLeadingInterjection(
-        withoutAlreadyShownNote(
-          withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
+  // Misho, 29 Oct: „a delay on our side" becomes „I am looking into this".
+  const withoutNote = withoutOurSideApology(
+    withoutStrayGeorgianCapitals(
+      withNothingFoundLast(
+        withoutLeadingInterjection(
+          withoutAlreadyShownNote(
+            withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
+          ),
+          runLang(runId),
         ),
-        runLang(runId),
       ),
     ),
+    runLang(runId),
   );
   return scrubText(runId ? wrapAllowedNumbers(withoutNote, runId) : withoutNote);
 }

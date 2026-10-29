@@ -43,7 +43,8 @@ const WALL_TOOLS: readonly string[] = [
 const DESIGNED_STOP_PREFIX = 'Not searched%';
 /** A reply apologising for a fault of ours, in the languages Netai writes. */
 const APOLOGY_PATTERN =
-  'ჩვენს მხარეს|შეფერხებ|ტექნიკურ(ი|მა)? (ხარვეზ|შეცდომ|პრობლემ)|on our side|something went wrong|technical (issue|problem|error)|с нашей стороны|техническ';
+  // The server's own replacement line (ourSideApology.ts) is the same finding.
+  'ამას ვამოწმებ და მალე მოგწერ|I am looking into this and will write to you shortly|ჩვენს მხარეს|შეფერხებ|ტექნიკურ(ი|მა)? (ხარვეზ|შეცდომ|პრობლემ)|on our side|something went wrong|technical (issue|problem|error)|с нашей стороны|техническ';
 
 export interface RunAlert {
   readonly kind: RunAlertKind;
