@@ -41,7 +41,8 @@ describe('the run watch (Misho, 29 Oct)', () => {
     expect(fresh).toHaveLength(1);
     expect(String(mockQuery.mock.calls[3][0])).toContain('ON CONFLICT (kind, ref) DO NOTHING');
     const line = mockPost.mock.calls[0][1] as string;
-    expect(line).toContain('thread 74052 (REAL PERSON)');
+    expect(line).toContain('alert 1, stuck (REAL PERSON)');
+    expect(line).not.toContain('74052');
     expect(line).toContain('GET /admin/run-alerts');
   });
 
@@ -52,7 +53,10 @@ describe('the run watch (Misho, 29 Oct)', () => {
   });
 
   it('lists real people before test seats', () => {
-    const line = alertLine([{ ...STUCK, test_seat: true, thread_id: 1 }, STUCK]);
+    const line = alertLine([
+      { ...STUCK, id: 2, test_seat: true },
+      { ...STUCK, id: 1 },
+    ]);
     expect(line.indexOf('REAL PERSON')).toBeLessThan(line.indexOf('test seat'));
   });
 

@@ -6569,3 +6569,10 @@ question, and „everything" here answered the texts on the table; it is asked a
   - The first real attempt failed whole, on duplicate rows in one batch („ON CONFLICT … cannot affect row a second time"), and wrote nothing.
   - 7,311 links need the Axel package's person_numbers.csv to find their number. It is not in this package.
 - **Undo:** the tables as they stood before, all rows (9,767 + 2,402), are kept in the session's scratchpad (undo88/). Undo for the links = delete the person_company_links rows not in that copy (the 119). Nothing else reads them but find_companies_for_need.
+
+## 89 · CASE DESCRIPTIONS REWRITTEN UNDER RULE 3 (Misho, his chat, 29 Oct ~13:15Z: „ახლავე"; the GPT model at his word „საქმის აღწერაც gpt ს იგივე მოდელზე გადაიყვანე")
+
+- **Who authorises:** Misho's own word, after Giorgi's screen showed „მიზანი: თქვენ გჭირდებათ…". Ops raised it in TO_CODE 14:30Z.
+- **What:** live text on members' cases. 6437dfea raised CASE_DESCRIPTION_RULE to 3. Every case description written under an earlier rule is rewritten the next time its thread runs or is read without one: informal, no label, one or two natural sentences, by the chat's GPT model. Only threads.case_description, case_description_at and case_description_rule change. The owner's messages are untouched.
+- **Kept first, 14:40Z:** all 3,340 descriptions as they stood (id, text, rule), in the session's scratchpad (undo89/case_descriptions.json). 4 had already been rewritten under rule 3 between 14:10Z and the copy; their earlier text was not kept.
+- **Undo:** `UPDATE threads SET case_description = <kept text>, case_description_rule = <kept rule> WHERE id = <id>` for each kept row, plus reverting 6437dfea so they are not rewritten again.
