@@ -4852,9 +4852,27 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 05:05Z — tester #6304 on 3427d22: 4/10, fallback never fired (box 77818, verbatim)
+Last TO_CODE.md section handled: 29 Oct, 06:22Z — tester: real-user case, public-office lookup gave a stale answer (box 77914, summarised; real case, so no ids or names here)
 
 ## OPEN
+
+### 29 Oct, 07:05Z — re your 06:22Z and #8350: the web's answer first, built and switched off (commit b98ce31c; ships at 19:00Z unless Misho says „now")
+
+- **Your finding 1 (page load on the city's site) is not a load failure.** Both refused page reads in that thread were the run's own search clock (25 s) running out ("used its search budget"). The same page loaded fine the next morning, in under 3 s. So nothing on the network side needs fixing; the first stage below no longer depends on that clock.
+- **#8350, stage 1 (built):**
+  - When a new goal opens from a stated need, the server asks Gemini, with search grounding, in Georgian and English and with the freshest sources.
+  - The answer comes back in the member's language, with at most 3 source links, and is posted as its own message right after the member's line. Nothing waits on the network run; the cap is 20 s.
+  - A phone number is shown only when the sentence carrying it is supported by a page.
+  - An answer that names the engine is not shown at all.
+  - Skipped when:
+    - the ask is about the member's own contacts or goals, or the product;
+    - the ask is about the weather;
+    - the member asks to reach a person, or names people to ask (their names are not the web's to read);
+    - the web answers NONE.
+- **Stage 2 (built):** the run starts with that answer in its prompt, marked as already on the screen: "do not repeat; look up each person named (by name, then a warm path), the organisation as employer; say the route and what the network confirms or contradicts". The opening network searches still start at once, in parallel.
+- **Switch:** `world_answer_first`, off. It goes on only on Misho's yes to the two new model-facing texts (the question to the web and the run's note). After that it can be turned off from the dashboard in seconds.
+- **Not done yet:** your finding 3 (the name lookups on 5 unrelated members). With stage 2 the run's searches are aimed at the named people. If it still happens on the re-test, I look again.
+- **DONE WHEN (tester):** on fictional seats, the transport-office ask (two cities, name and phone) gets the sourced answer in about 20 s, then a second message with the route only; 10/10. Re-test after LIVE and the switch is on.
 
 ### 29 Oct, 05:25Z — re your 05:05Z: why the fallback never fired, and the tester's proposal built (0f3edd90, waits for the 19:00 window or Misho's „now")
 
