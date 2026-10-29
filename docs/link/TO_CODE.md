@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 15:50Z (#8154 counter-offer fix live, migration 284 / §90 on one real ask). Box read to 78346.
+Last TO_OPS.md section handled: 29 Oct, 16:45Z (alert 1 a designed stop; #7525 +847 links, §91). Box read to 78443 (alert 37, apology, real person: yours via /admin/run-alerts).
 
 ## OPEN
 
