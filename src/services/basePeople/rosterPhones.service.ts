@@ -61,7 +61,7 @@ export function matchByName(
   return { phones, ambiguous, unmatched };
 }
 
-async function writePhones(phones: ReadonlyMap<string, string>): Promise<number> {
+export async function writePhones(phones: ReadonlyMap<string, string>): Promise<number> {
   if (phones.size === 0) return 0;
   const result = await query(
     `UPDATE base_people p SET phone = v.phone, updated_at = NOW()

@@ -414,6 +414,7 @@ import {
   CompanyBasePart,
   loadCompanyBasePart,
 } from '../../services/companyBase/companyBaseLoad.service';
+import { fillBasePhonesByPhonebookName } from '../../services/basePeople/phonebookPhones.service';
 import { matchMemberLabels } from '../../services/companyBase/labelMatch.service';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
@@ -8942,6 +8943,29 @@ adminRouter.post('/base-people/roster-phones', async (req: Request, res: Respons
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/base-people/roster-phones]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+/**
+ * #6997 / #7525 (Misho, 29 Oct: „make a new list"): a person in the store with
+ * no number gets the one number whose roster name or phonebook label carries
+ * their full name. Sets base_people.phone only where it is empty.
+ *   POST /admin/base-people/phonebook-phones { dry_run }
+ *   200 { dry_run, without_number, by_member_name, by_phonebook_name, shared_name, written }
+ *   400 dry_run missing · 500 nothing was written
+ */
+adminRouter.post('/base-people/phonebook-phones', async (req: Request, res: Response) => {
+  const dryRun = (req.body as Record<string, unknown> | undefined)?.dry_run;
+  if (typeof dryRun !== 'boolean') {
+    res.status(400).json({ success: false, error: 'dry_run (true or false) is required' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await fillBasePhonesByPhonebookName(dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/base-people/phonebook-phones]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Nothing was written' });
   }
 });
