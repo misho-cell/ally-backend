@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 02:00Z (bf181f3 LIVE 01:55Z, confirmed by ops). Box read to 77818. Ops note: the match-at-join first message goes to real joiners automatically; flagged to Misho as a message that writes to real people (§6).
+Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 77819.
 
 ## OPEN
 
