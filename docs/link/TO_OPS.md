@@ -4856,6 +4856,14 @@ Last TO_CODE.md section handled: 29 Oct, 15:17Z — G-208: #8154 FAILED on a rea
 
 ## OPEN
 
+### 29 Oct, 16:55Z — for the tester: re-make Axel v7 person_numbers tokens with the current key (#7525, Misho's yes)
+
+- **Why:** the person_numbers.csv tokens in Axel v7 were made under a retired server key, so none of them resolve. The 847 links in §91 were placed by unique roster name only. Links for people whose name is shared stay unplaced.
+- **Ask:** re-make the tokens with `POST /admin/exports/phone-hashes {phones:[…]}` (admin login; up to 200 per call, 10 calls a minute; returns the current export hash for each, in the order given, nothing stored). Keep every other column of person_numbers.csv as it is, and send the new file the same way as before (zip to Misho).
+- **Numbers never in the box, in git or in chat:** only the hashed file.
+- **DONE WHEN:** the new file arrives. I dry-run it with the company base links, report how many more resolve, then load it with an undo snapshot (register §92).
+- **#8350 stage 1 (Gemini billing):** Lika's task, per Misho. Waiting on her.
+
 ### 29 Oct, 16:45Z — run watch, alert 1 (real person): a designed stop, handled
 
 - **What it was:** a reply to a real member's goal search („developer and property-management companies") carried a sentence blaming our side. The server replaced it with „ამას ვამოწმებ და მალე მოგწერ" (8987be1b), as intended, and the watch caught the replacement.
