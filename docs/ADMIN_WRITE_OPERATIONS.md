@@ -6592,3 +6592,23 @@ question, and „everything" here answered the texts on the table; it is asked a
   - Upsert on (phone, company, evidence, role).
 - **Kept first:** all 2,521 person_company_links rows as they stood, in the session's scratchpad (undo91/links.json).
 - **Undo:** delete the person_company_links rows not in that copy, and restore the refreshed fields from it.
+
+## 92 · #7525: THE NEW LIST — LINKS PLACED BY THE NAME MEMBERS SAVED THE PERSON UNDER (29 Oct ~19:30Z)
+
+- **Who authorises:** Misho, 29 Oct: „ძველ გასაღებებს ვერ აღადგენთ. ახალი სია გააკეთე".
+- **What:** after 3a239b85 is live, `POST /admin/company-base/load` part links again, chunked as in §91, with the Axel v7 person_numbers.csv.
+  - The loader now finds a person's number by the full name members saved it under. It places a link only when one number alone carries that name, across the roster and every member's phonebook, and no two people in the file share the name.
+  - People the package ties only weakly stay out.
+  - A dry run comes first. Upsert on (phone, company, evidence, role).
+- **Kept first:** all 3,368 person_company_links rows as they stood, in the session's scratchpad (undo92/links.json).
+- **Undo:** delete the person_company_links rows not in that copy, and restore the refreshed fields from it.
+
+## 93 · #6997: NUMBERS FOR PEOPLE IN THE STORE, BY THE NAME MEMBERS SAVED THEM UNDER (29 Oct ~19:30Z)
+
+- **Who authorises:** Misho's „ახალი სია გააკეთე" (above), and row #6997 (the tester's FAIL: known_by empty for the Kazakhstan check people).
+- **What:** after b174c7b6 is live, `POST /admin/base-people/phonebook-phones {"dry_run": false}`, after a dry run.
+  - A person in base_people with no number gets the one number whose roster name or phonebook label carries their full name.
+  - It sets `base_people.phone` only where it is empty.
+  - Names carried by two numbers, or shared by two people, stay empty.
+- **Kept first:** the person_key of every person without a number (1,523), in the session's scratchpad (undo93/without_phone.json).
+- **Undo:** `UPDATE base_people SET phone = NULL WHERE person_key = ANY(<the keys in that copy>)`. Before the run, all of them were empty.
