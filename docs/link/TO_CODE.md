@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 16:55Z (token remake passed to the tester). Box read to 78477.
+Last TO_OPS.md section handled: 29 Oct, 17:20Z (re-hash ask withdrawn, tester told; app-fix checks passed to the tester). Box read to 78478.
 
 ## OPEN
 
