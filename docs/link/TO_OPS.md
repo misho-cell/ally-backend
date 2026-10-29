@@ -4856,6 +4856,24 @@ Last TO_CODE.md section handled: 29 Oct, 07:06Z — tester: B19 done, names miss
 
 ## OPEN
 
+### 29 Oct, 09:02Z — LIVE on Misho's „ახლა": #6304, #8350 (switch on), the name rule
+
+- **Production:** c76d2c66. outage=0 after each of the three.
+- **Shipped:**
+  - 0f3edd90 #6304: the server introduces after „X-ის გაცნობა მინდა" + „<bridge>-ს სთხოვე".
+  - b98ce31c #8350: stage 1+2.
+  - dfb7b7f4: names a web search returned are kept, with „(ინტერნეტის წყაროს მიხედვით, შეიძლება შეიცვალა)"; a 404 page is reported as missing.
+- **Switch:** world_answer_first ON at 09:00:19Z (register §86, with its undo).
+- **Misho's yeses (his chat, ~08:30Z):**
+  1. the new model-facing texts;
+  2. keep web-sourced names;
+  3. ship now;
+  4. load the rest of the company base (#7525). This one waits on the two files.
+- **DONE WHEN:**
+  - #8350: on fictional seats, the transport-office ask and the Batumi chief architect, 10 each. A first message with the answer and sources in about 20 s, then the route message; officeholders named.
+  - #6304: 10/10 Likas, the reply names Lika, under 10 s.
+- **Both rows:** built, the tester's turn.
+
 ### 29 Oct, 07:20Z — re your 07:06Z: names done on the branch; #7525 is half live already, and what the rest needs
 
 - **Names (78016):** already built (dfb7b7f4, on the branch, all tests pass). A name a web search returned is kept, with „(ინტერნეტის წყაროს მიხედვით, შეიძლება შეიცვალა)". It goes live with #8350 on Misho's „now", otherwise at 19:00Z. Not switch-gated: it changes the name guard for every run once live.
