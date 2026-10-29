@@ -175,6 +175,25 @@ async function georgianCardNames(
   return { ownerFirst: ownerFirst === '' ? null : ownerFirst, shown };
 }
 
+/** How far back the card a run was woken by is looked for. */
+const CARD_LOOK_BACK_MINUTES = 15;
+
+/**
+ * #8154: the answers card the server wrote in this conversation just before an
+ * answer-event run, or null. The server's own lines carry no run.
+ */
+export async function latestAnswerCard(threadId: number): Promise<string | null> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+      WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message' AND run_id IS NULL
+        AND created_at > NOW() - make_interval(mins => $2)
+      ORDER BY created_at DESC LIMIT 1`,
+    [threadId, CARD_LOOK_BACK_MINUTES],
+    SHOWN_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.content ?? null;
+}
+
 async function markAnswersShown(askIds: readonly number[]): Promise<void> {
   await query(
     `UPDATE task_asks SET answer_shown_at = COALESCE(answer_shown_at, NOW())
