@@ -1038,6 +1038,25 @@ async function latinLabelOfThisContactNamed(line: string, person: NamedContact):
   return labels.rows.some((row) => latinLabelNamedInGeorgian(line, row.alias));
 }
 
+/**
+ * Giorgi, 29 Oct (thread 74052, 13:20): „სალომეს კითხე მხოლოდ. ხო ფარქოსაძე" —
+ * Salome is a Netai member found by her registered name, not in his phonebook,
+ * so no label of his could match and the ask was refused as outside the plan.
+ * A person the owner has not saved is named by their own registered name.
+ */
+async function memberNameOfThisPersonNamed(line: string, person: NamedContact): Promise<boolean> {
+  const member = await query<{ name: string }>(
+    `SELECT u.name FROM "UserPhone" p JOIN "User" u ON u.id = p."userId"
+      WHERE regexp_replace(p.phone, '\\D', '', 'g') = $1 AND u.name IS NOT NULL
+        AND u."deletedAt" IS NULL
+      LIMIT 1`,
+    [phoneDigits(person.contactPhone)],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const name = member.rows[0]?.name?.trim() ?? '';
+  return name !== '' && (labelNamedIn(line, name) || latinLabelNamedInGeorgian(line, name));
+}
+
 /** Is this line an instruction that names exactly this person, by the owner's own label? */
 async function lineNamesThisPerson(line: string, person: NamedContact): Promise<boolean> {
   if (!looksLikeContactInstruction(line)) return false;
@@ -1062,6 +1081,7 @@ async function lineNamesThisPerson(line: string, person: NamedContact): Promise<
   const labels = candidates.rows.filter((row) => labelNamedIn(line, row.alias));
   const best = labels[0];
   if (best === undefined) {
+    if (await memberNameOfThisPersonNamed(line, person)) return true;
     return (
       (await latinLabelOfThisContactNamed(line, person)) || onlyContactByFirstName(line, person)
     );

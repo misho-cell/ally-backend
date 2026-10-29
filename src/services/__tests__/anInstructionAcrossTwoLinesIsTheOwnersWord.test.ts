@@ -26,4 +26,14 @@ describe('an instruction carried over two lines (Giorgi, 29 Oct)', () => {
     expect(body).toContain('after.some((line) => TAKEN_BACK_RE.test(line))');
     expect(service).toContain('if (await namedAcrossRecentLines(person)) return true;');
   });
+
+  it('names a member the owner has not saved, by their own registered name (13:20)', () => {
+    expect(
+      latinLabelNamedInGeorgian('სალომეს კითხე მხოლოდ. ხო ფარქოსაძე', 'Salome Parkosadze'),
+    ).toBe(true);
+    const name = service.slice(service.indexOf('async function lineNamesThisPerson('));
+    expect(name.slice(0, name.indexOf('\n}\n'))).toContain(
+      'if (await memberNameOfThisPersonNamed(line, person)) return true;',
+    );
+  });
 });
