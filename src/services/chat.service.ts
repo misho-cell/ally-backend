@@ -14153,13 +14153,19 @@ function personLineForOwner(person: PersonOutcome, language: RunLanguage): strin
 const EARLIER_OWNER_LINES_READ = 4;
 const EARLIER_OWNER_LINES_TIMEOUT_MS = 3_000;
 
-/** The owner's last few typed lines in this conversation, newest first. */
+/**
+ * The owner's last few typed lines in this conversation, newest first. Tester
+ * 77818 (73535, 73548): a run's trail stores its tool results as empty user
+ * rows, four per turn, so the four newest rows were the line itself and three
+ * blanks, and „X-ის გაცნობა მინდა" was never read. Only typed words count.
+ */
 async function recentOwnerLines(threadId: number): Promise<string[]> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
       WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
+        AND btrim(content) <> '' AND content NOT LIKE $3
       ORDER BY created_at DESC LIMIT $2`,
-    [threadId, EARLIER_OWNER_LINES_READ],
+    [threadId, EARLIER_OWNER_LINES_READ, `${RUN_EVENT_PREFIX}%`],
     EARLIER_OWNER_LINES_TIMEOUT_MS,
   );
   return result.rows.map((row) => row.content);
@@ -14738,6 +14744,48 @@ async function sendPreparedOnYes(
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[prepared-answer] not sent on yes:', (err as Error).message);
+    return null;
+  }
+}
+
+/**
+ * #6304 (tester 77818, 4/10 on 3427d22; 8 → 7 → 5 → 4 across four builds): on
+ * „ლიკას სთხოვე" after „X-ის გაცნობა მინდა" the model's path was never the same
+ * twice — asking why, asking which X again, saying it could not send. The
+ * tester's proposal: the server makes that introduction BEFORE the run, through
+ * the contact the owner named, to the person the earlier line names, and says
+ * so in one line. Anything it cannot settle for sure goes to the model as before.
+ */
+async function answerBridgeIntroduction(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  if (ownerAsksForIntroduction([userMessage])) return null;
+  try {
+    const earlier = (await recentOwnerLines(threadId)).filter(
+      (line) => line.trim() !== userMessage.trim(),
+    );
+    const sentence = introductionThroughNamedBridge(userMessage, earlier);
+    if (sentence === null) return null;
+    const goal = await getOpenTaskByThread(threadId).catch(() => null);
+    const made = await serverIntroduces(userId, sentence, introContextFor(threadId, goal?.id));
+    if (made === null) return null;
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    const text =
+      'dormant' in made ? dormantSentence(made, language) : introSentSentence(made, language);
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
+    // eslint-disable-next-line no-console
+    console.log(`[bridge-intro] run ${runId}: the server made the introduction before the run`);
+    return { reply: text, language, requestCreated: !('dormant' in made) };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[bridge-intro] not made:', (err as Error).message);
     return null;
   }
 }
@@ -17884,6 +17932,11 @@ export async function processChat(
     ? await answerMatchTap(userId, threadId, userMessage, runId, intent)
     : null;
   if (matchSettled !== null) return matchSettled;
+  // #6304: „ლიკას სთხოვე" after „X-ის გაცნობა მინდა" is introduced by the server.
+  const bridgeIntroduced = !ownerAbsent
+    ? await answerBridgeIntroduction(userId, threadId, userMessage, runId, intent)
+    : null;
+  if (bridgeIntroduced !== null) return bridgeIntroduced;
   // 2810: the owner's verdict on the search just shown, before a thanks line is answered.
   if (!ownerAbsent) void recordSearchVerdict(userId, threadId, userMessage);
   const thanksSettled = !ownerAbsent
