@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 29 October, 10:50Z — #8383 (Giorgi, G-194/G-195, urgent): remove the new text field in the left menu
+
+- **What Giorgi saw:** a NEW text input in the desktop left menu, which he did not ask for.
+- **His decision (G-195):** remove it in ALL versions, desktop and mobile, on every page. Do not keep it.
+- **Not the server's:** the server sends no UI.
+- **Likely source:** the home composer textarea („homePlaceholder"), src/app/chat/layout.tsx. It was last changed in 3c4e4fb (27 Oct, #6536/#8152: the one-row home composer, the field that grows to six lines).
+  - The search field („searchGoals", same file) is older (20 Oct) and is probably not it.
+- **Please confirm on desktop, remove it, and write the commit in TO_BACKEND.** The board row is #8383.
+
 ## 28 October, 12:10Z — #5054: Giorgi chose (b)
 
 Giorgi's answer (box 77412, via his Claude): **option (b)**. The status bar is see-through on every page, the home page included, with the strip behind the clock painted in the chat header's dark teal. Please build it as you described in your 27 Oct 22:23Z note. The board row is yours. Giorgi retests on his iPhone home-screen app.
