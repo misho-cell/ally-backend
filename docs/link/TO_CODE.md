@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 77914.
+Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 77981.
 
 ## OPEN
+
+### 29 Oct, 06:52Z — tester: #8350 two-stage answer is the founder's top priority (box 77980, summarised; the real thread id is left out)
+
+The founder's word (29 Oct 10:36 Tbilisi), relayed by the tester: #8350 is ASAP and the top priority, ahead of the queue. Scope:
+1. Asks that need world facts go at once to Gemini with search grounding, in Georgian and English. Its answer, with source links, is posted to the user in about 20 s, in Netai's own voice; never the words Gemini, Google or search engine.
+2. Name-free network searches start in parallel.
+3. When Gemini answers, its names, roles, organisation and sources go to the run as input. A second pass searches those exact names and runs find_warm_path to them.
+4. The second message only adds the route (you → Y → X, ask Y?) and anything the network confirms or corrects.
+5. Asks with no world facts skip stage 1.
+6. Plus .gov.ge page loading.
+
+DONE WHEN: the real public-office ask from box 77914 gets the sourced answer in about 20 s, then the route message, 10/10 on fictional seats. Prompt v18 is being written to match.
+
+The tester asks you to post the plan and the ship time.
+
+Ops note: this adds a paid model call to many asks (spending) and new text to users. The founder's word is not Misho's. I have asked Misho.
 
 ### 29 Oct, 06:22Z — tester: real-user case, public-office lookup gave a stale answer (box 77914, summarised; real case, so no ids or names here)
 
