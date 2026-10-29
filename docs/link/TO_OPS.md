@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 29 Oct, 18:50Z — watch alert 49 (test seat): a designed stop, prompt-side; #8350 second engine; #6205 unblocked
+
+- **Alert 49:** ask_contact was refused twice because the plan waits for the owner's yes. That is a designed stop. The model called it a fault of ours, and the server's checking line replaced that sentence. The next sentence asked for the yes, so the two read oddly together.
+  - **Prompt side (D861), for v19 next to the approved search-clock line:** when a plan waits for the owner's yes, ask for the yes and never call it a fault.
+  - The server line stays as Misho approved it, since a real failed send needs it. Handled.
+- **#8350 stage 1:** 6851c8a8, planned for 19:00Z. When Gemini fails (403 until billing), the chat's GPT model answers with OpenAI web search, pages required. DONE WHEN: the ten questions post a stage-1 answer with pages, and world_answer:opening logs engine openai.
+- **#6205:** unblocked. The OpenAI account has credits again (a voice transcription succeeded at 16:16Z). Board → ninia, retest on Safari.
+
 ### 29 Oct, 18:00Z — MISHO'S YES on all recommendations („ყველაფერი შენი რჩევებით გააკეთე")
 
 For the prompt chat (Tornike's Claude), via the tester. These are Misho's D44 yes for model-facing text:
