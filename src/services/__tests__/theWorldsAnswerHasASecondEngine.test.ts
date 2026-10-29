@@ -107,6 +107,8 @@ describe('asking the world when Gemini fails (#8350)', () => {
     expect(answer?.text).toBe('Nino Example heads the City Transport Service.');
     expect(answer?.people[0].name).toBe('Nino Example');
     expect(mockCreate.mock.calls[0][0]).toMatchObject({ tools: [{ type: 'web_search' }] });
+    // Tester 78509: no SDK retries, or 20 s becomes a minute before the run.
+    expect(mockCreate.mock.calls[0][1]).toMatchObject({ maxRetries: 0 });
     expect(mockLog.mock.calls[0][0].input.engine).toBe(WorldAnswerEngine.OpenAi);
     expect(mockRecordUsage.mock.calls[0][0]).toMatchObject({
       provider: 'openai',

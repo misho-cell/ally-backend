@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { asksForAPersonByName, WEB_TOOL_NAMES } from '../personByName';
+import { asksForAPersonByName, asksWhoHoldsAPost, WEB_TOOL_NAMES } from '../personByName';
 
 /** 3730 (3), 3732: a person named to meet or reach is never looked up on the web. */
 describe('asksForAPersonByName', () => {
@@ -44,6 +44,14 @@ describe('asksForAPersonByName', () => {
       ),
     ).toBe(false);
     expect(asksForAPersonByName('როგორ მივწვდე ბახვა გამოგონილს?')).toBe(true);
+  });
+
+  it('knows a line that asks who holds a post (#8350, tester 78509)', () => {
+    expect(asksWhoHoldsAPost('ვინ ხელმძღვანელობს ბათუმის მერიის ტრანსპორტის სამსახურს ახლა')).toBe(
+      true,
+    );
+    expect(asksWhoHoldsAPost('who heads the city transport service?')).toBe(true);
+    expect(asksWhoHoldsAPost('მინდა ბუღალტერი')).toBe(false);
   });
 
   it('names both web tools', () => {
