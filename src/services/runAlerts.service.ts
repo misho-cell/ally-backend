@@ -26,7 +26,12 @@ export enum RunAlertKind {
 const QUERY_TIMEOUT_MS = 8_000;
 /** Each pass looks back this far; a finding is stored once, so overlap is harmless. */
 const LOOK_BACK_MINUTES = 20;
-const MIN_REFUSALS = 3;
+/**
+ * Lowered from 3 the same afternoon: Giorgi's 14:03Z retry was refused twice
+ * (ask, then approve) and told „it could not be sent again" — no alert. Two
+ * refusals across two tools: 31 runs in three days, 7 real people.
+ */
+const MIN_REFUSALS = 2;
 const MIN_REFUSING_TOOLS = 2;
 const MAX_ALERTS_IN_ONE_POST = 10;
 export const MAX_ALERTS_LISTED = 100;
@@ -44,7 +49,9 @@ const DESIGNED_STOP_PREFIX = 'Not searched%';
 /** A reply apologising for a fault of ours, in the languages Netai writes. */
 const APOLOGY_PATTERN =
   // The server's own replacement line (ourSideApology.ts) is the same finding.
-  'ამას ვამოწმებ და მალე მოგწერ|I am looking into this and will write to you shortly|ჩვენს მხარეს|შეფერხებ|ტექნიკურ(ი|მა)? (ხარვეზ|შეცდომ|პრობლემ)|on our side|something went wrong|technical (issue|problem|error)|с нашей стороны|техническ';
+  'ამას ვამოწმებ და მალე მოგწერ|I am looking into this and will write to you shortly|' +
+  // „it could not be sent (again)" — Giorgi's 14:03Z reply, no „on our side" in it.
+  'ვერ გაიგზავნა|ვერ გავაგზავნე|could not be sent|couldn.t send|წრეზე ტრიალ|ჩვენს მხარეს|შეფერხებ|ტექნიკურ(ი|მა)? (ხარვეზ|შეცდომ|პრობლემ)|on our side|something went wrong|technical (issue|problem|error)|с нашей стороны|техническ';
 
 export interface RunAlert {
   readonly kind: RunAlertKind;
