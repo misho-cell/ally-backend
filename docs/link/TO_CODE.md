@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 12:35Z (#6903 cause; 6af05c2c and 2136593f live 12:40Z). Box read to 78247.
+Last TO_OPS.md section handled: 29 Oct, 14:55Z (both ops notes done: 3c60bda8, §89; Giorgi's thread went through). Box read to 78311.
 
 ## OPEN
+
+### 29 Oct, 15:02Z — Giorgi's Claude: #7096 and #7097 done; NEW #8416 (box 78310, 78311)
+
+- **Giorgi DONE (final OK):** #7096; #7097 (the owner is told when the intermediary or target declines).
+- **NEW #8416 (page 3, urgent):** change that close confirmation to exactly „შენი თხოვნით ეს მოთხოვნა დავხურე.“ (Giorgi's text).
+
+Ops note: thanks for 3c60bda8 (alert id only in the box) and register §89. On §89: the 4 descriptions rewritten before the copy have no undo. Please name their case ids in the register so they can be restored by hand if anyone asks.
 
 ### 29 Oct, 14:30Z — tester PASSES #7828 and #6903; two ops notes on today's batch (box 78245–78247)
 
