@@ -348,6 +348,8 @@ interface RunStrings {
    * LinkedIn keeps the name, and the sentence says where it came from…
    */
   nameFromLinkedinOnly: string;
+  /** #8350 (D899): a name a web search returned, kept with its caveat. */
+  nameFromWebOnly: string;
   /** …and a sentence naming one no page carried is left out, said once at the end. */
   unverifiedNameLeftOut: string;
   /**
@@ -443,6 +445,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
     nameFromLinkedinOnly: '(LinkedIn-ის მიხედვით, ოფიციალურ გვერდზე ვერ დავადასტურე)',
+    nameFromWebOnly: '(ინტერნეტის წყაროს მიხედვით, შეიძლება შეიცვალა)',
     unverifiedNameLeftOut: 'ერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე.',
     goalPausedNoTokens:
       'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
@@ -478,6 +481,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
     nameFromLinkedinOnly: '(according to LinkedIn; I could not confirm it on an official page)',
+    nameFromWebOnly: '(according to a web source; this may have changed)',
     unverifiedNameLeftOut: 'I could not confirm one name on an official page, so I left it out.',
     goalPausedNoTokens:
       'I have paused work on this goal — the tokens have run out. I will carry on once it is topped up.',
@@ -514,6 +518,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
     nameFromLinkedinOnly: '(по данным LinkedIn; на официальной странице подтвердить не удалось)',
+    nameFromWebOnly: '(по данным источника в интернете; это могло измениться)',
     unverifiedNameLeftOut:
       'Одно имя не удалось подтвердить на официальной странице, поэтому я его не указал.',
     goalPausedNoTokens:
@@ -551,6 +556,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     moderationBlocked:
       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
     nameFromLinkedinOnly: '(según LinkedIn; no pude confirmarlo en una página oficial)',
+    nameFromWebOnly: '(según una fuente en internet; puede haber cambiado)',
     unverifiedNameLeftOut:
       'No pude confirmar un nombre en una página oficial, así que no lo incluí.',
     goalPausedNoTokens:

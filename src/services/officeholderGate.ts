@@ -77,10 +77,29 @@ export function recordRunLinkedinEvidence(runId: string | undefined, text: strin
   linkedinByRun.set(runId, list);
 }
 
+/**
+ * #8350 (founder's D899, 29 Oct, prompt v18): what the web publicly shows is
+ * given, with its source and one line that it may have changed. A name a web
+ * search returned is kept that way, not left out; a name no page and no search
+ * carried (the model's memory) is still left out, as D151 says.
+ */
+const webSnippetsByRun = new Map<string, string[]>();
+
+/** Add the snippets a web search returned. */
+export function recordRunWebSnippetEvidence(runId: string | undefined, text: string): void {
+  if (!runId || !text) return;
+  const list = webSnippetsByRun.get(runId) ?? [];
+  const held = list.reduce((sum, t) => sum + t.length, 0);
+  if (held >= MAX_EVIDENCE_CHARS_PER_RUN) return;
+  list.push(text.toLowerCase());
+  webSnippetsByRun.set(runId, list);
+}
+
 export function clearRunEvidence(runId: string | undefined): void {
   if (!runId) return;
   evidenceByRun.delete(runId);
   linkedinByRun.delete(runId);
+  webSnippetsByRun.delete(runId);
 }
 
 /** A public office: never named from LinkedIn alone. */
@@ -334,7 +353,14 @@ const SENTENCE_END_RE = /([.!?…]*)$/u;
 
 interface UnverifiedLines {
   readonly nameFromLinkedinOnly: string;
+  readonly nameFromWebOnly: string;
   readonly unverifiedNameLeftOut: string;
+}
+
+/** Where a kept name came from, when no page the run read carried it. */
+export enum KeptNameSource {
+  Linkedin = 'linkedin',
+  Web = 'web',
 }
 
 /**
@@ -349,20 +375,23 @@ interface UnverifiedLines {
  */
 export function rewriteUnverified(
   reply: string,
-  linkedinOnlyAt: ReadonlySet<number>,
+  keptAt: ReadonlyMap<number, KeptNameSource>,
   leftOutNames: readonly string[],
   lines: UnverifiedLines,
 ): string {
-  if (linkedinOnlyAt.size === 0 && leftOutNames.length === 0) return reply;
+  if (keptAt.size === 0 && leftOutNames.length === 0) return reply;
   const parts = reply.split(SENTENCE_SPLIT_KEEP_RE);
   let kept = '';
   for (let i = 0; i < parts.length; i += 2) {
     const sentence = parts[i];
     const between = parts[i + 1] ?? '';
     if (leftOutNames.some((name) => sentence.includes(name))) continue;
-    kept += linkedinOnlyAt.has(i / 2)
-      ? sentence.trimEnd().replace(SENTENCE_END_RE, ` ${lines.nameFromLinkedinOnly}$1`) + between
-      : sentence + between;
+    const source = keptAt.get(i / 2);
+    const note = source === KeptNameSource.Web ? lines.nameFromWebOnly : lines.nameFromLinkedinOnly;
+    kept +=
+      source === undefined
+        ? sentence + between
+        : sentence.trimEnd().replace(SENTENCE_END_RE, ` ${note}$1`) + between;
   }
   const body = kept.trim();
   if (leftOutNames.length === 0) return body;
@@ -532,9 +561,10 @@ export async function applyOfficeholderGate(
 ): Promise<OfficeholderGateOutcome> {
   const evidence = (runId ? (evidenceByRun.get(runId) ?? []) : []).join('\n');
   const linkedin = (runId ? (linkedinByRun.get(runId) ?? []) : []).join('\n');
+  const webSnippets = (runId ? (webSnippetsByRun.get(runId) ?? []) : []).join('\n');
   const refused: string[] = [];
   const sentences = reply.split(SENTENCE_SPLIT_RE);
-  const linkedinOnlyAt = new Set<number>();
+  const keptAt = new Map<number, KeptNameSource>();
   const leftOutNames: string[] = [];
   const startedAt = Date.now();
   // One answer per distinct name, however many sentences carry it. The
@@ -589,7 +619,8 @@ export async function applyOfficeholderGate(
       }
       if (inPhonebook) continue;
       refused.push(name);
-      if (nameInEvidence(name, linkedin)) linkedinOnlyAt.add(index);
+      if (nameInEvidence(name, webSnippets)) keptAt.set(index, KeptNameSource.Web);
+      else if (nameInEvidence(name, linkedin)) keptAt.set(index, KeptNameSource.Linkedin);
       else leftOutNames.push(name);
     }
   }
@@ -622,6 +653,6 @@ export async function applyOfficeholderGate(
       `[officeholder-gate] run ${runId ?? '-'}: ${refused.length} name(s) unverified against ${evidence.length} chars of evidence`,
     );
   }
-  const out = rewriteUnverified(reply, linkedinOnlyAt, leftOutNames, RUN_STRINGS[language]);
+  const out = rewriteUnverified(reply, keptAt, leftOutNames, RUN_STRINGS[language]);
   return { reply: out, refused };
 }

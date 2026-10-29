@@ -10,7 +10,9 @@ import {
   applyOfficeholderGate,
   clearRunEvidence,
   nameCandidates,
+  KeptNameSource,
   recordRunEvidence,
+  recordRunWebSnippetEvidence,
   rewriteUnverified,
 } from '../officeholderGate';
 
@@ -226,37 +228,48 @@ describe('the gate cannot make the reply wait for ever', () => {
  * grammar („კალაძეა") stays behind. So the sentence goes whole.
  */
 describe('a sentence with an unverified name', () => {
-  const LINES = { nameFromLinkedinOnly: '(LI)', unverifiedNameLeftOut: 'LEFT OUT.' };
+  const LINES = {
+    nameFromLinkedinOnly: '(LI)',
+    nameFromWebOnly: '(WEB)',
+    unverifiedNameLeftOut: 'LEFT OUT.',
+  };
 
   it('is left out whole, whatever ending the name wears, and said once at the end', () => {
     const reply = 'თბილისის მერი კახა კალაძეა. კახა კალაძეს ვკითხე. შენ რას ფიქრობ?';
-    expect(rewriteUnverified(reply, new Set(), ['კახა კალაძე'], LINES)).toBe(
+    expect(rewriteUnverified(reply, new Map(), ['კახა კალაძე'], LINES)).toBe(
       'შენ რას ფიქრობ?\n\nLEFT OUT.',
     );
   });
 
   it('keeps the lines around it as they stood', () => {
     const reply = 'პირველი.\n- მერი John Smith.\n- მეორე პუნქტი.';
-    expect(rewriteUnverified(reply, new Set(), ['John Smith'], LINES)).toBe(
+    expect(rewriteUnverified(reply, new Map(), ['John Smith'], LINES)).toBe(
       'პირველი.\n- მეორე პუნქტი.\n\nLEFT OUT.',
     );
   });
 
   it('says only the line when nothing else was left', () => {
-    expect(rewriteUnverified('The mayor is A.B Smith.', new Set(), ['A.B Smith'], LINES)).toBe(
+    expect(rewriteUnverified('The mayor is A.B Smith.', new Map(), ['A.B Smith'], LINES)).toBe(
       'LEFT OUT.',
     );
   });
 
   it('keeps a LinkedIn-only name and says where it came from, before the closing mark', () => {
     const reply = 'მინისტრი არის ნინო ბერიძე. სხვა რამე?';
-    expect(rewriteUnverified(reply, new Set([0]), [], LINES)).toBe(
+    expect(rewriteUnverified(reply, new Map([[0, KeptNameSource.Linkedin]]), [], LINES)).toBe(
       'მინისტრი არის ნინო ბერიძე (LI). სხვა რამე?',
     );
   });
 
+  it('keeps a name a web search returned and says it may have changed (#8350, D899)', () => {
+    const reply = 'მინისტრი არის ნინო ბერიძე. სხვა რამე?';
+    expect(rewriteUnverified(reply, new Map([[0, KeptNameSource.Web]]), [], LINES)).toBe(
+      'მინისტრი არის ნინო ბერიძე (WEB). სხვა რამე?',
+    );
+  });
+
   it('leaves a reply with nothing unverified untouched', () => {
-    expect(rewriteUnverified('  ასეა.  ', new Set(), [], LINES)).toBe('  ასეა.  ');
+    expect(rewriteUnverified('  ასეა.  ', new Map(), [], LINES)).toBe('  ასეა.  ');
   });
 });
 
@@ -559,5 +572,23 @@ describe('words that only look like an office or a name', () => {
     expect(
       nameCandidates('ყველაზე ეფექტიანი იქნება მოიწვიო ბექა დირექტორი და სოფო ფოტოგრაფი.'),
     ).toEqual([]);
+  });
+});
+
+/**
+ * #8350 (founder's D899, 29 Oct): what the web publicly shows is given, with
+ * „may have changed"; a name nothing carried is still left out (D151).
+ */
+describe('a name a web search returned (#8350)', () => {
+  it('is kept, even for a public office, with the caveat', async () => {
+    recordRunWebSnippetEvidence(RUN, '{"results":[{"snippet":"მერი კახა კალაძე"}]}');
+    const out = await applyOfficeholderGate('თბილისის მერი არის კახა კალაძე.', RUN, 'ka');
+    expect(out.reply).toContain('კახა კალაძე');
+    expect(out.reply).toContain('შეიძლება შეიცვალა');
+  });
+
+  it('is still left out when nothing carried it', async () => {
+    const out = await applyOfficeholderGate('თბილისის მერი არის კახა კალაძე.', RUN, 'ka');
+    expect(out.reply).not.toContain('კალაძე');
   });
 });
