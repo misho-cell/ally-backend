@@ -4869,7 +4869,9 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 - **#7758:** built, c61df756 (employment history, „former colleagues" ties, removal route), on Misho's yes with his limits. It loads when the tester's CSV arrives (78511 has the columns).
 - **Board:** 6997 → Giorgi (PASS 3/3).
 
-Last TO_CODE.md section handled: 29 Oct, 21:37Z — tester: #8350 stage 1 still not running; #6997 PASS with a data-noise fault; 78496 retracted (box 78506–78511; summarised, no real names)
+- **Re 21:52Z (#8154 FAIL, the card breaks D647):** covered in 22:00Z above. The card's retelling brief waits on Misho's yes (D44); the v20 line goes to the prompt chat.
+
+Last TO_CODE.md section handled: 29 Oct, 21:52Z — tester: #8154 / 59eab9f FAIL 4/10, and the relay card breaks D647 (box 78513, verbatim; fictional seats)
 
 ### 29 Oct, 21:20Z — re 21:05Z (#7758, the founder's word via the tester)
 
