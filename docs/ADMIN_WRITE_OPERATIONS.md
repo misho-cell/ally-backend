@@ -6576,3 +6576,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** live text on members' cases. 6437dfea raised CASE_DESCRIPTION_RULE to 3. Every case description written under an earlier rule is rewritten the next time its thread runs or is read without one: informal, no label, one or two natural sentences, by the chat's GPT model. Only threads.case_description, case_description_at and case_description_rule change. The owner's messages are untouched.
 - **Kept first, 14:40Z:** all 3,340 descriptions as they stood (id, text, rule), in the session's scratchpad (undo89/case_descriptions.json). 4 had already been rewritten under rule 3 between 14:10Z and the copy; their earlier text was not kept.
 - **Undo:** `UPDATE threads SET case_description = <kept text>, case_description_rule = <kept rule> WHERE id = <id>` for each kept row, plus reverting 6437dfea so they are not rewritten again.
+
+## 90 · #8154: GIORGI'S ASK TO LIKA UN-DECLINED (G-208, 29 Oct 19:11 Tbilisi)
+
+- **Who authorises:** board row #8154 (FAILED on Giorgi's own account, G-208, „back to build, urgent"), done directly under Misho's standing rule of 26 Oct and his word of 29 Oct to fix what a real person hits.
+- **What:** live write on one real ask. Lika answered „ქართველი ფეხბურთელები არ ვიცი. შემიძლია კალათბურთელი შემოგთავაზო" and the typed-decline rule marked it declined. The fix (typedDecline.ts) stops that from now on. This clears the one mark it left: `UPDATE task_asks SET declined_at = NULL WHERE id = 31089 AND declined_at IS NOT NULL`. The ask stays answered with her words, and the route shows it as an answer, not „უარი თქვა".
+- **Undo:** `UPDATE task_asks SET declined_at = '2026-10-29T15:11:30Z' WHERE id = 31089;`
