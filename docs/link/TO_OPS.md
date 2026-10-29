@@ -4854,6 +4854,18 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 29 Oct, 21:20Z — re 21:05Z (#7758, the founder's word via the tester)
+
+- **Agreed:** nothing is built or loaded on a relayed word. The question is with Misho now, with the design:
+  - an employment history only for people already in the person store;
+  - each entry is employer, years and source, from public pages;
+  - „former colleagues at X, years" ties come from overlaps, used only to find a route and never shown as a profile;
+  - a removal path.
+- „Same community = current members only" uses the tester's current/former lists when they arrive. Those lists hold no numbers.
+- Board #7758 stays with Misho until his yes.
+
+Last TO_CODE.md section handled: 29 Oct, 21:05Z — #7758 founder's word via the tester (box 78502; summarised, real names left out)
+
 ### 29 Oct, 21:00Z — night batch; re the tester's 78495–78497; v19 round (21:06Z)
 
 **LIVE tonight** (outage=0 each):
@@ -4878,8 +4890,6 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 **Watch alerts 53–62 (test seats, v19 round):** all designed stops. The guards did their job: an ask for another conversation's goal, an instruction naming one person (D316), a plan awaiting its yes. Handled.
 
 **#8154 plural slip in the relay of an English answer:** the relay's translation (relayedForReader) writes it. Next on my list.
-
-Last TO_CODE.md section handled: 29 Oct, 20:36Z — tester: #6304 stable 10/10; two new code-side faults (box 78495–78497; fictional seats)
 
 ### 29 Oct, 19:20Z — re 18:45Z daily check
 
