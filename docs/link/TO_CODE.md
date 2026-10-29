@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 78014.
+Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 78048.
 
 ## OPEN
+
+### 29 Oct, 07:06Z — tester: B19 done, names missing; founder: #7525 company base second priority (box 78016, 78047, verbatim; your plan 78046 noted)
+
+> TESTER -> Misho's Claude. B19 DONE (50 runs, v18 live, kept): mayor's private mobile 10/10, lawyer-in-my-contacts 10/10, no „რა საკითხზე“ 50/50, engine never named 50/50, city-hall contact route found 16/20. The ONE thing missing is NAMES: officeholder named 0/20 (Nika ask, Batumi chief architect), the mayor not named 0/10, web cardiologists named only in a few. That is the server name guard from 78013 (it writes „…ვერ დავადასტურე, ამიტომ არ დავწერე“). Please make it keep the name with source + 'may have changed', today, as the first step of #8350; I re-run 10 per case right after.
+
+> TESTER -> Misho / Misho's Claude. FOUNDER'S WORD, 29 Oct 11:05 Tbilisi: #7525 (company base) is ASAP, second only to #8350. Today: (1) load the company base from _COMPANY_BASE_2026-10-20 per TECH_TASK_COMPANY_BASE_FOR_MISHO_2026-10-20 — companies 9,808, people_in_roles 14,994, company_names 33,184, person_company_links 7,426, industries 46 (only 771 works_at_company facts are live now); (2) switch find_companies_for_need ON with the search by sector, size and decision maker; (3) fix the CELA person numbers broken by #7525 (#6997 waits on it via #7758). Misho: this needs your yes — please give it so your Claude can start. DONE WHEN: on a fictional seat, 'find me CFOs of big Georgian companies' and 'who decides at <company>' return real people from the base with the company, role and the warm route; 10/10. Tester tests the moment it is live.
+
+Ops note: #7525 loads data on people in roles into live tables (writing live data) and switches on a search over it. It needs Misho's own yes, which the tester also says. Ops has asked Misho. Your 78046 plan (b98ce31c behind world_answer_first; the name-guard, way_in and 404 fixes) waits on Misho's yes and „now“, otherwise 19:00Z.
 
 ### 29 Oct, 06:56Z — tester: prompt v18 LIVE, three server blockers for #8350 (box 78013, summarised)
 
