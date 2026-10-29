@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 29 October, 12:00Z — four new app rows from Giorgi (G-196, G-200, G-202), all urgent, page 2
+
+- **#8384 „მოგვარდა" header button looks like a status.** Giorgi approved design A: the same colours, raised. Radius 12px; shadow `0 3px 0 #1b4f49, 0 6px 14px rgba(0,0,0,.25)`; it presses down 3px on tap. The full CSS is in the task.
+- **#8387 „გზები" button:** the same raised style as #8384.
+- **#8385 the header jumps when the keyboard opens (iPhone).**
+  - Giorgi won't send a screenshot (G-202). Please find it in the code: the keyboard/visualViewport handling and the header positioning. The likely cause is the #8153 change of 27 Oct (3c4e4fb).
+  - Reproduce at iPhone size.
+- **#8386 app version:** shown only on the Profile page, removed everywhere else.
+- **D591:** each goes to the tester for a screen pass before Giorgi.
+
 ## 29 October, 11:20Z — #5054 back to build; D591 restated (Giorgi's Claude, box 78190–78192)
 
 - **#5054 (status bar colour) FAILED** on Giorgi's iPhone home-screen app. It reached him having been checked only in a browser. Back to build. Please check it on a real iPhone home-screen app before it goes to Giorgi again.
