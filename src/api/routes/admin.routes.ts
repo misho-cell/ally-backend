@@ -468,6 +468,11 @@ import {
 } from '../../services/setupPictures.service';
 import { Gadget, isGadget, isSetupStep, SetupStep } from '../../services/setupState.service';
 import { fileForAdmin, userFiles } from '../../services/adminFiles.service';
+import {
+  JoinerSeatOutcome,
+  MAX_JOINER_SEATS,
+  runJoinerFirstMessagesForSeats,
+} from '../../services/joinerFirstMessage.service';
 import { searchUserContacts, UserContactsOutcome } from '../../services/adminUserContacts.service';
 
 /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
@@ -9349,6 +9354,47 @@ adminRouter.post('/ai-notifications/run', async (req: Request, res: Response) =>
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[ai-notifications/run]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The run did not complete' });
+  }
+});
+
+/** #7729 / #7828 (plate v538): the joiner's first message, now, on fictional seats only. */
+const JOINER_SEAT_STATUS: Readonly<Record<JoinerSeatOutcome, number>> = {
+  [JoinerSeatOutcome.BadInput]: 400,
+  [JoinerSeatOutcome.NotATestSeat]: 403,
+  [JoinerSeatOutcome.Ran]: 200,
+};
+
+const JOINER_SEAT_ERROR: Readonly<Record<JoinerSeatOutcome, string>> = {
+  [JoinerSeatOutcome.BadInput]: `user_ids: 1 to ${MAX_JOINER_SEATS} seat ids`,
+  [JoinerSeatOutcome.NotATestSeat]: 'Only fictional test seats are run here',
+  [JoinerSeatOutcome.Ran]: '',
+};
+
+//   POST /admin/joiner-first-messages { user_ids: [seat ids] } → 200 { sent } · 400 · 403
+adminRouter.post('/joiner-first-messages', async (req: Request, res: Response) => {
+  const raw: unknown = (req.body as { user_ids?: unknown }).user_ids;
+  const seatIds = Array.isArray(raw)
+    ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    : [];
+  try {
+    const run = await runJoinerFirstMessagesForSeats(
+      Array.isArray(raw) && seatIds.length === raw.length ? seatIds : [],
+    );
+    if (run.outcome !== JoinerSeatOutcome.Ran) {
+      res
+        .status(JOINER_SEAT_STATUS[run.outcome])
+        .json({ success: false, error: JOINER_SEAT_ERROR[run.outcome] });
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[joiner-first] admin ${(req as AuthenticatedRequest).user.userId} welcomed ${run.sent} seat(s)`,
+    );
+    res.status(200).json({ success: true, data: { sent: run.sent } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[joiner-first-messages]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The run did not complete' });
   }
 });

@@ -24,7 +24,10 @@ import {
   JOINER_FIRST_MESSAGE_EVENT,
   fittingField,
   joinerEventBody,
+  JoinerSeatOutcome,
+  MAX_JOINER_SEATS,
   joinersDue,
+  runJoinerFirstMessagesForSeats,
   sendJoinerFirstMessage,
 } from '../joinerFirstMessage.service';
 
@@ -112,5 +115,45 @@ describe('the joiner’s first message', () => {
       fitting_need: false,
     });
     expect(sendPushNotification).not.toHaveBeenCalled();
+  });
+});
+
+describe('the first message on fictional seats, for the tester (plate v538)', () => {
+  const rows = (r: unknown[]): never => ({ rows: r, rowCount: r.length }) as never;
+
+  it('refuses no seats, too many, or a real person, and writes nothing', async () => {
+    expect((await runJoinerFirstMessagesForSeats([])).outcome).toBe(JoinerSeatOutcome.BadInput);
+    const many = Array.from({ length: MAX_JOINER_SEATS + 1 }, (_, i) => i + 1);
+    expect((await runJoinerFirstMessagesForSeats(many)).outcome).toBe(JoinerSeatOutcome.BadInput);
+    mockQuery.mockResolvedValueOnce(rows([{ n: 1 }]));
+    expect((await runJoinerFirstMessagesForSeats([1, 2])).outcome).toBe(
+      JoinerSeatOutcome.NotATestSeat,
+    );
+    expect(mockChat).not.toHaveBeenCalled();
+  });
+
+  it('never welcomes a seat twice', async () => {
+    mockFacts.mockResolvedValue([] as never);
+    mockQuery
+      .mockResolvedValueOnce(rows([{ n: 2 }]))
+      .mockResolvedValueOnce(rows([{ user_id: 3 }]))
+      .mockResolvedValue(rows([]));
+    expect(await runJoinerFirstMessagesForSeats([3, 4])).toEqual({
+      outcome: JoinerSeatOutcome.Ran,
+      sent: 1,
+    });
+    expect(mockChat).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the route (plate v538)', () => {
+  it('is POST /admin/joiner-first-messages', () => {
+    const { readFileSync } = jest.requireActual<typeof import('fs')>('fs');
+    const { join } = jest.requireActual<typeof import('path')>('path');
+    const admin = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+      'utf8',
+    );
+    expect(admin).toContain("adminRouter.post('/joiner-first-messages'");
   });
 });

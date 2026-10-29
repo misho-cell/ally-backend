@@ -6,7 +6,7 @@ import { indexOffers, sureOffersFor } from './matchIndex';
 import { sendPushNotification } from './notification.service';
 import { recordProductEvent } from './productEvents.service';
 import { emitRunComplete } from './sse.service';
-import { notATestSeat } from './testSeatCreate.service';
+import { allAreTestSeats, notATestSeat } from './testSeatCreate.service';
 import { getOrCreateDefaultThread } from './threads.service';
 
 /**
@@ -145,4 +145,50 @@ export async function runJoinerFirstMessages(): Promise<number> {
     }
   }
   return sent;
+}
+
+/** The on-demand run takes a few fictional seats, never a sweep. */
+export const MAX_JOINER_SEATS = 10;
+
+export enum JoinerSeatOutcome {
+  BadInput = 'bad_input',
+  NotATestSeat = 'not_a_test_seat',
+  Ran = 'ran',
+}
+
+/** The seats already given their first message: never twice, on seats too. */
+async function seatsAlreadyWelcomed(userIds: readonly number[]): Promise<ReadonlySet<number>> {
+  const result = await query<{ user_id: number }>(
+    `SELECT DISTINCT user_id::int AS user_id FROM product_events
+      WHERE event = $1 AND user_id::text = ANY($2::text[])`,
+    [JOINER_FIRST_MESSAGE_EVENT, userIds.map(String)],
+    QUERY_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((row) => row.user_id));
+}
+
+/**
+ * Plate v538 (#7729 / #7828): the hourly run skips test seats, so the tester
+ * could not see the first message at all. On fictional seats only, now, never
+ * twice, the same message a real joiner gets.
+ */
+export async function runJoinerFirstMessagesForSeats(
+  seatIds: readonly number[],
+): Promise<{ readonly outcome: JoinerSeatOutcome; readonly sent: number }> {
+  const unique = [...new Set(seatIds)];
+  if (unique.length === 0 || unique.length > MAX_JOINER_SEATS) {
+    return { outcome: JoinerSeatOutcome.BadInput, sent: 0 };
+  }
+  if (!(await allAreTestSeats(unique))) return { outcome: JoinerSeatOutcome.NotATestSeat, sent: 0 };
+  const welcomed = await seatsAlreadyWelcomed(unique);
+  let sent = 0;
+  for (const seatId of unique.filter((id) => !welcomed.has(id))) {
+    try {
+      if (await sendJoinerFirstMessage(seatId)) sent += 1;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[joiner-first] seat ${seatId}:`, (err as Error).message);
+    }
+  }
+  return { outcome: JoinerSeatOutcome.Ran, sent };
 }
