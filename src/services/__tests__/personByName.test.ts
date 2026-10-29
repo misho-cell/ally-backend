@@ -34,6 +34,18 @@ describe('asksForAPersonByName', () => {
     expect(asksForAPersonByName('როგორ მივიდე კარგ არქიტექტორთან?')).toBe(false);
   });
 
+  it('keeps the web when the owner asks WHO holds a post (#8350, 74491-74492)', () => {
+    expect(
+      asksForAPersonByName('ვინ არის ჯანდაცვის მინისტრი ახლა და როგორ მივწვდე მის აპარატს'),
+    ).toBe(false);
+    expect(
+      asksForAPersonByName(
+        'who is the current head of Enterprise Georgia and how can I reach them',
+      ),
+    ).toBe(false);
+    expect(asksForAPersonByName('როგორ მივწვდე ბახვა გამოგონილს?')).toBe(true);
+  });
+
   it('names both web tools', () => {
     expect([...WEB_TOOL_NAMES].sort()).toEqual(['fetch_page', 'web_search']);
   });
