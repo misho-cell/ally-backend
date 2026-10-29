@@ -38,8 +38,11 @@ describe('a case says what it is about', () => {
   // #6535 (Giorgi; Misho's yes 20 Oct): the goal only — never the progress.
   it('asks for one or two sentences on the goal only, in the owner’s language', () => {
     const prompt = caseDescriptionPrompt('Georgian');
-    expect(prompt).toContain('one or two short sentences in Georgian only');
-    expect(prompt).toContain('the goal, who the target is and why');
+    expect(prompt).toContain('one or two short, natural sentences in Georgian only');
+    // Rule 3 (Misho, 29 Oct): Netai speaks to its owner as „შენ", with no label in front.
+    expect(prompt).toContain('never თქვენ');
+    expect(prompt).toContain('No label in front');
+    expect(prompt).toContain('what they are looking for, who it is for and why');
     expect(prompt).toContain('no progress, no helpers or go-betweens, no answers, no statuses');
   });
 
@@ -81,7 +84,7 @@ describe('a case says what it is about', () => {
     await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(true);
     const update = mockQuery.mock.calls[2] as [string, unknown[], number];
     expect(update[0]).toContain('SET case_description = $2');
-    expect(update[1]).toEqual([9, GOOD, 2]);
+    expect(update[1]).toEqual([9, GOOD, 3]);
     expect(mockEmit).toHaveBeenCalledWith('7', { id: 9, case_description: GOOD });
   });
 
@@ -176,6 +179,13 @@ describe('a description is the owner’s problem, from how the case began', () =
     await describeIfMissing('7', 201, 5_000_000);
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain('case_description_rule IS DISTINCT FROM $2::smallint');
-    expect(params).toEqual([201, 2, ['incoming_ask', 'outgoing_request']]);
+    expect(params).toEqual([201, 3, ['incoming_ask', 'outgoing_request']]);
+  });
+});
+
+describe('a label in front of the description (Misho, 29 Oct)', () => {
+  it('comes off', () => {
+    expect(cleanCaseDescription(`მიზანი: ${GOOD}`)).toBe(GOOD);
+    expect(cleanCaseDescription(`Goal: ${GOOD}`)).toBe(GOOD);
   });
 });
