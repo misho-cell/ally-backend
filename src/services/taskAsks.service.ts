@@ -868,6 +868,7 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
       const asked = await assistantQuestionBefore(person);
       if (asked !== null && (await lineNamesThisPerson(asked, person))) return true;
     }
+    if (await namedAcrossRecentLines(person)) return true;
     const said = await query<{ content: string }>(
       `SELECT c.content FROM conversations c
           WHERE c.thread_id = $1 AND c.role = 'user'
@@ -890,6 +891,41 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     console.error(`[ask] task ${person.taskId}: could not read who the owner named:`, error);
     return false;
   }
+}
+
+/**
+ * Giorgi, 29 Oct (thread 74052): „აბა თორნიკესაც კითხე" — the assistant asked
+ * which Tornike — „აბულაძეს" — later „გაუგზავნე". The instruction and the name
+ * were two lines, no single line named this person, and three walls refused
+ * each other until the owner was told of „a delay on our side". The owner's
+ * last few typed lines are read together: an instruction among them, with the
+ * lines after it, naming exactly this person, is the owner's word — unless a
+ * later line takes it back.
+ */
+const RECENT_OWNER_LINES = 4;
+const TAKEN_BACK_RE =
+  /(^|[\s,.!?])(არა|ნუ|მოიცა|დაიცა|გაჩერდი|no|don't|stop|wait|нет|не надо|стоп)([\s,.!?]|$)/iu;
+
+async function namedAcrossRecentLines(person: NamedPerson): Promise<boolean> {
+  const recent = await query<{ content: string }>(
+    `SELECT c.content FROM conversations c
+        WHERE c.thread_id = $1 AND c.role = 'user'
+          AND COALESCE(c.kind, '') <> 'event' AND c.content <> ''
+          AND c.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+        ORDER BY c.created_at DESC LIMIT $4`,
+    [person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES, RECENT_OWNER_LINES],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const lines = recent.rows.map((r) => r.content).reverse();
+  // The latest instruction: an earlier one may be about somebody else.
+  let from = -1;
+  lines.forEach((line, i) => {
+    if (looksLikeContactInstruction(line)) from = i;
+  });
+  if (from < 0 || from === lines.length - 1) return false;
+  const after = lines.slice(from + 1);
+  if (after.some((line) => TAKEN_BACK_RE.test(line))) return false;
+  return lineNamesThisPerson([lines[from], ...after].join(' '), person);
 }
 
 /** A whole line that only says yes — „კი", „დიახ", „ვადასტურებ". */
