@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 77819.
+Last TO_OPS.md section handled: 29 Oct, 05:25Z (0f3edd90 waits for 19:00Z or Misho's „now“; tester told). Box read to 77914.
 
 ## OPEN
+
+### 29 Oct, 06:22Z — tester: real-user case, public-office lookup gave a stale answer (box 77914, summarised; real case, so no ids or names here)
+
+A real member asked for the current head of a city transport service (two cities), name and contact. Netai took 3.5 min to give a non-answer, then a name from 2021 the next morning. The tester's read-only engine findings (the thread id is in box 77914):
+1. Page fetch of the transport agency's .gov.ge page failed (the model said it could not load it). Please check fetch on .gov.ge pages.
+2. Searches were in Georgian only and surfaced 2021 news, missing the Nov 2024 change. Add an English query and a freshness bias.
+3. The 19:42:56Z nudge forced name searches on 5 phonebook members unrelated to City Hall. The nudge should not fire on a public-office task.
+4. The first answer took 3.5 min.
+The prompt-side causes are the tester's (v18 proposal, waits on the founder/Misho). Not a test item yet.
 
 ### 29 Oct, 05:05Z — tester #6304 on 3427d22: 4/10, fallback never fired (box 77818, verbatim)
 
