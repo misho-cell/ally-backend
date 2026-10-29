@@ -134,6 +134,7 @@ Each push to main restarts the server and cuts the replies in flight. On 27 Oct 
 - Code reaches `main` between 19:00 and 05:00 UTC (23:00–09:00 Tbilisi), batched into one push.
 - During the day, push only to `staging`.
 - Only an outage or a fault that real people hit right now ships during the day.
+- Misho, 29 Oct („ყველაფერი შენი რჩევებით გააკეთე", answering „may a monitoring fix ship in daytime?"): a fix for a run alert or a fault that a REAL PERSON hit ships at once, alone, with ship_one.sh, whatever the hour. Everything else still waits for 19:00.
 - Docs-only pushes no longer redeploy (railway.toml `watchPatterns`).
 - No heavy admin reads (roster, phonebooks, all-member scans) in daytime either.
 
