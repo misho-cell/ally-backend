@@ -14,6 +14,8 @@ import {
   industriesForNeed,
   industryWords,
   needWords,
+  roleFilter,
+  sizeFilter,
 } from '../tools/findCompaniesForNeed';
 
 const INDUSTRIES = [
@@ -118,5 +120,34 @@ describe('a need finds companies, and the people tied to them', () => {
     const out = await findCompaniesForNeed('7', 'a good dentist');
     expect(out.companies).toEqual([]);
     expect(mockQuery).toHaveBeenCalledTimes(3);
+  });
+
+  /**
+   * #7525 (founder D879, Misho's yes 29 Oct): „find me CFOs of big Georgian
+   * companies" — by size and by the decision maker, from the base.
+   */
+  it('narrows to a size and a role, and lists a company for them alone', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ country: 'Georgia' }] })
+      .mockResolvedValueOnce({ rows: [] });
+    await findCompaniesForNeed('7', 'CFOs of big Georgian companies', '', '', 'large', 'CFO');
+    const [sql, params] = mockQuery.mock.calls[2] as [string, unknown[]];
+    expect(params[1]).toEqual(['cfos']);
+    expect(params[2]).toBe('georgia');
+    expect(params[5]).toBe('large');
+    expect(params[6]).toBe('CFO');
+    expect(sql).toContain("$6 <> '' OR $7 <> ''");
+    expect(sql).toContain('holds_role DESC');
+  });
+
+  it('takes only the sizes the base knows, and a role as plain text', () => {
+    expect(sizeFilter(' Large ')).toBe('large');
+    expect(sizeFilter('huge')).toBe('');
+    expect(roleFilter('100%_ CFO')).toBe('100\\%\\_ CFO');
+    expect(needWords('დიდი ქართული კომპანიები ფინანსური დირექტორი')).toEqual([
+      'ფინანსურ',
+      'დირექტორ',
+    ]);
   });
 });
