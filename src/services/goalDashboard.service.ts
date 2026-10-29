@@ -96,6 +96,8 @@ export interface GoalDetail {
   title: string;
   status: string;
   brief: string | null;
+  /** #7822: the result in the owner's words until the plan's solved_when exists. */
+  result_line: string | null;
   stage: GoalStage;
   created_at: string;
   last_activity_at: string;
@@ -136,6 +138,8 @@ interface GoalRow {
   title: string;
   status: string;
   brief: string | null;
+  /** #7822: the result in the owner's words until the plan's solved_when exists. */
+  result_line: string | null;
   stage: GoalStage;
   closed_reason: string | null;
   created_at: Date | string;
@@ -176,7 +180,8 @@ function iso(value: Date | string | null | undefined): string | null {
 
 async function goalRow(userId: string | null, taskId: number): Promise<GoalRow | null> {
   const result = await query<GoalRow>(
-    `SELECT t.id, t.user_id, t.title, t.status, t.brief, t.closed_reason, t.created_at,
+    `SELECT t.id, t.user_id, t.title, t.status, t.brief, t.result_shape AS result_line,
+            t.closed_reason, t.created_at,
             t.updated_at,
             -- Ticket 14 Task 61: the newest message in the goal's thread counts as
             -- activity even when a write path forgot to touch the goal.
@@ -490,6 +495,7 @@ export async function adminGoalDetail(
     title: row.title,
     status: row.status,
     brief: row.brief,
+    result_line: row.result_line,
     stage: row.stage,
     created_at: iso(row.created_at) ?? '',
     last_activity_at: iso(row.last_activity_at) ?? '',

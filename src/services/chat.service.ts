@@ -14053,6 +14053,18 @@ const ACTED_BY_NAME: ReadonlySet<string> = new Set(
   [...ACTING_TOOLS].filter((name) => name !== 'ask_contact' && name !== 'request_introduction'),
 );
 
+/**
+ * Tester 77718 (#6304, 3 of 10 on 914a0b7): after „ლიკას სთხოვე" the run proposed
+ * a plan, granted permission and sent nothing („I have no way to send"). A plan
+ * counted as acting, so the unsent guard and the server's own introduction never
+ * ran. An instruction to a named contact is the consent itself (D316): a plan
+ * proposed on it is not a send, and the guard still reads the thread.
+ */
+export function actedByName(name: string, ownerLine: string): boolean {
+  if (!ACTED_BY_NAME.has(name)) return false;
+  return name !== 'propose_task_plan' || contactInstructionIn(ownerLine) === null;
+}
+
 /** What a promise to write was missing, when nothing was sent. */
 enum PromiseGap {
   /** Board #830: the goal on this thread has no plan and none proposed. */
@@ -15705,7 +15717,7 @@ async function runToolLoop(
     runModes.get(runId) !== 'incoming_ask' &&
     !claimedAnAskNobodyGot &&
     !introductionQuestion &&
-    !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
+    !toolNamesUsed.some((name) => actedByName(name, runOwnerLine.get(runId) ?? '')) &&
     // 4159 (conv 48452): the ask went out on a goal the run opened in another
     // conversation, so this one's goals hold nothing — but this run DID send.
     !runAskSent.has(runId) &&
