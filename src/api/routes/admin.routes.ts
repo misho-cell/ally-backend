@@ -414,6 +414,7 @@ import {
   CompanyBasePart,
   loadCompanyBasePart,
 } from '../../services/companyBase/companyBaseLoad.service';
+import { loadEmployment, removeEmployment } from '../../services/basePeople/employment.service';
 import { fillBasePhonesByPhonebookName } from '../../services/basePeople/phonebookPhones.service';
 import { matchMemberLabels } from '../../services/companyBase/labelMatch.service';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
@@ -8944,6 +8945,54 @@ adminRouter.post('/base-people/roster-phones', async (req: Request, res: Respons
     // eslint-disable-next-line no-console
     console.error('[POST /admin/base-people/roster-phones]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+/**
+ * #7758 (Misho's yes, 29 Oct, with his limits): employment history for people
+ * already in the store — employer, years, public source — and the „former
+ * colleagues" ties it implies, used for routes only.
+ *   POST /admin/base-people/employment { csv, dry_run }
+ *     csv columns: person_key, employer, role, from_year, to_year, source_url
+ *   200 { dry_run, rows_in_file, rows_written, colleague_ties, skipped }
+ *   400 bad body · 500 nothing was written
+ *   DELETE /admin/base-people/:key/employment — one person's history, on request
+ *   200 { removed: true } · 404 nothing stored for that person · 500
+ */
+adminRouter.post('/base-people/employment', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  if (
+    typeof body.csv !== 'string' ||
+    body.csv.length > MAX_AXEL_CSV_CHARS ||
+    typeof body.dry_run !== 'boolean'
+  ) {
+    res
+      .status(400)
+      .json({ success: false, error: 'csv (text) and dry_run (true or false) are required' });
+    return;
+  }
+  try {
+    const report = await loadEmployment(body.csv, body.dry_run, new Date().getUTCFullYear());
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/base-people/employment]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+adminRouter.delete('/base-people/:key/employment', async (req: Request, res: Response) => {
+  const key = String(req.params.key ?? '').trim();
+  try {
+    if (!(await removeEmployment(key, new Date().getUTCFullYear()))) {
+      res.status(404).json({ success: false, error: 'No employment history for that person' });
+      return;
+    }
+    res.status(200).json({ success: true, data: { removed: true } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[DELETE /admin/base-people/:key/employment]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was removed' });
   }
 });
 
