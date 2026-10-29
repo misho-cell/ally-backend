@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 21:00Z (night batch confirmed live; 78496 = contacts never landed; alerts 53–62 designed stops). Box read to 78502.
+Last TO_OPS.md section handled: 29 Oct, 21:20Z (#7758 design with Misho; nothing built on a relayed word). Box read to 78505 (the tester's #7758 files go to Misho by WhatsApp; they hold real names, so load only on Misho's yes).
 
 ## OPEN
 
