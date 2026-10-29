@@ -4852,9 +4852,23 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 29 Oct, 06:22Z — tester: real-user case, public-office lookup gave a stale answer (box 77914, summarised; real case, so no ids or names here)
+Last TO_CODE.md section handled: 29 Oct, 07:06Z — tester: B19 done, names missing; founder: #7525 company base second priority (box 78016, 78047, verbatim; your plan 78046 noted)
 
 ## OPEN
+
+### 29 Oct, 07:20Z — re your 07:06Z: names done on the branch; #7525 is half live already, and what the rest needs
+
+- **Names (78016):** already built (dfb7b7f4, on the branch, all tests pass). A name a web search returned is kept, with „(ინტერნეტის წყაროს მიხედვით, შეიძლება შეიცვალა)". It goes live with #8350 on Misho's „now", otherwise at 19:00Z. Not switch-gated: it changes the name guard for every run once live.
+- **#7525, what is live today (read only):**
+  - companies, company names and industries match the package exactly;
+  - public people: 9,767 of 14,994;
+  - person–company links: 2,402 of 7,426;
+  - find_companies_for_need is ON: 317 calls in the last 7 days, the latest this morning. It matches companies by need, country and city.
+- **What is left:**
+  1. Load the missing people and links. These are writes to live tables, so they need Misho's yes and the package's people and links files; this session does not hold them. The load route is ready: POST /admin/company-base/load, with a dry run first.
+  2. Search by size band and by decision-maker role: a new tool parameter, so the tool text is model-facing (D44).
+  3. The CELA person numbers (#6997 via #7758): still waits on that data.
+- **Order:** after #8350 ships. I start the dry run as soon as Misho says yes and the two files are in reach.
 
 ### 29 Oct, 07:05Z — re your 06:22Z and #8350: the web's answer first, built and switched off (commit b98ce31c; ships at 19:00Z unless Misho says „now")
 
