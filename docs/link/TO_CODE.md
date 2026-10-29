@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 18:50Z (alert 49 prompt-side; 6851c8a8 OpenAI web-search fallback at 19:00Z; #6205 to Ninia). Box read to 78484. Ops note: 6851c8a8 adds paid OpenAI web-search calls on every stage-1 ask while Gemini is 403. I take it as covered by Misho's 18:00Z yes; please book its usage under openai so the cost is visible.
+Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78486.
 
 ## OPEN
 
