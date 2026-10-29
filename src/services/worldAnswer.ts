@@ -19,6 +19,9 @@ const FIELD_SEPARATOR = '|';
 export const MAX_PEOPLE = 5;
 export const MAX_SOURCES_SHOWN = 3;
 const ENGINE_WORDS_RE = /gemini|google|search engine|საძიებო|გუგლ|поисков|buscador/iu;
+/** „([page](url))" — a citation written into the text; the pages are listed under it anyway. */
+const CITATION_RE = /\s*\(\[[^\]]*\]\([^)]*\)\)/gu;
+const MARKDOWN_LINK_RE = /\[([^\]]*)\]\((?:https?:)[^)]*\)/gu;
 
 export interface WorldPerson {
   readonly name: string;
@@ -87,14 +90,28 @@ export function splitPeopleLine(raw: string): { body: string; people: WorldPerso
   return { body, people: peopleFromLine(match[1] ?? '') };
 }
 
-/** Pure: the answer the member may be shown, or null when there is none to show. */
-export function worldAnswerFrom(data: GeminiResponse, question: string): WorldAnswer | null {
-  const { body, people } = splitPeopleLine(answerText(data));
+/** Pure: an answer's text without the links written into it. */
+export function withoutInlineLinks(text: string): string {
+  return text.replace(CITATION_RE, '').replace(MARKDOWN_LINK_RE, '$1').trim();
+}
+
+/** Pure: the answer the member may be shown, from its text and its pages, or null. */
+export function worldAnswerFromText(
+  raw: string,
+  sources: readonly GeminiHit[],
+  question: string,
+): WorldAnswer | null {
+  const { body: withLinks, people } = splitPeopleLine(raw);
+  const body = withoutInlineLinks(withLinks);
   if (body === '' || body.toUpperCase().startsWith(NO_WORLD_ANSWER)) return null;
   if (ENGINE_WORDS_RE.test(body) && !ENGINE_WORDS_RE.test(question)) return null;
-  const sources = groundedHits(data);
   if (sources.length === 0) return null;
   return { text: body, people, sources };
+}
+
+/** Pure: the answer the member may be shown, or null when there is none to show. */
+export function worldAnswerFrom(data: GeminiResponse, question: string): WorldAnswer | null {
+  return worldAnswerFromText(answerText(data), groundedHits(data), question);
 }
 
 /** The member's message: the answer, then the pages it comes from. */
