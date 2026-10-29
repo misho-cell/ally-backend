@@ -1,7 +1,5 @@
 import { query } from '../../db/postgres/client';
 import { numbersByHash } from '../axelLoad/axelBaseLoad.service';
-import { readPhonebooks, readRoster } from '../axelExport/axelData';
-import { normalizePhone } from '../phone';
 import { nameKey } from '../tools/transliterate';
 import {
   CompanyNameRow,
@@ -15,13 +13,8 @@ import {
   linkRows,
   publicPeopleRows,
 } from './companyBasePlan';
-import {
-  NamedNumber,
-  NamePlacement,
-  NamesOnANumber,
-  labelNameKeys,
-  phonesByUniqueName,
-} from './phonebookNames';
+import { NamedNumber, phonesByUniqueName } from './phonebookNames';
+import { namesOnNumbers } from './phonebookNames.service';
 
 /**
  * D847 — loads the company base, one file at a time (TECH_TASK §3: industries,
@@ -280,25 +273,6 @@ async function withKnownCompany<T extends { readonly companyId: string }>(
   const kept = rows.filter((r) => known.has(r.companyId));
   if (kept.length < rows.length) skipped.company_not_loaded = rows.length - kept.length;
   return kept;
-}
-
-/** Every name a number is known by: the roster's own names, and the labels members saved. */
-async function namesOnNumbers(): Promise<NamesOnANumber[]> {
-  const roster = await readRoster();
-  const ids = roster.map((m) => m.user_id).filter((id): id is number => id !== null);
-  const labels = await readPhonebooks(ids);
-  return [
-    ...roster.map((m) => ({
-      phone: m.phone,
-      names: [m.name ?? '', ...m.match_names].map(nameKey),
-      from: NamePlacement.Member,
-    })),
-    ...labels.map((r) => ({
-      phone: normalizePhone(r.contact_digits),
-      names: labelNameKeys(r.label ?? ''),
-      from: NamePlacement.Phonebook,
-    })),
-  ];
 }
 
 async function loadLinks(
