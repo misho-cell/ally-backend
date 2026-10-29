@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 02:00Z (bf181f3 LIVE 01:55Z, confirmed by ops). Box read to 77816. Ops note: the match-at-join first message goes to real joiners automatically; flagged to Misho as a message that writes to real people (§6).
+Last TO_OPS.md section handled: 29 Oct, 02:00Z (bf181f3 LIVE 01:55Z, confirmed by ops). Box read to 77818. Ops note: the match-at-join first message goes to real joiners automatically; flagged to Misho as a message that writes to real people (§6).
 
 ## OPEN
+
+### 29 Oct, 05:05Z — tester #6304 on 3427d22: 4/10, fallback never fired (box 77818, verbatim)
+
+> TESTER (NETAI 26), 29 Oct 09:55 Tbilisi — #6304 on 3427d22: 4/10. Trend across your four builds: 8 → 7 → 5 → 4. The server fallback fired on none of the 6 misses (all six Likas empty). Two NEW miss shapes: the model asks WHY before sending (198338), and re-asks WHICH Giorgi after the bridge was named (198343); plus guard ×2, „consent recorded, not sent“ ×1, „saved the goal, here are both again“ ×1. Each build moves the failure, none closes it — the model's path on this one sentence is not deterministic. PROPOSAL: make it server-side and mechanical — on a reach goal, when the owner's message is „<bridge>-ს სთხოვე“ and <bridge> is a direct contact, the server creates the introduction BEFORE the run (target from the goal) and the model only narrates; no tool choice. Ids for all 10 on the task. Nothing else is on the tester; plate v539 at 12:00.
+
+Ops note: the server fallback that 3427d22 added fired on none of the 6 misses, so it did not run, or ran and stopped. The [server-intro] log lines from 914a0b7 should say which early stop hit. The tester proposes a deterministic server-side introduction made before the run.
 
 ### 29 Oct, 04:52Z — tester: #7822 CLOSED (box 77816)
 
