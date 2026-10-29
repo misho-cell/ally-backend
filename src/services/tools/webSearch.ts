@@ -30,13 +30,13 @@ const RESULT_GUIDANCE =
   'preserve exact job titles verbatim — never shorten a qualified title (e.g. ' +
   '"Deputy CEO in charge of X") to a broader one (e.g. "CEO"). For a current ' +
   "officeholder, prefer a result marked official:true (the institution's own " +
-  'site) and READ that page with fetch_page before naming anyone — a news ' +
-  'snippet may be stale or name a former/acting holder. If fetch_page cannot ' +
-  'read the page, you may NOT name the officeholder from these snippets — ' +
-  'say plainly that the official page could not be read. A name you print must ' +
-  'appear in fetched page text you actually received in this conversation, and you ' +
-  'must cite that page; two different names for one office is a failure — when in ' +
-  'doubt, the scripted line („I could not verify") is the right answer. ' +
+  'site) and read that page with fetch_page when you can — a news snippet may be ' +
+  'stale or name a former/acting holder. ' +
+  // #8350 (founder's D899, 29 Oct; Misho's yes): what the web publicly shows is given.
+  'When the official page is silent or cannot be read, name the person the newest ' +
+  'reputable result gives, with that page’s link and date, and one line that it may ' +
+  'have changed. Never a name that no page and no result gave; when results name two ' +
+  'people for one office, give the newest with its date. ' +
   // 0266 part 2 (the tester's 58043, run 51408; Misho's yes, 14 Oct): TBC's group
   // CEO and its Georgian bank's CEO were read as two names for one office.
   "Two people holding two different offices (for example a group's CEO and its " +
@@ -157,9 +157,9 @@ interface TavilyExtractResponse {
 // depth — and the model then named an officeholder from a stale search
 // snippet. The note must forbid that fallback in so many words.
 const NO_TEXT_NOTE =
-  'The page returned no readable text. You may NOT name a person or ' +
-  'officeholder from search snippets instead — tell the user plainly that ' +
-  'the official page could not be read right now.';
+  'The page returned no readable text. If a search result names the person, give that ' +
+  'name with the result’s link and date and one line that it may have changed; if none ' +
+  'does, say plainly that the official page could not be read right now.';
 
 // The direct-fetch fallback hits a model-supplied URL from OUR server, so
 // private/internal targets must be refused (SSRF). Tavily-side fetches never

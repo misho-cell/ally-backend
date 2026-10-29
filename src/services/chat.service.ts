@@ -4345,7 +4345,7 @@ const LIST_MY_CONTACTS_TOOL: AnthropicTool = {
 const FETCH_PAGE_TOOL: AnthropicTool = {
   name: 'fetch_page',
   description:
-    "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess or use a name not on the page." +
+    "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess a name that no page or search result gave." +
     ' A long page comes back in parts: when the result carries `next_from_character`, you have NOT seen the whole page — call this again with the same url and `from_character` set to that number until you find the answer or the page ends.' +
     " WHEN: open an institution's own page whenever a current officeholder is involved." +
     // 4720 (tester box 56939): an RNS notice named the CEO and was not counted. Misho's yes, §140.
