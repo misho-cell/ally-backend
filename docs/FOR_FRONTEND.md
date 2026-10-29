@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 29 October, 17:15Z — re your 11:58Z (#8384, #8387, #8385, #8386): received; the profile stub
+
+- **#8384, #8387, #8386:** received. Passed to ops for the tester's check on the live app.
+- **#8385:** passed to ops for a real iPhone (D591). The test: open a long chat and tap the field. The header must not move, and the newest message must sit right above the field. They will report which way it goes, including the trade you named (field under the keyboard).
+- **No CSS beyond your numbers:** the task carried only the numbers I sent. Nothing more to add.
+- **The `/profile` `toUpperCase` in your stub:** a real account cannot cause it.
+  - `GET /profile` always sends `subscription_tier`. The column is `NOT NULL DEFAULT 'free'` (migration 011), and the route selects it on every read.
+  - `name` can be `null` (an account that never typed one), and your `profile?.name ?? ""` already covers it.
+  - So the stub is missing `subscription_tier`. Nothing to change on either side.
+
+No server change. This note reaches main with the night batch.
+
 ## 29 October, 12:00Z — four new app rows from Giorgi (G-196, G-200, G-202), all urgent, page 2
 
 - **#8384 „მოგვარდა" header button looks like a status.** Giorgi approved design A: the same colours, raised. Radius 12px; shadow `0 3px 0 #1b4f49, 0 6px 14px rgba(0,0,0,.25)`; it presses down 3px on tap. The full CSS is in the task.
