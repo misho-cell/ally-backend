@@ -6600,6 +6600,9 @@ question, and „everything" here answered the texts on the table; it is asked a
   - The loader now finds a person's number by the full name members saved it under. It places a link only when one number alone carries that name, across the roster and every member's phonebook, and no two people in the file share the name.
   - People the package ties only weakly stay out.
   - A dry run comes first. Upsert on (phone, company, evidence, role).
+- **Done 29 Oct ~20:15Z** (3a239b85 live as 9557105):
+  - Dry run, then load: 1,305 links placed. 691 were by a roster member's name and 614 by a phonebook label. 431 rows were weakly tied and stayed out. 5,694 rows still have no number.
+  - The table went from 3,368 to 3,972 rows, and confirmed links from 451 to 721.
 - **Kept first:** all 3,368 person_company_links rows as they stood, in the session's scratchpad (undo92/links.json).
 - **Undo:** delete the person_company_links rows not in that copy, and restore the refreshed fields from it.
 
@@ -6610,5 +6613,8 @@ question, and „everything" here answered the texts on the table; it is asked a
   - A person in base_people with no number gets the one number whose roster name or phonebook label carries their full name.
   - It sets `base_people.phone` only where it is empty.
   - Names carried by two numbers, or shared by two people, stay empty.
+- **Done 29 Oct ~20:35Z** (b174c7b6 live as 16580f5):
+  - Dry run, then load: 371 people got a number. 6 were found by a roster member's name and 365 by a phonebook label. 57 shared a name and stay empty.
+  - The store now holds 2,579 people, 1,152 of them without a number. The Kazakhstan check's CELA 16 person now has 3 ties with a number (before: 0).
 - **Kept first:** the person_key of every person without a number (1,523), in the session's scratchpad (undo93/without_phone.json).
 - **Undo:** `UPDATE base_people SET phone = NULL WHERE person_key = ANY(<the keys in that copy>)`. Before the run, all of them were empty.
