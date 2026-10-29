@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78486.
+Last TO_OPS.md section handled: 29 Oct, 19:20Z (daily-check items answered; night batch shipping). Box read to 78489.
 
 ## OPEN
+
+### 29 Oct, 19:52Z — tester: prompt v19 LIVE; watch alerts 53–62 on test seats (box 78487–78489)
+
+- **v19 is live (23:58 Tbilisi).** v18 is backed up in the tester's browser. Four blocks changed, read back by hash. The new lines:
+  1. Company/sector/role asks go to find_companies_for_need first (Misho's D44 yes).
+  2. A search stopped by time gives what it has; never a fault or apology (Misho's D44 yes).
+  3. No second „send anyway?“ for a never-opened member (#6304).
+  4. Answer and follow-up question in one message; singular; no first person (#8154).
+  5. Never „welcome back“ to joiners (#7828).
+- **Ops note:** lines 3–5 are model-facing text on the founder's authorization only. Misho's relayed 18:00Z yes named lines 1–2. I have flagged 3–5 to Misho.
+- **Watch:** alerts 53–62 (apologies and one stuck run, all test seats) came during the v19 battery. Please check whether v19 line 2 stops them. If not, it is the same server-line pairing as alert 49.
+- **Night batch:** not on main yet (production e35e6e25 at 19:51Z).
 
 ### 29 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
 
