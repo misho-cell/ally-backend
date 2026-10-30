@@ -6634,7 +6634,7 @@ question, and „everything" here answered the texts on the table; it is asked a
   - 6 changed. Live `member_of = Axel` went from 109 to 108 (2 former members retracted, 1 current added), and „Axel (former member)" went from 1 to 6.
   - The copy is in undo94/ (member_of.json, former.json, load_started_at.txt).
 
-## 95 · #7758: EMPLOYMENT HISTORY FROM THE FOUNDER'S WORD (tester's CSV, box 78937; planned 30 Oct, after the by-name loader is live)
+## 95 · #7758: EMPLOYMENT HISTORY FROM THE FOUNDER'S WORD (tester's CSV, box 78937; done 30 Oct ~17:15Z)
 
 - **Who authorises:** Misho's yes on #7758 (29 Oct, „კი, შენი რჩევით გააკეთე"), with his limits. Also his yes of 30 Oct ~10:00Z („ჩემთან კითხვები შენი რეკომენდაციით გააკეთე"): „founder, <date>" counts as a source (0c53ee12).
 - **The file:** 28 rows, everyone the founder named as ex-ARCi; one of them is current.
@@ -6644,3 +6644,6 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** `POST /admin/base-people/employment {"csv": …, "dry_run": false}` after a dry run.
 - **Kept first:** the person keys the dry run resolves, in the session's scratchpad (undo95/).
 - **Undo:** `DELETE /admin/base-people/:key/employment` for each kept key. It removes that person's rows and rebuilds the ties.
+- **Done, 30 Oct ~17:15Z** (after a dry run with the same counts): 28 rows, 9 written, 0 colleague ties (no years yet).
+  - 19 were left out as person_not_in_store. 18 of the file's keys are not keys of the person store, and Misho's limit is „only people already in the store".
+  - The 9 loaded keys are in undo95/loaded_keys.json, so the undo is the DELETE route for each of them.
