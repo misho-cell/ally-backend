@@ -414,6 +414,7 @@ import {
   CompanyBasePart,
   loadCompanyBasePart,
 } from '../../services/companyBase/companyBaseLoad.service';
+import { applyMembershipList } from '../../services/basePeople/membershipList.service';
 import { loadEmployment, removeEmployment } from '../../services/basePeople/employment.service';
 import { fillBasePhonesByPhonebookName } from '../../services/basePeople/phonebookPhones.service';
 import { matchMemberLabels } from '../../services/companyBase/labelMatch.service';
@@ -7501,6 +7502,43 @@ adminRouter.post('/roster/:group/members', async (req: Request, res: Response) =
     // eslint-disable-next-line no-console
     console.error('[admin roster add]', error);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * #7758 (Misho's yes, 29 Oct): a community's current/former list applied to its
+ * roster, by person key or a unique name in the store; numbers stay on the
+ * server. „Same community" reads current members only.
+ *   POST /admin/roster/:group/membership-list { csv, dry_run }
+ *     csv columns: person_key, name, community, status (current|former), date
+ *   200 { dry_run, rows_in_file, current, former, not_found, changed, skipped }
+ *   400 bad body · 500 nothing was written
+ */
+adminRouter.post('/roster/:group/membership-list', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  if (
+    typeof body.csv !== 'string' ||
+    body.csv.length > MAX_AXEL_CSV_CHARS ||
+    typeof body.dry_run !== 'boolean'
+  ) {
+    res
+      .status(400)
+      .json({ success: false, error: 'csv (text) and dry_run (true or false) are required' });
+    return;
+  }
+  try {
+    const curator = String((req as AuthenticatedRequest).user.userId);
+    const report = await applyMembershipList(
+      String(req.params.group),
+      body.csv,
+      body.dry_run,
+      curator,
+    );
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/roster/:group/membership-list]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was written' });
   }
 });
 
