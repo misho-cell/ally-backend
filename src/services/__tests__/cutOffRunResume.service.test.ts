@@ -27,9 +27,7 @@ import {
   resumeCutOffRuns,
   resumeOne,
   storedNoticeTexts,
-  storedWorkingLines,
 } from '../cutOffRunResume.service';
-import { WORKING_LINE } from '../workingLine.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockRun = runOwnerMessage as jest.MockedFunction<typeof runOwnerMessage>;
@@ -92,18 +90,15 @@ describe('finding a cut-off message', () => {
     expect(typeof timeout).toBe('number');
   });
 
-  it("reads through the server's own working line above the notice (#6371)", async () => {
+  it('reads through every line the cut run had already posted (#6371; thread 70093)', async () => {
     mockQuery.mockResolvedValueOnce(rows([]));
 
     await findCutOffMessages(SINCE);
 
-    const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain("NOT (p.role = 'assistant' AND p.content = ANY($6::text[]))");
-    expect(params?.[5]).toEqual(storedWorkingLines());
-    for (const line of Object.values(WORKING_LINE)) {
-      expect(storedWorkingLines()).toContain(line);
-      expect(storedWorkingLines()).toContain(scrubMechanicalForStorage(line));
-    }
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql).toContain("NOT (p.role = 'assistant' AND p.kind = 'message')");
+    // An earlier notice still stops the look; an empty history row is never the message.
+    expect(sql).toContain("p.kind IN ('message', 'error') AND p.content <> ''");
   });
 });
 

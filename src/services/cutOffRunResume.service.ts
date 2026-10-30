@@ -7,7 +7,6 @@ import { detectRunLanguage, RUN_STRINGS } from './runLanguage';
 import { enterThread } from './threadRunQueue';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread } from './threads.service';
-import { WORKING_LINE } from './workingLine.service';
 
 /**
  * Tester 1013, 2 October — Ninia's answer, cut off by my own deploy.
@@ -45,6 +44,14 @@ import { WORKING_LINE } from './workingLine.service';
  * notice was that line, not her message, and the sweep passed her by. The
  * server's own working line is read through, the way the owner reads it: it
  * is not an answer.
+ *
+ * Tester's real-user watch, 30 Oct (thread 70093, 27 Oct 17:00): the cut run
+ * had already posted its first line („ნათელია, ვეძებ …", #8053), so the row
+ * above the notice was that line and the person was left with „send it
+ * again" — and did, forty seconds later. A thread runs one thing at a time,
+ * so every assistant line between the owner's message and the notice is the
+ * cut run's own: all of them are read through, not only the working line. An
+ * earlier notice still stops the look, and so does an empty row.
  */
 
 /** Marks a run started here, so it is never started a second time. */
@@ -78,11 +85,6 @@ export function storedNoticeTexts(): string[] {
   return asStored(Object.values(RUN_STRINGS).map((s) => s.restartedMidRun));
 }
 
-/** The working line in every language, as written and as stored (#6371). */
-export function storedWorkingLines(): string[] {
-  return asStored(Object.values(WORKING_LINE));
-}
-
 /** Notices still standing as the last word, each with the owner message right above it. */
 export async function findCutOffMessages(since: Date): Promise<CutOffMessage[]> {
   const result = await query<{
@@ -96,8 +98,8 @@ export async function findCutOffMessages(since: Date): Promise<CutOffMessage[]> 
        JOIN LATERAL (
          SELECT p.role, p.content, p.created_at FROM conversations p
           WHERE p.thread_id = n.thread_id AND p.created_at < n.created_at
-            AND p.kind IN ('message', 'error')
-            AND NOT (p.role = 'assistant' AND p.content = ANY($6::text[]))
+            AND p.kind IN ('message', 'error') AND p.content <> ''
+            AND NOT (p.role = 'assistant' AND p.kind = 'message')
           ORDER BY p.created_at DESC LIMIT 1
        ) u ON TRUE
       WHERE n.role = 'assistant' AND n.kind = 'error'
@@ -117,7 +119,6 @@ export async function findCutOffMessages(since: Date): Promise<CutOffMessage[]> 
       `${RESUMED_RUN_PREFIX}%`,
       String(MESSAGE_BEFORE_NOTICE_SECONDS),
       MAX_RESUMES_PER_SWEEP,
-      storedWorkingLines(),
     ],
     RESUME_QUERY_TIMEOUT_MS,
   );
