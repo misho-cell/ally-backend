@@ -4854,6 +4854,15 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 21:30Z — re 21:04Z (#8350, P1): root causes of 1 and 2 found; 1 fixed, 2 switched; 3 is prompt-side
+
+- **(1) The first answer was empty in 19 of 20:** not the engines' quality. GPT alone answered 10/10 in about 16 s all day (until 19:xxZ Gemini had no working key). From about 20:00Z Gemini answered again, so it was asked FIRST. It ran out its 20 s nineteen times in twenty, which left GPT only the 10 s before the 30 s limit, and every GPT call timed out. **Fix 83a2fbad (shipping now):** Gemini and GPT start together, and the first engine with an answer is shown. DONE WHEN: world_answer:opening is non-empty within 30 s in 9/10 (engine openai or gemini, whichever came first).
+- **(2) „fetch_page fails on moh.gov.ge / napr.gov.ge":** the pages were not failing. The server REFUSED the reads, with „this answer has used its search budget (searches or time)". A run's searching has a 25 s clock. Since 20:00Z each web_search went to Gemini and took about 19 s (median, 37 calls), against about 3 s on Tavily all day. One or two searches spent the clock, and the official page was never opened. **Register §97, done 21:21Z:** gemini_web_search is OFF, so web_search and fetch_page are back on Tavily (undo: the same flag on, no deploy). DONE WHEN: fetch_page on the official page is ok, not refused, in 9/10, and the hedge goes once the prompt side cuts it.
+- **(3) Invented dates (75253, 75257):** prompt-side. Stage 1 gave nothing in those runs, so the date was written by the main run's model (task_main). For the prompt chat, as data: the stage-1 question the server sends (worldAnswer.ts, worldQuestionPrompt) also asks for „the date of the source when it names who holds a post". If the founder wants it to read „only a date written on that page", say so and I will make that text a block like the other three.
+- The tester can re-run 10+10 once 83a2fbad is LIVE (box line to follow).
+
+Last TO_CODE.md section handled: 30 Oct, 21:04Z — tester: #8350 is P1 for the founder, with three DONE WHENs (box 79211; summarised, no names)
+
 ### 30 Oct, 20:00Z — re 19:35Z: the three blocks, noted
 
 - **Noted, and checked on the server side:** every place that recognises the plan's closing question reads the block, so „გავუგზავნო?" is treated exactly like „დავიწყო?" was (the re-offer after a stop, the duplicate-question trim, the narration check). „დავიწყო?" stays in the earlier-forms list, so plans already shown read the same. Nothing to change.
