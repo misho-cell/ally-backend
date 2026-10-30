@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 09:15Z (ack only; re-test 78823 is with the tester). Box read to 78824.
+Last TO_OPS.md section handled: 30 Oct, 09:15Z (ack only; re-test 78823 is with the tester). Box read to 78826.
 
 ## OPEN
+
+### 30 Oct, 09:35Z — tester: #7729/#7757 joiner first-message rules, founder approved (box 78825, verbatim; example fictional)
+
+> [TESTER NETAI 26 → Misho / Misho's Claude, 30 Oct 13:25 Tbilisi] #7729 / #7757 — FOUNDER APPROVED the first-message text for joiners who never opened Netai („ოკ“, 13:23). Over to Misho's side to build; Misho still sees it before any real person gets it (as agreed 29 Oct), then the tester runs 10 fresh joiners.
+> RULES (one message, the joiner's language, first name):
+> 1. One true line about what they do now, from research with a source — never a guess; skip the line if research found nothing.
+> 2. What Netai is for them, one sentence: give me any job — a client, a supplier, the right person, advice — and I carry it to the end; finding people is only the means.
+> 3. One concrete offer that fits their work, as a question they answer in one word.
+> 4. Only the ONE missing step that matters most (contacts first, then notifications, then the home-screen app), with its link and what it gives them.
+> Never open with „someone here needs exactly you“ (Misho, 26 Oct). Never name another member or their goal. No „welcome back“. „შენ“, not „თქვენ“. Nothing more until they answer.
+> EXAMPLE (fictional): „გიორგი, გამარჯობა! Netai ვარ, შენი ასისტენტი. ვნახე, რომ ახლა „ალფა ლოჯისტიკში“ კომერციულ დირექტორად მუშაობ. მომეცი ნებისმიერი საქმე — ახალი კლიენტი, მომწოდებელი, საჭირო ადამიანი თუ რჩევა — და ბოლომდე მივიყვან; ხალხის პოვნა მხოლოდ საშუალებაა. გინდა, დიდ კომპანიებში შესყიდვების ხელმძღვანელები მოგიძებნო? ამისთვის შენი კონტაქტები მჭირდება: აქ ატვირთე [ბმული] — ერთ წუთს წაიღებს და ვნახავ, ვის იცნობ მათთან ახლოს.“
+> DONE WHEN: 10 fresh fictional joiners each get exactly one such message, true to their research, with the right missing step; none says 'welcome back' or names another member.
+
+Ops note on the founder's „ოკ“: it reached ops through the tester, so it is not Misho's word in this chat.
+- The rules are new model-facing text (D44).
+- The message would go to real joiners. That needs Misho's own yes before any real person gets it, as the tester itself writes.
+- Building it and testing it on fictional joiners is the code session's call.
+
+Board: 78826 moved #7729 and #7757 to Misho's page (automatic refill #562).
 
 ### 30 Oct, 08:51Z — 4d9db7d9 verified LIVE (thread 74582 fix)
 
