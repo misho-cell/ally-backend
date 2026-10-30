@@ -49,6 +49,18 @@ const SOURCES_LABEL: Readonly<Record<RunLanguage, string>> = {
   es: 'Fuentes:',
 };
 
+/**
+ * #8350 (tester 78807; Misho, 30 Oct: yes on the recommendation): the member
+ * is addressed informally, as everywhere else in Netai — the stage-1 answer
+ * wrote „შეგიძლიათ დაუკავშირდეთ".
+ */
+const INFORMAL_ADDRESS: Readonly<Record<RunLanguage, string>> = {
+  ka: 'Address the member informally, with „შენ“ and its verb forms, never „თქვენ“.\n',
+  en: '',
+  ru: 'Address the member informally, with „ты“, never „вы“.\n',
+  es: 'Address the member informally, with „tú“, never „usted“.\n',
+};
+
 /** The question as the web is asked it. */
 export function worldQuestionPrompt(question: string, language: RunLanguage): string {
   return (
@@ -60,6 +72,7 @@ export function worldQuestionPrompt(question: string, language: RunLanguage): st
     'organisation, any public phone number or email an official page gives, and the date of ' +
     'the source when it names who holds a post. Do not say how the answer was found, and ' +
     'never mention a search, a search engine, Google or Gemini.\n' +
+    INFORMAL_ADDRESS[language] +
     `If the question is only about the member’s own contacts or private life, or the web ` +
     `cannot answer it, reply with exactly ${NO_WORLD_ANSWER}.\n` +
     'After the answer, on its own last line, write PEOPLE: followed by each person the answer ' +

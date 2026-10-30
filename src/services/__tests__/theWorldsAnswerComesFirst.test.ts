@@ -90,6 +90,13 @@ describe('the question put to the web (#8350)', () => {
     expect(prompt).toContain('never mention a search, a search engine, Google or Gemini');
     expect(prompt.endsWith(`Question: ${QUESTION}`)).toBe(true);
   });
+
+  // Tester 78807: stage 1 wrote „შეგიძლიათ დაუკავშირდეთ"; Misho, 30 Oct: „შენ".
+  it('addresses the member informally', () => {
+    expect(worldQuestionPrompt(QUESTION, 'ka')).toContain('with „შენ“');
+    expect(worldQuestionPrompt(QUESTION, 'ru')).toContain('„ты“');
+    expect(worldQuestionPrompt(QUESTION, 'en')).not.toContain('informally');
+  });
 });
 
 describe('the answer read back (#8350)', () => {
