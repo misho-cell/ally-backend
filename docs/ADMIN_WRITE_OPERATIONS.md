@@ -6618,3 +6618,14 @@ question, and „everything" here answered the texts on the table; it is asked a
   - The store now holds 2,579 people, 1,152 of them without a number. The Kazakhstan check's CELA 16 person now has 3 ties with a number (before: 0).
 - **Kept first:** the person_key of every person without a number (1,523), in the session's scratchpad (undo93/without_phone.json).
 - **Undo:** `UPDATE base_people SET phone = NULL WHERE person_key = ANY(<the keys in that copy>)`. Before the run, all of them were empty.
+
+## 94 · #7758: THE AXEL ROSTER FOLLOWS AXEL'S OWN CURRENT/FORMER LIST (planned for 30 Oct, after 49f84e76 is live)
+
+- **Who authorises:** Misho's yes on #7758 (29 Oct, „კი, შენი რჩევით გააკეთე"). The list is the tester's file from Axel's own member list of 4 Oct plus the founder's dated corrections (box 78806, 113 rows: 97 current, 16 former; the invited-not-joined are left out).
+- **What:** `POST /admin/roster/Axel/membership-list {"csv": …, "dry_run": false}` after a dry run.
+  - A current member gets `member_of = Axel`. A former one has that row soft-retracted and gets the „Axel (former member)" affiliation.
+  - People are found by person-store key, or by a name one person alone carries.
+- **Kept first:** the ids of every live `contact_facts` row with `field_type = 'member_of' AND value = 'Axel'`, and of every „(former member)" affiliation, in the session's scratchpad (undo94/).
+- **Undo:**
+  - Retract the rows the load created (ids not in the copy, created after the load).
+  - Set `retracted_at = NULL` on the member_of rows in the copy that the load retracted.
