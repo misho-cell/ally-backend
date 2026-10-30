@@ -74,6 +74,15 @@ describe('likelyEmployerFor', () => {
     expect(employerParams?.[1]).toBe(2);
   });
 
+  // #7758 (tester 79009): „. Axel" in a label is a community, never an employer.
+  it('never offers a community’s name as an employer', async () => {
+    answer(['Ilia Test. Axel'], null);
+    await likelyEmployerFor('501', '+995599000111', true);
+    const [employerSql] = mockQuery.mock.calls[1];
+    expect(String(employerSql)).toContain("m.field_type = 'member_of'");
+    expect(String(employerSql)).toContain('WHERE NOT EXISTS (');
+  });
+
   it('gives nothing when no word is anybody’s employer', async () => {
     answer(['Eka Tbilisi'], null);
     await expect(likelyEmployerFor('501', '+995599000111', true)).resolves.toEqual({});
