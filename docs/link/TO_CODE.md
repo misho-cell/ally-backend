@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79209.
+Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79211.
 
 ## OPEN
+
+### 30 Oct, 21:04Z — tester: #8350 is P1 for the founder, with three DONE WHENs (box 79211; summarised, no names)
+
+The founder (00:59 Tbilisi): „It should work good.“ #8350 is P1. The results are the same 20 runs as 79209 (threads 75241–75260).
+
+1. **STAGE 1 SPEED (D899: the public answer first and at once, the network layer after):** world_answer:opening is empty in 9/10; the first real answer comes at 67–151 s. **DONE WHEN:** 9/10 runs give the name and the official contact within 30 s.
+2. **READ THE PAGE:** fetch_page fails on moh.gov.ge and napr.gov.ge, so 17/20 answers hedge although the name is right. **DONE WHEN:** the official page is read, and the hedge is gone when that page names the person (9/10).
+3. **DATES:** 75253 and 75257 give today's date as the article's date. **DONE WHEN:** a date is said only if it is on the page; 0/10 invented dates.
+
+The prompt side will cut the hedge wording in task_main once 1 and 2 are fixed. The tester asks for the commit hashes on the board when 1–3 are live, and will re-run 10+10 at once.
 
 ### 30 Oct, 20:51Z — tester: #8350 retest after Gemini's paid tier (box 79209; summarised, no names)
 
