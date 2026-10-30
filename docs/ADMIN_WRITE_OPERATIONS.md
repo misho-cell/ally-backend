@@ -6660,3 +6660,11 @@ question, and „everything" here answered the texts on the table; it is asked a
   - Anyone who already holds an unanswered first message gets nothing more (#7757: never a second message while one is unread).
 - **What:** `POST /admin/joiner-first-messages/backfill {"dry_run": true}`, read the count, then `{"dry_run": false}`.
 - **Undo:** a message cannot be unsent. What can be undone is its row: delete the assistant message of the run that the `joiner_first_message` event names (`props.thread_id`, written after the event), and the event itself.
+
+## 97 · #8350: WEB SEARCH BACK ON TAVILY WHILE GEMINI TAKES ~19 s A SEARCH (30 Oct ~21:45Z)
+
+- **Who authorises:** mine. The switch is the one I turned on under register §70 for #7690, on Misho's „შეგიძლია ჩართო" (27 Oct); the founder made #8350 P1 tonight (tester 79211: the first answer within 30 s, the official page read).
+- **Why:** until about 20:00Z Gemini refused every call, so every web_search went to Tavily, which answers in about 3 s (hourly medians 2–4 s for two days). Once Gemini answered again, each web_search took about 19 s (37 calls, 20:00–21:00Z). A run's searching has a 25 s clock (chat.service SEARCH_TIME_BUDGET_MS), so one or two searches spent it and the page reads after them were refused: that is the tester's „fetch_page fails on moh.gov.ge / napr.gov.ge" (refused, not failed).
+- **What:** `PUT /admin/flags/gemini_web_search {"enabled": false}`. web_search goes back to Tavily and fetch_page to Tavily's extractor. The first answer (world_answer) still uses Gemini and GPT, now both at once (#8350 commit tonight).
+- **Undo:** `PUT /admin/flags/gemini_web_search {"enabled": true}`. Read with a 30 s cache, no deploy.
+- **Back on when:** a Gemini search is measured at a few seconds again, and the open question on Google's terms for grounded results (§70) is answered.

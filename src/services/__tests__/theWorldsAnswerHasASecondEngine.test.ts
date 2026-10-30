@@ -114,16 +114,31 @@ describe('asking the world when Gemini fails (#8350)', () => {
     expect(mockCreate.mock.calls[0][0]).toMatchObject({ tools: [{ type: 'web_search' }] });
     // Tester 78509: no SDK retries, or 20 s becomes a minute before the run.
     expect(mockCreate.mock.calls[0][1]).toMatchObject({ maxRetries: 0 });
-    // Tester 78807: the fallback has until 30 s from the start, not the 20 s Gemini has.
+    // Tester 78807: GPT has 30 s, not the 20 s Gemini has.
     expect(mockCreate.mock.calls[0][1].timeout).toBeGreaterThan(WORLD_ANSWER_BUDGET_MS);
-    expect(mockCreate.mock.calls[0][1].timeout).toBeLessThanOrEqual(
-      WORLD_ANSWER_FALLBACK_BUDGET_MS,
-    );
     expect(mockLog.mock.calls[0][0].input.engine).toBe(WorldAnswerEngine.OpenAi);
     expect(mockRecordUsage.mock.calls[0][0]).toMatchObject({
       provider: 'openai',
       kind: 'web_search',
     });
+  });
+
+  it('starts both engines at once: a Gemini that hangs does not hold GPT’s answer (79211)', async () => {
+    let geminiReplies: (r: Response) => void = () => undefined;
+    jest
+      .spyOn(global, 'fetch')
+      .mockReturnValue(new Promise<Response>((resolve) => (geminiReplies = resolve)));
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockCreate.mockResolvedValue(gptResponse(TEXT, true));
+    const answer = await askTheWorld(run, 'Who heads the city transport service?', 'en');
+    expect(answer?.people[0].name).toBe('Nino Example');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(mockCreate.mock.calls[0][1].timeout).toBe(WORLD_ANSWER_FALLBACK_BUDGET_MS);
+    expect(mockLog.mock.calls[0][0].input.engine).toBe(WorldAnswerEngine.OpenAi);
+    // Gemini comes back late, after the answer was shown: nothing changes.
+    geminiReplies({ ok: false, status: 504, text: async () => 'late' } as unknown as Response);
+    await new Promise((r) => setImmediate(r));
+    expect(mockLog).toHaveBeenCalledTimes(1);
   });
 
   it('shows nothing when GPT cites no page', async () => {
