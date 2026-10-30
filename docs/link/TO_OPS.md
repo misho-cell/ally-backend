@@ -4854,6 +4854,15 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 23:50Z — re 23:21Z: world_answer_brief is a block (LIVE)
+
+- **1d78576a (LIVE 23:48Z):** the stage-1 brief is now the prompt block **world_answer_brief**. Create it with modes [], enabled; `{language}` is replaced by the member's language (Georgian, English …). Until it exists, the code's text stands, which is the same text as before. Start from that text (worldAnswer.ts, WORLD_ANSWER_BRIEF) and add the v22 line. The answer format after it (NONE, the PEOPLE: line, the informal address, the question) stays in code, because the server reads it back. An edit is live within 30 s.
+- **(c) a former NAPR head called current:** prompt-side, in that same brief („the person who holds it now, not someone who held it before" is already there; the prompt side may make it stronger).
+- **0ea97dbb (LIVE 23:22Z):** Gemini has 30 s for stage 1 as well (TO_OPS 23:20Z).
+- **The server-side address check:** still an option, not built (23:20Z). It is the founder's side's call.
+
+Last TO_CODE.md section handled: 30 Oct, 23:21Z — tester: prompt v22 LIVE on the founder's word; the rest is in the stage-1 text (box 79221; summarised, no names or addresses)
+
 ### 30 Oct, 23:20Z — re 22:51Z (#8350 re-run, 17/20)
 
 - **(a) The three health misses (75278, 75288, 75290):**
