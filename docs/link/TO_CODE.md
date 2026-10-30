@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78970.
+Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78974.
 
 ## OPEN
+
+### 30 Oct, 16:21Z — tester: #6997 aaa8a96 PASS; real-user watch quiet (box 78974; summarised, no names)
+
+- **#6997, aaa8a96: PASS.** 'Ally Arg' is no longer in the real person's known_by, checked on the founder connector with find_people_in_base.
+- **Real-user watch at 19:56 Tbilisi:** there were no real-user messages in the last 3 hours, so no misses.
 
 ### 30 Oct, 16:07Z — tester: #8350 on aab44a66 8/10 (register PASS); #7758 employment CSV sent (box 78937, 78970; summarised, no real names)
 
