@@ -30,6 +30,12 @@ const MAX_TIE_ROWS = MAX_PEOPLE * MAX_TIES_PER_PERSON;
  * or an account whose name carries the word „test".
  */
 const TEST_ACCOUNT_NAME_RE = '\\mtest\\M';
+/**
+ * Accounts that are nobody's route although their names carry no „test": the
+ * founder, 30 Oct (box 78812): „Ally Arg" is the old Ally Argentina project
+ * account (D845), not a person.
+ */
+const NOT_A_PERSON_KEYS: readonly string[] = ['U-129171'];
 
 interface PersonHit {
   readonly person_key: string;
@@ -154,12 +160,12 @@ async function readBridges(keys: readonly string[]): Promise<TieRow[]> {
                SELECT to_key, from_key, tie FROM base_person_ties
                 WHERE to_key = ANY($1::text[])) t
          JOIN base_people o ON o.person_key = t.other_key AND o.phone IS NOT NULL
-        WHERE o.name !~* $4
+        WHERE o.name !~* $4 AND o.person_key <> ALL($5::text[])
           AND NOT EXISTS (SELECT 1 FROM test_seats s WHERE 'U-' || s.user_id = o.person_key)) ranked
       WHERE n <= $2
       ORDER BY person_key, name
       LIMIT $3`,
-    [[...keys], MAX_TIES_PER_PERSON, MAX_TIE_ROWS, TEST_ACCOUNT_NAME_RE],
+    [[...keys], MAX_TIES_PER_PERSON, MAX_TIE_ROWS, TEST_ACCOUNT_NAME_RE, NOT_A_PERSON_KEYS],
     BASE_QUERY_TIMEOUT_MS,
   );
   return result.rows;
