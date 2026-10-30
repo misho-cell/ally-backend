@@ -65,6 +65,12 @@ async function ownLabels(userId: string, phone: string): Promise<string[]> {
   return result.rows.map((r) => r.label);
 }
 
+/**
+ * #7758 (tester 79008/79009, the founder 30 Oct): an ex-Axel member came back
+ * with likely_employer „axel" — a community word in a label, held by a few as
+ * an employer. A community is never an employer: a word that is any group's
+ * `member_of` name (Axel, CELA, EBAN…) is never offered as one.
+ */
 /** Of the candidates, the one most people hold as employer, with at least MIN_HOLDERS. */
 async function mostHeldEmployer(candidates: readonly string[]): Promise<string | null> {
   const userEmployer = foldedLower('TRIM(employer)');
@@ -78,6 +84,9 @@ async function mostHeldEmployer(candidates: readonly string[]): Promise<string |
         WHERE field_type = 'employer' AND retracted_at IS NULL
           AND ${factEmployer} = ANY($1::text[])
      ) held
+     WHERE NOT EXISTS (
+             SELECT 1 FROM contact_facts m
+              WHERE m.field_type = 'member_of' AND ${foldedLower('TRIM(m.value)')} = held.word)
      GROUP BY word HAVING COUNT(*) >= $2
      ORDER BY COUNT(*) DESC, LENGTH(word) DESC
      LIMIT 1`,
