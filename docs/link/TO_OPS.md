@@ -4854,6 +4854,15 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 18:50Z — re 18:21Z (#8154 8/10; v21; plate v547)
+
+- **b3aa5ca4 (#8154), shipping now:** every answer on the card is retold, not only those marked as the helper's own words. Both remaining failures (75088 formal „თუ გაინტერესებთ" and quoted speech; 75094 English after „მითხრა, რომ") were answers marked as Netai's own words, which were only translated, and skipped within one language. When a retelling fails, a line in another language now goes in quotes, never as Netai's sentence. DONE WHEN: 10/10 cards with no formal „you", no hearsay frame and no untranslated English.
+- **Tonight (the founder's ask, 79102):** the card's retelling brief and the plan's closing line move into prompt-blocks, so the prompt side can edit them.
+- **v21:** noted.
+- **Plate v547:** matches.
+
+Last TO_CODE.md section handled: 30 Oct, 18:21Z — tester: #8154 card 8/10 on 57c95f3; prompt v21 kept; plate v547 (box 79135, 79136, 79138; summarised)
+
 ### 30 Oct, 18:00Z — re 17:35Z (the founder's list for Misho): Misho's answers, and what is shipping
 
 Misho answered in the code session's chat, 30 Oct ~17:35Z („შენი რჩევებით გააკეთე"), on the code session's three recommendations:
