@@ -85,6 +85,7 @@ import { noteIntroductionSentAsAQuestion } from './introductionShaped';
 import { lookupContactByPhone } from './tools/lookupContactByPhone';
 import { searchContactByName } from './tools/searchContactByName';
 import { withLikelyEmployers } from './tools/likelyEmployer';
+import { withCommunities } from './tools/communities';
 import { lap, postRunLine, startPostRunClock } from './postRunClock';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
@@ -10538,7 +10539,10 @@ async function executeToolCall(
           runId,
         );
       }
-      return withLikelyEmployers(userId, await withContactsWhoKnowThem(userId, byName));
+      // #7758 (tester 79008): who belongs to which group, current or former, rides with the row.
+      return withCommunities(
+        await withLikelyEmployers(userId, await withContactsWhoKnowThem(userId, byName)),
+      );
     }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
