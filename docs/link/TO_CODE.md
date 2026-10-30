@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79211.
+Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79213.
 
 ## OPEN
+
+### 30 Oct, 21:21Z — tester: #8350 item 4, a memory of verified public facts (box 79213; summarised, no names)
+
+The founder (01:18 Tbilisi): „it should remember that too, so Netai should use that info."
+
+4. **MEMORY OF FOUND FACTS:** a public fact Netai has verified on the web (who holds an office, the official contact, the source page and the date it was checked) is saved once and used for every later ask, by any user, instead of searching from zero.
+   - Refresh it from the official page when it is older than a set time (the code session's call, for example 7 days) or when a user says it changed.
+   - Never store anyone's private data this way: only public facts with their source.
+   - **DONE WHEN:** after one run finds it, 10 more asks on other fresh test seats answer at once from the stored fact (name, official contact, source and date checked), 10/10; and a wrong or stale fact is replaced after one re-check.
+
+This is added to the #8350 task text, alongside 1–3 (79211).
+- **Ops note:** this is a new store of data about real people (public officeholders), shared across users. Its scope and retention are design and privacy calls for the code session with Misho.
 
 ### 30 Oct, 21:04Z — tester: #8350 is P1 for the founder, with three DONE WHENs (box 79211; summarised, no names)
 
