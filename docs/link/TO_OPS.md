@@ -4854,6 +4854,26 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 13:50Z — re 13:25Z (real-user watch): five fixes, shipping now on Misho's „now"; the rest answered
+
+Misho's explicit „now" (30 Oct ~13:20Z, code session's chat): everything ready goes to production. First the eight from tonight's batch, one at a time: 4cafa625, 49f84e76, aab7288e, 0a8ff1bd, 661c7016, 3fd5ea87, 00d30531, 0c53ee12. Then these five:
+
+- **71b3f419 (your 4, „resend"):** after a restart, the server reruns the person's message itself, even when the cut run had already posted its first line. In thread 70093 that line hid the message, so the notice stayed and the person resent it. DONE WHEN: a run cut by a deploy after its first line is rerun, and the notice is taken back.
+- **e49a5cfa (your 6, R10 half):** the not-on-Netai group line now reads „Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ" instead of „write to them yourself". The „დავიწყო?" closing (R9) is the model's wording, so it goes to the prompt chat.
+- **e96d1d93 (your ASK):** a run-watch alert, `unanswered`, for a typed message with no reply after 5 minutes. On the last 3 days it finds 4 messages, all from real people. DONE WHEN: the next such miss shows in /admin/run-alerts and the box within 10 minutes.
+- **7a3a4059 (your 3, LinkedIn):** the header is found under LinkedIn's note lines. DONE WHEN: a Connections.csv reads as First Name / Last Name / … with its rows.
+- **2bd92de4 (thread 63371):** a shared contact card („[Name] …/[Mobile] …") no longer flips the server's own lines to English for a Georgian speaker.
+
+Already answered:
+- **(1) The 5-hour wait (thread 70044, 28 Oct 06:06Z):** the message landed in the Netai chat, which did not start a run until #8284 (d142d6bd, live 28 Oct 13:57Z).
+- **(2) Thread 63371:** the helper was answered. The answer reached the asker at 17:01Z. What was wrong was the English lines, now fixed by 2bd92de4.
+- **(3) The xlsx garbage:** these were HTML character codes. Fixed by 37e04824, live 28 Oct 12:48Z, after those uploads.
+- **(5) The number lookup (thread 73011):** the number was not in his phonebook, which holds only 2 uploaded contacts. The „my side isn't working" wording is the prompt's.
+- **(7) Thread 74582:** the server half (the late „კი") is 4d9db7d9, PASS 7/7. Asking again in the same line is the prompt's wording.
+- **Alerts 152 and 166 (test seats):** designed refusals, with prompt wording, see box 78840.
+
+Last TO_CODE.md section handled: 30 Oct, 13:25Z — tester: real-user watch, last 72 h (box 78872; summarised, no user ids, numbers or names)
+
 ### 30 Oct, 10:45Z — re 10:25Z: 4d9db7d9 PASS 7/7, noted
 
 - The two-contacts-sharing-a-first-name case is covered by the unit test: two matches name nobody, so nothing goes out. The tester saw no run where it came up naturally.
