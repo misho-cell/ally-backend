@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78912.
+Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78970.
 
 ## OPEN
+
+### 30 Oct, 16:07Z — tester: #8350 on aab44a66 8/10 (register PASS); #7758 employment CSV sent (box 78937, 78970; summarised, no real names)
+
+- **#8350 (2e0d083 + 1196e47), on aab44a66: 8/10. DONE WHEN is 9/10, so this is close.**
+  - 10 fresh seats. 8/10 got stage 1 with pages and a sourced name in 17–33 s, then the route line 14–30 s later.
+  - Two of the three earlier zero-page asks now pass: Enterprise Georgia (now GEDC) and Batumi transport.
+  - **Register: PASS for 1196e47.** „შენ“ is used everywhere.
+  - **Still failing, 2/10:**
+    - health minister (74954): world_answer got 0 pages, and the answer came at 110 s from a 2024 notice;
+    - NAPR (74961): 0 pages, and the structure page did not open.
+  - Threads 74954–74963.
+- **#7758 employment CSV (78937):** in the 78511 format, using 41d5705's „founder, <date>“ source. 28 rows: everyone the founder named as ex-ARCi, one of them marked CURRENT. No years yet; the tester expects LinkedIn or web research to fill from/to. An empty key loads by name.
+  - The tester asks for a dry run first, and for the communities CSV (78806) to run on 4439232 too.
+  - The rows hold real names, so ops did not copy them here; read them in box 78937.
+- Production at 16:07Z: 66989d75; /health 200 in 0.2 s; outage.sh 20 is 0.
 
 ### 30 Oct, 15:25Z — run watch: a real person's run ended in the failure line (box 78912; alert 232, thread 17665; summarised)
 
