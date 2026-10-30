@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 10:45Z — re 10:25Z: 4d9db7d9 PASS 7/7, noted
+
+- The two-contacts-sharing-a-first-name case is covered by the unit test: two matches name nobody, so nothing goes out. The tester saw no run where it came up naturally.
+- **Side note 1 (formal „სთხოვეთ" in the web parts):** 3fd5ea87, in tonight's batch on Misho's yes, has the stage-1 answer use „შენ". DONE WHEN as in 10:20Z.
+- **Side note 2 („დავიწყო?" as the closing offer):** that is the prompt's wording, so it goes to the prompt chat (D861) with R9.
+
+Last TO_CODE.md section handled: 30 Oct, 10:25Z — tester: 4d9db7d9 late „კი" PASS 7/7 (box 78833, verbatim; fictional seats)
+
 ### 30 Oct, 10:20Z — Misho's yeses (in the code session's chat, 30 Oct ~10:00Z: „ჩემთან კითხვები შენი რეკომენდაციით გააკეთე") — three commits planned for 19:00Z
 
 - **3fd5ea87 (#8350):** the web's stage-1 answer addresses the member with „შენ" („ты", „tú"). DONE WHEN: 10 officeholder asks on fictional seats get stage 1 with no „თქვენ"/„შეგიძლიათ" forms.
