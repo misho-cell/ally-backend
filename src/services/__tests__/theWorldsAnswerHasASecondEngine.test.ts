@@ -26,12 +26,7 @@ jest.mock('../finalAnswer.service', () => ({
 import OpenAI from 'openai';
 import { citedPages, responseUsage } from '../tools/openaiWebSearch';
 import { withoutInlineLinks } from '../worldAnswer';
-import {
-  askTheWorld,
-  WORLD_ANSWER_BUDGET_MS,
-  WORLD_ANSWER_FALLBACK_BUDGET_MS,
-  WorldAnswerEngine,
-} from '../worldAnswer.service';
+import { askTheWorld, WORLD_ANSWER_BUDGET_MS, WorldAnswerEngine } from '../worldAnswer.service';
 
 /**
  * #8350 (tester 78145: stage 1 never posted while Gemini refuses every call):
@@ -114,8 +109,9 @@ describe('asking the world when Gemini fails (#8350)', () => {
     expect(mockCreate.mock.calls[0][0]).toMatchObject({ tools: [{ type: 'web_search' }] });
     // Tester 78509: no SDK retries, or 20 s becomes a minute before the run.
     expect(mockCreate.mock.calls[0][1]).toMatchObject({ maxRetries: 0 });
-    // Tester 78807: GPT has 30 s, not the 20 s Gemini has.
-    expect(mockCreate.mock.calls[0][1].timeout).toBeGreaterThan(WORLD_ANSWER_BUDGET_MS);
+    // Testers 78807 and 79217: each engine has 30 s.
+    expect(mockCreate.mock.calls[0][1].timeout).toBe(WORLD_ANSWER_BUDGET_MS);
+    expect(WORLD_ANSWER_BUDGET_MS).toBe(30_000);
     expect(mockLog.mock.calls[0][0].input.engine).toBe(WorldAnswerEngine.OpenAi);
     expect(mockRecordUsage.mock.calls[0][0]).toMatchObject({
       provider: 'openai',
@@ -133,7 +129,7 @@ describe('asking the world when Gemini fails (#8350)', () => {
     const answer = await askTheWorld(run, 'Who heads the city transport service?', 'en');
     expect(answer?.people[0].name).toBe('Nino Example');
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(mockCreate.mock.calls[0][1].timeout).toBe(WORLD_ANSWER_FALLBACK_BUDGET_MS);
+    expect(mockCreate.mock.calls[0][1].timeout).toBe(WORLD_ANSWER_BUDGET_MS);
     expect(mockLog.mock.calls[0][0].input.engine).toBe(WorldAnswerEngine.OpenAi);
     // Gemini comes back late, after the answer was shown: nothing changes.
     geminiReplies({ ok: false, status: 504, text: async () => 'late' } as unknown as Response);

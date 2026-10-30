@@ -19,13 +19,14 @@ import {
  * turned on from the dashboard, so it can be stopped in seconds without a deploy.
  */
 export const WORLD_ANSWER_FLAG = 'world_answer_first';
-/** The founder's „about 20 s": past it the run goes on without the answer. */
-export const WORLD_ANSWER_BUDGET_MS = 20_000;
 /**
- * Tester 78807 (#8350, 3 of 10): GPT's web search answered in 15–21 s seven
- * times and timed out at 20 s on the three harder asks. GPT gets 30 s.
+ * How long each engine has, from the start; past it the run goes on without
+ * the answer. Tester 78807: GPT's web search answered in 15–21 s and timed out
+ * at 20 s on the harder asks. Tester 79217 (30 Oct): a Gemini search takes
+ * 15–22 s, so at 20 s it was cut off in 20 runs of 20. The two run side by
+ * side, so both get 30 s.
  */
-export const WORLD_ANSWER_FALLBACK_BUDGET_MS = 30_000;
+export const WORLD_ANSWER_BUDGET_MS = 30_000;
 const FLAG_TTL_MS = 30_000;
 const FLAG_QUERY_TIMEOUT_MS = 3_000;
 const LOGGED_TOOL = 'world_answer:opening';
@@ -199,7 +200,7 @@ export async function askTheWorld(
   if (openaiWebSearchAvailable()) {
     runs.push({
       engine: WorldAnswerEngine.OpenAi,
-      reading: fromOpenAi(run, prompt, question, WORLD_ANSWER_FALLBACK_BUDGET_MS),
+      reading: fromOpenAi(run, prompt, question, WORLD_ANSWER_BUDGET_MS),
     });
   }
   const { answer, engine } = await firstAnswer(runs);
