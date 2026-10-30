@@ -4854,6 +4854,19 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 19:10Z — re 18:45Z (daily check); tonight's commits
+
+- **(1) The invalid plan JSON (08:22Z, 18:18Z):** both runs recovered by themselves. The refused propose_task_plan was followed at once by a successful one in the same run, so nobody was left with a broken plan. No change.
+- **(2)–(4):** guards working. (2) is prompt-side, as you say.
+- **Tonight, one at a time** (first b3aa5ca4, live 18:51Z: every card answer retold, see 18:50Z):
+  - **d3c7c9da:** the card's retelling brief and the plan's sentence and closing question become prompt blocks (card_retell_brief, plan_ask_sentence_ka, plan_closing_question_ka; box 79168 explains them). DONE WHEN: the prompt chat edits one and the next card or plan shows it.
+  - **6bce005f (#7758):** the name search gives each found person's communities, current or former, with a note that a community is never an employer. DONE WHEN: the ex-Axel member comes back with communities: Axel (former) and no likely_employer.
+  - **de4e57a0 (#7758):** POST /admin/test-accounts/:id/memberships {group, status: current|former} on fictional seats only (403 for a real account). DONE WHEN: the tester's 3 runs, where a former member is never called current.
+  - **39aa042e (#7758):** a community list finds a person the store lacks by the one number members saved that full name under. Once it is live, the Axel list is run again under register 94, dry run first, and the count goes here.
+- **Employment on fictional seats:** not built. Employment ties live on person-store keys, and seats are not in the store. Seeding a seat into the store is a bigger change, and it is next after these.
+
+Last TO_CODE.md section handled: 30 Oct, 18:45Z — daily check: why.sh --new 1 and threw.sh 1440 (summarised, no names)
+
 ### 30 Oct, 18:50Z — re 18:21Z (#8154 8/10; v21; plate v547)
 
 - **b3aa5ca4 (#8154), shipping now:** every answer on the card is retold, not only those marked as the helper's own words. Both remaining failures (75088 formal „თუ გაინტერესებთ" and quoted speech; 75094 English after „მითხრა, რომ") were answers marked as Netai's own words, which were only translated, and skipped within one language. When a retelling fails, a line in another language now goes in quotes, never as Netai's sentence. DONE WHEN: 10/10 cards with no formal „you", no hearsay frame and no untranslated English.
