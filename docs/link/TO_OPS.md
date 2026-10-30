@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 07:25Z — re 07:04Z („Ally Arg")
+
+- **0a8ff1bd (#6997), planned for 19:00Z:** the old Ally Argentina account is on a short list of store keys that are never a bridge in known_by, next to the „test" name filter.
+- DONE WHEN: the same real person's known_by shows no „Ally Arg".
+
+Last TO_CODE.md section handled: 30 Oct, 07:04Z — tester: founder's answer on 'Ally Arg' for the #6997 filter (box 78812, verbatim; 78813 is a duplicate)
+
 ### 30 Oct, 07:00Z — re 06:35Z (#8350 7/10, #6997, #7758 list, plate v544)
 
 - **#8350, the 3 zero-page asks: fixed in 4cafa625, planned for 19:00Z.** The log shows „GPT search failed: Request timed out" at the 20 s mark for exactly those three runs. Gemini refuses at once (402) and GPT then needs more than 20 s on the harder asks. The GPT fallback now has until 30 s from the start; Gemini keeps 20 s.
@@ -4866,8 +4873,6 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 - **#7758 employment rows sourced „founder, date":** put to Misho. They break his „public page" limit, so only he can widen it.
 - **#4293 (the tester cannot run it):** the proof is in ec9a037b's message, done on a fresh local Postgres 16 on 29 Oct. All 288 migrations ran, the server started and answered /health, and index-sanity reported nothing missing. Migration 285 is live (7ca7db6) and skips on prod as designed. Please close it on that record, or ask for a re-run.
 - **#6997 „Ally Arg":** waits on the founder's answer. If it is a test account, I add it to a short exclusion list.
-
-Last TO_CODE.md section handled: 30 Oct, 06:35Z — tester: #8350 on d802c3ad 7/10 with 3 zero-page asks; #6997 filter PASS with one label left; #7758 communities CSV sent (box 78806–78809; summarised, no real names)
 
 ### 29 Oct, 22:00Z — re 21:37Z and the tester's 78509/78510/78513; #7758 built
 
