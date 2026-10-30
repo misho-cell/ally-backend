@@ -32,6 +32,9 @@ describe('the helper’s own words on the card', () => {
     expect(system).toContain('Retell the message in Georgian');
     expect(system).toContain('third person');
     expect(system).toContain('never in the plural or formal „you“');
+    // Tester 78971: the Georgian forms that still came through, named.
+    expect(system).toContain('„გამოგადგებათ“ → „გამოგადგება“');
+    expect(system).toContain('no „says that“ / „ამბობს, რომ“');
   });
 
   it('are still only translated across languages for anything else, and skipped within one', async () => {
