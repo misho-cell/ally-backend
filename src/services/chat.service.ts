@@ -456,6 +456,7 @@ import {
   goalAsksToReachAPerson,
 } from './openingSearch.service';
 import { askTheWorld, worldAnswerSwitchOn } from './worldAnswer.service';
+import { isFreeOfficialPageRead } from './officialPageRead';
 import { withoutOurSideApology } from './ourSideApology';
 import { WorldAnswer, worldAnswerMessage, worldAnswerSection } from './worldAnswer';
 import {
@@ -9318,6 +9319,8 @@ const TIMED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'search_contact_by_name',
 ]);
 const runFirstSearchAt = new Map<string, number>();
+/** Reads of an official page this run made outside its search budget (officialPageRead). */
+const runOfficialReads = new Map<string, number>();
 
 /** True when this run started searching longer ago than its time budget allows. */
 function searchClockSpent(runId: string, tool: string, now: number): boolean {
@@ -10248,6 +10251,7 @@ function clearRunState(runId: string): void {
   runWithheldByOwnerLine.delete(runId);
   runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
   runFirstSearchAt.delete(runId);
+  runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
 }
 
@@ -10483,8 +10487,12 @@ async function executeToolCall(
         'presses the button themselves. Do not tell them it was approved.',
     };
   }
+  const freeOfficialRead =
+    runId !== undefined && isFreeOfficialPageRead(name, input, runOfficialReads.get(runId) ?? 0);
+  if (freeOfficialRead) runOfficialReads.set(runId, (runOfficialReads.get(runId) ?? 0) + 1);
   if (
     runId !== undefined &&
+    !freeOfficialRead &&
     !isRouteToSomeoneFound(name, input, runFoundPeople.get(runId) ?? []) &&
     searchBudgetSpent(runId, name)
   ) {

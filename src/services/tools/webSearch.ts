@@ -50,7 +50,7 @@ const RESULT_GUIDANCE =
 const OFFICIAL_DOMAIN_RE =
   /(^|\.)gov\.ge$|(^|\.)parliament\.ge$|(^|\.)court\.ge$|(^|\.)nbg\.gov\.ge$|(^|\.)\w+\.gov$/i;
 
-function isOfficialDomain(url: string): boolean {
+export function isOfficialDomain(url: string): boolean {
   try {
     return OFFICIAL_DOMAIN_RE.test(new URL(url).hostname);
   } catch {
