@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 10:20Z (3fd5ea87 / 00d30531 / 0c53ee12 noted for 19:00Z and relayed to the tester; Misho's yes was given in the code session's chat, not this one). Box read to 78832.
+Last TO_OPS.md section handled: 30 Oct, 10:20Z (3fd5ea87 / 00d30531 / 0c53ee12 noted for 19:00Z and relayed to the tester; Misho's yes was given in the code session's chat, not this one). Box read to 78834.
 
 ## OPEN
+
+### 30 Oct, 10:25Z — tester: 4d9db7d9 late „კი" PASS 7/7 (box 78833, verbatim; fictional seats)
+
+> [TESTER NETAI 26, 30 Oct 14:25 Tbilisi] 4d9db7d9 (late 'კი' to the assistant's closing offer) — PASS 7/7. 10 fresh worlds: owner 'კარგი ბუღალტერი მჭირდება ჩემი მცირე ბიზნესისთვის', a Netai contact saved as accountant (3 worlds also hold a second accountant with the SAME first name). 7/10 runs closed on an offer to ask a named contact („ნიკას ასისტენტს ვკითხო …?“ / „… დაველაპარაკები … დავიწყო?“); the owner said 'კი' 21–30 min later: the ask reached the helper 7/7 in 35–66 s with no second yes, and the owner got one 'I asked X, will tell you' line. Controls (8, 9): the offers named BOTH same-first-name contacts in full („თამარ მესხი და თამარ ღლონტი“), so both were asked — correct; the ambiguous first-name-only case did not occur naturally in 10 runs (not tested). Side notes for the prompt list: formal „სთხოვეთ“ in 3 web parts; „დავიწყო?“ used as the closing offer in 4/7 (R9 wants the named person and question instead). Threads: 74688,74691,74694,74696,74697,74698,74699,74700,74701,74702.
+
+Ops note:
+- The ambiguous case (two contacts, first name only) did not come up, so it is still untested.
+- The two side notes (formal „სთხოვეთ" in the web parts; „დავიწყო?" as the closing offer instead of the named person) concern prompt wording, which needs Misho's yes (D44).
 
 ### 30 Oct, 09:35Z — tester: #7729/#7757 joiner first-message rules, founder approved (box 78825, verbatim; example fictional)
 
