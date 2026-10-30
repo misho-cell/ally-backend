@@ -10,6 +10,11 @@ jest.mock('../roster.service', () => ({
   removeRosterMember: (...a: unknown[]) => mockRemove(...a),
 }));
 
+const mockNames = jest.fn();
+jest.mock('../companyBase/phonebookNames.service', () => ({
+  namesOnNumbers: (...a: unknown[]) => mockNames(...a),
+}));
+
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { MembershipStatus, membershipRows } from '../basePeople/membershipList';
@@ -73,6 +78,18 @@ describe('a community’s current/former list', () => {
     expect(mockRemove).toHaveBeenCalledWith('Axel', '+995500000302');
     expect(mockAdd).toHaveBeenCalledWith('Axel', '+995500000302', '7', { former: true });
     expect(mockAdd).toHaveBeenCalledWith('Axel', '+995500000301', '7');
+  });
+
+  // Tester 79008: an ex-Axel member not in the store was never marked former.
+  it('finds a person the store lacks by the one number members saved that name under', async () => {
+    mockQuery.mockResolvedValueOnce(PEOPLE);
+    mockNames.mockResolvedValueOnce([
+      { phone: '+995500000399', names: ['ilia former'], from: 'placed_by_phonebook_name' },
+    ]);
+    const csv = 'person_key,name,community,status,date\nP-9,Ilia Former,Axel,former,2026-10-19\n';
+    const report = await applyMembershipList('Axel', csv, false, '7');
+    expect(report).toMatchObject({ not_found: 0, found_by_phonebook_name: 1 });
+    expect(mockAdd).toHaveBeenCalledWith('Axel', '+995500000399', '7', { former: true });
   });
 
   it('has an admin route that requires dry_run', () => {

@@ -1,4 +1,6 @@
 import { query } from '../../db/postgres/client';
+import { NamedNumber, phonesByUniqueName } from '../companyBase/phonebookNames';
+import { namesOnNumbers } from '../companyBase/phonebookNames.service';
 import { addRosterMember, removeRosterMember } from '../roster.service';
 import { nameKey } from '../tools/transliterate';
 import { MembershipRow, membershipRows, MembershipStatus } from './membershipList';
@@ -20,6 +22,8 @@ export interface MembershipReport {
   readonly current: number;
   readonly former: number;
   readonly not_found: number;
+  /** Of the found, how many by the unique name members saved them under (not in the store). */
+  readonly found_by_phonebook_name: number;
   readonly changed: number;
   readonly skipped: Readonly<Record<string, number>>;
 }
@@ -48,6 +52,20 @@ export function phoneForRow(row: MembershipRow, people: readonly StorePerson[]):
   return named.length === 1 ? named[0].phone : null;
 }
 
+/**
+ * Tester 79008 (#7758): an ex-Axel member was not in the person store, so the
+ * list could not mark him former. A row the store cannot place is found by the
+ * one number whose roster or phonebook names carry its full name (#6997's
+ * rule); two numbers with that name place nobody. Read only when needed.
+ */
+async function phonebookNumbersWhenNeeded(
+  rows: readonly MembershipRow[],
+  people: readonly StorePerson[],
+): Promise<Map<string, NamedNumber>> {
+  const missing = rows.filter((r) => r.nameKey !== '' && phoneForRow(r, people) === null);
+  return missing.length === 0 ? new Map() : phonesByUniqueName(await namesOnNumbers());
+}
+
 async function apply(
   group: string,
   phone: string,
@@ -70,10 +88,15 @@ export async function applyMembershipList(
 ): Promise<MembershipReport> {
   const { rows, skipped } = membershipRows(csv, group);
   const people = await storeWithNumbers();
+  const byName = await phonebookNumbersWhenNeeded(rows, people);
   let notFound = 0;
   let changed = 0;
+  let byPhonebookName = 0;
   for (const row of rows) {
-    const phone = phoneForRow(row, people);
+    const fromStore = phoneForRow(row, people);
+    const fromBook = fromStore === null ? (byName.get(row.nameKey)?.phone ?? null) : null;
+    if (fromBook !== null) byPhonebookName += 1;
+    const phone = fromStore ?? fromBook;
     if (phone === null) {
       notFound += 1;
       continue;
@@ -86,6 +109,7 @@ export async function applyMembershipList(
     current: rows.filter((r) => r.status === MembershipStatus.Current).length,
     former: rows.filter((r) => r.status === MembershipStatus.Former).length,
     not_found: notFound,
+    found_by_phonebook_name: byPhonebookName,
     changed,
     skipped,
   };
