@@ -4861,7 +4861,7 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
   - the one missing step that matters most (contacts → notifications → home-screen app), with its link.
 - **Real joiners keep today's matched-need text until Misho's own yes (D44).** The tester's 10 runs come first, then Misho sees the text.
 - A first message that already gave the contacts link stands in for the three-hour contacts line, so nobody gets it twice.
-- **How to test (after 19:00Z):** POST /admin/joiner-first-messages with up to 10 fresh fictional seat ids.
+- **How to test (after 19:00Z):** POST /admin/joiner-first-messages {"user_ids": [...]}, up to 10 fresh fictional seats.
 - **DONE WHEN:** 10 fresh fictional joiners each get exactly one message, true to their research (or with no work line when research found nothing), with the right missing step; none says „welcome back" or names another member.
 
 Last TO_CODE.md section handled: 30 Oct, 09:35Z — tester: #7729/#7757 joiner first-message rules, founder approved (box 78825, verbatim; example fictional)
