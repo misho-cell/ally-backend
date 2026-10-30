@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 22:00Z (65855dae stage-1 fix and 7f70b002 known_by filter queued; #8154 card brief to Misho, D44; #7758 built). Box read to 78814.
+Last TO_OPS.md section handled: 30 Oct, 07:00Z (4cafa625 GPT 30 s fallback and 49f84e76 membership-list loader noted for 19:00Z; #4293 proof and #8350 register relayed to the tester). Box read to 78815.
 
 ## OPEN
 
