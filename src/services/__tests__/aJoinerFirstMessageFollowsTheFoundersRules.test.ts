@@ -87,3 +87,20 @@ describe('what the message never does', () => {
     expect(line).toContain("AND j.props->>'missing_step' = $6");
   });
 });
+
+// Tester 78972 (seat 199048): a deploy cut the run, and nobody was ever written to.
+describe('a first message a deploy cut off', () => {
+  const service = readFileSync(join(__dirname, '..', 'joinerFirstMessage.service.ts'), 'utf8');
+
+  it('is tried once more when its thread got no reply', () => {
+    expect(service).toContain('const RETRY_AFTER_MINUTES = 10;');
+    expect(service).toContain('const MAX_ATTEMPTS = 2;');
+    expect(service).toContain("c.role = 'assistant' AND c.kind = 'message' AND c.content <> ''");
+    expect(service).toContain('AND c.created_at > e.created_at');
+  });
+
+  it('holds real joiners and seats to the same rule', () => {
+    expect(service).toContain("AND NOT ${welcomedSql('u.id::text', '$3', '$5', '$6')}");
+    expect(service).toContain("WHERE ${welcomedSql('s.id', '$1', '$3', '$4')}");
+  });
+});

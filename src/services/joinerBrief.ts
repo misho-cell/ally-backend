@@ -1,4 +1,5 @@
 import { FactAboutMe } from './factsAboutMe.service';
+import { LINK_MINUTES } from './contactUploadLinks.service';
 import { SetupStep } from './setupState.service';
 
 /**
@@ -72,7 +73,9 @@ function stepPart(step: SetupStep | null): string {
     case SetupStep.Contacts:
       return (
         `(4) კონტაქტები ჯერ არ აქვს ატვირთული: ${CONTACTS_LINK_TOOL}-ით აიღე ბმული, ჩასვი და ` +
-        'ერთი წინადადებით უთხარი, რას მისცემს — ვნახავ, ვის იცნობს იმ ადამიანებთან ახლოს.'
+        'ერთი წინადადებით უთხარი, რას მისცემს — ვნახავ, ვის იცნობს იმ ადამიანებთან ახლოს. ' +
+        // Tester 78972: „30 წუთში ძალაშია" read as „valid in 30 minutes".
+        `ბმულის ვადა ასე თქვი: „${LINK_MINUTES} წუთი მოქმედებს".`
       );
     case SetupStep.Notifications:
       return (
