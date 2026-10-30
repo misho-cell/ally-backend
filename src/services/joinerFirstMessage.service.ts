@@ -56,11 +56,13 @@ export enum JoinerText {
 }
 
 /**
- * The founder's rules are new model-facing text that real joiners would read
- * (D44): fictional seats get them first, for the tester's ten runs, and real
- * joiners keep the matched-need text until Misho's own yes.
+ * The founder's rules are new model-facing text that real joiners read (D44).
+ * Fictional seats got them first; the tester's ten runs passed 10/10 on 30 Oct
+ * (78972, and seat 199048 on the retry), and Misho's yes of 30 Oct ~10:00Z
+ * („ჩემთან კითხვები შენი რეკომენდაციით გააკეთე") switches real joiners on
+ * that pass. The matched-need text stays for nobody but its own tests.
  */
-const REAL_JOINER_TEXT = JoinerText.MatchedNeed;
+const REAL_JOINER_TEXT = JoinerText.FoundersRules;
 const SEAT_JOINER_TEXT = JoinerText.FoundersRules;
 
 /** What the model is told when a fitting need was found. Only the field; nothing of the goal. */

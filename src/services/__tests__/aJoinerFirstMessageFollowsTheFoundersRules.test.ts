@@ -76,9 +76,9 @@ describe('what the message never does', () => {
     expect(body).not.toContain('get_invite_link');
   });
 
-  it('reaches real joiners only after Misho’s own yes (D44)', () => {
+  it('reaches real joiners after the tester’s 10/10 and Misho’s yes (D44)', () => {
     const service = readFileSync(join(__dirname, '..', 'joinerFirstMessage.service.ts'), 'utf8');
-    expect(service).toContain('const REAL_JOINER_TEXT = JoinerText.MatchedNeed;');
+    expect(service).toContain('const REAL_JOINER_TEXT = JoinerText.FoundersRules;');
     expect(service).toContain('const SEAT_JOINER_TEXT = JoinerText.FoundersRules;');
   });
 
