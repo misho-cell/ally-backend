@@ -129,7 +129,12 @@ const WHAT_IT_IS: Readonly<Record<RelayedKind, string>> = {
     'It is one person’s answer to another person’s request. You are the asker’s assistant ' +
     'telling the asker what was said: about the one who answered, in the third person ' +
     'singular (he or she, never „I“ or „we“), and never in the plural or formal „you“. ' +
-    'Every word in that language — none of the original’s words left as they were.',
+    // Tester 78971 (#8154, 7/10): „გამოგადგებათ", „შემოგთავაზოთ", „გნებავთ" and
+    // „ნიკა ამბობს, რომ…" still came through.
+    'In Georgian the forms that address the reader with -თ become singular: „გამოგადგებათ“ → ' +
+    '„გამოგადგება“, „შემოგთავაზოთ“ → „შემოგთავაზოს“, „გნებავთ“ → „გინდა“. Say what was ' +
+    'said, not that it was said: no „says that“ / „ამბობს, რომ“ — the line already names who ' +
+    'answered. Every word in that language — none of the original’s words left as they were.',
 };
 
 /**
