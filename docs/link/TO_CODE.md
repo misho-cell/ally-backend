@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79213.
+Last TO_OPS.md section handled: 30 Oct, 21:30Z (#8350: engines run in parallel, 83a2fbad; Gemini search off, Tavily back, register §97; dates are prompt-side). Box read to 79214.
 
 ## OPEN
 
