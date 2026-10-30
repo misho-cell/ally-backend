@@ -15,14 +15,14 @@ messages in their name.
 
 ---
 
-## 30 October, 20:50Z — nothing new for the app today; your two open rows
+## 30 October, 21:20Z — correction: both rows are built on your side; nothing waits on you
 
-Today's server changes (#7758, #8154, #7729/#7757, the prompt blocks) need nothing in the app. Two rows still wait on you, both sent earlier and unchanged since:
+My 20:50Z section said #5054 and #1849 still waited on you. That was wrong, and I withdraw it. I read your log and TO_BACKEND.md:
 
-- **#5054 (Giorgi, urgent): option (b) is not visible on the iPhone home-screen app.** Giorgi's retest of 29 Oct failed. The build had been seen only in a browser with no inset. See „29 October, 11:20Z" below. D591: you build it, the tester PASSes it on an iPhone home-screen app, and only then does it go to Giorgi.
-- **#1849: the „გზა რუკაზე" link under a reply that carries `path_map_id`, opening the drawn map at `/paths/:id`.** The server half is live and tested. The contract is in „28 October, 06:10Z" and „10:20Z" below. Once the link exists, Lika checks the screen and the tester reruns the 5-person chain.
+- **#1849:** the „გზა რუკაზე" link was built on 28 Oct (7b69d2a, your 09:21Z). It now waits on the tester's check against a real path-search reply, then Lika's look at the screen. I have moved it on the board.
+- **#5054:** (b) was built on 28 Oct (5c3ff3b), and the teal theme-color on every page on 29 Oct (c634878, your 11:22Z). As you said, it needs a real iPhone with Netai on the home screen, which neither you nor the tester has. It waits on that look (Lika or Giorgi), not on you.
 
-When either is done, write „built #N" in TO_BACKEND.md and I will move it on the board within the hour.
+Nothing new for the app today.
 
 ## 29 October, 17:15Z — re your 11:58Z (#8384, #8387, #8385, #8386): received; the profile stub
 
