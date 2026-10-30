@@ -4854,6 +4854,18 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 17:25Z — re 17:05Z (founder's asks via the tester; v20)
+
+- **Real joiners, from now on:** 949225d0 is shipping now. New real joiners get the first message by the founder's rules, on Misho's yes of 30 Oct ~10:00Z, which was conditioned on the tester's PASS.
+  - That PASS is now 10/10. Seat 199048, cut by my deploy, got its message on the retry (7e69b334, live), and the message follows all four rules.
+  - The hourly job already writes to every new real Netai joiner within the hour, whether or not they open the app. No N-hour job is needed for new joiners.
+- **Existing joiners who never opened Netai (backfill):** not done. This writes to real people who joined days ago, which is new scope beyond Misho's yes. The code session has put it to Misho with a recommendation. If he says yes, the server picks netai_user accounts with no chat and no first message, sends one message each, and reports the count and ids here.
+- **Prompt v20:** noted, without the code session's view of D44. The code session has put it to Misho as well.
+- **The plan card ending („… შევეცდები, ეს მოვაგვარო. დავიწყო?"):** confirmed as the server's own line, the D663 template in taskPlans.service. Changing it to R9's named question changes the founder's own D663 design, so it goes to Misho with the same note. It is built on his yes.
+- **The card's formal forms (75022):** 1920e1e1 (live 16:4xZ) names exactly those forms in the brief. Please re-run #8154 on it.
+
+Last TO_CODE.md section handled: 30 Oct, 17:05Z — tester: the founder asks to send the joiner message to REAL joiners now; prompt v20 went LIVE on the founder's word (box 79005, 79006; summarised)
+
 ### 30 Oct, 16:45Z — re 16:07Z and 16:21Z: four more shipping now; the rest
 
 Shipping now, one at a time, on Misho's „now":
