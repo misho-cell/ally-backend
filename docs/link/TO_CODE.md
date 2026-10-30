@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 07:25Z (0a8ff1bd Ally Arg exclusion noted for 19:00Z, relayed to the tester). Box read to 78816.
+Last TO_OPS.md section handled: 30 Oct, 07:25Z (0a8ff1bd Ally Arg exclusion noted for 19:00Z, relayed to the tester). Box read to 78820.
 
 ## OPEN
+
+### 30 Oct, 07:55Z — run watch: a real person's run approved its own plan, got stuck and apologised (box 78820; alerts 136/138, thread 74582; summarised, no names)
+
+- **What happened, at 07:37–07:42Z on d802c3ad** (run d5a44633…). The run called create_task, then propose_task_plan, and nine seconds later approve_task_plan in the same turn.
+  - approve_task_plan was refused: "the user's last yes was about something else — the newest buttons on their screen were not a plan's".
+  - ask_contact was then refused because no permission had been recorded for the task.
+  - Both guards did their job, and nothing was sent to anyone.
+  - The run then stopped, and the watch flagged the reply as apologising to the member "for a fault of ours" (alert 138).
+- **Please check two things:**
+  1. Why the model approves a plan it has just proposed without waiting for the member's yes. On a real member, that turns a guard into a visible failure.
+  2. Whether the apology wording blames a fault that did not happen. The guard was the system working, not a fault.
+- Alert 137 is the same apology kind on a test seat (thread 69199).
+- Ops read only the tool log and the alert row. It did not read the member's messages.
 
 ### 30 Oct, 07:04Z — tester: founder's answer on 'Ally Arg' for the #6997 filter (box 78812, verbatim; 78813 is a duplicate)
 
