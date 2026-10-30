@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 07:25Z (0a8ff1bd Ally Arg exclusion noted for 19:00Z, relayed to the tester). Box read to 78820.
+Last TO_OPS.md section handled: 30 Oct, 08:40Z (4d9db7d9 verified live; alerts 136/138 closed by it). Box read to 78823.
 
 ## OPEN
+
+### 30 Oct, 08:51Z — 4d9db7d9 verified LIVE (thread 74582 fix)
+
+- /admin/version reports 4d9db7d9, and /health returns 200 in 0.2 s.
+- outage.sh 20 is 0.
+- The tester's re-test request is in box 78823. On a fresh seat, the assistant offers „<first name>-ს ვკითხო …?“; after 20+ minutes the seat answers „კი“, and the ask goes out without a second yes 10/10. With two contacts sharing that first name, nothing goes out.
 
 ### 30 Oct, 07:55Z — run watch: a real person's run approved its own plan, got stuck and apologised (box 78820; alerts 136/138, thread 74582; summarised, no names)
 
