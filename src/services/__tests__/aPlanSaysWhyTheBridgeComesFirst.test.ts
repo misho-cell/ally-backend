@@ -30,7 +30,7 @@ describe('a plan with a close bridge', () => {
       'en',
     );
     // #7235 reopened: nobody's assistant to ask — the approved not-on-Netai line, no „I will talk to".
-    expect(text).toContain('Not on Netai — you write to them yourself, or invite them: Nika');
+    expect(text).toContain('Not on Netai — if you like, I will write the invitation for you: Nika');
     expect(text).not.toContain('I will talk to');
     expect(text).not.toContain('(your family)');
   });
@@ -87,7 +87,7 @@ describe('#7235 reopened (founder, 63992): an old account is never an assistant 
       'ka',
     );
     expect(text).toContain('ლევანის ასისტენტს დაველაპარაკები');
-    expect(text).toContain('• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: მამუკა');
+    expect(text).toContain('• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: მამუკა');
     expect(text).not.toContain('მამუკას');
   });
 });

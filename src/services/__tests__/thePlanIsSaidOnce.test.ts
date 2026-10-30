@@ -39,7 +39,7 @@ describe('the plan in plain sentences', () => {
     // The tester's 957: no „label: value" lines either — one paragraph of sentences.
     expect(text).not.toContain(':');
     expect(rest).toEqual([
-      '• Not on Netai — you write to them yourself, or invite them: Netai Test 54',
+      '• Not on Netai — if you like, I will write the invitation for you: Netai Test 54',
     ]);
     expect(text).not.toMatch(/\bv\d/);
     expect(text).not.toContain('awaiting your approval');
@@ -195,9 +195,7 @@ describe('the plan reads as Georgian sentences', () => {
     expect(text).not.toContain('ვეძებ ამ გზებით');
     expect(text).not.toContain('კითხვას დავუსვამ:');
     // #7235 reopened: not on Netai is said on the approved group line, never as an assistant.
-    expect(text).toContain(
-      '• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: Netai Test 54',
-    );
+    expect(text).toContain('• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: Netai Test 54');
     expect(text).not.toContain(`${geoName(georgianScriptName('Netai Test 54'), 'gen')}`);
   });
 });
