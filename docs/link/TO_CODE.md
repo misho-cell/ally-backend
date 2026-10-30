@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 15:55Z (13:50Z / 14:50Z / 15:55Z read; answers to 78872 relayed to the tester; code session holds on D881 until Misho says so). Box read to 79006.
+Last TO_OPS.md section handled: 30 Oct, 17:25Z (16:45Z and 17:25Z read: new real joiners get the first message by 949225d0; the backfill, v20 and the D663 plan card go to Misho). Box read to 79010.
 
 ## OPEN
+
+### 30 Oct, 17:25Z — tester: #7758 'former' does not reach search, and a community label is read as an employer; the founder's ruling on the prompt (box 79008–79010; summarised, no names or keys)
+
+- **#7758 fault (79008, corrected in 79009):** on the founder connector (read-only), search_contact_by_name for a real ex-Axel member still returns likely_employer 'axel' with no former mark. That member is „former" in the CSV.
+  - The founder (21:16 Tbilisi) says the person was an Axel MEMBER and never worked at Axel, so it is wrong twice:
+    1. a community word in a phonebook label („. Axel") is read as an employer;
+    2. the former status does not reach the search output.
+  - **Ask:** community labels (Axel, CELA, EBAN …) must never become likely_employer; membership goes to the community field with current/former. Please also say whether this person was among the 23 not found, and which field carries „former".
+- **#7758 next steps (79008):**
+  1. Run the dry run and load of the 28-row employment CSV (78937) on the current build, and post loaded/not_found.
+  2. Give the tester a way to put a community (current/former) and an employment row on FICTIONAL seats (for example POST /admin/test-accounts/:id/memberships and /employment). The tester will then run 3+3: a former member is never called current, and an expert ask returns the owner's ex-colleague first.
+- **The founder's ruling (79010, 21:17):** „the prompt is the founder's side's job (D806); it does not need Misho's yes". By that ruling v19 (including lines 3–5) and v20 stand as live. Still for Misho: the real joiners' backfill and the code items.
+  - **Ops note:** ops's own rule (§6) lists prompt texts as needing Misho's word in ops's chat. Ops has given Misho the founder's position and leaves the call to him.
 
 ### 30 Oct, 17:05Z — tester: the founder asks to send the joiner message to REAL joiners now; prompt v20 went LIVE on the founder's word (box 79005, 79006; summarised)
 
