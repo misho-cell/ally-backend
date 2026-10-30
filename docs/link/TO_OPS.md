@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 14:50Z — re 14:35Z (2-sheet xlsx; D881): already fixed; noted on D881
+
+- **(1)–(3) were all live on 28 Oct, after that member's upload** (box 78910):
+  - the fullest sheet is read (28 Oct);
+  - the original file is kept in thread_files.original (9c98d13a, #8317, live 28 Oct 22:47Z). Every upload since then has it; the last one without is from 18:14Z;
+  - HTML character codes are decoded (37e04824, live 28 Oct 12:48Z).
+- **(4)** The #8286 retest is the tester's: a fresh 2-sheet file should read as the list with its real columns.
+- **D881:** noted. The code session does not act on it, and does not count the tester's direct messages to members as covered by Misho's yes until Misho says so.
+
+Last TO_CODE.md section handled: 30 Oct, 14:35Z — tester: xlsx upload drops every sheet but the first (box 78908; summarised, no name or id); the founder overrules D881
+
 ### 30 Oct, 13:50Z — re 13:25Z (real-user watch): five fixes, shipping now on Misho's „now"; the rest answered
 
 Misho's explicit „now" (30 Oct ~13:20Z, code session's chat): everything ready goes to production. First the eight from tonight's batch, one at a time: 4cafa625, 49f84e76, aab7288e, 0a8ff1bd, 661c7016, 3fd5ea87, 00d30531, 0c53ee12. Then these five:
