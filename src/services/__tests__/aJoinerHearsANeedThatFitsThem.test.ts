@@ -9,6 +9,11 @@ jest.mock('../productEvents.service', () => ({
   __esModule: true,
   recordProductEvent: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../setupState.service', () => ({
+  ...jest.requireActual<object>('../setupState.service'),
+  __esModule: true,
+  missingSteps: jest.fn().mockResolvedValue(['contacts', 'install']),
+}));
 jest.mock('../sse.service', () => ({ __esModule: true, emitRunComplete: jest.fn() }));
 jest.mock('../notification.service', () => ({
   __esModule: true,
@@ -22,6 +27,7 @@ import { recordProductEvent } from '../productEvents.service';
 import { sendPushNotification } from '../notification.service';
 import {
   JOINER_FIRST_MESSAGE_EVENT,
+  JoinerText,
   fittingField,
   joinerEventBody,
   JoinerSeatOutcome,
@@ -92,10 +98,11 @@ describe('the joiner’s first message', () => {
       rowCount: 1,
     } as never);
 
-    await expect(sendJoinerFirstMessage(196001)).resolves.toBe(true);
+    await expect(sendJoinerFirstMessage(196001, JoinerText.MatchedNeed)).resolves.toBe(true);
 
     expect(recordProductEvent).toHaveBeenCalledWith(196001, JOINER_FIRST_MESSAGE_EVENT, {
       thread_id: 90001,
+      text: JoinerText.MatchedNeed,
       fitting_need: true,
     });
     expect(String(mockChat.mock.calls[0][2])).toContain('„hospitality"');
@@ -109,9 +116,10 @@ describe('the joiner’s first message', () => {
   it('still welcomes and asks for an invite when no need fits, and pushes nothing for an empty reply', async () => {
     mockFacts.mockResolvedValue([]);
     mockChat.mockResolvedValueOnce({ reply: '', runFailed: true } as never);
-    await expect(sendJoinerFirstMessage(196002)).resolves.toBe(false);
+    await expect(sendJoinerFirstMessage(196002, JoinerText.MatchedNeed)).resolves.toBe(false);
     expect(recordProductEvent).toHaveBeenCalledWith(196002, JOINER_FIRST_MESSAGE_EVENT, {
       thread_id: 90001,
+      text: JoinerText.MatchedNeed,
       fitting_need: false,
     });
     expect(sendPushNotification).not.toHaveBeenCalled();
@@ -143,6 +151,25 @@ describe('the first message on fictional seats, for the tester (plate v538)', ()
       sent: 1,
     });
     expect(mockChat).toHaveBeenCalledTimes(1);
+  });
+
+  // Box 78825 (30 Oct): the seats get the founder's rules ahead of real joiners.
+  it('writes a seat’s message from the founder’s rules, with its one missing step', async () => {
+    mockFacts.mockResolvedValue([] as never);
+    mockQuery
+      .mockResolvedValueOnce(rows([{ n: 1 }]))
+      .mockResolvedValueOnce(rows([]))
+      .mockResolvedValue(rows([]));
+    await runJoinerFirstMessagesForSeats([5]);
+    expect(recordProductEvent).toHaveBeenCalledWith(5, JOINER_FIRST_MESSAGE_EVENT, {
+      thread_id: 90001,
+      text: JoinerText.FoundersRules,
+      work_fact: false,
+      missing_step: 'contacts',
+    });
+    const told = String(mockChat.mock.calls[0][2]);
+    expect(told).toContain('get_contacts_upload_link');
+    expect(told).not.toContain('get_invite_link');
   });
 });
 
