@@ -477,6 +477,8 @@ import {
   JoinerSeatOutcome,
   MAX_JOINER_SEATS,
   runJoinerFirstMessagesForSeats,
+  backfillCandidates,
+  runBackfill,
 } from '../../services/joinerFirstMessage.service';
 import { searchUserContacts, UserContactsOutcome } from '../../services/adminUserContacts.service';
 
@@ -9547,6 +9549,31 @@ adminRouter.post('/joiner-first-messages', async (req: Request, res: Response) =
     // eslint-disable-next-line no-console
     console.error('[joiner-first-messages]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The run did not complete' });
+  }
+});
+
+//   POST /admin/joiner-first-messages/backfill { dry_run } → 200 { candidates, started }
+// Misho, 30 Oct: the real members of the last BACKFILL_DAYS who never opened a
+// chat and never got a first message get it, once. The writes run after the
+// reply, one after another; the count of the ones written is in the log.
+adminRouter.post('/joiner-first-messages/backfill', async (req: Request, res: Response) => {
+  const dryRun = (req.body as { dry_run?: unknown }).dry_run !== false;
+  try {
+    const candidates = await backfillCandidates();
+    if (!dryRun) void runBackfill(candidates);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[joiner-backfill] admin ${(req as AuthenticatedRequest).user.userId}: ` +
+        `${candidates.length} candidate(s), dry_run ${dryRun}`,
+    );
+    res.status(200).json({
+      success: true,
+      data: { candidates: candidates.length, started: !dryRun, ids: candidates },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[joiner-backfill]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The backfill could not be read' });
   }
 });
 

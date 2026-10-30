@@ -279,3 +279,58 @@ export async function runJoinerFirstMessagesForSeats(
   }
   return { outcome: JoinerSeatOutcome.Ran, sent };
 }
+
+/**
+ * Misho, 30 Oct („შენი რჩევებით გააკეთე", to: send the first message to the
+ * members who registered on Netai in the last seven days and never opened a
+ * chat, once each, no old Ally accounts): the members the hourly run came too
+ * late for. Real people only; one message each, by the same send and the same
+ * never-twice rule as a new joiner.
+ */
+export const BACKFILL_DAYS = 7;
+const MAX_BACKFILL = 100;
+
+export async function backfillCandidates(): Promise<number[]> {
+  const result = await query<Joiner>(
+    `SELECT u.id AS user_id FROM "User" u
+      WHERE u."createdAt" > NOW() - make_interval(days => $1)
+        AND u."createdAt" <= NOW() - make_interval(mins => $2)
+        AND u."hasAccessToAlly" = true
+        AND u."deletedAt" IS NULL
+        AND ${notATestSeat('u.id')}
+        -- Never opened a chat: not one typed line of their own anywhere.
+        AND NOT EXISTS (
+              SELECT 1 FROM conversations c
+               WHERE c.user_id::text = u.id::text AND c.role = 'user'
+                 AND c.kind = 'message' AND c.content <> '')
+        AND NOT ${welcomedSql('u.id::text', '$3', '$4', '$5')}
+      ORDER BY u."createdAt"
+      LIMIT $6`,
+    [
+      BACKFILL_DAYS,
+      SETTLE_MINUTES,
+      JOINER_FIRST_MESSAGE_EVENT,
+      RETRY_AFTER_MINUTES,
+      MAX_ATTEMPTS,
+      MAX_BACKFILL,
+    ],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => row.user_id);
+}
+
+/** Writes each candidate's first message, one after another; logs ids and counts only. */
+export async function runBackfill(userIds: readonly number[]): Promise<number> {
+  let sent = 0;
+  for (const userId of userIds) {
+    try {
+      if (await sendJoinerFirstMessage(userId, REAL_JOINER_TEXT)) sent += 1;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[joiner-backfill] user ${userId}:`, (err as Error).message);
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log(`[joiner-backfill] ${sent} of ${userIds.length} first message(s) written`);
+  return sent;
+}
