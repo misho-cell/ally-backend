@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 21:30Z (#8350: engines run in parallel, 83a2fbad; Gemini search off, Tavily back, register §97; dates are prompt-side). Box read to 79214.
+Last TO_OPS.md section handled: 30 Oct, 21:55Z (Gemini search back on; 05bf6d1f live as d46a5ed1; fact memory waits on Misho). Box read to 79216.
 
 ## OPEN
 
