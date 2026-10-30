@@ -1,4 +1,5 @@
 import { query, withTransaction } from '../../db/postgres/client';
+import { nameKey } from '../tools/transliterate';
 import { colleagueTies, EMPLOYMENT_BASIS, EmploymentRow, employmentRows } from './employmentPlan';
 
 /**
@@ -12,6 +13,8 @@ const QUERY_TIMEOUT_MS = 30_000;
 const BATCH_ROWS = 1_000;
 /** The store's whole history fits well under this; it is a ceiling, not a page. */
 const MAX_HISTORY_ROWS = 50_000;
+/** The person store's size, with room: a ceiling, not a page. */
+const MAX_STORE_PEOPLE = 200_000;
 
 export interface EmploymentReport {
   readonly dry_run: boolean;
@@ -28,6 +31,33 @@ async function keysInStore(keys: readonly string[]): Promise<Set<string>> {
     QUERY_TIMEOUT_MS,
   );
   return new Set(result.rows.map((r) => r.person_key));
+}
+
+/** The store's own names, for the rows the file named by name only. */
+async function storeNames(): Promise<{ person_key: string; name: string }[]> {
+  const result = await query<{ person_key: string; name: string }>(
+    'SELECT person_key, name FROM base_people WHERE name IS NOT NULL LIMIT $1',
+    [MAX_STORE_PEOPLE],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** Pure: a keyless row gets the key of the one person in the store who carries its name. */
+export function withKeysByName(
+  rows: readonly EmploymentRow[],
+  people: readonly { person_key: string; name: string }[],
+): EmploymentRow[] {
+  const byName = new Map<string, string[]>();
+  for (const p of people) {
+    const key = nameKey(p.name);
+    byName.set(key, [...(byName.get(key) ?? []), p.person_key]);
+  }
+  return rows.map((r) => {
+    if (r.personKey !== '') return r;
+    const keys = byName.get(r.nameKey) ?? [];
+    return keys.length === 1 ? { ...r, personKey: keys[0] } : r;
+  });
 }
 
 async function writeRows(rows: readonly EmploymentRow[]): Promise<void> {
@@ -72,6 +102,7 @@ async function wholeHistory(): Promise<EmploymentRow[]> {
   );
   return result.rows.map((r) => ({
     personKey: r.person_key,
+    nameKey: '',
     employer: r.employer,
     employerKey: r.employer_key,
     role: r.role,
@@ -104,7 +135,11 @@ export async function loadEmployment(
   dryRun: boolean,
   thisYear: number,
 ): Promise<EmploymentReport> {
-  const { rows, skipped } = employmentRows(csv);
+  const parsed = employmentRows(csv);
+  const skipped = parsed.skipped;
+  const rows = parsed.rows.some((r) => r.personKey === '')
+    ? withKeysByName(parsed.rows, await storeNames())
+    : parsed.rows;
   const known = await keysInStore(rows.map((r) => r.personKey));
   const inStore = rows.filter((r) => known.has(r.personKey));
   const counts = { ...skipped };

@@ -9,7 +9,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { loadEmployment, removeEmployment } from '../basePeople/employment.service';
+import { loadEmployment, removeEmployment, withKeysByName } from '../basePeople/employment.service';
 import {
   colleagueTies,
   EMPLOYMENT_BASIS,
@@ -117,5 +117,27 @@ describe('loading it', () => {
     );
     expect(routes).toContain("adminRouter.post('/base-people/employment'");
     expect(routes).toContain("adminRouter.delete('/base-people/:key/employment'");
+  });
+});
+
+// Tester 78937: „an empty key loads by name".
+describe('a row that names the person only', () => {
+  const KEYLESS =
+    'person_key,name,employer,role,from_year,to_year,source_url\n' +
+    ',Nino Test,ARCi,lawyer,,,"founder, 2026-10-19"\n';
+
+  it('is kept, with the name to find the key by', () => {
+    const { rows, skipped } = employmentRows(KEYLESS);
+    expect(skipped).toEqual({});
+    expect(rows[0].personKey).toBe('');
+    expect(rows[0].nameKey).not.toBe('');
+  });
+
+  it('takes the key of the one person who carries the name, and no other', () => {
+    const [row] = employmentRows(KEYLESS).rows;
+    const one = [{ person_key: 'P-1', name: 'Nino Test' }];
+    expect(withKeysByName([row], one)[0].personKey).toBe('P-1');
+    const two = [...one, { person_key: 'P-2', name: 'nino  test' }];
+    expect(withKeysByName([row], two)[0].personKey).toBe('');
   });
 });
