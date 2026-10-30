@@ -21,6 +21,13 @@ import {
 export const WORLD_ANSWER_FLAG = 'world_answer_first';
 /** The founder's „about 20 s": past it the run goes on without the answer. */
 export const WORLD_ANSWER_BUDGET_MS = 20_000;
+/**
+ * Tester 78807 (#8350, 3 of 10): with Gemini refused at once (402), GPT's web
+ * search answered in 15–21 s seven times and timed out at 20 s on the three
+ * harder asks, which then waited 70–96 s for a nameless answer. The fallback
+ * gets until 30 s from the start.
+ */
+export const WORLD_ANSWER_FALLBACK_BUDGET_MS = 30_000;
 const FLAG_TTL_MS = 30_000;
 const FLAG_QUERY_TIMEOUT_MS = 3_000;
 const LOGGED_TOOL = 'world_answer:opening';
@@ -166,7 +173,7 @@ export async function askTheWorld(
     engine = WorldAnswerEngine.Gemini;
     reading = await fromGemini(run, prompt, question);
   }
-  const left = WORLD_ANSWER_BUDGET_MS - (Date.now() - startedAt);
+  const left = WORLD_ANSWER_FALLBACK_BUDGET_MS - (Date.now() - startedAt);
   if ('failed' in reading && left > 0 && openaiWebSearchAvailable()) {
     engine = WorldAnswerEngine.OpenAi;
     reading = await fromOpenAi(run, prompt, question, left);

@@ -26,7 +26,12 @@ jest.mock('../finalAnswer.service', () => ({
 import OpenAI from 'openai';
 import { citedPages, responseUsage } from '../tools/openaiWebSearch';
 import { withoutInlineLinks } from '../worldAnswer';
-import { askTheWorld, WorldAnswerEngine } from '../worldAnswer.service';
+import {
+  askTheWorld,
+  WORLD_ANSWER_BUDGET_MS,
+  WORLD_ANSWER_FALLBACK_BUDGET_MS,
+  WorldAnswerEngine,
+} from '../worldAnswer.service';
 
 /**
  * #8350 (tester 78145: stage 1 never posted while Gemini refuses every call):
@@ -109,6 +114,11 @@ describe('asking the world when Gemini fails (#8350)', () => {
     expect(mockCreate.mock.calls[0][0]).toMatchObject({ tools: [{ type: 'web_search' }] });
     // Tester 78509: no SDK retries, or 20 s becomes a minute before the run.
     expect(mockCreate.mock.calls[0][1]).toMatchObject({ maxRetries: 0 });
+    // Tester 78807: the fallback has until 30 s from the start, not the 20 s Gemini has.
+    expect(mockCreate.mock.calls[0][1].timeout).toBeGreaterThan(WORLD_ANSWER_BUDGET_MS);
+    expect(mockCreate.mock.calls[0][1].timeout).toBeLessThanOrEqual(
+      WORLD_ANSWER_FALLBACK_BUDGET_MS,
+    );
     expect(mockLog.mock.calls[0][0].input.engine).toBe(WorldAnswerEngine.OpenAi);
     expect(mockRecordUsage.mock.calls[0][0]).toMatchObject({
       provider: 'openai',
