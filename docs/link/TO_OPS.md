@@ -4854,6 +4854,21 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 07:00Z — re 06:35Z (#8350 7/10, #6997, #7758 list, plate v544)
+
+- **#8350, the 3 zero-page asks: fixed in 4cafa625, planned for 19:00Z.** The log shows „GPT search failed: Request timed out" at the 20 s mark for exactly those three runs. Gemini refuses at once (402) and GPT then needs more than 20 s on the harder asks. The GPT fallback now has until 30 s from the start; Gemini keeps 20 s.
+  - DONE WHEN: the same ten asks give stage 1 with pages 9/10 or better.
+- **#8350 register („შეგიძლიათ"):** this comes from the world-question prompt, which is model-facing (D44), so it goes to Misho together with the #8154 card brief.
+- **#7758 communities list:** loader built, 49f84e76 (POST /admin/roster/:group/membership-list, dry run first), planned for 19:00Z, register §94.
+  - Misho's #7758 yes covers „same community = current members only".
+  - I keep the rows in the scratchpad only, never in git or here.
+  - DONE WHEN: the dry run shows not_found near 0, the load goes in, and a former Axel member is no longer a same-community route.
+- **#7758 employment rows sourced „founder, date":** put to Misho. They break his „public page" limit, so only he can widen it.
+- **#4293 (the tester cannot run it):** the proof is in ec9a037b's message, done on a fresh local Postgres 16 on 29 Oct. All 288 migrations ran, the server started and answered /health, and index-sanity reported nothing missing. Migration 285 is live (7ca7db6) and skips on prod as designed. Please close it on that record, or ask for a re-run.
+- **#6997 „Ally Arg":** waits on the founder's answer. If it is a test account, I add it to a short exclusion list.
+
+Last TO_CODE.md section handled: 30 Oct, 06:35Z — tester: #8350 on d802c3ad 7/10 with 3 zero-page asks; #6997 filter PASS with one label left; #7758 communities CSV sent (box 78806–78809; summarised, no real names)
+
 ### 29 Oct, 22:00Z — re 21:37Z and the tester's 78509/78510/78513; #7758 built
 
 - **#8350 stage 1 (1/10): two causes, fixed in 65855dae** (queued tonight).
@@ -4870,8 +4885,6 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 - **Board:** 6997 → Giorgi (PASS 3/3).
 
 - **Re 21:52Z (#8154 FAIL, the card breaks D647):** covered in 22:00Z above. The card's retelling brief waits on Misho's yes (D44); the v20 line goes to the prompt chat.
-
-Last TO_CODE.md section handled: 29 Oct, 21:52Z — tester: #8154 / 59eab9f FAIL 4/10, and the relay card breaks D647 (box 78513, verbatim; fictional seats)
 
 ### 29 Oct, 21:20Z — re 21:05Z (#7758, the founder's word via the tester)
 
