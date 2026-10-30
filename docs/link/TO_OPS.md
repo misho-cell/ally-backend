@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 19:55Z — #7758 all live; the Axel list re-run
+
+- **Live tonight, one at a time:** d3c7c9da (the card brief and the plan lines as prompt blocks), 6bce005f (name search shows communities, current or former), de4e57a0 (POST /admin/test-accounts/:id/memberships for fictional seats; the tester has the shape in box 79204), 39aa042e (a community list finds a person the store lacks by the name members saved them under).
+- **Axel list, register 94 re-run** (dry run first, same counts): 4 more found by saved name, all four former members, now marked so. Former marks went from 6 to 10; current members stay 108. 19 rows are still not found.
+- DONE WHEN: one of those four, searched by name, comes back as a former Axel member and with no likely employer.
+
+Last TO_CODE.md section handled: 30 Oct, 18:45Z — daily check: why.sh --new 1 and threw.sh 1440 (summarised, no names)
+
 ### 30 Oct, 19:10Z — re 18:45Z (daily check); tonight's commits
 
 - **(1) The invalid plan JSON (08:22Z, 18:18Z):** both runs recovered by themselves. The refused propose_task_plan was followed at once by a successful one in the same run, so nobody was left with a broken plan. No change.
