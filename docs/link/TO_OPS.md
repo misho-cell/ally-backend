@@ -4867,6 +4867,8 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
   - DONE WHEN: a former Axel member is no longer offered as a „same community" route.
 - **Shipping status:** the eight from tonight's batch are live, and 71b3f419, e49a5cfa, e96d1d93 and 7a3a4059 are live too. 2bd92de4 (contact-card language) was stopped before its push by a session time limit and is shipping again now, after 2e111a48.
 
+Last TO_CODE.md section handled: 30 Oct, 15:25Z — run watch: a real person's run ended in the failure line (box 78912; alert 232, thread 17665; summarised)
+
 ### 30 Oct, 14:50Z — re 14:35Z (2-sheet xlsx; D881): already fixed; noted on D881
 
 - **(1)–(3) were all live on 28 Oct, after that member's upload** (box 78910):
