@@ -27,7 +27,7 @@ import {
 } from './helpersVoice';
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
-import { firstNamesInBothScripts } from './firstNameNamed';
+import { firstNamesInBothScripts, plainWordForms } from './firstNameNamed';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { AskKind, askKindOf } from './askKind';
 import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './bridgePicker';
@@ -41,7 +41,7 @@ import { phoneDigits } from './phone';
 import { isFictionalNumber } from './fictionalNumbers';
 import { ownPeopleDigits } from './targetScoring.service';
 import { isDeceasedOrBlockedFor } from './block.service';
-import { looksLikeContactInstruction } from './goalIntent';
+import { closingQuestion, looksLikeContactInstruction, offersToContact } from './goalIntent';
 import { questionForReader, relayedForReader } from './askTranslation.service';
 import { choicesFit, labelFits, messageLanguage } from './oneLanguageAsk';
 import {
@@ -867,6 +867,7 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     if (tapped !== null && (BARE_YES_RE.test(tapped) || YES_GO_RE.test(tapped))) {
       const asked = await assistantQuestionBefore(person);
       if (asked !== null && (await lineNamesThisPerson(asked, person))) return true;
+      if (asked !== null && (await offerNamesThisPerson(asked, person))) return true;
     }
     if (await namedAcrossRecentLines(person)) return true;
     const said = await query<{ content: string }>(
@@ -942,6 +943,12 @@ const YES_GO_RE =
 /**
  * The assistant's last line before the owner's newest one, when it is a
  * question; null otherwise.
+ *
+ * Thread 74582 (30 Oct): no window around the goal's opening. The question
+ * came at 04:56, the owner's „კი" at 07:37 and the goal opened on that yes, so
+ * a question bounded to fifteen minutes before the goal was never read and
+ * both walls refused the one person the owner had just said yes to. The line
+ * right before the owner's newest one is what that line answers, however late.
  */
 async function assistantQuestionBefore(person: NamedPerson): Promise<string | null> {
   const result = await query<{ content: string }>(
@@ -950,14 +957,25 @@ async function assistantQuestionBefore(person: NamedPerson): Promise<string | nu
           AND a.content <> ''
           AND a.created_at < (SELECT MAX(c.created_at) FROM conversations c
                                WHERE c.thread_id = $1 AND c.role = 'user'
-                                 AND COALESCE(c.kind, '') <> 'event')
-          AND a.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+                                 AND COALESCE(c.kind, '') <> 'event' AND c.content <> '')
         ORDER BY a.created_at DESC LIMIT 1`,
-    [person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES],
+    [person.threadId],
     ASK_QUERY_TIMEOUT_MS,
   );
   const line = result.rows[0]?.content.trim() ?? '';
   return /[?？]$/u.test(line) ? line : null;
+}
+
+/**
+ * Thread 74582: „…X-ის ასისტენტს ვკითხო, ხომ არ იცის …?" — an offer, not an
+ * order, so the instruction test refused it. The offer's closing question
+ * alone must name exactly this person; any other contact named in it too
+ * names nobody.
+ */
+async function offerNamesThisPerson(asked: string, person: NamedContact): Promise<boolean> {
+  const offer = closingQuestion(asked);
+  if (offer === '' || !offersToContact(offer)) return false;
+  return (await namesThisPerson(offer, person)) || onlyContactByLabelStart(offer, person);
 }
 
 /**
@@ -1009,7 +1027,23 @@ async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
  * person — two Nikas still name nobody.
  */
 async function onlyContactByFirstName(line: string, person: NamedContact): Promise<boolean> {
-  const names = firstNamesInBothScripts(line);
+  return onlyContactWhoseLabelStartsWith(firstNamesInBothScripts(line), person);
+}
+
+/**
+ * Thread 74582: the assistant's own offer names its person the way the
+ * assistant writes — in a case form — and the first-names list did not hold it.
+ * Any plain form of a word in the offer counts by the same rule: exactly one
+ * of the owner's contacts has a label starting with it, and it is this person.
+ */
+async function onlyContactByLabelStart(line: string, person: NamedContact): Promise<boolean> {
+  return onlyContactWhoseLabelStartsWith(plainWordForms(line), person);
+}
+
+async function onlyContactWhoseLabelStartsWith(
+  names: readonly string[],
+  person: NamedContact,
+): Promise<boolean> {
   if (names.length === 0) return false;
   const phones = await query<{ phone: string }>(
     `SELECT DISTINCT ua.phone
@@ -1017,7 +1051,7 @@ async function onlyContactByFirstName(line: string, person: NamedContact): Promi
       WHERE ua."contactId" = $1::int
         AND SPLIT_PART(LOWER(TRIM(ua.alias)), ' ', 1) = ANY($2::text[])
       LIMIT $3`,
-    [person.fromUserId, names, FIRST_NAME_MATCHES_READ],
+    [person.fromUserId, [...names], FIRST_NAME_MATCHES_READ],
     ASK_QUERY_TIMEOUT_MS,
   );
   const distinct = new Set(phones.rows.map((row) => phoneDigits(row.phone)));
@@ -1060,7 +1094,11 @@ async function memberNameOfThisPersonNamed(line: string, person: NamedContact): 
 /** Is this line an instruction that names exactly this person, by the owner's own label? */
 async function lineNamesThisPerson(line: string, person: NamedContact): Promise<boolean> {
   if (!looksLikeContactInstruction(line)) return false;
+  return namesThisPerson(line, person);
+}
 
+/** Does this line name exactly this person, by the owner's own label or their registered name? */
+async function namesThisPerson(line: string, person: NamedContact): Promise<boolean> {
   // The owner's own phonebook decides which person that sentence names,
   // and only an unambiguous answer counts.
   // Candidates by plain containment of the label or, for a label ending in

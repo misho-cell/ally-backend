@@ -43,3 +43,21 @@ export function firstNamesInBothScripts(line: string): string[] {
   const latin = names.filter(hasGeorgian).map((name) => georgianToLatin(name).toLowerCase());
   return [...new Set([...names, ...latin])];
 }
+
+/**
+ * Thread 74582 (30 Oct): „X-ის ასისტენტს ვკითხო …?" — a first name the list
+ * does not hold. Every plain form a word may be, a case ending dropped, in
+ * both scripts; the owner's own phonebook then decides whether exactly one
+ * contact's label starts with one of them.
+ */
+export function plainWordForms(line: string): string[] {
+  const forms = (line.match(WORD_RE) ?? []).flatMap((word) => {
+    const lower = word.toLowerCase();
+    const cuts = Array.from({ length: CASE_ENDING_MAX_CHARS }, (_, i) => lower.slice(0, -(i + 1)));
+    return [lower, ...cuts].filter(
+      (form) => form.length >= MIN_NAME_CHARS && !AMBIGUOUS_FIRST_NAMES.has(form),
+    );
+  });
+  const latin = forms.filter(hasGeorgian).map((form) => georgianToLatin(form).toLowerCase());
+  return [...new Set([...forms, ...latin])];
+}
