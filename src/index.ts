@@ -57,6 +57,7 @@ import { startNeedsOffersMatcher } from './services/needsOffers.cron';
 import { startHelperFollowUps } from './services/helperThanks.cron';
 import { startAfterDeclineCron } from './services/afterDecline.cron';
 import { startJoinerFirstMessages } from './services/joinerFirstMessage.cron';
+import { loadServerTexts } from './services/serverTextBlocks';
 import { startContactsMissingLines } from './services/contactsMissingLine.cron';
 import { startContactSyncReminders } from './services/contactSyncReminder.cron';
 import { startTaskTicker } from './services/taskEngine.service';
@@ -232,6 +233,8 @@ runMigrations()
     startAfterDeclineCron();
     // #7729/#7828: a joiner's one first message, within the hour of registering.
     startJoinerFirstMessages();
+    // The founder, 30 Oct (79102): the texts the prompt team edits, read before the first reply.
+    void loadServerTexts();
     startContactsMissingLines();
     startContactSyncReminders();
     startTaskTicker();
