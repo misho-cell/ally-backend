@@ -35,15 +35,27 @@ describe('the run watch (Misho, 29 Oct)', () => {
         rows([{ ...STUCK, kind: RunAlertKind.Apology, ref: 'm1', test_seat: true }]),
       )
       .mockResolvedValueOnce(rows([]))
+      .mockResolvedValueOnce(rows([]))
       .mockResolvedValueOnce(rows([{ id: 1 }]))
       .mockResolvedValueOnce(rows([]));
     const fresh = await watchRunsOnce();
     expect(fresh).toHaveLength(1);
-    expect(String(mockQuery.mock.calls[3][0])).toContain('ON CONFLICT (kind, ref) DO NOTHING');
+    expect(String(mockQuery.mock.calls[4][0])).toContain('ON CONFLICT (kind, ref) DO NOTHING');
     const line = mockPost.mock.calls[0][1] as string;
     expect(line).toContain('alert 1, stuck (REAL PERSON)');
     expect(line).not.toContain('74052');
     expect(line).toContain('GET /admin/run-alerts');
+  });
+
+  // The tester's real-user watch (30 Oct): two misses were found only by hand.
+  it('finds a typed message that nothing answered for five minutes', async () => {
+    mockQuery.mockResolvedValue(rows([]));
+    await watchRunsOnce();
+    const sql = String(mockQuery.mock.calls[3][0]);
+    expect(sql).toContain("'unanswered' AS kind");
+    expect(sql).toContain("x.role = 'user' AND x.kind = 'message' AND x.content <> ''");
+    expect(sql).toContain("r.role = 'assistant' AND r.kind IN ('message', 'error')");
+    expect(mockQuery.mock.calls[3][1]).toEqual([20, 5]);
   });
 
   it('posts nothing when nothing is new', async () => {
