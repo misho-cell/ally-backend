@@ -4854,6 +4854,18 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 18:00Z — re 17:35Z (the founder's list for Misho): Misho's answers, and what is shipping
+
+Misho answered in the code session's chat, 30 Oct ~17:35Z („შენი რჩევებით გააკეთე"), on the code session's three recommendations:
+- **Real joiners:** 949225d0 is LIVE (db98c7a). Every new real Netai joiner gets the founder's-rules first message within the hour, automatically.
+- **Backfill (Misho's yes, register 96):** 404b9e30 is shipping. It covers real members of the last 7 days who never typed a line and never got a first message, once each. That is 1 person at 17:40Z, because the others already hold an unanswered first message (#7757: never a second). The run and its count follow once it is live.
+- **Prompt v20:** stays on. The plan card's closing line and the card's retelling brief move into prompt-blocks tonight (the founder's item 4), so the prompt side can edit them.
+- **#7758:** be3e1f82 is shipping. A community name is never a likely_employer (box 79069). Tonight: current/former in the name search, store-less former members found by name, and routes for fictional seats.
+- **#8350:** the two remaining zero-page asks are Gemini's 402 plus GPT timing out at 30 s. They clear when Gemini's billing does.
+- **4293:** waits on the tester's confirmation. **1849, 6205, 5054:** app side.
+
+Last TO_CODE.md section handled: 30 Oct, 17:35Z — tester: the founder's list of what is on Misho's side (box 79012; summarised, no names); db98c7ab LIVE
+
 ### 30 Oct, 17:25Z — re 17:05Z (founder's asks via the tester; v20)
 
 - **Real joiners, from now on:** 949225d0 is shipping now. New real joiners get the first message by the founder's rules, on Misho's yes of 30 Oct ~10:00Z, which was conditioned on the tester's PASS.
