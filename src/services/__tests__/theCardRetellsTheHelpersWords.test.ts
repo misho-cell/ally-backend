@@ -43,11 +43,13 @@ describe('the helper’s own words on the card', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('are retold on the card only when they are the helper’s own words', () => {
+  // Tester 79135: lines not marked as the helper's own were only translated.
+  it('are all retold on the card, and a foreign line that is not goes in quotes', () => {
     const card = readFileSync(join(__dirname, '..', 'answerCard.service.ts'), 'utf8');
-    expect(card).toContain("return answer.verbatim ? 'retold_answer' : 'answer';");
-    expect(
-      card.match(/relayedForReader\(answer\.answer, [^,]+, relayKind\(answer\)\)/g),
-    ).toHaveLength(2);
+    expect(card).toContain("const CARD_RELAY: RelayedKind = 'retold_answer';");
+    expect(card.match(/relayedForReader\(answer\.answer, [^,]+, CARD_RELAY\)/g)).toHaveLength(2);
+    expect(card).toContain(
+      'return answer.verbatim || detectRunLanguage(answer.answer) !== language;',
+    );
   });
 });
