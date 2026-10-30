@@ -47,13 +47,28 @@ function scriptWords(text: string): { georgian: number; cyrillic: number; latin:
 }
 
 /**
+ * Tester's real-user watch, 30 Oct (thread 63371, 29 Oct): a Georgian helper
+ * shared five phonebook cards — „[Name] Levan … gamtsvaneba" / „[Mobile] …" —
+ * and the server's own lines turned English mid-conversation („Still
+ * searching…", „Your answer was sent."). A shared card is a saved name and a
+ * number; like a link, it says nothing about the language its sender speaks.
+ */
+const CONTACT_CARD_LINE_RE =
+  /^\s*\[(?:Name|Mobile|Phone|Tel|Telephone|Work|Home|Email|E-mail)\][^\n]*$/gimu;
+
+/** The text a language is read from: no links, no shared contact cards. */
+function spokenText(text: string): string {
+  return withoutLinks(text).replace(CONTACT_CARD_LINE_RE, ' ');
+}
+
+/**
  * Tester 75902 (thread 65176, 25 Oct): a Georgian helper pasted an invite link
  * on its own, and the run answered „Working on it…" and a whole line in
  * English — the link's „invite", „preview", „whatsapp" counted as English
  * words. A link says nothing about which language its sender speaks.
  */
 export function detectRunLanguage(text: string): RunLanguage {
-  const words = scriptWords(withoutLinks(text));
+  const words = scriptWords(spokenText(text));
   const script = Math.max(words.georgian, words.cyrillic);
   if (script > 0 && script >= words.latin) {
     return words.georgian >= words.cyrillic ? 'ka' : 'ru';
@@ -248,7 +263,7 @@ const MIN_LATIN_CHARS_TO_SWITCH = 25;
  */
 /** Does this line say which language it is in? A script, or a sentence of Latin. */
 export function carriesLanguage(text: string): boolean {
-  const trimmed = withoutLinks(text).trim();
+  const trimmed = spokenText(text).trim();
   return SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH;
 }
 
@@ -259,7 +274,7 @@ export function languageOfConversation(
   /** What to keep when nothing in the conversation says otherwise. */
   fallback: RunLanguage = 'en',
 ): RunLanguage {
-  const trimmed = withoutLinks(latest).trim();
+  const trimmed = spokenText(latest).trim();
   if (SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH) {
     return detectRunLanguage(trimmed);
   }
@@ -271,7 +286,7 @@ export function languageOfConversation(
   // The comment above promised „Ok in an English thread finds English behind
   // it"; now it does. Newest evidence first, whichever kind it is.
   const spoken = earlier
-    .map(withoutLinks)
+    .map(spokenText)
     .find((text) => SIGNAL.test(text) || text.trim().length >= MIN_LATIN_CHARS_TO_SWITCH);
   if (spoken !== undefined) return detectRunLanguage(spoken);
   // Enough Latin to be a sentence is evidence; a word or an empty turn is not.
