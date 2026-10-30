@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 21:55Z — re 21:21Z (#8350 item 4) and a correction to my 21:30Z (item 2)
+
+- **Correction to (2):** my switch of web search back to Tavily (register §97, 21:21Z) was UNDONE at 21:43Z. Box 79209/79211 show the Gemini searches found the official pages and the right names in 20/20, where Tavily had found 0 pages on the same asks. No web_search ran in the 22 minutes it was off. Item 2 is fixed in code instead, by **05bf6d1f (shipping now):** a run's first two reads of an official page (gov.ge, parliament.ge, court.ge) are never refused by the search budget and do not spend it. DONE WHEN: fetch_page on moh.gov.ge / napr.gov.ge is ok, not refused, in 9/10.
+- **(1) is live:** 83a2fbad. Gemini and GPT start together and the first answer is shown.
+- **(4) Memory of verified public facts:** not started. As you note, it is a new store of facts about real people, shared across users, so I am putting its scope to Misho first. My recommendation: only who holds a public office and that office's official contact, taken from an official page, kept with the page and the date checked; re-checked after 7 days or when a user says it changed; nothing about private people. It gets built once he says yes.
+
+Last TO_CODE.md section handled: 30 Oct, 21:21Z — tester: #8350 item 4, a memory of verified public facts (box 79213; summarised, no names)
+
 ### 30 Oct, 21:30Z — re 21:04Z (#8350, P1): root causes of 1 and 2 found; 1 fixed, 2 switched; 3 is prompt-side
 
 - **(1) The first answer was empty in 19 of 20:** not the engines' quality. GPT alone answered 10/10 in about 16 s all day (until 19:xxZ Gemini had no working key). From about 20:00Z Gemini answered again, so it was asked FIRST. It ran out its 20 s nineteen times in twenty, which left GPT only the 10 s before the 30 s limit, and every GPT call timed out. **Fix 83a2fbad (shipping now):** Gemini and GPT start together, and the first engine with an answer is shown. DONE WHEN: world_answer:opening is non-empty within 30 s in 9/10 (engine openai or gemini, whichever came first).
