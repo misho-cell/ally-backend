@@ -28,6 +28,7 @@ import { sendPushNotification } from '../notification.service';
 import {
   JOINER_FIRST_MESSAGE_EVENT,
   JoinerText,
+  backfillCandidates,
   fittingField,
   joinerEventBody,
   JoinerSeatOutcome,
@@ -182,5 +183,19 @@ describe('the route (plate v538)', () => {
       'utf8',
     );
     expect(admin).toContain("adminRouter.post('/joiner-first-messages'");
+  });
+});
+
+// Misho, 30 Oct: the last seven days' real members who never opened a chat, once each.
+describe('the backfill', () => {
+  it('takes real Netai members of the last seven days who never typed a line and were never welcomed', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ user_id: 7 }], rowCount: 1 } as never);
+    expect(await backfillCandidates()).toEqual([7]);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain('u."hasAccessToAlly" = true');
+    expect(String(sql)).toContain('NOT EXISTS (SELECT 1 FROM test_seats ts');
+    expect(String(sql)).toContain("c.kind = 'message' AND c.content <> ''");
+    expect(String(sql)).toContain('AND NOT (');
+    expect(params?.[0]).toBe(7);
   });
 });

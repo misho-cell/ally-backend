@@ -6647,3 +6647,12 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Done, 30 Oct ~17:15Z** (after a dry run with the same counts): 28 rows, 9 written, 0 colleague ties (no years yet).
   - 19 were left out as person_not_in_store. 18 of the file's keys are not keys of the person store, and Misho's limit is „only people already in the store".
   - The 9 loaded keys are in undo95/loaded_keys.json, so the undo is the DELETE route for each of them.
+
+## 96 · #7729/#7757: THE FIRST MESSAGE FOR THE WEEK'S MEMBERS WHO NEVER OPENED A CHAT (Misho, 30 Oct ~17:35Z, his chat: „შენი რჩევებით გააკეთე")
+
+- **What Misho said yes to:** the code session's recommendation. Members who registered on Netai in the last 7 days and never opened a chat get the first message, once each. No old Ally accounts.
+- **Who:** real Netai accounts (`hasAccessToAlly`) of the last 7 days that are not test seats, have never typed a line anywhere, and have no first message yet.
+  - The hourly job has already written to every new joiner since 27 Oct, so at 17:40Z this is 1 person.
+  - Anyone who already holds an unanswered first message gets nothing more (#7757: never a second message while one is unread).
+- **What:** `POST /admin/joiner-first-messages/backfill {"dry_run": true}`, read the count, then `{"dry_run": false}`.
+- **Undo:** a message cannot be unsent. What can be undone is its row: delete the assistant message of the run that the `joiner_first_message` event names (`props.thread_id`, written after the event), and the event itself.
