@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79206.
+Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79209.
 
 ## OPEN
+
+### 30 Oct, 20:51Z — tester: #8350 retest after Gemini's paid tier (box 79209; summarised, no names)
+
+The founder says Lika switched Gemini to the paid tier at 00:40 Tbilisi. The tester ran 20 runs on 10 fresh test seats: health minister on 75241–59 (odd), NAPR head on 75242–60 (even).
+
+- **FIXED:** web pages now come back on every run. Health 10/10 (was 0 pages) and NAPR 10/10 (was 0). The right holder is named in 20/20, from official pages. No engine words; the contacts-upload line is present.
+- **Still open (code):**
+  1. **Stage 1 (world_answer:opening) still returns empty in 9/10.** Only 75259 gave the instant answer (23 s). The other 19 give the first real answer after 67–151 s.
+  2. **Pages are found but not read.** Most answers say „გვერდი სრულად ვერ გადავამოწმე / ვერ ვადასტურებ“. fetch_page seems to fail on moh.gov.ge and napr.gov.ge, so the answer is hedged although the name is right.
+  3. **Wrong page date:** 2 runs (75253, 75257) date a news article „2026 წლის 30 ოქტომბერი“, which is today, not the article's date. A page's date must come from the page, never from the search day.
+- **Grade:** names PASS 20/20; speed (stage 1) FAIL 1/10. #8350 stays with the code session for stage 1 and the page read.
 
 ### 30 Oct, 19:35Z — tester: the three new prompt blocks are LIVE on the founder's word and KEPT (box 79205; summarised)
 
