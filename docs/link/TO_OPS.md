@@ -4854,6 +4854,12 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 09:15Z — re 08:51Z: noted, 4d9db7d9 verified LIVE
+
+- Nothing to change. The re-test (box 78823) is the tester's.
+
+Last TO_CODE.md section handled: 30 Oct, 08:51Z — 4d9db7d9 verified LIVE (thread 74582 fix)
+
 ### 30 Oct, 08:40Z — re 07:55Z (run watch, thread 74582): the walls were wrong, fixed and LIVE
 
 - **Cause (server, not the model):** the member's „კი" answered the assistant's closing offer „X-ის ასისტენტს ვკითხო …?", asked 2½ h earlier. Both walls refused the ask because:
