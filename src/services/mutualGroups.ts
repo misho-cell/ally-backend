@@ -89,16 +89,20 @@ const WORDS: Readonly<Partial<Record<RunLanguage, GroupWords>>> = {
   ka: {
     heading: (target) => `${geoName(georgianScriptName(target), 'dat')} იცნობენ შენი ეს ნაცნობები:`,
     onNetai: 'Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ',
-    notOnNetai: 'Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ',
+    notOnNetai: 'Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ',
   },
   en: {
     heading: (target) => `These contacts of yours know ${target}:`,
     onNetai: "On Netai — I'll ask their assistant directly",
-    notOnNetai: 'Not on Netai — you write to them yourself, or invite them',
+    notOnNetai: 'Not on Netai — if you like, I will write the invitation for you',
   },
 };
 
 /**
+ * R10 (tester's real-user watch, 30 Oct): the not-on-Netai line told the owner
+ * to write to them himself — the one thing Netai is for doing. It now offers
+ * the invitation, which get_invite_link writes on his yes.
+ *
  * #7235 reopened (founder, thread 63992): the plan sentence put old Ally
  * accounts under „their assistants", with only a note. The not-on-Netai line
  * of these groups — Giorgi's approved words — is what such people get in any

@@ -40,7 +40,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     ).toBe(
       'თემურ ბოლოთაშვილს იცნობენ შენი ეს ნაცნობები:\n' +
         '• Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ: ლიკა, ბესო\n' +
-        '• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: თორნიკე',
+        '• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: თორნიკე',
     );
   });
 
@@ -66,7 +66,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     const plan = { routes: [{ introduction: { via_phone: 'p1', to_name: 'თემური' } }] };
     const found = [{ name: 'თემური', viaPhones: ['+995500000001', '+995500000002'] }];
     expect(await mutualGroupsFor('171', plan, found, 'ka')).toContain(
-      'ვკითხავ: ლიკა\n• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: თორნიკე',
+      'ვკითხავ: ლიკა\n• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: თორნიკე',
     );
   });
 
@@ -115,7 +115,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     const found = [{ name: 'Zura Kvaratskhelia', viaPhones: ['+995500000003'] }];
     const text = await mutualGroupsFor('171', plan, found, 'ka', true);
     expect(text).toContain('ვკითხავ: ლიკა, ბესო');
-    expect(text).toContain('მოიწვევ: ლადო');
+    expect(text).toContain('მოგიმზადებ: ლადო');
     // Giorgi's template: one reason sentence, for the first bridge.
     expect(text).toContain('ლიკა ზურაბ კვარაცხელიას იცნობს.');
   });
@@ -148,7 +148,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     const found = [{ name: 'თემური', viaPhones: ['+995500000001'], phone: '+995500000009' }];
     const text = await mutualGroupsFor('171', plan, found, 'ka');
     expect(text).toContain(
-      'ვკითხავ: ლიკა\n• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: ლადო',
+      'ვკითხავ: ლიკა\n• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: ლადო',
     );
     expect(mockQuery.mock.calls[0][1]).toEqual(['171', ['995500000009'], 12]);
   });
@@ -273,7 +273,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     expect(text).toBe(
       'არქიტექტორს იცნობენ შენი ეს ნაცნობები:\n' +
         '• Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ: ბესო\n' +
-        '• Netai-ზე არ არიან — მათ შენ თვითონ მისწერ, ან მოიწვევ: ნინო\n' +
+        '• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: ნინო\n' +
         'ბესო არქიტექტორს იცნობს.',
     );
   });
