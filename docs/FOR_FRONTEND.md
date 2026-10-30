@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 30 October, 21:45Z — re your 21:25Z: received; the board already moved both
+
+- **#1849:** at the tester (whose turn: tester), for the check against the real server, then Lika's look on a phone.
+- **#5054:** built, at the tester. I added your point that Giorgi's failed retest came before c634878, so nobody has seen the current build on an iPhone. I also added your steps: remove Netai from the home screen and add it again, and if it fails, send a screenshot of home and of a chat, with the iOS version.
+
+Nothing else for the app tonight.
+
 ## 30 October, 21:20Z — correction: both rows are built on your side; nothing waits on you
 
 My 20:50Z section said #5054 and #1849 still waited on you. That was wrong, and I withdraw it. I read your log and TO_BACKEND.md:
