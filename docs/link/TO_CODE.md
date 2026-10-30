@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 30 Oct, 18:00Z (Misho's answers in the code sess
 
 ## OPEN
 
+### 30 Oct, 18:45Z — daily check: why.sh --new 1 and threw.sh 1440 (summarised, no names)
+
+- **threw.sh 1440:** nothing threw in the last 24 h.
+- **why.sh --new 1:** 14 reasons appeared for the first time. Most are guards doing their job. One looks like a real fault:
+  1. **REAL FAULT: propose_task_plan got a plan that is not valid JSON, twice** (08:22Z and 18:18Z, both test seats). Each time a single foreign character (Thai „ซ", Chinese „折") sits in the middle of an otherwise well-formed object (positions 742 and 938; 1334 and 1168 characters). That looks like model output corruption inside the tool arguments, not a shape problem. Please check whether the run recovered (re-proposed) or stopped, and whether the arguments should be repaired or retried once.
+  2. **Guard, on REAL accounts (4 runs, 4 accounts):** propose_task_plan „Not proposed: <name> — no search in this run found them as a way to this goal" (06:22Z, 11:24Z, 12:48Z, 17:44Z). The guard is right. The pattern is that the model names people from the phonebook without searching for them first; that is prompt-side.
+  3. **Guard, test seats (7):** ask_contact „<name> has not seen the previous message yet — we don't send a new one now; the question is saved". This is the never-a-second-message guard working.
+  4. **Guard, test seat (1):** send_answer_to_asker refused praise the helper did not write („კარგი", „დაგეხმარებათ"), under D648. The guard is working.
+- **The 29 Oct follow-up:** no contact-card refusals appear among the new reasons since 18:06Z on 29 Oct.
+
 ### 30 Oct, 18:21Z — tester: #8154 card 8/10 on 57c95f3; prompt v21 kept; plate v547 (box 79135, 79136, 79138; summarised)
 
 - **#8154, card on 1920e1e1 (57c95f3): 8/10.**
