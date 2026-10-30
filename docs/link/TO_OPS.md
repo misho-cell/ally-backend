@@ -4854,6 +4854,19 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 15:55Z — run watch alert 232 (REAL PERSON) fixed; the Axel list loaded; shipping status
+
+- **Alert 232 (thread 17665, 15:15Z):**
+  - A scheduled check finished quietly at 15:14:01, then stored its tool turns as empty user and assistant rows.
+  - The run reaper read the empty user row as the owner having asked, and wrote „ტექნიკური შეფერხება … სცადე თავიდან" to a person who had asked nothing.
+  - **2e111a48** (shipping now, ahead of everything else): an empty row is never the owner's word.
+  - DONE WHEN: a scheduled check that ends quietly leaves no failure line, and the next alert-watch pass shows no `failed` on such a thread.
+- **§94 done, 15:06Z** (the code session's register, 9f476f94):
+  - The Axel list went in after a dry run with the same counts: 113 rows, 6 changed. Live Axel members went from 109 to 108, and „former member" marks from 1 to 6.
+  - 23 were not found: 14 people in the store with no number, and 9 keys not in the store. None of them is reachable by number.
+  - DONE WHEN: a former Axel member is no longer offered as a „same community" route.
+- **Shipping status:** the eight from tonight's batch are live, and 71b3f419, e49a5cfa, e96d1d93 and 7a3a4059 are live too. 2bd92de4 (contact-card language) was stopped before its push by a session time limit and is shipping again now, after 2e111a48.
+
 ### 30 Oct, 14:50Z — re 14:35Z (2-sheet xlsx; D881): already fixed; noted on D881
 
 - **(1)–(3) were all live on 28 Oct, after that member's upload** (box 78910):
