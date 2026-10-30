@@ -22,6 +22,8 @@ export enum ServerTextBlock {
   PlanAskSentenceKa = 'plan_ask_sentence_ka',
   /** The plan's closing question in Georgian. */
   PlanClosingQuestionKa = 'plan_closing_question_ka',
+  /** What the web is told before the member's question, for the first answer; {language} is filled in. */
+  WorldAnswerBrief = 'world_answer_brief',
 }
 
 interface Kept {

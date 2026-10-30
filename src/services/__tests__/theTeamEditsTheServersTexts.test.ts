@@ -8,6 +8,7 @@ import {
   serverText,
 } from '../serverTextBlocks';
 import { PLAN_CLOSING_QUESTION, planInSentences, TaskPlan } from '../taskPlans.service';
+import { WORLD_ANSWER_BRIEF, worldQuestionPrompt } from '../worldAnswer';
 
 /**
  * The founder, 30 Oct (79102, „the prompt is mine"): the answers card's
@@ -63,5 +64,25 @@ describe('the plan the owner reads', () => {
     await loadServerTexts();
     expect(planInSentences(PLAN, 'ka')).toContain('ასისტენტს ვკითხავ.');
     expect(PLAN_CLOSING_QUESTION.ka).toBe('{names} {assistants} ვკითხავ.');
+  });
+});
+
+describe('the first answer’s brief (tester 79221)', () => {
+  it('is the code’s text until the team writes the block, then the block, in the member’s language', async () => {
+    mockQuery.mockResolvedValue(rows([]));
+    await loadServerTexts();
+    expect(worldQuestionPrompt('Q?', 'ka')).toContain(
+      WORLD_ANSWER_BRIEF.split('{language}').join('Georgian'),
+    );
+    forgetServerTexts();
+    mockQuery.mockResolvedValue(
+      rows([{ content: 'Answer in {language}. Only dates on the page.' }]),
+    );
+    await loadServerTexts();
+    const prompt = worldQuestionPrompt('Q?', 'en');
+    expect(prompt).toContain('Answer in English. Only dates on the page.');
+    // The format the server reads back stays in code.
+    expect(prompt).toContain('PEOPLE:');
+    expect(prompt.endsWith('Question: Q?')).toBe(true);
   });
 });
