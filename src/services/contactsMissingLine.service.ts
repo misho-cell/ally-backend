@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { sendPushNotification } from './notification.service';
+import { JOINER_FIRST_MESSAGE_EVENT } from './joinerBrief';
 import { recordProductEvent } from './productEvents.service';
 import { isQuietHour } from './pushQuietHours';
 import { RunLanguage } from './runLanguage';
+import { SetupStep } from './setupState.service';
 import { emitMessageAppended } from './sse.service';
 import { allAreTestSeats, notATestSeat } from './testSeatCreate.service';
 import { getOrCreateDefaultThread, saveServerLine, userLanguage } from './threads.service';
@@ -55,9 +57,20 @@ export async function peopleWithoutContacts(): Promise<number[]> {
         AND NOT EXISTS (SELECT 1 FROM "UserAlias" ua WHERE ua."contactId" = u.id)
         AND NOT EXISTS (SELECT 1 FROM product_events e
                          WHERE e.event = $3 AND e.user_id::text = u.id::text)
+        -- Box 78825: a first message that already gave the contacts link is the line.
+        AND NOT EXISTS (SELECT 1 FROM product_events j
+                         WHERE j.event = $5 AND j.user_id::text = u.id::text
+                           AND j.props->>'missing_step' = $6)
       ORDER BY u."createdAt"
       LIMIT $4`,
-    [AFTER_HOURS, WITHIN_DAYS, CONTACTS_MISSING_EVENT, MAX_PER_RUN],
+    [
+      AFTER_HOURS,
+      WITHIN_DAYS,
+      CONTACTS_MISSING_EVENT,
+      MAX_PER_RUN,
+      JOINER_FIRST_MESSAGE_EVENT,
+      SetupStep.Contacts,
+    ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map((row) => row.user_id);

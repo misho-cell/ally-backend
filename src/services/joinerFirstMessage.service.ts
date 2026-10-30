@@ -2,9 +2,16 @@ import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { processChat } from './chat.service';
 import { factsAboutMe } from './factsAboutMe.service';
+import {
+  JOINER_FIRST_MESSAGE_EVENT,
+  joinerRulesEventBody,
+  mostImportantMissingStep,
+  researchedWorkFact,
+} from './joinerBrief';
 import { indexOffers, sureOffersFor } from './matchIndex';
 import { sendPushNotification } from './notification.service';
 import { recordProductEvent } from './productEvents.service';
+import { missingSteps } from './setupState.service';
 import { emitRunComplete } from './sse.service';
 import { allAreTestSeats, notATestSeat } from './testSeatCreate.service';
 import { getOrCreateDefaultThread } from './threads.service';
@@ -38,7 +45,23 @@ const WORK_FIELDS: ReadonlySet<string> = new Set([
 ]);
 const OPEN_GOALS_READ = 2_000;
 const PUSH_BODY_CHARS = 140;
-export const JOINER_FIRST_MESSAGE_EVENT = 'joiner_first_message';
+export { JOINER_FIRST_MESSAGE_EVENT };
+
+/** Which text a joiner's first message is written from. */
+export enum JoinerText {
+  /** A fitting member need, anonymously, and the invite (Misho's „კი", 27 Oct). */
+  MatchedNeed = 'matched_need',
+  /** The founder's four rules (box 78825, 30 Oct). */
+  FoundersRules = 'founders_rules',
+}
+
+/**
+ * The founder's rules are new model-facing text that real joiners would read
+ * (D44): fictional seats get them first, for the tester's ten runs, and real
+ * joiners keep the matched-need text until Misho's own yes.
+ */
+const REAL_JOINER_TEXT = JoinerText.MatchedNeed;
+const SEAT_JOINER_TEXT = JoinerText.FoundersRules;
 
 /** What the model is told when a fitting need was found. Only the field; nothing of the goal. */
 export function joinerEventBody(field: string | null): string {
@@ -112,17 +135,42 @@ export async function fittingField(
   return null;
 }
 
-/** Writes one joiner's first message. Recorded before the run, so it can never go twice. */
-export async function sendJoinerFirstMessage(userId: number): Promise<boolean> {
-  const owner = String(userId);
+interface JoinerEvent {
+  readonly body: string;
+  readonly props: Readonly<Record<string, unknown>>;
+}
+
+/** The event for the matched-need text: only the field a need is in, nothing of the goal. */
+async function matchedNeedEvent(userId: number): Promise<JoinerEvent> {
   const field = await fittingField(userId, await joinerWorkFields(userId));
+  return { body: joinerEventBody(field), props: { fitting_need: field !== null } };
+}
+
+/** The event for the founder's rules: one researched fact, and the one missing step. */
+async function foundersRulesEvent(userId: number): Promise<JoinerEvent> {
+  const workFact = researchedWorkFact(await factsAboutMe(userId));
+  const missingStep = mostImportantMissingStep(await missingSteps(userId));
+  return {
+    body: joinerRulesEventBody({ workFact, missingStep }),
+    props: { work_fact: workFact !== null, missing_step: missingStep },
+  };
+}
+
+/** Writes one joiner's first message. Recorded before the run, so it can never go twice. */
+export async function sendJoinerFirstMessage(userId: number, text: JoinerText): Promise<boolean> {
+  const owner = String(userId);
+  const event =
+    text === JoinerText.FoundersRules
+      ? await foundersRulesEvent(userId)
+      : await matchedNeedEvent(userId);
   const threadId = await getOrCreateDefaultThread(owner);
   await recordProductEvent(userId, JOINER_FIRST_MESSAGE_EVENT, {
     thread_id: threadId,
-    fitting_need: field !== null,
+    text,
+    ...event.props,
   });
   const runId = randomUUID();
-  const result = await processChat(owner, threadId, `[მოვლენა] ${joinerEventBody(field)}`, runId);
+  const result = await processChat(owner, threadId, `[მოვლენა] ${event.body}`, runId);
   if (result.runFailed === true || result.reply.trim() === '') return false;
   emitRunComplete(owner, threadId, runId, { reply: result.reply });
   void sendPushNotification(owner, {
@@ -138,7 +186,7 @@ export async function runJoinerFirstMessages(): Promise<number> {
   let sent = 0;
   for (const userId of await joinersDue()) {
     try {
-      if (await sendJoinerFirstMessage(userId)) sent += 1;
+      if (await sendJoinerFirstMessage(userId, REAL_JOINER_TEXT)) sent += 1;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[joiner-first] user ${userId}:`, (err as Error).message);
@@ -170,7 +218,8 @@ async function seatsAlreadyWelcomed(userIds: readonly number[]): Promise<Readonl
 /**
  * Plate v538 (#7729 / #7828): the hourly run skips test seats, so the tester
  * could not see the first message at all. On fictional seats only, now, never
- * twice, the same message a real joiner gets.
+ * twice. Since 30 Oct the seats get the founder's rules ahead of real joiners
+ * (SEAT_JOINER_TEXT).
  */
 export async function runJoinerFirstMessagesForSeats(
   seatIds: readonly number[],
@@ -184,7 +233,7 @@ export async function runJoinerFirstMessagesForSeats(
   let sent = 0;
   for (const seatId of unique.filter((id) => !welcomed.has(id))) {
     try {
-      if (await sendJoinerFirstMessage(seatId)) sent += 1;
+      if (await sendJoinerFirstMessage(seatId, SEAT_JOINER_TEXT)) sent += 1;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[joiner-first] seat ${seatId}:`, (err as Error).message);
