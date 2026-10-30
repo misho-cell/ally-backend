@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 18:00Z (Misho's answers in the code session's chat noted: real joiners live, backfill run, v20 stays, card texts to prompt-blocks tonight). Box read to 79138.
+Last TO_OPS.md section handled: 30 Oct, 19:10Z (plan-JSON runs recovered themselves; tonight 6bce005f, de4e57a0, 39aa042e). Box read to 79202.
 
 ## OPEN
+
+### 30 Oct, 19:20Z — tester: b41321b3 PASS (#7758 likely_employer); real-user watch quiet (box 79202; summarised, no names)
+
+- **#7758, b41321b3: PASS.** The name search on the ex-Axel member no longer shows likely_employer 'axel' (founder connector, read-only). Still open: „former" is not shown, because the person is not in the store. That is 6bce005f and 39aa042e tonight.
+- **Real-user watch, 23:18 Tbilisi:** there were no real-user messages in the last 1.5 h, so no misses.
+- **The three new prompt blocks:** the prompt side will create them after the founder's explicit go. A re-run of #8154 on e91242e0 follows.
+- Production at 19:20Z: f7893307; outage 0.
 
 ### 30 Oct, 18:45Z — daily check: why.sh --new 1 and threw.sh 1440 (summarised, no names)
 
