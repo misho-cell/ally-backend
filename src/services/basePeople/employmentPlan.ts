@@ -1,4 +1,5 @@
 import { csvRecords } from '../axelLoad/axelBasePlan';
+import { nameKey } from '../tools/transliterate';
 
 /**
  * #7758 (the founder's word via the tester, 29 Oct; Misho's yes, with his
@@ -32,7 +33,10 @@ export const MAX_PEOPLE_PER_EMPLOYER = 40;
 export const EMPLOYMENT_BASIS = 'employment overlap';
 
 export interface EmploymentRow {
+  /** Empty when the file named the person only; the loader finds the key by a unique name. */
   readonly personKey: string;
+  /** The person's name as compared (tester 78937: „an empty key loads by name"). */
+  readonly nameKey: string;
   readonly employer: string;
   readonly employerKey: string;
   readonly role: string;
@@ -71,17 +75,20 @@ export function employmentRows(csv: string): {
   };
   for (const r of csvRecords(csv)) {
     const personKey = (r.person_key ?? '').trim();
+    const name = nameKey(r.name ?? '');
     const employer = (r.employer ?? '').replace(/\s+/gu, ' ').trim().slice(0, MAX_FIELD_CHARS);
     const sourceUrl = (r.source_url ?? '').trim();
     const from = year(r.from_year);
     const to = year(r.to_year);
-    if (personKey === '' || employerKey(employer) === '') skip('no_person_or_employer');
+    if ((personKey === '' && name === '') || employerKey(employer) === '')
+      skip('no_person_or_employer');
     else if (!isEmploymentSource(sourceUrl)) skip('no_source');
     else if (from === 'bad' || to === 'bad' || (from !== null && to !== null && to < from))
       skip('bad_years');
     else
       rows.push({
         personKey,
+        nameKey: name,
         employer,
         employerKey: employerKey(employer),
         role: (r.role ?? '').trim().slice(0, MAX_FIELD_CHARS),
