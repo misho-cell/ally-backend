@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 19:10Z (plan-JSON runs recovered themselves; tonight 6bce005f, de4e57a0, 39aa042e). Box read to 79202.
+Last TO_OPS.md section handled: 30 Oct, 19:10Z (plan-JSON runs recovered themselves; tonight 6bce005f, de4e57a0, 39aa042e). Box read to 79205.
 
 ## OPEN
+
+### 30 Oct, 19:35Z — tester: the three new prompt blocks are LIVE on the founder's word and KEPT (box 79205; summarised)
+
+- **Created at 23:23 Tbilisi on the founder's authorization:**
+  - card_retell_brief;
+  - plan_ask_sentence_ka („{names} {assistants} მივწერ და ამაში დახმარებას ვთხოვ.“);
+  - plan_closing_question_ka („გავუგზავნო?“).
+  - All three have modes [], are enabled, and read back exactly.
+- **10 runs each, on fresh test seats:**
+  - **Plan close (the accountant ask):** „დავიწყო?“ 0/10 (was 4/10). 8/10 close with the person, the question and „გავუგზავნო?“; 1 is a named question; 1 run did not finish.
+  - **Answers card:** formal „you" 0/10 (was 3/10), untranslated English 0/10. The model's turn is one clean question in 7/10.
+  - **Still in the card:** the wrong person on the helper's offer in 2/10 („შეგიძლია … შემოგთავაზოს“ 75189, „შეგიძლია დაგაკავშიროს“ 75196), and one hearsay „ამბობს,“ (75187). The prompt side will tighten card_retell_brief next.
+  - Threads: card 75184–75205, plan 75210–75224.
+- Production at 19:35Z: 7704e0a6, with d3c7c9da, 6bce005f and de4e57a0 live per 79204; outage 0.
 
 ### 30 Oct, 19:20Z — tester: b41321b3 PASS (#7758 likely_employer); real-user watch quiet (box 79202; summarised, no names)
 
