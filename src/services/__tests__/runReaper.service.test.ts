@@ -101,6 +101,16 @@ describe('row 3 — the reaper does not call a delivered answer a failure', () =
     expect(sql).toContain("c.kind = 'message'");
   });
 
+  // Alert 232 (thread 17665, 30 Oct): a run's empty tool-turn rows are no owner's word.
+  it('never reads an empty row as the owner having asked', async () => {
+    reaped([]);
+
+    await sweepOrphanedRuns();
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain("WHERE c.thread_id = t.id AND c.role = 'user' AND c.content <> ''");
+  });
+
   it('judges each reaped thread on its own, not on the batch', async () => {
     reaped([
       { id: 1, user_id: 501, status: 'failed', status_line: 'x', answered: true, was_asked: true },

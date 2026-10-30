@@ -210,10 +210,14 @@ export async function sweepOrphanedRuns(): Promise<number> {
               -- turn. An engine wake is stored role='user' too, as an 'event',
               -- and a wake newer than the owner's last word means the run was
               -- the system's own, which nobody is waiting on.
+              -- Alert 232 (thread 17665, 30 Oct): a run stores its tool turns as
+              -- EMPTY user/assistant rows when it ends, and the newest of them
+              -- read as the owner having asked — a scheduled check that had
+              -- finished quietly was told „try again". An empty row is no word.
               COALESCE((
                 SELECT c.kind = 'message'
                 FROM conversations c
-                WHERE c.thread_id = t.id AND c.role = 'user'
+                WHERE c.thread_id = t.id AND c.role = 'user' AND c.content <> ''
                 ORDER BY c.created_at DESC
                 LIMIT 1
               ), false) AS was_asked,
