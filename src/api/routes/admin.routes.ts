@@ -1,5 +1,10 @@
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
 import {
+  isSeatMembershipStatus,
+  SeatMembershipStatus,
+  setSeatMembership,
+} from '../../services/seatMembership.service';
+import {
   ContactsLineSeatOutcome,
   MAX_CONTACTS_LINE_SEATS,
   runContactsMissingForSeats,
@@ -3233,6 +3238,47 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-payment]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #7758 (tester 79008): a community on a FICTIONAL seat, current or former, so
+ * „a former member is never called current" can be run on fictions. A real
+ * account is refused (403) before anything is written.
+ *
+ *   POST /admin/test-accounts/:id/memberships { "group": "Axel", "status": "current" | "former" }
+ *   200 { changed }   400 bad input   403 not a test seat
+ */
+adminRouter.post(
+  '/test-accounts/:id/memberships',
+  param('id').isInt({ min: 1 }),
+  body('group').isString().trim().isLength({ min: 2, max: 80 }),
+  body('status').custom(isSeatMembershipStatus),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'group (2-80 chars) and status (current|former) are required',
+      });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { group, status } = req.body as { group: string; status: SeatMembershipStatus };
+    const admin = String((req as AuthenticatedRequest).user.userId);
+    try {
+      const changed = await setSeatMembership(seatId, group.trim(), status, admin);
+      // eslint-disable-next-line no-console
+      console.log(`[seat-membership] admin ${admin} seat ${seatId}: ${status}, changed ${changed}`);
+      res.status(200).json({ success: true, data: { changed } });
+    } catch (error) {
+      if (error instanceof SeatCreationRefused) {
+        res.status(403).json({ success: false, error: 'not a test seat' });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error('[seat-membership]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
