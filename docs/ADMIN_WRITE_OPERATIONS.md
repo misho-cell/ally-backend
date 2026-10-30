@@ -6633,3 +6633,14 @@ question, and „everything" here answered the texts on the table; it is asked a
   - 113 rows: 97 current, 16 former. 23 were not found: 14 people in the store with no number, and 9 keys not in the store. Membership is held by number, so none of the 23 is a route either.
   - 6 changed. Live `member_of = Axel` went from 109 to 108 (2 former members retracted, 1 current added), and „Axel (former member)" went from 1 to 6.
   - The copy is in undo94/ (member_of.json, former.json, load_started_at.txt).
+
+## 95 · #7758: EMPLOYMENT HISTORY FROM THE FOUNDER'S WORD (tester's CSV, box 78937; planned 30 Oct, after the by-name loader is live)
+
+- **Who authorises:** Misho's yes on #7758 (29 Oct, „კი, შენი რჩევით გააკეთე"), with his limits. Also his yes of 30 Oct ~10:00Z („ჩემთან კითხვები შენი რეკომენდაციით გააკეთე"): „founder, <date>" counts as a source (0c53ee12).
+- **The file:** 28 rows, everyone the founder named as ex-ARCi; one of them is current.
+  - There are no years yet, so no „former colleagues" ties come out of it. Ties need overlapping years, and those wait for research.
+  - Two rows carry no key and load by a name one person alone carries.
+  - The source field „founder, <date>" holds a comma, so it is quoted before the load. Nothing else in the file is changed.
+- **What:** `POST /admin/base-people/employment {"csv": …, "dry_run": false}` after a dry run.
+- **Kept first:** the person keys the dry run resolves, in the session's scratchpad (undo95/).
+- **Undo:** `DELETE /admin/base-people/:key/employment` for each kept key. It removes that person's rows and rebuilds the ties.
