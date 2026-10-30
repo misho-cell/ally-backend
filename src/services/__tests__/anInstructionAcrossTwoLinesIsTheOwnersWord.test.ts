@@ -31,7 +31,7 @@ describe('an instruction carried over two lines (Giorgi, 29 Oct)', () => {
     expect(
       latinLabelNamedInGeorgian('სალომეს კითხე მხოლოდ. ხო ფარქოსაძე', 'Salome Parkosadze'),
     ).toBe(true);
-    const name = service.slice(service.indexOf('async function lineNamesThisPerson('));
+    const name = service.slice(service.indexOf('async function namesThisPerson('));
     expect(name.slice(0, name.indexOf('\n}\n'))).toContain(
       'if (await memberNameOfThisPersonNamed(line, person)) return true;',
     );

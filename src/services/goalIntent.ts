@@ -776,6 +776,29 @@ export function asksForAPreview(line: string): boolean {
   return PREVIEW_RE.test(line);
 }
 
+/**
+ * Thread 74582 (30 Oct): „…X-ის ასისტენტს ვკითხო, ხომ არ იცის …?" and the
+ * owner's „კი". The assistant's question is an offer in the first person —
+ * „shall I ask" — which CONTACT_VERB_RE, built for the owner's orders, does
+ * not read. Only the question's own last sentence counts, and it must end in
+ * a question mark.
+ */
+const OFFER_TO_CONTACT_RE =
+  /((?<!\p{L})(?:ვ?ჰ?კითხო|ვკითხავ|მივწერო?|გავუგზავნო|გავუგზავნი|ვაგზავნი|დავუკავშირდე|ვთხოვო|შევეხმიანო)(?!\p{L}))|(\b(?:shall|should|can|may) i (?:ask|write to|message|contact)\b|\bwant me to (?:ask|write to|message|contact)\b)|((?<!\p{L})(?:le|les) (?:pregunto|escribo)(?!\p{L})|спросить|написать)/iu;
+/** „არავის მივწერო?" — and the „ხომ არ ვკითხო?" form is still an offer, so a bare „არ" is not a no. */
+const OFFER_NEGATED_RE = /((?<!\p{L})(?:არავის|ნუ)(?!\p{L}))|(\b(?:nobody|no one)\b)/iu;
+const QUESTION_SENTENCE_RE = /[^.!?\n]*[?？]\s*$/u;
+
+/** The closing question of a line, or '' when the line does not end in one. */
+export function closingQuestion(line: string): string {
+  return line.trim().match(QUESTION_SENTENCE_RE)?.[0].trim() ?? '';
+}
+
+/** Is this question the assistant's offer to contact somebody? */
+export function offersToContact(question: string): boolean {
+  return OFFER_TO_CONTACT_RE.test(question) && !OFFER_NEGATED_RE.test(question);
+}
+
 export function looksLikeContactInstruction(message: string): boolean {
   const text = message.trim();
   if (text.length === 0 || text.length > MAX_INSTRUCTION_CHARS) return false;
