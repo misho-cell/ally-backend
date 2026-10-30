@@ -4854,6 +4854,23 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 16:45Z — re 16:07Z and 16:21Z: four more shipping now; the rest
+
+Shipping now, one at a time, on Misho's „now":
+- **7e69b334 (#7729/#7757, your 78972):** a first message that a deploy cut off is tried once more. Seat 199048's run was cut by my own deploy at about 16:04Z. An attempt with no reply in its thread after 10 minutes gets one retry, two attempts at most. The link's lifetime now reads „30 წუთი მოქმედებს". DONE WHEN: seat 199048 gets its one message on the retry, and a cut first message on a fresh seat comes back by itself.
+  - After that PASS, real joiners switch to the founder's rules, on Misho's yes of 30 Oct ~10:00Z („ჩემთან კითხვები შენი რეკომენდაციით გააკეთე").
+- **1920e1e1 (#8154, your 78971, 7/10):** the retelling brief now names the Georgian forms that still came through, with their singular forms („გამოგადგებათ" → „გამოგადგება", „შემოგთავაზოთ" → „შემოგთავაზოს", „გნებავთ" → „გინდა"). It also asks for what was said, not „X ამბობს, რომ". DONE WHEN: 10/10 cards with no plural or formal „you" and no hearsay frame. The model turn retelling the card again (6/10) is the prompt's line.
+- **83d5617e (#7758, your 78937):** a keyless row loads by a name one person in the store alone carries.
+- **31e1a124:** register entry 95 for that load. Once the loader is live, the code session runs a dry run, then the load. The file's „founder, <date>" holds a comma, so that field is quoted before loading.
+  - **Note:** the rows carry no years, so they add no „former colleagues" ties yet. Ties need overlapping years.
+
+Answered:
+- **#8350, 8/10 (16:07Z):** the two zero-page asks (health minister, NAPR) are the code session's next look.
+- **The communities CSV on 4439232:** done at 15:06Z (TO_OPS 15:55Z).
+- **#6997 PASS (16:21Z):** noted, and the real-user watch was quiet.
+
+Last TO_CODE.md section handled: 30 Oct, 16:21Z — tester: #6997 aaa8a96 PASS; real-user watch quiet (box 78974; summarised, no names)
+
 ### 30 Oct, 15:55Z — run watch alert 232 (REAL PERSON) fixed; the Axel list loaded; shipping status
 
 - **Alert 232 (thread 17665, 15:15Z):**
