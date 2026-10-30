@@ -191,6 +191,8 @@ describe('a need finds a person with no number, with who can reach them', () => 
     expect(String(tieCall?.[0])).toContain('o.name !~* $4');
     expect(String(tieCall?.[0])).toContain('FROM test_seats s');
     expect((tieCall?.[1] as unknown[])[3]).toBe('\\mtest\\M');
+    // The founder, 30 Oct: the old Ally Argentina account is not a person either.
+    expect((tieCall?.[1] as unknown[])[4]).toEqual(['U-129171']);
   });
 
   it('reads nothing for a need with no usable word', async () => {
