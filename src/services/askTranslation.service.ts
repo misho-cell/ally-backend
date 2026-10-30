@@ -118,14 +118,28 @@ const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
  * inside it — and finding it needed nothing but reading the three places that
  * quote a person.
  */
-export type RelayedKind = 'question' | 'request' | 'answer';
+export type RelayedKind = 'question' | 'request' | 'answer' | 'retold_answer';
 
 const WHAT_IT_IS: Readonly<Record<RelayedKind, string>> = {
   question: 'It is one person asking another for help, relayed by their assistants.',
   request:
     'It is one person saying why they would like to meet another, relayed by their assistants.',
   answer: 'It is one person answering another person’s request, relayed by their assistants.',
+  retold_answer:
+    'It is one person’s answer to another person’s request. You are the asker’s assistant ' +
+    'telling the asker what was said: about the one who answered, in the third person ' +
+    'singular (he or she, never „I“ or „we“), and never in the plural or formal „you“. ' +
+    'Every word in that language — none of the original’s words left as they were.',
 };
+
+/**
+ * #8154 (tester, v19 round; Misho, 30 Oct: yes on the recommendation): the
+ * answers card put the helper's own words after „მითხრა, რომ …" — first
+ * person, plural „გეტყვით", and, when a translation failed, English pasted in.
+ * The card's text is a retelling, so it is retold even when both write the
+ * same language.
+ */
+const ALWAYS_RETOLD: ReadonlySet<RelayedKind> = new Set(['retold_answer']);
 
 /**
  * MEANING EXACT, TONE FREE — the vision's own division, in the brief.
@@ -135,8 +149,9 @@ const WHAT_IT_IS: Readonly<Record<RelayedKind, string>> = {
  * something a person says, not as a formal rendering of it.
  */
 function brief(to: RunLanguage, what: RelayedKind): string {
+  const task = ALWAYS_RETOLD.has(what) ? 'Retell the message in' : 'Translate the message into';
   return [
-    `Translate the message into ${LANGUAGE_NAMES[to]}.`,
+    `${task} ${LANGUAGE_NAMES[to]}.`,
     '',
     WHAT_IT_IS[what],
     '',
@@ -351,7 +366,9 @@ export async function relayedForReader(
 
   // The control, and it runs before anything is built or charged.
   const asked = detectRunLanguage(text);
-  if (asked === readerLanguage) return { text: question, skipped: 'same_language' };
+  if (asked === readerLanguage && !ALWAYS_RETOLD.has(what)) {
+    return { text: question, skipped: 'same_language' };
+  }
 
   if (text.length > MAX_QUESTION_CHARS) {
     untranslated(

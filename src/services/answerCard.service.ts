@@ -2,9 +2,9 @@ import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { buttonToldByNetai, yesIsToldAtTheTap } from './askOpening';
 import { nameToSay } from './spokenName';
-import { relayedForReader } from './askTranslation.service';
+import { relayedForReader, RelayedKind } from './askTranslation.service';
 import { geoName } from './georgianCase';
-import { RunLanguage } from './runLanguage';
+import { detectRunLanguage, RunLanguage } from './runLanguage';
 import { emitMessageAppended } from './sse.service';
 import { saveServerLine, threadLanguage } from './threads.service';
 import { georgianFirstName, georgianNamesFor } from './georgianScriptName';
@@ -87,6 +87,25 @@ function buttonLine(answer: CardAnswer, language: RunLanguage, who: string): str
   return from ? `${who}: ${retold}` : retold;
 }
 
+/**
+ * #8154 (tester, v19 round; Misho, 30 Oct: yes on the recommendation): the
+ * helper's own words are retold for the owner — third person singular, in the
+ * owner's language, even when both write it. Words the server already put in
+ * its own voice are only translated.
+ */
+function relayKind(answer: CardAnswer): RelayedKind {
+  return answer.verbatim ? 'retold_answer' : 'answer';
+}
+
+/**
+ * The helper's own words under a translation, in quotes. Not under a retelling
+ * in the same language: there the line already says it, in the owner's words.
+ */
+function originalUnder(answer: CardAnswer, original: string, language: RunLanguage): string {
+  if (!answer.verbatim || detectRunLanguage(original) === language) return '';
+  return `\n(„${original.trim()}")`;
+}
+
 /** One answer's line: their own words in quotes, anything else without. */
 async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<string> {
   const via = answer.viaName?.trim();
@@ -95,13 +114,13 @@ async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<stri
   const who = `${sender}${via ? ` (${VIA[language]} ${via})` : ''}`;
   const button = buttonLine(answer, language, who);
   if (button !== null) return button;
-  const relayed = await relayedForReader(answer.answer, language, 'answer');
+  const relayed = await relayedForReader(answer.answer, language, relayKind(answer));
   if (relayed.original === undefined) {
     return answer.verbatim
       ? `${who}: „${answer.answer.trim()}"`
       : `${who}: ${answer.answer.trim()}`;
   }
-  const original = answer.verbatim ? `\n(„${relayed.original.trim()}")` : '';
+  const original = originalUnder(answer, relayed.original, language);
   return `${who}: ${relayed.text.trim()}${original}`;
 }
 
@@ -129,9 +148,9 @@ async function georgianCardLine(answer: CardAnswer, names: GeorgianCardNames): P
   const spoke = `ვესაუბრე ${geoName(helper, 'gen')} ასისტენტს${viaNote} და მითხრა`;
   const retold = buttonToldByNetai(answer.answer, 'ka', nameToSay(helper, 'ka'));
   if (retold !== null) return `${spoke}, რომ ${retold}`;
-  const relayed = await relayedForReader(answer.answer, 'ka', 'answer');
+  const relayed = await relayedForReader(answer.answer, 'ka', relayKind(answer));
   if (relayed.original !== undefined) {
-    const original = answer.verbatim ? `\n(„${relayed.original.trim()}")` : '';
+    const original = originalUnder(answer, relayed.original, 'ka');
     return `${spoke}, რომ ${relayed.text.trim()}${original}`;
   }
   return answer.verbatim
