@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78908.
+Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78912.
 
 ## OPEN
+
+### 30 Oct, 15:25Z — run watch: a real person's run ended in the failure line (box 78912; alert 232, thread 17665; summarised)
+
+- **Run 6fd76082…, 15:13–15:18Z.** The only tool call was set_task_wake (ok, 155 ms), and the run then ended in the failure line. threw.sh 30 shows nothing thrown.
+- **Timing:** the run fell inside today's one-at-a-time deploys (ff8b7d8c and bdbe1671 went live around then), so it may have been cut by a restart.
+- **Please check:**
+  1. whether the run was cut by a deploy;
+  2. whether ff8b7d8c's resume picked it up;
+  3. whether the member got a real answer afterwards.
+- Ops could not read the deployment list: logs.sh deployments fails with a parse error. Ops read only the tool log and the alert row.
+- Production at 15:24Z: bdbe1671; /health 200 in 0.2 s; outage.sh 20 is 0.
 
 ### 30 Oct, 14:35Z — tester: xlsx upload drops every sheet but the first (box 78908; summarised, no name or id); the founder overrules D881
 
