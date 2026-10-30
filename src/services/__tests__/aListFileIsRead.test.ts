@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import {
   csvCells,
+  headerRowIndex,
   isBinary,
   listFileKind,
   ListFileKind,
@@ -175,5 +176,33 @@ describe('a cell written as HTML character codes', () => {
     sheet.addRow(['TBC']);
     const parsed = await parseListFile(Buffer.from(await book.xlsx.writeBuffer()), 'crm.xlsx');
     expect(parsed.ok && parsed.file.columns).toEqual(['BIA Top List — მომ']);
+  });
+});
+
+// Tester's real-user watch (30 Oct): LinkedIn's export puts note lines above the header.
+describe('a LinkedIn Connections export', () => {
+  const LINKEDIN =
+    'Notes:\n' +
+    '"When exporting your connection data, you may notice that some of the email addresses are missing."\n' +
+    '\n' +
+    'First Name,Last Name,URL,Email Address,Company,Position,Connected On\n' +
+    'Nino,Test,https://example.com/in/nino,,Alpha LLC,CFO,01 Oct 2026\n';
+
+  it('reads the real header under the note lines', async () => {
+    const parsed = await parseListFile(Buffer.from(LINKEDIN), 'Connections.csv');
+    expect(parsed.ok && parsed.file.columns).toEqual([
+      'First Name',
+      'Last Name',
+      'URL',
+      'Email Address',
+      'Company',
+      'Position',
+      'Connected On',
+    ]);
+    expect(parsed.ok && parsed.file.rows).toHaveLength(1);
+  });
+
+  it('still takes a one-column list as it is', () => {
+    expect(headerRowIndex([['TBC'], ['Bank of Georgia'], ['Liberty']])).toBe(0);
   });
 });

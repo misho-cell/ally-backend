@@ -146,9 +146,31 @@ function textFile(raw: string, kind: ListFileKind): ParsedListFile {
   };
 }
 
+/**
+ * Tester's real-user watch, 30 Oct: a LinkedIn Connections.csv was read as
+ * „500 rows, columns: Notes" — LinkedIn writes a „Notes:" line and a sentence
+ * above the real header. The header is the first of the opening rows that
+ * fills at least half as many cells as the widest of them, and two at least;
+ * the note lines above it are left out of the table.
+ */
+const HEADER_SCAN_ROWS = 10;
+const MIN_HEADER_CELLS = 2;
+
+function filledCount(row: readonly string[]): number {
+  return row.filter((cell) => cell !== '').length;
+}
+
+export function headerRowIndex(rows: readonly (readonly string[])[]): number {
+  const opening = rows.slice(0, HEADER_SCAN_ROWS);
+  const widest = Math.max(0, ...opening.map(filledCount));
+  const enough = Math.max(MIN_HEADER_CELLS, Math.ceil(widest / 2));
+  const found = opening.findIndex((row) => filledCount(row) >= enough);
+  return found === -1 ? 0 : found;
+}
+
 function tableFile(kind: ListFileKind, cells: string[][]): ParsedListFile {
   const filled = cells.filter((row) => row.some((cell) => cell !== ''));
-  const [header = [], ...body] = filled;
+  const [header = [], ...body] = filled.slice(headerRowIndex(filled));
   const rows = body.slice(0, MAX_ROWS);
   const text = [header, ...rows]
     .map((row) => row.join(' | '))
