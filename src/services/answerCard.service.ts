@@ -88,13 +88,18 @@ function buttonLine(answer: CardAnswer, language: RunLanguage, who: string): str
 }
 
 /**
- * #8154 (tester, v19 round; Misho, 30 Oct: yes on the recommendation): the
- * helper's own words are retold for the owner — third person singular, in the
- * owner's language, even when both write it. Words the server already put in
- * its own voice are only translated.
+ * #8154 (tester, v19 round; Misho, 30 Oct: yes on the recommendation): every
+ * answer on the card is retold for the owner — third person singular, in the
+ * owner's language, even when both write it. Tester 79135 (8/10): two lines
+ * not marked as the helper's own words were only translated, so the helper's
+ * formal „თუ გაინტერესებთ" and quoted speech stood, and an English line that
+ * did not translate went in after „მითხრა, რომ".
  */
-function relayKind(answer: CardAnswer): RelayedKind {
-  return answer.verbatim ? 'retold_answer' : 'answer';
+const CARD_RELAY: RelayedKind = 'retold_answer';
+
+/** Not retold: the words go in quotes when they are the helper's own or in another language. */
+function quotedWhenNotRetold(answer: CardAnswer, language: RunLanguage): boolean {
+  return answer.verbatim || detectRunLanguage(answer.answer) !== language;
 }
 
 /**
@@ -114,9 +119,9 @@ async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<stri
   const who = `${sender}${via ? ` (${VIA[language]} ${via})` : ''}`;
   const button = buttonLine(answer, language, who);
   if (button !== null) return button;
-  const relayed = await relayedForReader(answer.answer, language, relayKind(answer));
+  const relayed = await relayedForReader(answer.answer, language, CARD_RELAY);
   if (relayed.original === undefined) {
-    return answer.verbatim
+    return quotedWhenNotRetold(answer, language)
       ? `${who}: „${answer.answer.trim()}"`
       : `${who}: ${answer.answer.trim()}`;
   }
@@ -148,12 +153,12 @@ async function georgianCardLine(answer: CardAnswer, names: GeorgianCardNames): P
   const spoke = `ვესაუბრე ${geoName(helper, 'gen')} ასისტენტს${viaNote} და მითხრა`;
   const retold = buttonToldByNetai(answer.answer, 'ka', nameToSay(helper, 'ka'));
   if (retold !== null) return `${spoke}, რომ ${retold}`;
-  const relayed = await relayedForReader(answer.answer, 'ka', relayKind(answer));
+  const relayed = await relayedForReader(answer.answer, 'ka', CARD_RELAY);
   if (relayed.original !== undefined) {
     const original = originalUnder(answer, relayed.original, 'ka');
     return `${spoke}, რომ ${relayed.text.trim()}${original}`;
   }
-  return answer.verbatim
+  return quotedWhenNotRetold(answer, 'ka')
     ? `${spoke}: „${answer.answer.trim()}"`
     : `${spoke}, რომ ${answer.answer.trim()}`;
 }
