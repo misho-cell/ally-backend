@@ -22,10 +22,8 @@ export const WORLD_ANSWER_FLAG = 'world_answer_first';
 /** The founder's „about 20 s": past it the run goes on without the answer. */
 export const WORLD_ANSWER_BUDGET_MS = 20_000;
 /**
- * Tester 78807 (#8350, 3 of 10): with Gemini refused at once (402), GPT's web
- * search answered in 15–21 s seven times and timed out at 20 s on the three
- * harder asks, which then waited 70–96 s for a nameless answer. The fallback
- * gets until 30 s from the start.
+ * Tester 78807 (#8350, 3 of 10): GPT's web search answered in 15–21 s seven
+ * times and timed out at 20 s on the three harder asks. GPT gets 30 s.
  */
 export const WORLD_ANSWER_FALLBACK_BUDGET_MS = 30_000;
 const FLAG_TTL_MS = 30_000;
@@ -154,11 +152,38 @@ async function fromOpenAi(
   }
 }
 
+interface EngineRun {
+  readonly engine: WorldAnswerEngine;
+  readonly reading: Promise<EngineReading>;
+}
+
+/** The first engine that comes back with an answer; else none, once every engine has settled. */
+function firstAnswer(
+  runs: readonly EngineRun[],
+): Promise<{ readonly answer: WorldAnswer | null; readonly engine: WorldAnswerEngine | null }> {
+  return new Promise((resolve) => {
+    let settled = 0;
+    let last: WorldAnswerEngine | null = null;
+    if (runs.length === 0) resolve({ answer: null, engine: null });
+    for (const { engine, reading } of runs) {
+      void reading.then((r) => {
+        settled += 1;
+        last = engine;
+        if (!('failed' in r) && r.answer !== null) resolve({ answer: r.answer, engine });
+        else if (settled === runs.length) resolve({ answer: null, engine: last });
+      });
+    }
+  });
+}
+
 /**
  * The web's answer with its pages, or null when it has none or did not answer
- * in time. Gemini first; when Gemini itself fails (no key, refused, timed out),
- * the chat's GPT model searches in the time left. An engine that answered
- * „nothing" is not asked twice. Never throws.
+ * in time. Never throws.
+ *
+ * Tester 79209/79211 (#8350, 30 Oct): GPT alone answered 10 of 10 in about 16 s
+ * all day. Once Gemini was paid for again it was asked first, ran out its 20 s
+ * nineteen times in twenty, and left GPT the 10 s before 30 s, too little for
+ * one search. Both engines now start together and the first answer is shown.
  */
 export async function askTheWorld(
   run: WorldAnswerRun,
@@ -167,18 +192,17 @@ export async function askTheWorld(
 ): Promise<WorldAnswer | null> {
   const startedAt = Date.now();
   const prompt = worldQuestionPrompt(question, language);
-  let engine: WorldAnswerEngine | null = null;
-  let reading: EngineReading = { failed: true };
+  const runs: EngineRun[] = [];
   if (geminiKey() !== '') {
-    engine = WorldAnswerEngine.Gemini;
-    reading = await fromGemini(run, prompt, question);
+    runs.push({ engine: WorldAnswerEngine.Gemini, reading: fromGemini(run, prompt, question) });
   }
-  const left = WORLD_ANSWER_FALLBACK_BUDGET_MS - (Date.now() - startedAt);
-  if ('failed' in reading && left > 0 && openaiWebSearchAvailable()) {
-    engine = WorldAnswerEngine.OpenAi;
-    reading = await fromOpenAi(run, prompt, question, left);
+  if (openaiWebSearchAvailable()) {
+    runs.push({
+      engine: WorldAnswerEngine.OpenAi,
+      reading: fromOpenAi(run, prompt, question, WORLD_ANSWER_FALLBACK_BUDGET_MS),
+    });
   }
-  const answer = 'failed' in reading ? null : reading.answer;
+  const { answer, engine } = await firstAnswer(runs);
   logTheCall(run, question, answer, engine, Date.now() - startedAt);
   return answer;
 }
