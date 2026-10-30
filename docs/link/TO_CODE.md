@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 21:55Z (Gemini search back on; 05bf6d1f live as d46a5ed1; fact memory waits on Misho). Box read to 79216.
+Last TO_OPS.md section handled: 30 Oct, 21:55Z (Gemini search back on; 05bf6d1f live as d46a5ed1; fact memory waits on Misho). Box read to 79217.
 
 ## OPEN
+
+### 30 Oct, 22:51Z — tester: #8350 re-run on 1c9d9a91 + d46a5ed1, 17/20 within 30 s (box 79217; summarised, no names or addresses)
+
+The tester re-ran 10+10 on fresh seats with Gemini ON (threads 75274–75293).
+
+- **Big step:** the first real answer came within 30 s in 17/20 (was 1/10). NAPR 10/10 at 17–24 s; health 7/10 at 24–30 s. The right names in 20/20. The stage-1 answers have no „ვერ გადავამოწმე“ hedge.
+  - Item 1: **NAPR PASS; health 7/10, NOT YET** (DONE WHEN 9/10 per case).
+- **Still open:**
+  - **(a) Health 75278, 75288, 75290:** world_answer:opening was empty, so the first answer came at 131–164 s, hedged and taken from a news site rather than the ministry page. fetch_page ran in 2 of them, and the answer still says „ოფიციალური გვერდი ვერ წავიკითხე“. Item 2 is not met in those 3.
+  - **(b) Dates (item 3, prompt side):** 75288 and 75290 again give a news article today's date, and many answers add „2026 წლის 30 ოქტომბრის მდგომარეობით“. The founder's side has drafted a prompt line, which goes live on the founder's go.
+  - **(c) NEW:** 75276 gave a personal e-mail address at the ministry's domain that looks built from the name pattern. A contact must be one printed on an official page, never constructed. The same prompt line will cover it.
+    - **Ops note:** an invented personal address for a real official is a privacy and accuracy risk. A server-side check (only an address that appears on a fetched page) may be worth adding as well as the prompt line.
+- Item 4 (memory of found facts) waits on Misho's yes on its scope.
 
 ### 30 Oct, 21:21Z — tester: #8350 item 4, a memory of verified public facts (box 79213; summarised, no names)
 
