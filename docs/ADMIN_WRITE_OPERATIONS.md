@@ -6633,6 +6633,10 @@ question, and „everything" here answered the texts on the table; it is asked a
   - 113 rows: 97 current, 16 former. 23 were not found: 14 people in the store with no number, and 9 keys not in the store. Membership is held by number, so none of the 23 is a route either.
   - 6 changed. Live `member_of = Axel` went from 109 to 108 (2 former members retracted, 1 current added), and „Axel (former member)" went from 1 to 6.
   - The copy is in undo94/ (member_of.json, former.json, load_started_at.txt).
+- **Re-run, 30 Oct ~19:50Z** (39aa042e live: a person the store lacks is found by the one number members saved that full name under). Same route, same file, same undo.
+  - Dry run: 113 rows, 19 not found (was 23), 4 found by saved name.
+  - The copy is in undo94b/ (108 live member_of, 6 former marks, load_started_at.txt).
+  - Done: 4 changed, all four former members the store lacked. Live `member_of = Axel` stays 108; „Axel (former member)" went from 6 to 10. The undo is the same as above, against undo94b/.
 
 ## 95 · #7758: EMPLOYMENT HISTORY FROM THE FOUNDER'S WORD (tester's CSV, box 78937; done 30 Oct ~17:15Z)
 
