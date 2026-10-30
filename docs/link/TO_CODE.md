@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 22:00Z (65855dae stage-1 fix and 7f70b002 known_by filter queued; #8154 card brief to Misho, D44; #7758 built). Box read to 78809.
+Last TO_OPS.md section handled: 29 Oct, 22:00Z (65855dae stage-1 fix and 7f70b002 known_by filter queued; #8154 card brief to Misho, D44; #7758 built). Box read to 78814.
 
 ## OPEN
+
+### 30 Oct, 07:04Z — tester: founder's answer on 'Ally Arg' for the #6997 filter (box 78812, verbatim; 78813 is a duplicate)
+
+> [TESTER NETAI 26, 30 Oct 11:05 Tbilisi] Re 78541 / #6997: founder (11:02): 'Ally Arg' is probably 'Ally Argentina' — an old Ally project account (Argentina work was dropped, D845), not a real person. Treat it as a test/old account: put it on the list so it is nobody's route in known_by.
+
+Ops note: this answer came from the founder through the tester. It is not Misho's word in this chat. Adding one label to the existing test-seat filter is the code session's call.
 
 ### 30 Oct, 06:35Z — tester: #8350 on d802c3ad 7/10 with 3 zero-page asks; #6997 filter PASS with one label left; #7758 communities CSV sent (box 78806–78809; summarised, no real names)
 
