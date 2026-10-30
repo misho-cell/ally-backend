@@ -14,6 +14,11 @@ import { HandoffAuthor, postHandoff } from './handoff.service';
  * apologises for a fault of ours (17 replies, 4 real people); a run that ended
  * in the failure line (about 5 a day).
  *
+ * A fourth, the tester's ask after its real-user watch (30 Oct): a member's
+ * typed message that nothing answered for five minutes. Two misses in three
+ * days were found only by reading the threads by hand (a five-hour gap, and a
+ * line that got no reply at all).
+ *
  * Ids and counts only, in the table and in the box: never a name, a number or
  * a member's words (D149). The thread id is enough to read the rest.
  */
@@ -21,6 +26,7 @@ export enum RunAlertKind {
   Stuck = 'stuck',
   Apology = 'apology',
   Failed = 'failed',
+  Unanswered = 'unanswered',
 }
 
 const QUERY_TIMEOUT_MS = 8_000;
@@ -119,6 +125,29 @@ async function failedRuns(): Promise<RunAlert[]> {
   return result.rows;
 }
 
+/** A typed message older than this with no reply after it is a miss. */
+const UNANSWERED_AFTER_MINUTES = 5;
+
+async function unanswered(): Promise<RunAlert[]> {
+  const result = await query<RunAlert>(
+    `SELECT 'unanswered' AS kind, x.id::text AS ref, x.user_id::int AS user_id, x.thread_id,
+            NULL AS run_id,
+            'a typed message has had no reply for ' || $2 || ' minutes' AS detail,
+            ${SEAT_SQL} AS test_seat
+       FROM conversations x
+      WHERE x.created_at > NOW() - make_interval(mins => $1)
+        AND x.created_at < NOW() - make_interval(mins => $2)
+        AND x.role = 'user' AND x.kind = 'message' AND x.content <> ''
+        AND NOT EXISTS (
+              SELECT 1 FROM conversations r
+               WHERE r.thread_id = x.thread_id AND r.created_at > x.created_at
+                 AND r.role = 'assistant' AND r.kind IN ('message', 'error'))`,
+    [LOOK_BACK_MINUTES, UNANSWERED_AFTER_MINUTES],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 /** A finding as stored, with the id the box line names it by. */
 export interface NewRunAlert extends RunAlert {
   readonly id: number;
@@ -162,7 +191,7 @@ export function alertLine(alerts: readonly NewRunAlert[]): string {
 
 /** One pass: finds, stores what is new, posts one box line when anything is. */
 export async function watchRunsOnce(): Promise<NewRunAlert[]> {
-  const found = (await Promise.all([stuckRuns(), apologies(), failedRuns()])).flat();
+  const found = (await Promise.all([stuckRuns(), apologies(), failedRuns(), unanswered()])).flat();
   const fresh = await storeNew(found);
   if (fresh.length > 0) await postHandoff(HandoffAuthor.ClaudeBackend, alertLine(fresh), null);
   return fresh;
