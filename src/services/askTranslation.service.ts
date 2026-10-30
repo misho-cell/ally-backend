@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { ServerTextBlock, serverText } from './serverTextBlocks';
 
 import anthropic from '../config/anthropic';
 import { recordClaudeUsage } from './costLedger.service';
@@ -153,12 +154,19 @@ const ALWAYS_RETOLD: ReadonlySet<RelayedKind> = new Set(['retold_answer']);
  * assistants is not a document: „can you do Thursday" must come out as
  * something a person says, not as a formal rendering of it.
  */
+/** The founder, 30 Oct (79102): the retelling brief is the prompt team's block when they have written one. */
+function whatItIs(what: RelayedKind): string {
+  return what === 'retold_answer'
+    ? serverText(ServerTextBlock.CardRetellBrief, WHAT_IT_IS.retold_answer)
+    : WHAT_IT_IS[what];
+}
+
 function brief(to: RunLanguage, what: RelayedKind): string {
   const task = ALWAYS_RETOLD.has(what) ? 'Retell the message in' : 'Translate the message into';
   return [
     `${task} ${LANGUAGE_NAMES[to]}.`,
     '',
-    WHAT_IT_IS[what],
+    whatItIs(what),
     '',
     '- Keep the MEANING, the conditions and anything agreed EXACTLY.',
     '- Names, numbers, dates and places stay as they are.',

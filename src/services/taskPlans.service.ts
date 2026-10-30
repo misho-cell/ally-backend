@@ -1,4 +1,5 @@
 import { accountDetailsFor, fetchAccountStates } from './tools/membership';
+import { ServerTextBlock, serverText } from './serverTextBlocks';
 import { notOnNetaiLine } from './mutualGroups';
 import { georgianScriptName } from './georgianScriptName';
 import { query } from '../db/postgres/client';
@@ -1181,6 +1182,9 @@ function joinWithAnd(items: readonly string[], and: string): string {
  * „I will count it solved when", no message text. So the routes sentence is
  * gone and the people are the assistants Netai will talk to.
  */
+/** The code's own Georgian plan sentence; the prompt block of the same meaning replaces it. */
+const PLAN_ASK_SENTENCE_KA = '{names} {assistants} დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
+
 const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
   ka: {
     ask: (people) => {
@@ -1192,7 +1196,12 @@ const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
         'და',
       );
       const assistants = people.length === 1 ? 'ასისტენტს' : 'ასისტენტებს';
-      return `${names} ${assistants} დაველაპარაკები და შევეცდები, ეს მოვაგვარო.`;
+      // The founder, 30 Oct (79102): the sentence is the prompt team's block when written.
+      return serverText(ServerTextBlock.PlanAskSentenceKa, PLAN_ASK_SENTENCE_KA)
+        .split('{names}')
+        .join(names)
+        .split('{assistants}')
+        .join(assistants);
     },
     askNobody: 'ჯერ ვეძებ, ვინ შეძლებს ამაში დახმარებას, და ჯერ არავის ვწერ.',
     and: 'და',
@@ -1232,10 +1241,16 @@ const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
  * Row 279, the tester's 941 (D520): the agreed question every plan ends on,
  * just above the two buttons.
  */
+/** The code's own Georgian closing question (D663); kept in EARLIER below once a block replaces it. */
+const PLAN_CLOSING_QUESTION_KA = 'დავიწყო?';
+
 export const PLAN_CLOSING_QUESTION: Readonly<Record<RunLanguage, string>> = {
   // D663 (the founder, 5 Oct): one approval question, and a human one — he
   // named „Shall I follow this plan and act" among the robotic lines.
-  ka: 'დავიწყო?',
+  // The founder, 30 Oct (79102): the Georgian question is the prompt team's block when written.
+  get ka(): string {
+    return serverText(ServerTextBlock.PlanClosingQuestionKa, PLAN_CLOSING_QUESTION_KA);
+  },
   en: 'Shall I start?',
   ru: 'Начинаю?',
   es: '¿Empiezo?',
@@ -1246,6 +1261,8 @@ export const PLAN_CLOSING_QUESTION: Readonly<Record<RunLanguage, string>> = {
  * is recognised and replaced, never left standing beside the new one.
  */
 export const EARLIER_PLAN_CLOSING_QUESTIONS: readonly string[] = [
+  // Plans already on people's screens end on it, and must still read as plans.
+  PLAN_CLOSING_QUESTION_KA,
   'ამ გეგმას მივყვე და ვიმოქმედო?',
   'Shall I follow this plan and act on it?',
   'Следовать этому плану и действовать?',
