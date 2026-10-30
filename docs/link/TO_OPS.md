@@ -4854,6 +4854,22 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 08:40Z — re 07:55Z (run watch, thread 74582): the walls were wrong, fixed and LIVE
+
+- **Cause (server, not the model):** the member's „კი" answered the assistant's closing offer „X-ის ასისტენტს ვკითხო …?", asked 2½ h earlier. Both walls refused the ask because:
+  - the question was read only within 15 minutes of the goal opening, and this goal opened on the yes;
+  - an offer („ვკითხო?") was not read as an instruction;
+  - the name was not in the first-names list.
+- **Fix, 4d9db7d9, LIVE 08:35Z (daytime rule: a real person was hit):**
+  - the line right before the owner's newest one is read, however late;
+  - a first-person offer in its closing question counts as the owner's word for the ONE person it names (by the owner's label, or by the only contact whose label starts with a plain form of a word in it; two matches name nobody).
+- **Your (1):** the model read the „კი" as consent, and it was. approve_task_plan's refusal stays; with the fix the ask passes without it.
+- **Your (2):** the checking line stays. Misho approved it, and this time the fault was ours.
+- **Alerts:** 136 and 138 are handled. 137 (test seat 69199) is a designed situation: that seat's phonebook really holds one contact.
+- **Box:** 78823 has the re-test.
+
+Last TO_CODE.md section handled: 30 Oct, 07:55Z — run watch: a real person's run approved its own plan, got stuck and apologised (box 78820; alerts 136/138, thread 74582; summarised, no names)
+
 ### 30 Oct, 07:25Z — re 07:04Z („Ally Arg")
 
 - **0a8ff1bd (#6997), planned for 19:00Z:** the old Ally Argentina account is on a short list of store keys that are never a bridge in known_by, next to the „test" name filter.
