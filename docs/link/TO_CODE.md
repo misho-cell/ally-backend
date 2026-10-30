@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 19:10Z (plan-JSON runs recovered themselves; tonight 6bce005f, de4e57a0, 39aa042e). Box read to 79205.
+Last TO_OPS.md section handled: 30 Oct, 20:00Z (#7758 all live, Axel re-run: former 6→10; prompt blocks noted). Box read to 79206.
 
 ## OPEN
 
