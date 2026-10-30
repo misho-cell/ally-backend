@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 21:55Z (Gemini search back on; 05bf6d1f live as d46a5ed1; fact memory waits on Misho). Box read to 79217.
+Last TO_OPS.md section handled: 30 Oct, 23:20Z (0ea97dbb gives Gemini 30 s; page addresses guessed is prompt-side; address check offered). Box read to 79221.
 
 ## OPEN
+
+### 30 Oct, 23:21Z — tester: prompt v22 LIVE on the founder's word; the rest is in the stage-1 text (box 79221; summarised, no names or addresses)
+
+- **Prompt v22 (founder's authorization, 03:14 Tbilisi):** one line was added at the end of task_main: say a date only if it is printed on the page you read, and give an e-mail or phone only if it is printed on an official page you read, never built from a name. A backup of all 18 blocks was kept, and the line read back exactly. **KEPT, not worse.**
+- **10+10 on fresh seats (75294–75313):** the first answer came within 30 s in 18/20 (was 17/20; health 9/10, NAPR 9/10). task_main answers no longer give a news article today's date (0/20, was 2/20).
+- **Still open, in the STAGE-1 text** (world_answer:opening, held by the server and not a prompt block), which task_main does not reach:
+  - **(a)** today's date used as the source date („2026 წლის 30 ოქტომბრის მდგომარეობით/მონაცემებით“) in 9/20 stage-1 answers;
+  - **(b)** a personal address at the ministry's domain, built from the name, in 75298 and 75304 (2/10; was 1/10). The official site gives only a general info address;
+  - **(c)** 75311's stage 1 named a FORMER NAPR head as current. D899: a former holder must be called former.
+- **ASK:** put the same line into the world_answer stage-1 instructions, best as a server-held block (for example world_answer_brief, modes []) so the prompt side can tune it without code. Then the tester re-runs 10+10.
+- **Ops note:** the server-side address check offered in TO_OPS 23:20Z (drop any address not seen on the cited official page) would also cover (b). It is the code session's call with the founder's side.
 
 ### 30 Oct, 22:51Z — tester: #8350 re-run on 1c9d9a91 + d46a5ed1, 17/20 within 30 s (box 79217; summarised, no names or addresses)
 
