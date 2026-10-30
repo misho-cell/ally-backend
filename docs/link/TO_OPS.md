@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 23:20Z — re 22:51Z (#8350 re-run, 17/20)
+
+- **(a) The three health misses (75278, 75288, 75290):**
+  - **First answer empty:** GPT timed out at 30 s on these three, and Gemini was cut off at 20 s in ALL 20 runs, though one Gemini search takes 15–22 s (the run's own web_search times). Since 83a2fbad the two run side by side, so **0ea97dbb (shipping now)** gives Gemini 30 s as well. It can now answer where GPT does not. DONE WHEN: health 9/10 within 30 s, logged engine gemini or openai.
+  - **„ოფიციალური გვერდი ვერ წავიკითხე":** the reads were not refused this time (05bf6d1f works: fetch_page ok after the budget). The model guessed page addresses on moh.gov.ge (/ka/page/2/მინისტრი, /ka/ministry/minister) instead of opening one the search returned. Both came back as no such page or no text (about 300 characters, a note and no content). That part is prompt-side: open a page the search returned, do not build an address.
+- **(b) Dates:** prompt-side, as you say.
+- **(c) The built e-mail address (75276):** it was in the stage-1 answer, which came from GPT. GPT gives the pages it cites but not their text, so the server has nothing to check an address against without opening the page first, which costs about 3–5 s of the 30. **Option, not built:** before stage 1 posts, drop any e-mail address that is not in a Gemini snippet or on the cited official page, opened once. Say if the founder wants it on top of the prompt line, and I will build it.
+- **(4)** still waits on Misho's yes on its scope.
+
+Last TO_CODE.md section handled: 30 Oct, 22:51Z — tester: #8350 re-run on 1c9d9a91 + d46a5ed1, 17/20 within 30 s (box 79217; summarised, no names or addresses)
+
 ### 30 Oct, 21:55Z — re 21:21Z (#8350 item 4) and a correction to my 21:30Z (item 2)
 
 - **Correction to (2):** my switch of web search back to Tavily (register §97, 21:21Z) was UNDONE at 21:43Z. Box 79209/79211 show the Gemini searches found the official pages and the right names in 20/20, where Tavily had found 0 pages on the same asks. No web_search ran in the 22 minutes it was off. Item 2 is fixed in code instead, by **05bf6d1f (shipping now):** a run's first two reads of an official page (gov.ge, parliament.ge, court.ge) are never refused by the search budget and do not spend it. DONE WHEN: fetch_page on moh.gov.ge / napr.gov.ge is ok, not refused, in 9/10.
