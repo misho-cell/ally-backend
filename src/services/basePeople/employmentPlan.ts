@@ -7,7 +7,9 @@ import { csvRecords } from '../axelLoad/axelBasePlan';
  *
  * The limits, each held here or in the loader:
  *   - only people already in the store (the loader checks the key);
- *   - only public pages: every row carries the page it came from;
+ *   - only public pages: every row carries the page it came from — or, on
+ *     Misho's yes of 30 Oct, the founder's own word with its date
+ *     („founder, 2026-10-29"), for what no page says;
  *   - ties are for finding a route, never a profile shown to anyone;
  *   - a person's history is removed on request (DELETE route).
  */
@@ -15,6 +17,13 @@ const MAX_FIELD_CHARS = 200;
 const MIN_YEAR = 1950;
 const MAX_YEAR = 2100;
 const SOURCE_RE = /^https?:\/\/\S+$/iu;
+/** The founder's word as a source: who said it and when („founder, 2026-10-29"). */
+const FOUNDER_SOURCE_RE = /^founder,\s*\d{4}-\d{2}-\d{2}$/iu;
+
+/** Pure: a row's source is a public page, or the founder's dated word. */
+export function isEmploymentSource(source: string): boolean {
+  return SOURCE_RE.test(source) || FOUNDER_SOURCE_RE.test(source);
+}
 /**
  * An employer with more people than this in the store is too big for „worked
  * there at the same time" to mean they know each other (a bank of thousands).
@@ -67,7 +76,7 @@ export function employmentRows(csv: string): {
     const from = year(r.from_year);
     const to = year(r.to_year);
     if (personKey === '' || employerKey(employer) === '') skip('no_person_or_employer');
-    else if (!SOURCE_RE.test(sourceUrl)) skip('no_public_source');
+    else if (!isEmploymentSource(sourceUrl)) skip('no_source');
     else if (from === 'bad' || to === 'bad' || (from !== null && to !== null && to < from))
       skip('bad_years');
     else

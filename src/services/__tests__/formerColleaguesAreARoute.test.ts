@@ -15,6 +15,7 @@ import {
   EMPLOYMENT_BASIS,
   employerKey,
   employmentRows,
+  isEmploymentSource,
   MAX_PEOPLE_PER_EMPLOYER,
 } from '../basePeople/employmentPlan';
 
@@ -41,8 +42,17 @@ describe('an employment history', () => {
   it('needs a public source and sane years; the employer is compared without case or spaces', () => {
     const { rows, skipped } = employmentRows(CSV);
     expect(rows.map((r) => r.personKey)).toEqual(['P-1', 'P-2', 'P-3', 'P-4', 'P-5']);
-    expect(skipped).toEqual({ no_public_source: 1, bad_years: 1 });
+    expect(skipped).toEqual({ no_source: 1, bad_years: 1 });
     expect(employerKey('TBC  bank')).toBe(employerKey('TBC Bank'));
+  });
+
+  // Misho, 30 Oct: the founder's word counts, dated; anything else without a page does not.
+  it('takes the founder’s dated word as a source, and nothing vaguer', () => {
+    expect(isEmploymentSource('founder, 2026-10-29')).toBe(true);
+    expect(isEmploymentSource('Founder,2026-10-29')).toBe(true);
+    expect(isEmploymentSource('founder')).toBe(false);
+    expect(isEmploymentSource('a friend, 2026-10-29')).toBe(false);
+    expect(isEmploymentSource('https://example.ge/p1')).toBe(true);
   });
 
   it('makes a tie only where the years overlap', () => {
@@ -76,7 +86,7 @@ describe('loading it', () => {
       .mockResolvedValueOnce({ rows: [] });
     const report = await loadEmployment(CSV, true, YEAR);
     expect(report).toMatchObject({ dry_run: true, rows_written: 0, colleague_ties: 1 });
-    expect(report.skipped).toMatchObject({ person_not_in_store: 3, no_public_source: 1 });
+    expect(report.skipped).toMatchObject({ person_not_in_store: 3, no_source: 1 });
     expect(mockClientQuery).not.toHaveBeenCalled();
   });
 
