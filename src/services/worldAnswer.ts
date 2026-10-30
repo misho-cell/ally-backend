@@ -1,5 +1,6 @@
 import { answerText, GeminiHit, GeminiResponse, groundedHits } from './tools/geminiSearch';
 import { RunLanguage } from './runLanguage';
+import { ServerTextBlock, serverText } from './serverTextBlocks';
 
 /**
  * #8350 (founder, 29 Oct, after a real member's ask about a city office): an
@@ -61,17 +62,32 @@ const INFORMAL_ADDRESS: Readonly<Record<RunLanguage, string>> = {
   es: 'Address the member informally, with „tú“, never „usted“.\n',
 };
 
+const LANGUAGE_SLOT = '{language}';
+
+/**
+ * Tester 79221 (30 Oct): the founder's prompt v22 line on dates and contacts
+ * reached task_main but not this text, held in code. It is now also the prompt
+ * block world_answer_brief, which the prompt side edits; until it is written,
+ * this text stands. The answer format below it (NONE, PEOPLE:) is the server's
+ * and stays in code, because the server reads it back.
+ */
+export const WORLD_ANSWER_BRIEF =
+  'A member of a professional network in Georgia asked the question below. Search the web ' +
+  'in Georgian AND in English, and trust the most recent sources: for an office or a post, ' +
+  'the person who holds it now, not someone who held it before.\n' +
+  `Answer in ${LANGUAGE_SLOT}, speaking to the member directly, in at most six ` +
+  'short sentences: the facts asked for, with each person’s full name, role and ' +
+  'organisation, any public phone number or email an official page gives, and the date of ' +
+  'the source when it names who holds a post. Do not say how the answer was found, and ' +
+  'never mention a search, a search engine, Google or Gemini.';
+
 /** The question as the web is asked it. */
 export function worldQuestionPrompt(question: string, language: RunLanguage): string {
+  const brief = serverText(ServerTextBlock.WorldAnswerBrief, WORLD_ANSWER_BRIEF)
+    .split(LANGUAGE_SLOT)
+    .join(LANGUAGE_NAMES[language]);
   return (
-    'A member of a professional network in Georgia asked the question below. Search the web ' +
-    'in Georgian AND in English, and trust the most recent sources: for an office or a post, ' +
-    'the person who holds it now, not someone who held it before.\n' +
-    `Answer in ${LANGUAGE_NAMES[language]}, speaking to the member directly, in at most six ` +
-    'short sentences: the facts asked for, with each person’s full name, role and ' +
-    'organisation, any public phone number or email an official page gives, and the date of ' +
-    'the source when it names who holds a post. Do not say how the answer was found, and ' +
-    'never mention a search, a search engine, Google or Gemini.\n' +
+    `${brief}\n` +
     INFORMAL_ADDRESS[language] +
     `If the question is only about the member’s own contacts or private life, or the web ` +
     `cannot answer it, reply with exactly ${NO_WORLD_ANSWER}.\n` +
