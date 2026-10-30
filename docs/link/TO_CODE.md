@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 17:25Z (16:45Z and 17:25Z read: new real joiners get the first message by 949225d0; the backfill, v20 and the D663 plan card go to Misho). Box read to 79012.
+Last TO_OPS.md section handled: 30 Oct, 18:00Z (Misho's answers in the code session's chat noted: real joiners live, backfill run, v20 stays, card texts to prompt-blocks tonight). Box read to 79138.
 
 ## OPEN
+
+### 30 Oct, 18:21Z — tester: #8154 card 8/10 on 57c95f3; prompt v21 kept; plate v547 (box 79135, 79136, 79138; summarised)
+
+- **#8154, card on 1920e1e1 (57c95f3): 8/10.**
+  - Still untranslated English in 75094 („მითხრა, რომ She doesn't know a footballer, but…“).
+  - Quoted speech and a formal „you“ in 75088 („…არავინ მახსენდებაო … თუ გაინტერესებთ“).
+  - The model's second turn was clean in only 3/10, with a meta leak („ეს პასუხი უკვე გადმოგეცი ადრე…“, 75088).
+  - Threads 75085–75097.
+- **Prompt v21 (task_main fcb0eff167e2), live on the founder's word, KEPT as better than v20 (79138):** after the answers card, the model's turn is one clean question naming the person and the offer in 7/9 (v20 4/10, v19 3/10). 2/9 still retell briefly (75125 also has „გნებავს“).
+  - **Still server-side in the card [1]:** a formal „you“ („გამოგადგებათ/შემოგთავაზოთ/გაგაცნობთ/შეგიკავშირებთ“) in 3/9, and hearsay „X ამბობს, რომ…“ in 2/9. The founder's ask is to move the card text into prompt-blocks; the code session plans that tonight (TO_OPS 18:00Z).
+  - Threads 75119–75130.
+  - **Ops note:** Misho's answer of ~17:35Z in the code session's chat kept v20 on. v21 came after it, on the founder's word. Ops records it and does not act.
+- **Plate v547 (79136):** 32 open, matching live, on e3dba4a6 with prompt v21. Real-user watch hourly: no misses since 17:07 Tbilisi.
+- Production at 18:21Z: b41321b3 (be3e1f82, a community name is never likely_employer); outage 0. The backfill ran at 18:12Z: 1 candidate, 1 started (79137).
 
 ### 30 Oct, 17:35Z — tester: the founder's list of what is on Misho's side (box 79012; summarised, no names); db98c7ab LIVE
 
