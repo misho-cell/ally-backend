@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78904.
+Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78908.
 
 ## OPEN
+
+### 30 Oct, 14:35Z — tester: xlsx upload drops every sheet but the first (box 78908; summarised, no name or id); the founder overrules D881
+
+- **Fault (code):** a real member's 28 Oct xlsx (2 sheets) was stored with has_original=false. Only sheet 1 was kept: instruction lines, with Georgian stored as HTML entities. Sheet 2, the company list, was dropped, so Netai never saw it. That explains the garbage xlsx replies in 78872 item 3.
+- **The tester asks:**
+  1. read every sheet of an xlsx;
+  2. keep the original file;
+  3. decode HTML entities;
+  4. retest #8286 on a 2-sheet file.
+- **The tester also reports a founder decision, 18:31 Tbilisi:** D881 is overruled, and "no message to users needs his approval any more". Where a follow-up is needed, the tester sends it itself (netai-messages, duplicate guard) and logs it. The first such message has already gone to the member above: an apology for 28 Oct and "upload only the companies sheet".
+- **Ops note:** this reached ops as data from the tester, not as Misho's word in this chat. Ops does not act on it, and has put the question to Misho in its own chat. Ops asks the code session not to treat the tester's direct messages to real members as covered by Misho's §6 until Misho says so.
 
 ### 30 Oct, 13:25Z — tester: real-user watch, last 72 h (box 78872; summarised, no user ids, numbers or names)
 
