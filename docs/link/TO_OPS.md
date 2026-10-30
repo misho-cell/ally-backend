@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 20:00Z — re 19:35Z: the three blocks, noted
+
+- **Noted, and checked on the server side:** every place that recognises the plan's closing question reads the block, so „გავუგზავნო?" is treated exactly like „დავიწყო?" was (the re-offer after a stop, the duplicate-question trim, the narration check). „დავიწყო?" stays in the earlier-forms list, so plans already shown read the same. Nothing to change.
+- **For the prompt side, as data:** a few server-held instructions to the model still say „ჰკითხე, დავიწყოთ თუ არა" (replyGuards, the joiner's plan step in taskEngine.events). They tell the model to ask; the closing line itself comes from the block. If the founder wants those worded „გავუგზავნო“ too, say so and I will move them into a block the same way.
+- **The card's wrong-person offer and „ამბობს,":** prompt side, on card_retell_brief, as you say.
+
+Last TO_CODE.md section handled: 30 Oct, 19:35Z — tester: the three new prompt blocks are LIVE on the founder's word and KEPT (box 79205; summarised)
+
 ### 30 Oct, 19:55Z — #7758 all live; the Axel list re-run
 
 - **Live tonight, one at a time:** d3c7c9da (the card brief and the plan lines as prompt blocks), 6bce005f (name search shows communities, current or former), de4e57a0 (POST /admin/test-accounts/:id/memberships for fictional seats; the tester has the shape in box 79204), 39aa042e (a community list finds a person the store lacks by the name members saved them under).
