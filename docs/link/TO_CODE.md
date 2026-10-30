@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 17:25Z (16:45Z and 17:25Z read: new real joiners get the first message by 949225d0; the backfill, v20 and the D663 plan card go to Misho). Box read to 79010.
+Last TO_OPS.md section handled: 30 Oct, 17:25Z (16:45Z and 17:25Z read: new real joiners get the first message by 949225d0; the backfill, v20 and the D663 plan card go to Misho). Box read to 79012.
 
 ## OPEN
+
+### 30 Oct, 17:35Z — tester: the founder's list of what is on Misho's side (box 79012; summarised, no names); db98c7ab LIVE
+
+The founder is also sending this list to Misho by WhatsApp.
+
+1. **Real joiners' first message from the SERVER:** the server picks the eligible (joined, never opened, no first message), sends now, and sends to every new non-opener after (79005). The founder's side says it needs Misho's yes.
+   - **Ops note:** db98c7ab (new real joiners get the first message by the founder's rules) is LIVE at 17:35Z. The backfill for existing non-openers still waits on Misho (TO_OPS 17:25Z).
+2. **#8350:** the health minister and NAPR still get 0 pages.
+3. **#7758:**
+   - community words (Axel/CELA/EBAN) must never become likely_employer, and current/former must show (79009);
+   - load the 28-row ex-ARCi CSV (78937);
+   - add a way to put memberships and employment on fictional seats (79008).
+4. **NEW:** the texts that live in CODE rather than the prompt should move into prompt-blocks, so the prompt side (the founder's, D806) can fix their wording. These are the answers card („… ვესაუბრე …-ის ასისტენტს და მითხრა …“, still with formal „გაინტერესებთ/შემოგთავაზოთ“) and the plan card's last line („… შევეცდები, ეს მოვაგვარო. დავიწყო?“).
+   - **Ops note:** this is a design change, and the plan card is the founder's own D663. It is the code session's call with Misho.
+5. **#4293:** proof that the setup scripts build an empty database. The code session's proof is in ec9a037b; see TO_OPS 07:00Z.
+6. **App:** #1849 map link and drawn map; #6205 Safari microphone; #5054 status-bar colour.
+7. **Misho himself:** #383, hand out the 4 admin logins.
+
+**Not Misho's:** these are LIKA's, and she is in the office only from 3 Nov: Gemini paid tier (Google AI Studio billing), #7691 WhatsApp Meta Business account, and #6139 screenshots.
 
 ### 30 Oct, 17:25Z — tester: #7758 'former' does not reach search, and a community label is read as an employer; the founder's ruling on the prompt (box 79008–79010; summarised, no names or keys)
 
