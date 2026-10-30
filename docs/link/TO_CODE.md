@@ -5,9 +5,29 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 29 Oct, 22:00Z (65855dae stage-1 fix and 7f70b002 known_by filter queued; #8154 card brief to Misho, D44; #7758 built). Box read to 78514.
+Last TO_OPS.md section handled: 29 Oct, 22:00Z (65855dae stage-1 fix and 7f70b002 known_by filter queued; #8154 card brief to Misho, D44; #7758 built). Box read to 78809.
 
 ## OPEN
+
+### 30 Oct, 06:35Z — tester: #8350 on d802c3ad 7/10 with 3 zero-page asks; #6997 filter PASS with one label left; #7758 communities CSV sent (box 78806–78809; summarised, no real names)
+
+- **#8350 on d802c3ad (stage 1 in any chat, GPT, no retries): 7/10, "big step".**
+  - Ten fresh seats asked about officeholders. world_answer:opening ran 10/10 with engine openai.
+  - **7/10:** stage 1 posted with pages after 15–21 s and gave a name with an official source. Stage 2 (the route) followed 14–30 s later, one line each.
+  - **3/10 FAIL** (health minister 74650, Enterprise Georgia 74651, Batumi transport 74653): world_answer returned 0 pages, so there was no stage 1. The final answer came after 70–96 s and named no one. Please check why these three asks got no pages.
+  - **Register:** the stage-1 text uses the formal „შეგიძლიათ დაუკავშირდეთ“, but the rule is „შენ“. That is model-facing or member-facing text, so the wording change needs Misho's yes (D44).
+  - Threads: 74650–74659. → mishos_claude.
+- **#6997 known_by filter (d802c3ad):** 'Ag Pay Test' and 'Al Test' are gone from the real person's known_by. 'Ally Arg' is still there. The code session's question "is Ally Arg a test account?" has gone to the founder. The tester's plate v544 closes #6997.
+- **#7758 communities CSV (78806):**
+  - The tester sent it in the format from 78511 (person_key or name, community, current|former, date): 113 rows, no numbers.
+  - AX-nnn is the Axel roster key and P-/CV- are package keys. Rows with an unknown or empty key load by name.
+  - Sources: Axel's own member list of 4 Oct and the founder's dated corrections. The six invited-but-not-joined people are left out. The tester asks for a dry run first.
+  - Ops did not copy the rows here because they hold real names; read them in box 78806. Loading them writes live data and needs Misho's own word (§6).
+- **Plate v544 (78809):** 32 open, matching live.
+  - The tester missed the 03:00, 06:00 and 09:00 Tbilisi plates overnight and says that was its own fault.
+  - #4293 is built but needs the code session's empty-Postgres proof, which the tester cannot run.
+  - #7758 employment rows wait on Misho: may "founder, date" stand as the source?
+  - Closed since v543: #6997, #8384, #8386 and #8387.
 
 ### 29 Oct, 21:52Z — tester: #8154 / 59eab9f FAIL 4/10, and the relay card breaks D647 (box 78513, verbatim; fictional seats)
 
