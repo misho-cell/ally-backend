@@ -10,7 +10,7 @@ import type { ImportContact } from '../types';
  * to Netai — no number passes through the AI. A link is one use, lives
  * LINK_MINUTES, and only its SHA-256 is stored.
  */
-const LINK_MINUTES = 30;
+export const LINK_MINUTES = 30;
 const TOKEN_BYTES = 24;
 const QUERY_TIMEOUT_MS = 5_000;
 export const UPLOAD_PATH = '/contacts-upload';

@@ -82,6 +82,37 @@ interface Joiner {
   readonly user_id: number;
 }
 
+/**
+ * Tester 78972 (30 Oct, seat 199048): a deploy cut the first message's run
+ * thirty seconds in. The event is recorded before the run so it never goes
+ * twice, and so a cut run left the person with no first message, for good.
+ * An attempt that produced no reply in its thread within RETRY_AFTER_MINUTES
+ * is tried once more; a second attempt is the last.
+ */
+const RETRY_AFTER_MINUTES = 10;
+const MAX_ATTEMPTS = 2;
+
+/** SQL: this account ($u) has had its first message, or one is still in flight, or both tries are spent. */
+function welcomedSql(
+  account: string,
+  eventParam: string,
+  retryParam: string,
+  maxParam: string,
+): string {
+  return `(
+    (SELECT count(*) FROM product_events a
+      WHERE a.event = ${eventParam} AND a.user_id::text = ${account}) >= ${maxParam}
+    OR EXISTS (
+      SELECT 1 FROM product_events e
+       WHERE e.event = ${eventParam} AND e.user_id::text = ${account}
+         AND (e.created_at > NOW() - make_interval(mins => ${retryParam})
+              OR EXISTS (
+                SELECT 1 FROM conversations c
+                 WHERE c.thread_id = (e.props->>'thread_id')::int
+                   AND c.role = 'assistant' AND c.kind = 'message' AND c.content <> ''
+                   AND c.created_at > e.created_at))))`;
+}
+
 /** Real people who registered on Netai SETTLE–WITHIN minutes ago and have had no first message. */
 export async function joinersDue(): Promise<number[]> {
   const result = await query<Joiner>(
@@ -92,12 +123,17 @@ export async function joinersDue(): Promise<number[]> {
         -- keep arriving in "User" too and never opened Netai.
         AND u."hasAccessToAlly" = true
         AND ${notATestSeat('u.id')}
-        AND NOT EXISTS (
-              SELECT 1 FROM product_events e
-               WHERE e.event = $3 AND e.user_id::text = u.id::text)
+        AND NOT ${welcomedSql('u.id::text', '$3', '$5', '$6')}
       ORDER BY u."createdAt"
       LIMIT $4`,
-    [WITHIN_MINUTES, SETTLE_MINUTES, JOINER_FIRST_MESSAGE_EVENT, MAX_PER_RUN],
+    [
+      WITHIN_MINUTES,
+      SETTLE_MINUTES,
+      JOINER_FIRST_MESSAGE_EVENT,
+      MAX_PER_RUN,
+      RETRY_AFTER_MINUTES,
+      MAX_ATTEMPTS,
+    ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map((row) => row.user_id);
@@ -207,9 +243,9 @@ export enum JoinerSeatOutcome {
 /** The seats already given their first message: never twice, on seats too. */
 async function seatsAlreadyWelcomed(userIds: readonly number[]): Promise<ReadonlySet<number>> {
   const result = await query<{ user_id: number }>(
-    `SELECT DISTINCT user_id::int AS user_id FROM product_events
-      WHERE event = $1 AND user_id::text = ANY($2::text[])`,
-    [JOINER_FIRST_MESSAGE_EVENT, userIds.map(String)],
+    `SELECT s.id::int AS user_id FROM unnest($2::text[]) AS s(id)
+      WHERE ${welcomedSql('s.id', '$1', '$3', '$4')}`,
+    [JOINER_FIRST_MESSAGE_EVENT, userIds.map(String), RETRY_AFTER_MINUTES, MAX_ATTEMPTS],
     QUERY_TIMEOUT_MS,
   );
   return new Set(result.rows.map((row) => row.user_id));
