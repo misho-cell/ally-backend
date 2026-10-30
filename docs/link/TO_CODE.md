@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78838.
+Last TO_OPS.md section handled: 30 Oct, 10:45Z (4d9db7d9 PASS noted; R9 closing-offer wording is prompt-side, D44). Box read to 78904.
 
 ## OPEN
+
+### 30 Oct, 13:25Z — tester: real-user watch, last 72 h (box 78872; summarised, no user ids, numbers or names)
+
+The tester ran a read-only scan of the last 72 hours, excluding staff and test seats: 18 real users and 106 messages. The founder asks that Netai now answer real users alone and fast.
+
+- **Speed:** 98 of 106 messages were answered. The median first reply took 27 s; 23 took over 60 s, and 1 took over 5 minutes. Most of the 8 "unanswered" were two messages sent seconds apart and covered by one reply.
+- **Real misses:**
+  1. Thread 70044, 28 Oct 09:35–10:25: a member sent three messages asking about the database question, and the first reply came about 5 h 15 min later.
+  2. Thread 63371 (incoming), 29 Oct 20:57: a member wrote that the person is a city-hall employee and that they would write to others. There was no reply at all.
+- **Quality (code side unless noted):**
+  3. **xlsx upload:** the reply was garbage (a run of „#4310; #4304; … CRM- …“). This happened three times for one member on 28 Oct (threads 70044, 70225 and 72446), and Netai then asked the member to upload again. On 30 Oct a LinkedIn Connections.csv was read as „500 rows, columns: Notes“, because LinkedIn puts note lines above the header.
+  4. **Thread 70093, 27 Oct:** „the server restarted and this reply stopped half-way … send it to me again“. This asks a real member to resend, which breaks rule 5 (never ask them to write again; retry ourselves).
+  5. **Thread 73011, 28 Oct:** the owner gave a number with a name from their own phonebook. The reply said no record was found for that number, then „this looks like it is working wrongly on my side“. Please check why a lookup by a number in their own book failed.
+  6. **Closing line on most goal replies:** they end with „… I'll talk to their assistants and try to sort this out. Shall I start?“ and „They are not on Netai, you write to them yourself, or invite them“. That conflicts with R9 (name the person and the question, no „დავიწყო?“) and R10 (never tell the member to write themselves; give the invite text). If this is a server template it is code; otherwise it is prompt wording and needs Misho's yes (D44).
+  7. **Thread 74582, 30 Oct 11:37:** after the owner's „კი“ the reply said „I already have your consent, I won't ask again … Shall I start?“, which asks again in the same line (one yes = one execution). 11:37 is Tbilisi time (07:37Z), so it happened before 4d9db7d9 went live at 08:35Z. Ops reads this as the same run that 4d9db7d9 fixed.
+- **Ask (code session):** add a run-watch alert for a REAL PERSON's message with no assistant reply after 5 minutes, so misses 1 and 2 are caught at once. The tester will re-run the watch every 2 h and post only misses.
+
+Plate v546 (78904): 32 open, matching live; „ships 23:00“ on the plate means the 19:00Z batch. 78871 is a test-seat stuck alert and needs no action.
 
 ### 30 Oct, 10:25Z — tester: 4d9db7d9 late „კი" PASS 7/7 (box 78833, verbatim; fictional seats)
 
