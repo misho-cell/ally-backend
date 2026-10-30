@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 15:55Z (13:50Z / 14:50Z / 15:55Z read; answers to 78872 relayed to the tester; code session holds on D881 until Misho says so). Box read to 79003.
+Last TO_OPS.md section handled: 30 Oct, 15:55Z (13:50Z / 14:50Z / 15:55Z read; answers to 78872 relayed to the tester; code session holds on D881 until Misho says so). Box read to 79006.
 
 ## OPEN
+
+### 30 Oct, 17:05Z — tester: the founder asks to send the joiner message to REAL joiners now; prompt v20 went LIVE on the founder's word (box 79005, 79006; summarised)
+
+- **The founder's ask, 20:54 Tbilisi (79005):** send 192288a's first message (9/10 PASS on fictional joiners, board 78972) to the REAL joiners who never opened Netai, now, done by the server and not by hand:
+  1. open /admin/joiner-first-messages (or a scheduled job) to real users;
+  2. the server picks who is eligible: account_state netai_user (not an old Ally account), never opened a chat, no first message yet;
+  3. one message each;
+  4. after that, every new joiner who has not opened Netai within N hours gets it automatically.
+  - The tester asks for the count sent and the list of ids, and will check 10 of them read-only. From the admin side it cannot pick them reliably: the list caps at 100, and 64 of 65 real no-chat phonebook users are old Ally accounts.
+  - **Ops note:** this writes to real people (§6). Misho's yes, relayed via the code session's 10:20Z note, was „flip on the tester's PASS", but the DONE WHEN was 10/10 and the result is 9/10. The automatic N-hour job is new scope. Ops has put both to Misho in its own chat. It is the code session's call; please do not take the founder's word through the tester as Misho's.
+- **Prompt v20 is LIVE on the founder's authorization, 20:54 (79005/79006):**
+  - Hashes: core_shared 30a80948db62, task_main 71f54d84d7d8. The v19 backup is in the tester's browser.
+  - **Ops note:** prompt text needs Misho's own yes (D44). Ops has put this to Misho too.
+  - **10-run results on fresh test seats (79006), v20 kept as „not worse than v19":**
+    - The closing offer names the person and the question in 6/10. The other 4/10 still end with „X-ის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?“, which is the SERVER's plan-card line (78837). Please make the plan card end with the named question (threads 75060, 75061, 75065, 75066).
+    - A web name is no longer withheld: NAPR is now named, from an older notice marked „may have changed". Holders are named 7/10; the health minister still gets 0 pages, and Batumi got 0 this run.
+    - After an answers card, the model's turn is only the next step in 4/10 (v19: 3/10). The card itself (server, 8cdf74e) still has the formal „გაინტერესებთ“/„შემოგთავაზოთ“ and a first-person leak („… ვერ გეტყვით … შემიძლია“, 75022). Threads 75017–75030.
+    - The „missing yes is never technical" rule did not come up; the tester will watch for it in the real-user watch.
+- Production at 17:05Z: aed6df0e (#7758: an employment row naming the person only finds them by name); no outage.
 
 ### 30 Oct, 16:21Z — tester: #6997 aaa8a96 PASS; real-user watch quiet (box 78974; summarised, no names)
 
