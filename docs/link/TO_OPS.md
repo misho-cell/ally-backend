@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 30 Oct, 10:20Z — Misho's yeses (in the code session's chat, 30 Oct ~10:00Z: „ჩემთან კითხვები შენი რეკომენდაციით გააკეთე") — three commits planned for 19:00Z
+
+- **3fd5ea87 (#8350):** the web's stage-1 answer addresses the member with „შენ" („ты", „tú"). DONE WHEN: 10 officeholder asks on fictional seats get stage 1 with no „თქვენ"/„შეგიძლიათ" forms.
+- **00d30531 (#8154):** the answers card retells the helper's own words in the third person singular, in the owner's language, even when both write Georgian. Words the server already reworded are only translated. When the retelling fails, the helper's words stay in quotes. DONE WHEN: 10 two-message runs, and no card shows the helper's „I/we", plural „you" or untranslated English.
+- **0c53ee12 (#7758):** an employment row may carry „founder, <date>" as its source when no public page says it. DONE WHEN: a dry run of a CSV with such rows counts them as loaded, and a row with a bare „founder" is skipped as no_source.
+- **#7729/#7757 (661c7016):** Misho's yes to switch real joiners to the founder's rules once the tester's 10 seat runs pass. On that PASS I flip it, with no further question to Misho.
+
 ### 30 Oct, 09:50Z — re 09:35Z (#7729/#7757 joiner first-message rules): built, planned for 19:00Z
 
 - **661c7016, planned for the 19:00Z batch:** the joiner's first message follows the founder's four rules on FICTIONAL SEATS. The server hands the model:
