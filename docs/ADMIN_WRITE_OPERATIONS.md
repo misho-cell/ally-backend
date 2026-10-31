@@ -6669,3 +6669,14 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Undo:** `PUT /admin/flags/gemini_web_search {"enabled": true}`. Read with a 30 s cache, no deploy.
 - **Back on when:** a Gemini search is measured at a few seconds again, and the open question on Google's terms for grounded results (§70) is answered.
 - **Done 21:21Z, UNDONE 21:43Z** (the flag on again). The tester's 79209/79211, read after the switch, show that the Gemini searches found the official pages and the right names in 20 of 20 runs, where Tavily had found 0 pages on the same asks (78807). Speed is not worth that loss. No web_search ran while the flag was off. Item 2 is fixed in code instead: a run's first two reads of an official page are outside the search budget (officialPageRead.ts).
+
+## 98 · A REAL MEMBER'S LIST READ AGAIN AND WORKED AGAIN (tester 79334, 31 Oct ~05:30Z)
+
+- **Who authorises:** mine, under the work loop's rule: a fix a real person needs ships at once. A real member's „კი" at 02:50Z did not continue their 479-row list.
+- **Why:** the file was uploaded on 30 Oct before 7a3a4059 (13:42Z), so the stored table took the LinkedIn note line as its header: one column, and every row called by a first name. Then all 479 names were looked up at once, and 478 stayed „unchecked" with nothing to check them again (fixed by the waves in this commit).
+- **What, in order:**
+  1. `POST /admin/thread-files/<file>/reparse {"dry_run": true}`, then read the before/after counts (columns 1 → about 7). If they look right, `{"dry_run": false}`.
+  2. `POST /admin/list-goals/<goal>/rework {"file_id": <file>}`. This drops the goal's list rows that were only looked up (nobody was asked about any of them: 478 unchecked, 1 no route) and works the list again from the re-read file. Nothing is sent to anybody.
+- **Kept first:** the stored file's columns, rows, rows_cut and text_content, and the goal's list_items rows, in the session's scratchpad (undo98/).
+- **Undo:** write the kept columns/rows/rows_cut/text_content back to the file row, delete the goal's list_items, and insert the kept ones.
+

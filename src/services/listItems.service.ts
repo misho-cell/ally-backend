@@ -65,6 +65,28 @@ export function nameColumn(columns: readonly string[], rows: readonly string[][]
   return first === -1 ? 0 : first;
 }
 
+/**
+ * The tester's 79334: a LinkedIn export names a person in two columns, „First
+ * Name" and „Last Name". The first matched the name column alone, so 479 people
+ * were looked up by their first names. When a file has both, a row is called
+ * by the two together.
+ */
+const FIRST_NAME_HEADER_RE = /^\s*(first\s*name|given\s*name|სახელი)\s*$/iu;
+const LAST_NAME_HEADER_RE = /^\s*(last\s*name|surname|family\s*name|გვარი)\s*$/iu;
+
+export function rowLabeller(
+  columns: readonly string[],
+  rows: readonly string[][] = [],
+): (row: readonly string[]) => string {
+  const first = columns.findIndex((c) => FIRST_NAME_HEADER_RE.test(c));
+  const last = columns.findIndex((c) => LAST_NAME_HEADER_RE.test(c));
+  if (first !== -1 && last !== -1) {
+    return (row) => `${(row[first] ?? '').trim()} ${(row[last] ?? '').trim()}`.trim();
+  }
+  const at = nameColumn(columns, rows);
+  return (row) => (row[at] ?? '').trim();
+}
+
 export function stateOf(wayIn: WayIn | undefined): ListItemState {
   if (wayIn?.kind === 'first_circle') return ListItemState.RouteFound;
   if (wayIn?.kind === 'none') return ListItemState.NoRoute;
@@ -141,6 +163,35 @@ const NOT_THIS_GOALS_FILE =
   'Use the file id from the file event in this conversation, and an open goal on it.';
 
 /** Turn the file's rows into this goal's items, each with its way in. */
+/**
+ * The tester's 79334 (a real member's 479-row LinkedIn list, 30 Oct): every
+ * name was looked up at once, two names a pass, so some 240 lookups ran side by
+ * side, each ran out its 3 s, and 478 rows stayed „unchecked" for good. The
+ * names now go in waves, one after another, until the list's time is spent;
+ * a row past it stays unchecked and the next pass over the list takes it.
+ */
+export const LIST_WAYS_IN_WAVE = 20;
+export const LIST_WAYS_IN_BUDGET_MS = 40_000;
+
+export async function waysInByWaves(
+  userId: string,
+  labels: readonly string[],
+  origin: WayInOrigin,
+  onContactPhone: (label: string, phone: string) => void,
+  now: () => number = Date.now,
+): Promise<Map<string, WayIn>> {
+  const startedAt = now();
+  const out = new Map<string, WayIn>();
+  for (let i = 0; i < labels.length; i += LIST_WAYS_IN_WAVE) {
+    if (now() - startedAt >= LIST_WAYS_IN_BUDGET_MS) break;
+    const wave = labels.slice(i, i + LIST_WAYS_IN_WAVE);
+    for (const [label, wayIn] of await findWaysIn(userId, wave, origin, onContactPhone)) {
+      out.set(label, wayIn);
+    }
+  }
+  return out;
+}
+
 export async function startListWork(
   userId: string,
   taskId: number,
@@ -149,12 +200,12 @@ export async function startListWork(
 ): Promise<ListWorkOutcome> {
   const file = await fileForGoal(userId, taskId, fileId);
   if (file === null) return { ok: false, error: NOT_THIS_GOALS_FILE };
-  const at = nameColumn(file.columns, file.rows);
+  const labelOf = rowLabeller(file.columns, file.rows);
   const lines = file.rows
-    .map((row, index) => ({ index, row, label: (row[at] ?? '').trim() }))
+    .map((row, index) => ({ index, row, label: labelOf(row) }))
     .filter((line) => line.label !== '');
   const phones = new Map<string, string>();
-  const waysIn = await findWaysIn(
+  const waysIn = await waysInByWaves(
     userId,
     [...new Set(lines.map((l) => l.label))],
     origin,
@@ -617,4 +668,26 @@ function workedCells(r: WorkedRow, language: RunLanguage): string[] {
     words[r.state] ?? r.state,
     answerForOwner(r.answer),
   ];
+}
+
+/**
+ * The tester's 79334: a list worked on a file read wrongly is worked again once
+ * the file is read right. Rows only looked up (nobody asked about them) are
+ * dropped first, so no row of the old reading stays behind; a row somebody was
+ * already asked about is kept. Sends nothing to anybody.
+ */
+export async function reworkList(taskId: number, fileId: number): Promise<ListWorkOutcome> {
+  const owner = await query<{ user_id: string }>(
+    `SELECT user_id FROM tasks WHERE id = $1 AND status = 'open' LIMIT 1`,
+    [taskId],
+    LIST_QUERY_TIMEOUT_MS,
+  );
+  const userId = owner.rows[0]?.user_id;
+  if (userId === undefined) return { ok: false, error: NOT_THIS_GOALS_FILE };
+  await query(
+    `DELETE FROM list_items WHERE task_id = $1 AND thread_file_id = $2 AND state = ANY($3::text[])`,
+    [taskId, fileId, LOOKED_UP_ONLY],
+    LIST_QUERY_TIMEOUT_MS,
+  );
+  return startListWork(userId, taskId, fileId);
 }

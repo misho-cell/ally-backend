@@ -1,3 +1,5 @@
+import { reworkList } from '../../services/listItems.service';
+import { reparseThreadFile } from '../../services/threadFiles.service';
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
 import {
   isSeatMembershipStatus,
@@ -3279,6 +3281,79 @@ adminRouter.post(
       }
       // eslint-disable-next-line no-console
       console.error('[seat-membership]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * The tester's 79334 (register §98): a stored upload read again from its
+ * original with today's reader. Counts only, never content.
+ *   POST /admin/thread-files/:id/reparse { "dry_run": true|false }
+ *   200 { before, after }   404 not found   422 the file cannot be read
+ */
+adminRouter.post(
+  '/thread-files/:id/reparse',
+  param('id').isInt({ min: 1 }),
+  body('dry_run').isBoolean(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'dry_run (true|false) is required' });
+      return;
+    }
+    const fileId = Number(req.params.id);
+    const dryRun = req.body.dry_run === true;
+    try {
+      const outcome = await reparseThreadFile(fileId, dryRun);
+      if (!outcome.ok) {
+        const notFound = outcome.reason === 'not_found';
+        res
+          .status(notFound ? 404 : 422)
+          .json({ success: false, error: notFound ? 'file not found' : 'file cannot be read' });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[file-reparse] file ${fileId} dry_run ${dryRun}: ${JSON.stringify(outcome.shape)}`,
+      );
+      res.status(200).json({ success: true, data: { dry_run: dryRun, ...outcome.shape } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[file-reparse]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * The tester's 79334 (register §98): a goal's list worked again from its file.
+ * Rows nobody was asked about are looked up afresh; sends nothing to anybody.
+ *   POST /admin/list-goals/:taskId/rework { "file_id": 2047 }
+ *   200 { total, counts }   404 no such open goal or file
+ */
+adminRouter.post(
+  '/list-goals/:taskId/rework',
+  param('taskId').isInt({ min: 1 }),
+  body('file_id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'file_id is required' });
+      return;
+    }
+    const taskId = Number(req.params.taskId);
+    try {
+      const outcome = await reworkList(taskId, Number(req.body.file_id));
+      if (!outcome.ok) {
+        res.status(404).json({ success: false, error: 'no open goal with that file' });
+        return;
+      }
+      const { total, counts } = outcome.value;
+      // eslint-disable-next-line no-console
+      console.log(`[list-rework] goal ${taskId}: ${total} rows, ${JSON.stringify(counts)}`);
+      res.status(200).json({ success: true, data: { total, counts } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[list-rework]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
