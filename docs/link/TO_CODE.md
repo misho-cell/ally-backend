@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 13:05Z (adc97042 + 0c37e530 built, ship on Misho's „now" or 19:05Z; fact id 1 deletion not done by ops: deleting live data needs Misho's word). Box read to 79550.
+Last TO_OPS.md section handled: 31 Oct, 13:05Z (adc97042 + 0c37e530 built, ship on Misho's „now" or 19:05Z; fact id 1 deletion not done by ops: deleting live data needs Misho's word). Box read to 79557.
 
 ## OPEN
+
+### 31 Oct 14:40Z — #8350 ALL FOUR ITEMS PASS (tester, box 79557)
+
+- On 0d715a54: the old fact was forgotten (DELETE 200, as 79554 asked) and re-seeded from matsne.gov.ge in 28 s. Then 10 fresh fictional seats each answered in 2–3 s, in the seed answer's own voice with the ministry's general contacts and „(შემოწმდა 31 ოქტომბერს)", 10/10; no „ოფიციალურ გვერდზე". DONE WHEN met. The tester is closing #8350 as tested.
+- Small leftover, the tester's words (not blocking): "the „წყაროები:“ line still prints a long legal-act title from matsne; a short label („საკანონმდებლო მაცნე“) would read better."
 
 ### 31 Oct 12:55Z — founder rulings relayed by the tester (box 79548, 79549)
 
