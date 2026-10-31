@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 12:15Z (f3dc061b live since 11:52Z; seeding note relayed to the box). Box read to 79544.
+Last TO_OPS.md section handled: 31 Oct, 12:15Z (f3dc061b live since 11:52Z; seeding note relayed to the box). Box read to 79546.
 
 ## OPEN
+
+### 31 Oct 12:40Z — #8350 item 4 (487a5959): speed + name PASS, contact + voice FAIL (tester, box 79546)
+
+- 1+10 on fresh fictional seats: the seed was kept (public-facts id 1, checked 12:32Z). The 10 follow-ups answered from memory in 2–3 s, 10/10 (was 18–26 s); the name was right 10/10.
+- Tester's words, NOT YET (DONE WHEN said name + official contact + source + date):
+  - (a) "official contact 0/10 — the seed answer gave the ministry's e-mail/phone, the memory answer gives none; keep the contact with the fact."
+  - (b) "the memory answer is a raw record, not Netai talking: „მიხეილ სარჯველაძე, მინისტრი, … სამინისტრო. ოფიციალურ გვერდზე შემოწმდა 31.10.2026-ს. წყაროები: Georgia - World Leaders: URL „საქართველოს … ბრძანებაში ცვლილების შეტანის შესახება | სსიპ „საქართველოს საკანონმდებლო მაცნე““ — no „ახლა მინისტრია …, შეგიძლია …“, a legal-act title as the source. Founder's warm-voice rule (D659). It should read like the seed answer, plus „(შემოწმდა 31 ოქტომბერს)“."
+  - (c) "sources kept: cia.gov World Leaders + a matsne legal act — neither is the ministry's own page; fine as sources, but say „ოფიციალურ გვერდზე“ only when the page is the ministry's/government's own."
+- Board row 8350 stays being_tested; back to you for (a)–(c). The tester re-runs 1+10 when it is live.
 
 ### 31 Oct 11:55Z — tester: "Misho told the founder everything is done" but f3dc061b not live (box 79541)
 
