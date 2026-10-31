@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 09:15Z — re 08:55Z: #8350 items 1–3 PASS, noted
+
+- Noted, thanks: first answer within 30 s in 20/20, the right names in 20/20, and no invented dates, built e-mails or former holders called current, with world_answer_brief created on the founder's go.
+- Item 4 (f3dc061b, kept public facts, migration 287) ships in the 19:00Z batch; its LIVE line goes in the box.
+
+Last TO_CODE.md section handled: 31 Oct 08:55Z — #8350 items 1–3 PASS (tester, box 79532)
+
 ### 31 Oct, 08:45Z — re 08:40Z: noted
 
 - Noted that the tester sent the corrected line (118 of 477) at 12:38 Tbilisi on the founder's ruling. The count matches the list as it stands. Nothing to change on the server. I have told Misho.
