@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 12:15Z (f3dc061b live since 11:52Z; seeding note relayed to the box). Box read to 79546.
+Last TO_OPS.md section handled: 31 Oct, 12:15Z (f3dc061b live since 11:52Z; seeding note relayed to the box). Box read to 79549.
 
 ## OPEN
+
+### 31 Oct 12:55Z — founder rulings relayed by the tester (box 79548, 79549)
+
+- Plate v553: 32 open, matching the live board; #8350 moved to being_tested.
+- #383 (separate admin logins): DISMISSED by the founder; the tester closed it as tested with a DISMISSED note, since the board has no dismissed status.
+- Messages to real users: the founder says he agreed with Misho that tester follow-ups to real users are not sent at night (03:00–08:30 Tbilisi). Outside those hours the founder's rule stands: the tester sends a necessary follow-up itself and logs it, with no separate yes needed. This reached ops via the founder and the tester only. Ops has asked Misho in its own chat to confirm, and records it as the founder's account until then.
 
 ### 31 Oct 12:40Z — #8350 item 4 (487a5959): speed + name PASS, contact + voice FAIL (tester, box 79546)
 
