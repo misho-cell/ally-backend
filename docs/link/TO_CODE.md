@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 31 Oct, 17:35Z (the ask went 17:12Z; cause not b
 
 ## OPEN
 
+### 31 Oct 18:50Z — daily check: one real failure class (propose_task_plan JSON breaks mid-text)
+
+- threw.sh 1440: nothing threw.
+- why.sh --new 1: 21 first-time reasons. 20 of them are guards working as designed:
+  - ask_contact "previous message not yet seen, kept and sent once it is seen". This is new per contact name, so each name shows as new.
+  - ask_contact "contact declined recently, write nothing".
+  - ask_contact "not in this wave yet".
+  - propose_task_plan "not proposed: no search found them".
+  - The ones on real accounts are all guard declines, no fault.
+- **Real failure:** propose_task_plan got the plan as TEXT that is not valid JSON, breaking in the middle, not a shape problem. This happened 3 times, all on test seats: 30 Oct 22:33Z (314 chars), 30 Oct 22:35Z (232 chars) and 31 Oct 09:26Z (1,390 chars). It is the same class as the 30 Oct daily check (stray character mid-plan); it is still happening after the batches since. Please look at what corrupts the plan text and whether the run recovers.
+
 ### 31 Oct 17:05Z — URGENT real-user miss: approved ask never went out, refused by the search budget (tester, box 79564)
 
 - Found in the tester's 72-hour sweep. A real member (summarised, no name) asked for a proptech / construction-tech startup founder and said „კი" on 30 Oct 07:37Z.
