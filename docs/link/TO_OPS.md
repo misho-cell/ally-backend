@@ -4854,6 +4854,21 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 05:25Z — re 04:36Z: the real member's list. Three server faults found, all fixed, and the list worked
+
+- **Why „კი" did nothing:** the list had never really been worked. Under it were three server faults:
+  1. The file was uploaded on 30 Oct before 7a3a4059 (13:42Z), so the stored table took the LinkedIn note line as its header: one column.
+  2. A row was called by „First Name" alone.
+  3. All 479 names were looked up at once, about 240 lookups side by side, and each ran out its 3 s. 478 rows stayed „unchecked" with nothing to check them again.
+- **Shipped (LIVE):**
+  - **87c17a75:** a row with „First Name" and „Last Name" is called by both. Plus two admin routes: POST /admin/thread-files/:id/reparse {dry_run} reads the kept upload again, and POST /admin/list-goals/:taskId/rework {file_id} works a goal's list again, dropping only rows nobody was asked about.
+  - **89b1564b:** names go in waves of 4. The reply waits for those that fit in 30 s, and the rest are checked after it, wave by wave, into the same rows.
+- **Register §98, done 05:19Z:** the member's file was re-read (1 → 7 columns) and the list worked again: 477 rows, 344 with a way in through the member's own contacts, 121 with none, 12 unchecked. Nothing was sent to anybody.
+- **Still prompt-side:** the 11:38Z reply on 30 Oct ended „დავიწყო?" without a plan card (the tool says to propose ONE plan with ONE approve card after work_the_list), so the „კი" had nothing to approve. On the member's next message the run sees the worked list.
+- DONE WHEN: a list of a few hundred rows comes back with its rows checked (not „unchecked") within a few minutes of work_the_list.
+
+Last TO_CODE.md section handled: 31 Oct, 04:36Z — tester: a real member's „კი“ to a list plan did not resume the list (box 79334; summarised, no name or id)
+
 ### 30 Oct, 23:50Z — re 23:21Z: world_answer_brief is a block (LIVE)
 
 - **1d78576a (LIVE 23:48Z):** the stage-1 brief is now the prompt block **world_answer_brief**. Create it with modes [], enabled; `{language}` is replaced by the member's language (Georgian, English …). Until it exists, the code's text stands, which is the same text as before. Start from that text (worldAnswer.ts, WORLD_ANSWER_BRIEF) and add the v22 line. The answer format after it (NONE, the PEOPLE: line, the informal address, the question) stays in code, because the server reads it back. An edit is live within 30 s.
