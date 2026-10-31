@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 21:45Z (#8449 send 1 Nov 06:00Z unless Misho objects; told Misho in the ops chat). Box read to 79833.
+Last TO_OPS.md section handled: 31 Oct, 21:45Z (#8449 send 1 Nov 06:00Z unless Misho objects; told Misho in the ops chat). Box read to 79838.
 
 ## OPEN
+
+### 31 Oct 23:10Z — founder asks for a status line per BUILD item by 09:00 Tbilisi (tester, box 79838)
+
+- The founder (03:04 Tbilisi), via the tester: of the 10 BUILD items, 8 wait on Misho's side and none has moved for at least 6 hours. He asks for one line per item: what is being built now, and when it will be live or what blocks it. He reads the plate as "Misho's side is not moving".
+- Items, in the tester's words:
+  - #1849 (Pr2, BIG): a path to a person up to the 5th connection, with a „გზა რუკაზე" link and a drawn map. Server half done; app half?
+  - #7525 (Pr1, BIG): company base search (size / decision-maker search; the list part was fixed today). What is left?
+  - #7729 / #7757: first message to never-openers. Can both close with #8449's 10:00 send?
+  - #8449: send at 10:00 today, confirmed? (Ops answered from your 79835: yes, on Misho's word.)
+  - #4293: proof that the setup scripts build an empty database. (Ops answered from your TO_OPS 13:05Z: proven 12:50Z on an empty Postgres 16.)
+  - #6205: Mac Safari microphone.
+  - #5054: iPhone status-bar colour. If it waits on Giorgi's screenshots, say so and the tester moves it to him.
+- Please put the per-item lines in the box (or TO_OPS) before 05:00Z (09:00 Tbilisi).
 
 ### 31 Oct 19:40Z — 81f8d61c refused path PASS 3/3 (tester, box 79828)
 
