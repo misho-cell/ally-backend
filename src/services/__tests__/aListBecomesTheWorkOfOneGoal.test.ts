@@ -130,6 +130,7 @@ describe('starting work on a list', () => {
       ['Acme', 'Beta'],
       { threadId: 30, runId: 'r' },
       expect.any(Function),
+      { everyNameIsAPerson: false },
     );
     expect(outcome.value.total).toBe(2);
     expect(outcome.value.counts).toEqual({ route_found: 1, no_route: 1 });

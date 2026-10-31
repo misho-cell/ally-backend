@@ -39,6 +39,27 @@ export function sameFirstName(leadFirstName: string | null, contactName: string)
   return contactName.split(/[\s,;:()|·–—-]+/u).some((word) => latinForm(word).startsWith(wanted));
 }
 
+/** How many leading letters two spellings of a surname must share („ჯაჯანიძე", „Jajanidze"). */
+const SURNAME_STEM = 4;
+const NAME_WORD_SPLIT_RE = /[\s,;:()|·–—-]+/u;
+
+/**
+ * The tester's 79366 (a real member's LinkedIn list, 31 Oct): „Nikoloz
+ * Kevkhishvili" was reached „through Nikoloz Papashvili", and so on for 334
+ * rows. The phonebook lookup scores every word, and sameFirstName then holds
+ * only the first name, so a namesake with another surname passed. A lead named
+ * with a first name AND a surname is the owner's contact only when the contact
+ * carries that surname too. A lead of one word (a firm, or a first name alone)
+ * is matched as before.
+ */
+export function sameSurname(leadName: string, contactName: string): boolean {
+  const words = leadName.split(NAME_WORD_SPLIT_RE).filter((w) => w.trim() !== '');
+  if (words.length < 2) return true;
+  const wanted = latinForm(words[words.length - 1]).slice(0, SURNAME_STEM);
+  if (wanted.length < SURNAME_STEM) return true;
+  return contactName.split(NAME_WORD_SPLIT_RE).some((word) => latinForm(word).startsWith(wanted));
+}
+
 /** A web address ending on a firm's name: „Ostati.ge" is the firm Ostati. */
 const DOMAIN_SUFFIX_RE = /\.(ge|com|net|org|io|co|info|biz)$/iu;
 
