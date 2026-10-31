@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { ParsedListFile } from './listFile';
+import { ListFileRefusal, parseListFile, ParsedListFile } from './listFile';
 
 /**
  * Board #892 / #895: a file the owner gave Netai, kept with its conversation.
@@ -79,4 +79,55 @@ export function fileEventText(fileId: number, filename: string, file: ParsedList
       : '') +
     `\n<file>\n${body}\n</file>`
   );
+}
+
+/** A stored file's shape before and after a fresh read: counts only, never content. */
+export interface ReparsedShape {
+  readonly before: { readonly columns: number; readonly rows: number };
+  readonly after: { readonly columns: number; readonly rows: number };
+}
+
+export type ReparseOutcome =
+  | { readonly ok: true; readonly shape: ReparsedShape }
+  | { readonly ok: false; readonly reason: ListFileRefusal | 'not_found' };
+
+/**
+ * The tester's 79334: a LinkedIn export uploaded before 7a3a4059 was read with
+ * its note line as the header, so the stored table had one column. The upload
+ * itself is kept (#8317), so the file is read again with today's reader; the
+ * stored table is replaced only when dryRun is false.
+ */
+export async function reparseThreadFile(fileId: number, dryRun: boolean): Promise<ReparseOutcome> {
+  const found = await query<{
+    filename: string;
+    original: Buffer;
+    columns: unknown[];
+    rows: unknown[];
+  }>(
+    `SELECT filename, original, columns, rows FROM thread_files
+      WHERE id = $1 AND original IS NOT NULL LIMIT 1`,
+    [fileId],
+    FILE_QUERY_TIMEOUT_MS,
+  );
+  const stored = found.rows[0];
+  if (stored === undefined) return { ok: false, reason: 'not_found' };
+  const read = await parseListFile(stored.original, stored.filename);
+  if (!read.ok) return { ok: false, reason: read.reason };
+  const { file } = read;
+  if (!dryRun) {
+    await query(
+      `UPDATE thread_files SET columns = $2::jsonb, rows = $3::jsonb, rows_cut = $4,
+              text_content = $5
+        WHERE id = $1`,
+      [fileId, JSON.stringify(file.columns), JSON.stringify(file.rows), file.rowsCut, file.text],
+      FILE_QUERY_TIMEOUT_MS,
+    );
+  }
+  return {
+    ok: true,
+    shape: {
+      before: { columns: stored.columns.length, rows: stored.rows.length },
+      after: { columns: file.columns.length, rows: file.rows.length },
+    },
+  };
 }
