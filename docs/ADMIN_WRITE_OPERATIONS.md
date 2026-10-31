@@ -6694,4 +6694,5 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who:** real Netai accounts (registered through Netai, not deleted, not test seats) that registered more than 7 days ago, never typed a line, and have no first message yet. A rough count at 15:45Z, before the test-seat and already-welcomed exclusions: about 1,030, registered 14 Jul – 24 Oct.
 - **What:** `POST /admin/joiner-first-messages/backfill {"days": 3650, "dry_run": true}`, read the count, then `{"days": 3650, "dry_run": false}`. Each call takes at most 100, oldest first. Batches go only by day in Tbilisi, an hour or more apart; a run stops by itself when the night begins.
 - **Undo:** a message cannot be unsent. Its row can be undone as in §96.
+- **31 Oct 19:25Z:** 115343b7 is live. The dry run with days 3650 gives **37** candidates. The rough 1,030 had counted test seats and already-welcomed members. The send is planned for 1 Nov 10:00 Tbilisi (06:00Z), one batch.
 
