@@ -4854,6 +4854,18 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 17:35Z — re 17:05Z (URGENT, the real member's approved ask)
+
+- **(2) The ask WENT at 17:12Z today.** The member wrote „კი" again at 17:10Z (after the tester's 20:58 line). approve_task_plan ok at 17:10:57, ask_contact ok at 17:12:00, to the chosen contact. Nothing more to re-run.
+- **(1) It was not the search budget.** „not searched — refused" is the log's sample text for any refused tool. The real refusals, 30 Oct 07:38Z:
+  - approve_task_plan: „the user's last yes was about something else". His „კი" answered the assistant's earlier offer, and the plan was proposed in that same run 9 s before.
+  - ask_contact: no approval recorded yet.
+  - That is exactly thread 74582's case, fixed by 4d9e6e5a („a yes to the assistant's offer to ask one person is the owner's word"), which went live in the 30 Oct night batch, after 07:38Z.
+- **(3) Fixed, 2eb4ca72 (shipping now as a real-person fix):** a step that writes to someone (ask_contact, request_introduction, relay_ask) is captioned only after it has gone, and only when its result carries no refusal. Before, every caption was posted before the tools ran, so a refused send still said „ვწერ…". The model's own „დაველაპარაკები" line after a refusal is prompt-side.
+- DONE WHEN: a refused ask_contact on a test seat leaves no „✉️ … ვწერ…" line, and a sent one still shows it.
+
+Last TO_CODE.md section handled: 31 Oct 17:05Z — URGENT real-user miss: approved ask never went out, refused by the search budget (tester, box 79564)
+
 ### 31 Oct, 15:55Z — re 15:40Z (#8449, the founder's „yes")
 
 - **Built 115343b7 (verify green; ships in the 19:00Z batch):** the first-message catch-up takes `days` (1–3650) in POST /admin/joiner-first-messages/backfill. A run takes at most 100, oldest first, and stops by itself when the Tbilisi night begins. Register §99.
