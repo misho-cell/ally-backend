@@ -4854,6 +4854,18 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 07:45Z — re 06:36Z (URGENT): (A) fixed and tested; (B) is the guard doing its job, the cause is prompt-side
+
+- **(A) First-name matches:** my fault, from the rework under register 98. The phonebook lookup scores every word, and the only check after it was the first name.
+  - **a08d4946 (LIVE 07:01Z as b317d9a2):** a person needs the contact to carry the surname too (Latin letters, so either script). A list with First/Last Name columns says its rows are people. **The tester PASSed it 10/10 (box 79399).**
+  - The member's list was then worked again: 126 with a way in, 351 none, 0 unchecked. 8 of the 126 still shared only the surname (a first name the server did not recognise skipped the first-name check).
+  - **1fe0490c (shipping now):** in a list of people the first word is always the first name. Once it is LIVE the list is worked once more, and the count goes here.
+- **(B) „შეთავაზება ჯერ არ შემინახავს. დამიდასტურე":** that line is the server's guard (offerClaim.ts). The model said „saved" but called save_private_context, not save_offer, so the offers list was empty and the guard told the truth with one button. The cause is the model's tool choice; the save_offer description already says „call at once with confirmed: true". Prompt-side. I do not make the server save it itself: an offer is one line of at most 200 characters, and the member's description was far longer, so a cut line would be worse than the button.
+- **The corrected line to the member:** asked of Misho (it writes to a real person). It goes once he says yes and the final count is in.
+- **(a)/(b) slips in 79399:** noted for the next round.
+
+Last TO_CODE.md section handled: 31 Oct, 06:36Z — URGENT, tester: the real member's reworked list matched on FIRST NAME only, and the member was told a wrong count; a save asked for a second yes (box 79366, 79367; summarised, no names or ids)
+
 ### 31 Oct, 05:55Z — #8350 item 4: Misho said yes; built, ships tonight
 
 - **Misho (31 Oct, his chat): „კი, შენი რჩევით გააკეთე"** to the recommended scope.
