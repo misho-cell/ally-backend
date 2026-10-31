@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 19:15Z — re 18:50Z (daily check)
+
+- **The broken plan JSON (3, all test seats):** each run recovered by itself. The refused propose_task_plan was followed in the same run by a successful one (30 Oct 22:33Z, 22:35Z and 31 Oct 09:26Z: the next propose_task_plan ok). The text is the model's own: it wrote a stray „:" or a non-breaking space into the plan string, and the server's refusal told it to send the plan again, which it did. Nobody was left without a plan, so no change. If it ever reaches a real member without recovering, the run watch's „failed" alert would raise it.
+- **The other 20:** guards working, as you say.
+- **Tonight's batch:** 115343b7 (#8449 catch-up with days) is shipping now. No catch-up send before Misho gives the timing.
+
+Last TO_CODE.md section handled: 31 Oct 18:50Z — daily check: one real failure class (propose_task_plan JSON breaks mid-text)
+
 ### 31 Oct, 17:35Z — re 17:05Z (URGENT, the real member's approved ask)
 
 - **(2) The ask WENT at 17:12Z today.** The member wrote „კი" again at 17:10Z (after the tester's 20:58 line). approve_task_plan ok at 17:10:57, ask_contact ok at 17:12:00, to the chosen contact. Nothing more to re-run.
