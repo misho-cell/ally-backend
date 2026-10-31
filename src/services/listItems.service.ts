@@ -166,12 +166,16 @@ const NOT_THIS_GOALS_FILE =
 /**
  * The tester's 79334 (a real member's 479-row LinkedIn list, 30 Oct): every
  * name was looked up at once, two names a pass, so some 240 lookups ran side by
- * side, each ran out its 3 s, and 478 rows stayed „unchecked" for good. The
- * names now go in waves, one after another, until the list's time is spent;
- * a row past it stays unchecked and the next pass over the list takes it.
+ * side, each ran out its 3 s, and 478 rows stayed „unchecked" for good. One
+ * lookup in that member's contacts takes about 1.2 s, so even ten passes side
+ * by side ran out their time. The names now go in small waves, one after
+ * another: the reply waits for those that fit in its time, and the rest are
+ * checked after it, wave by wave, into the same rows (checkTheRest).
  */
-export const LIST_WAYS_IN_WAVE = 20;
-export const LIST_WAYS_IN_BUDGET_MS = 40_000;
+export const LIST_WAYS_IN_WAVE = 4;
+export const LIST_WAYS_IN_BUDGET_MS = 30_000;
+/** How long the rows after the reply may take in all, so a stuck lookup cannot run for ever. */
+export const LIST_REST_BUDGET_MS = 15 * 60_000;
 
 export async function waysInByWaves(
   userId: string,
@@ -190,6 +194,73 @@ export async function waysInByWaves(
     }
   }
   return out;
+}
+
+/** One wave's verdicts written into the rows still unchecked; a row somebody acted on is left alone. */
+async function saveWave(
+  taskId: number,
+  fileId: number,
+  verdicts: ReadonlyMap<string, WayIn>,
+  phones: ReadonlyMap<string, string>,
+): Promise<void> {
+  const checked = [...verdicts].filter(([, wayIn]) => wayIn.kind !== 'unchecked');
+  if (checked.length === 0) return;
+  await query(
+    `UPDATE list_items i
+        SET state = x.state, way_in = x.way_in, through_whom = x.through_whom,
+            through_phone = x.through_phone, updated_at = NOW()
+       FROM jsonb_to_recordset($3::jsonb)
+         AS x(label text, state text, way_in text, through_whom text, through_phone text)
+      WHERE i.task_id = $1 AND i.thread_file_id = $2 AND i.label = x.label
+        AND i.state = $4`,
+    [
+      taskId,
+      fileId,
+      JSON.stringify(
+        checked.map(([label, wayIn]) => {
+          const state = stateOf(wayIn);
+          return {
+            label,
+            state,
+            way_in: wayInKind(state),
+            through_whom: wayIn.kind === 'first_circle' ? wayIn.who : null,
+            through_phone: phones.get(label) ?? null,
+          };
+        }),
+      ),
+      ListItemState.Unchecked,
+    ],
+    LIST_QUERY_TIMEOUT_MS,
+  );
+}
+
+/** The rows the reply had no time for, checked after it, wave by wave. Never throws. */
+export async function checkTheRest(
+  userId: string,
+  taskId: number,
+  fileId: number,
+  labels: readonly string[],
+  origin: WayInOrigin,
+  now: () => number = Date.now,
+): Promise<void> {
+  const startedAt = now();
+  try {
+    for (let i = 0; i < labels.length; i += LIST_WAYS_IN_WAVE) {
+      if (now() - startedAt >= LIST_REST_BUDGET_MS) break;
+      const phones = new Map<string, string>();
+      const wave = labels.slice(i, i + LIST_WAYS_IN_WAVE);
+      const verdicts = await findWaysIn(userId, wave, origin, (label, phone) =>
+        phones.set(label, phone),
+      );
+      await saveWave(taskId, fileId, verdicts, phones);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[list] goal ${taskId}: rows after the reply not checked:`,
+      (err as Error).message,
+    );
+  }
 }
 
 export async function startListWork(
@@ -226,6 +297,10 @@ export async function startListWork(
     items,
     lines.map((l) => ({ data: l.row, throughPhone: phones.get(l.label) ?? null })),
   );
+  const rest = [
+    ...new Set(items.filter((i) => i.state === ListItemState.Unchecked).map((i) => i.label)),
+  ];
+  if (rest.length > 0) void checkTheRest(userId, taskId, fileId, rest, origin);
   const shown = items.slice(0, MAX_ITEMS_SHOWN);
   return {
     ok: true,

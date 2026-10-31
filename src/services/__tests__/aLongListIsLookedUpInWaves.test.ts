@@ -5,6 +5,8 @@ jest.mock('../tools/searchByTag', () => ({ __esModule: true, ownMatchesFor: jest
 import { query } from '../../db/postgres/client';
 import { findWaysIn, WayIn } from '../openingSearch.service';
 import {
+  checkTheRest,
+  LIST_REST_BUDGET_MS,
   LIST_WAYS_IN_BUDGET_MS,
   LIST_WAYS_IN_WAVE,
   reworkList,
@@ -53,6 +55,41 @@ describe('a long list’s ways in', () => {
     const found = await waysInByWaves('7', labels, {}, () => undefined, now);
     expect(mockWaysIn).toHaveBeenCalledTimes(1);
     expect(found.size).toBe(LIST_WAYS_IN_WAVE);
+  });
+});
+
+describe('the rows the reply had no time for', () => {
+  it('are checked after it, wave by wave, into the rows still unchecked', async () => {
+    mockWaysIn.mockImplementation(async (_u, names, _o, onPhone) => {
+      onPhone?.(names[0], '+995500000001');
+      return new Map(
+        names.map((n, i) => [
+          n,
+          (i === 0 ? { kind: 'first_circle', who: 'Helper' } : { kind: 'none' }) as WayIn,
+        ]),
+      );
+    });
+    mockQuery.mockResolvedValue(rows([]));
+    const labels = Array.from({ length: LIST_WAYS_IN_WAVE + 1 }, (_, i) => `Name ${i}`);
+    await checkTheRest('7', 35, 9, labels, {});
+    expect(mockWaysIn).toHaveBeenCalledTimes(2);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain('UPDATE list_items');
+    expect((params as unknown[])[3]).toBe('unchecked');
+    const written = JSON.parse(String((params as unknown[])[2])) as { state: string }[];
+    expect(written[0]).toMatchObject({ state: 'route_found', through_whom: 'Helper' });
+    expect(written[1]).toMatchObject({ state: 'no_route', through_whom: null });
+  });
+
+  it('stop at their own time limit, and never throw', async () => {
+    mockWaysIn.mockRejectedValueOnce(new Error('timeout'));
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await expect(checkTheRest('7', 35, 9, ['A', 'B'], {})).resolves.toBeUndefined();
+    let clock = 0;
+    const now = (): number => (clock += LIST_REST_BUDGET_MS);
+    mockWaysIn.mockReset();
+    await checkTheRest('7', 35, 9, ['A', 'B', 'C', 'D', 'E', 'F'], {}, now);
+    expect(mockWaysIn).not.toHaveBeenCalled();
   });
 });
 
