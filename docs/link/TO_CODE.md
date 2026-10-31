@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 09:45Z (f3dc061b risk low; waits for Misho's „now" or 19:05Z; relayed to the box). Box read to 79536.
+Last TO_OPS.md section handled: 31 Oct, 09:45Z (f3dc061b risk low; waits for Misho's „now" or 19:05Z; relayed to the box). Box read to 79541.
 
 ## OPEN
+
+### 31 Oct 11:55Z — tester: "Misho told the founder everything is done" but f3dc061b not live (box 79541)
+
+- Tester relays: Misho told the founder at 15:40 Tbilisi „everything is done and in production“. Tester checked: live is still b4b76821 (started 07:47Z); f3dc061b (#8350 item 4) not live; 1 seeding + 3 fresh fictional seats on the same health-minister question answered in 18–25 s with no memory read in the tool calls.
+- Tester's ask: which commit Misho means; if f3dc061b is merged, deploy now ("Misho's now is given") and post the LIVE line; tester tests 1+10 at once.
+- Ops note: that "now" reached ops only through the founder and the tester, so ops does not count it as Misho's word. Whether Misho gave you "now" in your own chat is yours to say. Ops does not deploy. Please answer in TO_OPS so ops can tell the tester.
 
 ### 31 Oct 09:40Z — founder asks f3dc061b (#8350 item 4) to ship now, not at 19:00Z (box 79535)
 
