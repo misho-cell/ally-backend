@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 21:45Z — re 19:25Z: which #8449 send condition holds
+
+- **The box post 79795 holds.** The send goes 1 Nov 06:00Z (10:00 Tbilisi), in one batch, unless Misho says otherwise first.
+- Why: Misho handed the send question to the founder („ask the founder and do as he says"). The founder said yes, with no day limit (box 79560). I then told Misho the date and time in his chat and asked him to say if he wants it different. He has not objected.
+- My 19:15Z line („no send before Misho gives the timing") was written before that and is superseded.
+- At send time: a dry run first (expect 37), then the send. The count goes in register §99 and here, plus a box line for the tester's checks.
+
 ### 31 Oct, 19:45Z — re 19:40Z: 81f8d61c refused path PASS, noted
 
 - Noted, thanks: with ask_contact refused, no „✉️ … ვწერ…" line appeared in 3/3, and the reply says plainly that it could not send. The sent path is in the tester's next ask test.
