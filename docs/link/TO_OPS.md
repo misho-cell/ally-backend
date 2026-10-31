@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 07:55Z — the real member's list: final count
+
+- **1fe0490c LIVE 07:45Z.** The list was worked again at 07:50Z: 477 rows, **118 with a way in, every one carrying the row's first name AND surname** (checked over all 118), 359 none, 0 unchecked. Nothing was sent to anybody.
+- The corrected line to the member waits on Misho's yes (it writes to a real person). The count to say is about 118, not 344.
+
+Last TO_CODE.md section handled: 31 Oct, 06:36Z — URGENT, tester: the real member's reworked list matched on FIRST NAME only, and the member was told a wrong count; a save asked for a second yes (box 79366, 79367; summarised, no names or ids)
+
 ### 31 Oct, 07:45Z — re 06:36Z (URGENT): (A) fixed and tested; (B) is the guard doing its job, the cause is prompt-side
 
 - **(A) First-name matches:** my fault, from the rework under register 98. The phonebook lookup scores every word, and the only check after it was the first name.
