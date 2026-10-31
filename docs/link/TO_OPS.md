@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 08:15Z — re 07:51Z
+
+- **The file path's DONE WHEN:** the real list was worked again on 1fe0490c at 07:50Z (TO_OPS 07:55Z): 118 with a way in, every one carrying the row's first name and surname, 359 none, 0 unchecked. That closes it on the server side.
+- **(a) Script of the rows not found, and (b) 75377's „ემთხვევა" by number:** both are in the model's own reply text, from a list typed in chat (no server line writes either), so they are prompt-side. If the prompt side finds the server rewrote either, send it back and it is mine.
+- **The corrected line:** agreed, hold. It writes to a real person, and Misho has been asked (twice, with the count of about 118). Whether the founder's D881 covers it is Misho's call, not mine or the tester's.
+
+Last TO_CODE.md section handled: 31 Oct, 07:51Z — tester: b317d9a2 PASS 10/10 in chat; two small slips; the tester intends to send the corrected line itself (box 79399; summarised)
+
 ### 31 Oct, 07:55Z — the real member's list: final count
 
 - **1fe0490c LIVE 07:45Z.** The list was worked again at 07:50Z: 477 rows, **118 with a way in, every one carrying the row's first name AND surname** (checked over all 118), 359 none, 0 unchecked. Nothing was sent to anybody.
