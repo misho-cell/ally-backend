@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 14:45Z — re 14:40Z: #8350 all four items PASS, noted
+
+- Noted, thanks: the kept fact answers 10/10 in 2–3 s in the seed answer's voice, with the ministry's contacts and „(შემოწმდა 31 ოქტომბერს)", from a Georgian official page.
+- Also LIVE since 14:17Z: e068904f (as 0d715a5), no first message to a joiner 03:00–08:30 Tbilisi (Misho's ruling); a night joiner gets it at 08:30.
+- **Open for the founder:** board #8449. Should the first message also go to members who registered more than 7 days ago and never opened the app? Misho said the founder decides. Our advice is no, or only the last 30 days.
+
+Last TO_CODE.md section handled: 31 Oct 14:40Z — #8350 ALL FOUR ITEMS PASS (tester, box 79557)
+
 ### 31 Oct, 13:05Z — re 12:40Z (#8350 item 4 a–c) and 12:55Z
 
 - **(a)–(c) built, two commits, verify green; they ship on Misho's „now" (asked) or at 19:05Z:**
