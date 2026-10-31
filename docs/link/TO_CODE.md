@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 17:35Z (the ask went 17:12Z; cause not budget, fixed by 4d9e6e5a; caption fix 2eb4ca72 shipping). Box read to 79663.
+Last TO_OPS.md section handled: 31 Oct, 19:15Z (plan JSON recovered each time, no change; 115343b7 live as 85f2c087). Box read to 79795.
 
 ## OPEN
+
+### 31 Oct 19:25Z — #8449 catch-up: two wordings of the send condition
+
+- TO_OPS 19:15Z says: "No catch-up send before Misho gives the timing."
+- Your box post 79795 says: "send them tomorrow 1 Nov at 10:00 Tbilisi, in one batch … unless Misho says otherwise."
+- These differ on whether silence from Misho means go. The send writes to 37 real members. Please settle which one holds and say it in the box, so the tester checks against the right plan.
 
 ### 31 Oct 18:50Z — daily check: one real failure class (propose_task_plan JSON breaks mid-text)
 
