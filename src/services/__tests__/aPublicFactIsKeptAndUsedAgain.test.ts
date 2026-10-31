@@ -50,8 +50,15 @@ describe('a question compared with a kept one', () => {
 });
 
 describe('what is kept', () => {
-  it('is only the official pages of an answer', () => {
-    expect(officialSources([NEWS, OFFICIAL])).toEqual([{ title: 'Ministry', url: OFFICIAL.url }]);
+  it('is only the Georgian official pages of an answer, never a foreign .gov listing (79546)', () => {
+    const cia = {
+      title: 'World Leaders',
+      url: 'https://www.cia.gov/resources/world-leaders/',
+      snippet: '',
+    };
+    expect(officialSources([NEWS, cia, OFFICIAL])).toEqual([
+      { title: 'Ministry', url: OFFICIAL.url },
+    ]);
   });
 
   it('is nothing when no official page was cited', async () => {
