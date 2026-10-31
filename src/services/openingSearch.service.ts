@@ -1,6 +1,6 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { ExactMatch, exactMatchesForMany } from './tools/searchByTag';
-import { firmSearchName, sameFirstName, wayInSearchName } from './wayInName';
+import { firmSearchName, sameFirstName, sameSurname, wayInSearchName } from './wayInName';
 import { webSearch } from './tools/webSearch';
 import { webSearchLedger } from './tools/webSearchProvider';
 import { recordFixedUsage } from './costLedger.service';
@@ -856,11 +856,21 @@ export interface WayInOrigin {
  * declares `thread_id NOT NULL`. That is a limit worth knowing rather than
  * working around, so it is written here instead of being hidden by a zero.
  */
+/**
+ * The tester's 79366: a list whose rows are people („First Name" and „Last
+ * Name") says so, and every row is then looked for as a person, surname
+ * included, even when its first name is not one the server is sure of.
+ */
+export interface WayInOptions {
+  readonly everyNameIsAPerson?: boolean;
+}
+
 export async function findWaysIn(
   userId: string,
   names: readonly string[],
   origin: WayInOrigin = {},
   onContactPhone?: (name: string, phone: string) => void,
+  options: WayInOptions = {},
 ): Promise<Map<string, WayIn>> {
   const out = new Map<string, WayIn>();
   if (names.length === 0) return out;
@@ -869,7 +879,8 @@ export async function findWaysIn(
   // is looked for by its own name, not by the trade in its title (35521).
   const searchNameOf = new Map<string, string>();
   for (const name of names) {
-    const searchName = leadsFirstName(name) === null ? firmSearchName(name) : wayInSearchName(name);
+    const person = options.everyNameIsAPerson === true || leadsFirstName(name) !== null;
+    const searchName = person ? wayInSearchName(name) : firmSearchName(name);
     if (searchName === '') out.set(name, { kind: 'none' });
     else searchNameOf.set(name, searchName);
   }
@@ -925,7 +936,12 @@ export async function findWaysIn(
       continue;
     }
     const match = found.get(searchName) ?? null;
-    const tied = match !== null && sameFirstName(leadsFirstName(name), match.name);
+    const firstName = leadsFirstName(name);
+    const person = options.everyNameIsAPerson === true || firstName !== null;
+    const tied =
+      match !== null &&
+      sameFirstName(firstName, match.name) &&
+      (!person || sameSurname(name, match.name));
     out.set(name, tied ? { kind: 'first_circle', who: match.name } : { kind: 'none' });
     if (tied) onContactPhone?.(name, match.phone);
   }

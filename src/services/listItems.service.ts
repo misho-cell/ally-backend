@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import { query } from '../db/postgres/client';
 import { RunLanguage } from './runLanguage';
-import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
+import { findWaysIn, WayIn, WayInOptions, WayInOrigin } from './openingSearch.service';
 import { ownMatchesFor } from './tools/searchByTag';
 import { scrubText, stripAllowedSpans } from './privacyScrub';
 import { DAY_ONE_FIRST_PEOPLE } from './taskEngine.events';
@@ -85,6 +85,14 @@ export function rowLabeller(
   }
   const at = nameColumn(columns, rows);
   return (row) => (row[at] ?? '').trim();
+}
+
+/** True when a file's rows are people: it has both a first-name and a last-name column. */
+export function rowsArePeople(columns: readonly string[]): boolean {
+  return (
+    columns.some((c) => FIRST_NAME_HEADER_RE.test(c)) &&
+    columns.some((c) => LAST_NAME_HEADER_RE.test(c))
+  );
 }
 
 export function stateOf(wayIn: WayIn | undefined): ListItemState {
@@ -182,6 +190,7 @@ export async function waysInByWaves(
   labels: readonly string[],
   origin: WayInOrigin,
   onContactPhone: (label: string, phone: string) => void,
+  options: WayInOptions = {},
   now: () => number = Date.now,
 ): Promise<Map<string, WayIn>> {
   const startedAt = now();
@@ -189,7 +198,7 @@ export async function waysInByWaves(
   for (let i = 0; i < labels.length; i += LIST_WAYS_IN_WAVE) {
     if (now() - startedAt >= LIST_WAYS_IN_BUDGET_MS) break;
     const wave = labels.slice(i, i + LIST_WAYS_IN_WAVE);
-    for (const [label, wayIn] of await findWaysIn(userId, wave, origin, onContactPhone)) {
+    for (const [label, wayIn] of await findWaysIn(userId, wave, origin, onContactPhone, options)) {
       out.set(label, wayIn);
     }
   }
@@ -241,6 +250,7 @@ export async function checkTheRest(
   fileId: number,
   labels: readonly string[],
   origin: WayInOrigin,
+  options: WayInOptions = {},
   now: () => number = Date.now,
 ): Promise<void> {
   const startedAt = now();
@@ -249,8 +259,12 @@ export async function checkTheRest(
       if (now() - startedAt >= LIST_REST_BUDGET_MS) break;
       const phones = new Map<string, string>();
       const wave = labels.slice(i, i + LIST_WAYS_IN_WAVE);
-      const verdicts = await findWaysIn(userId, wave, origin, (label, phone) =>
-        phones.set(label, phone),
+      const verdicts = await findWaysIn(
+        userId,
+        wave,
+        origin,
+        (label, phone) => phones.set(label, phone),
+        options,
       );
       await saveWave(taskId, fileId, verdicts, phones);
     }
@@ -276,11 +290,13 @@ export async function startListWork(
     .map((row, index) => ({ index, row, label: labelOf(row) }))
     .filter((line) => line.label !== '');
   const phones = new Map<string, string>();
+  const options: WayInOptions = { everyNameIsAPerson: rowsArePeople(file.columns) };
   const waysIn = await waysInByWaves(
     userId,
     [...new Set(lines.map((l) => l.label))],
     origin,
     (label, phone) => phones.set(label, phone),
+    options,
   );
   const items: ListItemLine[] = lines.map((line) => {
     const wayIn = waysIn.get(line.label);
@@ -300,7 +316,7 @@ export async function startListWork(
   const rest = [
     ...new Set(items.filter((i) => i.state === ListItemState.Unchecked).map((i) => i.label)),
   ];
-  if (rest.length > 0) void checkTheRest(userId, taskId, fileId, rest, origin);
+  if (rest.length > 0) void checkTheRest(userId, taskId, fileId, rest, origin, options);
   const shown = items.slice(0, MAX_ITEMS_SHOWN);
   return {
     ok: true,

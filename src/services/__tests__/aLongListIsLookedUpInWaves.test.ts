@@ -52,7 +52,7 @@ describe('a long list’s ways in', () => {
       return clock;
     };
     const labels = Array.from({ length: LIST_WAYS_IN_WAVE * 5 }, (_, i) => `Name ${i}`);
-    const found = await waysInByWaves('7', labels, {}, () => undefined, now);
+    const found = await waysInByWaves('7', labels, {}, () => undefined, {}, now);
     expect(mockWaysIn).toHaveBeenCalledTimes(1);
     expect(found.size).toBe(LIST_WAYS_IN_WAVE);
   });
@@ -88,7 +88,7 @@ describe('the rows the reply had no time for', () => {
     let clock = 0;
     const now = (): number => (clock += LIST_REST_BUDGET_MS);
     mockWaysIn.mockReset();
-    await checkTheRest('7', 35, 9, ['A', 'B', 'C', 'D', 'E', 'F'], {}, now);
+    await checkTheRest('7', 35, 9, ['A', 'B', 'C', 'D', 'E', 'F'], {}, {}, now);
     expect(mockWaysIn).not.toHaveBeenCalled();
   });
 });
