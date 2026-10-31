@@ -455,7 +455,7 @@ import {
   OpeningSearches,
   goalAsksToReachAPerson,
 } from './openingSearch.service';
-import { askTheWorld, worldAnswerSwitchOn } from './worldAnswer.service';
+import { askTheWorldOrRecall, worldAnswerSwitchOn } from './worldAnswer.service';
 import { isFreeOfficialPageRead } from './officialPageRead';
 import { withoutOurSideApology } from './ourSideApology';
 import { WorldAnswer, worldAnswerMessage, worldAnswerSection } from './worldAnswer';
@@ -13935,7 +13935,7 @@ async function worldAnswerFor(
   language: RunLanguage,
 ): Promise<WorldAnswer | null> {
   if (!(await worldAnswerSwitchOn())) return null;
-  return askTheWorld({ userId, runId, threadId }, ownerLine, language);
+  return askTheWorldOrRecall({ userId, runId, threadId }, ownerLine, language);
 }
 
 /** What the answer says and the numbers its pages print become this run's to name. */

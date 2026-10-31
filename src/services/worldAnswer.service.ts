@@ -1,6 +1,8 @@
 import { query } from '../db/postgres/client';
 import { recordClaudeUsage, recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
+import { rememberedAnswer } from './publicFacts';
+import { keepFact, recallFact } from './publicFacts.service';
 import { RunLanguage } from './runLanguage';
 import { groundedCall, withPageAddresses } from './tools/geminiSearch';
 import { openaiWebAnswer, openaiWebSearchAvailable } from './tools/openaiWebSearch';
@@ -37,6 +39,8 @@ const LEDGER_KIND = 'web_search';
 export enum WorldAnswerEngine {
   Gemini = 'gemini',
   OpenAi = 'openai',
+  /** A kept public fact (#8350 item 4): no engine was asked. */
+  Memory = 'memory',
 }
 
 /** An engine's reading: the answer (or none), or that the engine itself failed. */
@@ -205,5 +209,28 @@ export async function askTheWorld(
   }
   const { answer, engine } = await firstAnswer(runs);
   logTheCall(run, question, answer, engine, Date.now() - startedAt);
+  return answer;
+}
+
+/**
+ * #8350 item 4 (Misho's yes, 31 Oct): the same question asked again within 7
+ * days is answered at once from what an official page said, by any member;
+ * otherwise the web is asked, and an answer citing an official page is kept.
+ * Never throws.
+ */
+export async function askTheWorldOrRecall(
+  run: WorldAnswerRun,
+  question: string,
+  language: RunLanguage,
+): Promise<WorldAnswer | null> {
+  const startedAt = Date.now();
+  const fact = await recallFact(question, language);
+  const remembered = fact === null ? null : rememberedAnswer(fact, language);
+  if (remembered !== null) {
+    logTheCall(run, question, remembered, WorldAnswerEngine.Memory, Date.now() - startedAt);
+    return remembered;
+  }
+  const answer = await askTheWorld(run, question, language);
+  if (answer !== null) void keepFact(question, language, answer);
   return answer;
 }
