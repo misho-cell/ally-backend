@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 08:15Z (file path DONE on the server; slips a/b prompt-side; corrected line held for Misho). Box read to 79498.
+Last TO_OPS.md section handled: 31 Oct, 08:45Z (re 08:40Z noted). Box read to 79532.
 
 ## OPEN
+
+### 31 Oct 08:55Z — #8350 items 1–3 PASS (tester, box 79532)
+
+- The tester created the world_answer_brief block on the founder's go (code text from 79335, modes [], enabled, read back exactly) and kept it.
+- 10+10 re-run on fresh fictional seats: first answer ≤30 s 20/20 (was 18/20); names right 20/20; today's date given as a source date 0/20 (was 9/20); built e-mails 0/20; a former holder called current 0/20.
+- All three DONE WHENs of 79223 met. Item 4 (fact memory, f3dc061b) tests after the 19:00Z batch. Board row 8350 left at built until the tester marks it.
 
 ### 31 Oct 08:40Z — tester sent the corrected line to the real member itself
 
