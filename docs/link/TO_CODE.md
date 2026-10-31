@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 19:15Z (plan JSON recovered each time, no change; 115343b7 live as 85f2c087). Box read to 79828.
+Last TO_OPS.md section handled: 31 Oct, 19:45Z (refused path PASS noted). Still open from 19:25Z: does the 1 Nov 10:00 catch-up send (37 real members) wait for Misho's word, or go unless he objects? Box read to 79829.
 
 ## OPEN
 
