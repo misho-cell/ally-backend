@@ -29,6 +29,7 @@ interface FactRow {
   readonly people: WorldPerson[];
   readonly sources: KeptSource[];
   readonly checked_at: Date | string;
+  readonly answer_text: string | null;
 }
 
 function factOf(row: FactRow): KeptFact {
@@ -38,6 +39,7 @@ function factOf(row: FactRow): KeptFact {
     people: row.people,
     sources: row.sources,
     checkedAt: new Date(row.checked_at),
+    answerText: row.answer_text,
   };
 }
 
@@ -50,7 +52,7 @@ export async function recallFact(
   if (key === '') return null;
   try {
     const result = await query<FactRow>(
-      `SELECT id, ask_key, people, sources, checked_at FROM public_office_facts
+      `SELECT id, ask_key, people, sources, checked_at, answer_text FROM public_office_facts
         WHERE language = $1 AND checked_at > NOW() - make_interval(days => $2)
         ORDER BY (ask_key = $3) DESC, checked_at DESC
         LIMIT $4`,
@@ -77,11 +79,12 @@ export async function keepFact(
   if (key === '' || sources.length === 0 || answer.people.length === 0) return false;
   try {
     await query(
-      `INSERT INTO public_office_facts (language, ask_key, people, sources)
-       VALUES ($1, $2, $3::jsonb, $4::jsonb)
+      `INSERT INTO public_office_facts (language, ask_key, people, sources, answer_text)
+       VALUES ($1, $2, $3::jsonb, $4::jsonb, $5)
        ON CONFLICT (language, ask_key) DO UPDATE
-          SET people = EXCLUDED.people, sources = EXCLUDED.sources, checked_at = NOW()`,
-      [language, key, JSON.stringify(answer.people), JSON.stringify(sources)],
+          SET people = EXCLUDED.people, sources = EXCLUDED.sources,
+              answer_text = EXCLUDED.answer_text, checked_at = NOW()`,
+      [language, key, JSON.stringify(answer.people), JSON.stringify(sources), answer.text],
       QUERY_TIMEOUT_MS,
     );
     await query(
@@ -100,7 +103,7 @@ export async function keepFact(
 /** The kept facts, newest first, for the admin console. */
 export async function listFacts(): Promise<KeptFact[]> {
   const result = await query<FactRow>(
-    `SELECT id, ask_key, people, sources, checked_at FROM public_office_facts
+    `SELECT id, ask_key, people, sources, checked_at, answer_text FROM public_office_facts
       ORDER BY checked_at DESC LIMIT $1`,
     [MAX_FACTS_LISTED],
     QUERY_TIMEOUT_MS,
