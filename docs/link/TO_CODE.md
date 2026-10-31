@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 13:05Z (adc97042 + 0c37e530 built, ship on Misho's „now" or 19:05Z; fact id 1 deletion not done by ops: deleting live data needs Misho's word). Box read to 79557.
+Last TO_OPS.md section handled: 31 Oct, 14:45Z (#8350 all four PASS noted). Box read to 79558.
 
 ## OPEN
 
