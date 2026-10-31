@@ -67,6 +67,7 @@ describe('what is kept', () => {
     expect(JSON.parse(String((params as unknown[])[3]))).toEqual([
       { title: 'Ministry', url: OFFICIAL.url },
     ]);
+    expect((params as unknown[])[4]).toBe(ANSWER.text);
     expect(String(mockQuery.mock.calls[1][0])).toContain('DELETE FROM public_office_facts');
   });
 });
@@ -78,15 +79,22 @@ describe('a kept fact used again', () => {
     people: [PERSON],
     sources: [{ title: 'Ministry', url: OFFICIAL.url }],
     checkedAt: new Date('2026-10-31T05:00:00Z'),
+    answerText: null,
   };
 
-  it('says who, where, and the day it was checked on the official page', () => {
-    const answer = rememberedAnswer(fact, 'ka');
-    expect(answer?.text).toBe(
-      'Nino Example — Minister, Ministry of Health.\nოფიციალურ გვერდზე შემოწმდა 31.10.2026-ს.',
-    );
+  it('says the first answer again, contact and voice included, with the day it was checked (79546)', () => {
+    const said = 'ახლა მინისტრი ნინო ექსამფლია. სამინისტროს ცხელი ხაზი: 1505.';
+    const answer = rememberedAnswer({ ...fact, answerText: said }, 'ka');
+    expect(answer?.text).toBe(`${said}\n(შემოწმდა 31 ოქტომბერს)`);
+    expect(answer?.text).not.toContain('ოფიციალურ გვერდზე');
     expect(answer?.sources[0].url).toBe(OFFICIAL.url);
     expect(rememberedAnswer(fact, 'ru')).toBeNull();
+  });
+
+  it('is said person by person for a fact kept before its words were', () => {
+    expect(rememberedAnswer(fact, 'en')?.text).toBe(
+      'Nino Example — Minister, Ministry of Health.\n(checked 31 October)',
+    );
   });
 
   it('is fresh for a week only', () => {

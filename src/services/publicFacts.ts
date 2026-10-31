@@ -34,6 +34,8 @@ export interface KeptFact {
   readonly people: readonly WorldPerson[];
   readonly sources: readonly KeptSource[];
   readonly checkedAt: Date;
+  /** The first answer's own words, said again (tester 79546); null for a fact kept before them. */
+  readonly answerText: string | null;
 }
 
 /** The question as it is compared: lower case, its distinct words, sorted. */
@@ -70,24 +72,57 @@ function personLine(person: WorldPerson): string {
   return where === '' ? `${person.name}.` : `${person.name} — ${where}.`;
 }
 
-function day(date: Date): string {
-  const d = String(date.getUTCDate()).padStart(2, '0');
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  return `${d}.${m}.${date.getUTCFullYear()}`;
-}
+const MONTHS_KA: readonly string[] = [
+  'იანვარს',
+  'თებერვალს',
+  'მარტს',
+  'აპრილს',
+  'მაისს',
+  'ივნისს',
+  'ივლისს',
+  'აგვისტოს',
+  'სექტემბერს',
+  'ოქტომბერს',
+  'ნოემბერს',
+  'დეკემბერს',
+];
+const MONTHS_EN: readonly string[] = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
-/** The line that says where and when it was checked, per language; none where there is no wording yet. */
-const CHECKED_LINE: Readonly<Partial<Record<RunLanguage, (date: string) => string>>> = {
-  ka: (date) => `ოფიციალურ გვერდზე შემოწმდა ${date}-ს.`,
-  en: (date) => `Checked on the official page on ${date}.`,
+/**
+ * When it was checked, per language; none where there is no wording yet. Tester
+ * 79546: it no longer says „on the official page" — a kept source may be a
+ * register or a government listing, not the office's own site.
+ */
+const CHECKED_LINE: Readonly<Partial<Record<RunLanguage, (date: Date) => string>>> = {
+  ka: (date) => `(შემოწმდა ${date.getUTCDate()} ${MONTHS_KA[date.getUTCMonth()]})`,
+  en: (date) => `(checked ${date.getUTCDate()} ${MONTHS_EN[date.getUTCMonth()]})`,
 };
 
-/** The first answer written from a kept fact, or null in a language with no wording for it. */
+/**
+ * The first answer written from a kept fact, or null in a language with no
+ * wording for it. Tester 79546: the first answer's own words are said again,
+ * with the official contact it gave and in Netai's voice, and the day it was
+ * checked; a fact kept before those words were kept is said person by person.
+ */
 export function rememberedAnswer(fact: KeptFact, language: RunLanguage): WorldAnswer | null {
   const checked = CHECKED_LINE[language];
   if (checked === undefined || fact.people.length === 0 || fact.sources.length === 0) return null;
+  const words = fact.answerText?.trim() || fact.people.map(personLine).join('\n');
   return {
-    text: `${fact.people.map(personLine).join('\n')}\n${checked(day(fact.checkedAt))}`,
+    text: `${words}\n${checked(fact.checkedAt)}`,
     people: fact.people,
     sources: fact.sources.map((s) => ({ ...s, snippet: '' })),
   };
