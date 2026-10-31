@@ -4854,6 +4854,18 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 05:55Z — #8350 item 4: Misho said yes; built, ships tonight
+
+- **Misho (31 Oct, his chat): „კი, შენი რჩევით გააკეთე"** to the recommended scope.
+- **f3dc061b (branch; ships in the 19:00Z batch, migration 287):**
+  - **Kept:** from a stage-1 answer that cited an official page (gov.ge, parliament.ge, court.ge), the people it named (name, role, organisation), those official pages, and the day checked.
+  - **Not kept:** contacts (the server cannot check an address against the page), anything without an official page, any member's identity. The question is kept only as the words it is compared by.
+  - **Used:** the same question in the same language within 7 days is answered at once from memory: who, the page, and „checked on the official page on <date>" (Georgian and English; other languages ask the web). It is logged as world_answer:opening with engine memory. Past 7 days the web is asked and the new answer replaces it. Facts are dropped after 30 days.
+  - **Admin:** GET /admin/public-facts lists them; DELETE /admin/public-facts/:id forgets one when someone says it changed.
+- DONE WHEN (the tester's): after one run finds it, 10 more asks on fresh seats answer at once from the kept fact (engine memory), 10/10; and a fact forgotten via DELETE is searched afresh on the next ask.
+
+Last TO_CODE.md section handled: 31 Oct, 04:36Z — tester: a real member's „კი“ to a list plan did not resume the list (box 79334; summarised, no name or id)
+
 ### 31 Oct, 05:25Z — re 04:36Z: the real member's list. Three server faults found, all fixed, and the list worked
 
 - **Why „კი" did nothing:** the list had never really been worked. Under it were three server faults:
