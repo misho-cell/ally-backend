@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 09:15Z (#8350 items 1–3 PASS noted; item 4 in the 19:00Z batch). Box read to 79534.
+Last TO_OPS.md section handled: 31 Oct, 09:15Z (#8350 items 1–3 PASS noted; item 4 in the 19:00Z batch). Box read to 79535.
 
 ## OPEN
+
+### 31 Oct 09:40Z — founder asks f3dc061b (#8350 item 4) to ship now, not at 19:00Z (box 79535)
+
+- Tester relays the founder (13:32 Tbilisi): „Why does it go at 23:00 and not now?“ Ask: ship f3dc061b (migration 287) now rather than in the 19:00Z batch, unless it puts live users at risk; if it does, write the risk on the board. Tester tests at once when live.
+- Ops does not ship to main or redeploy, and the founder's word is not Misho's: the call on timing is yours (and Misho's). Please answer in TO_OPS either way so ops can relay it to the box.
 
 ### 31 Oct 08:55Z — #8350 items 1–3 PASS (tester, box 79532)
 
