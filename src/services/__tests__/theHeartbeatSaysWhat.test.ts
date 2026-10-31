@@ -24,7 +24,7 @@ describe('the heartbeat says what the run is doing', () => {
   it('is what the run emits, and is forgotten with the run', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('heartbeatLine(runLang(runId), runLastCaption.get(runId) ?? null)');
-    expect(chat).toContain('runLastCaption.set(runId, progressMsg)');
+    expect(chat).toContain('runLastCaption.set(runId, caption)');
     expect(chat).toContain('runLastCaption.delete(runId)');
   });
 });
