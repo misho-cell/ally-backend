@@ -298,9 +298,16 @@ export async function runJoinerFirstMessagesForSeats(
  * never-twice rule as a new joiner.
  */
 export const BACKFILL_DAYS = 7;
+/**
+ * The founder, 31 Oct (#8449, Misho: „როგორც იტყვის ისე გააკეთე"): every member
+ * who registered and never opened Netai gets it, however long ago, once each.
+ * The admin names how far back; a run takes at most MAX_BACKFILL, oldest first,
+ * so a large catch-up goes in batches.
+ */
+export const MAX_BACKFILL_DAYS = 3650;
 const MAX_BACKFILL = 100;
 
-export async function backfillCandidates(): Promise<number[]> {
+export async function backfillCandidates(days: number = BACKFILL_DAYS): Promise<number[]> {
   const result = await query<Joiner>(
     `SELECT u.id AS user_id FROM "User" u
       WHERE u."createdAt" > NOW() - make_interval(days => $1)
@@ -317,7 +324,7 @@ export async function backfillCandidates(): Promise<number[]> {
       ORDER BY u."createdAt"
       LIMIT $6`,
     [
-      BACKFILL_DAYS,
+      Math.min(Math.max(Math.trunc(days), 1), MAX_BACKFILL_DAYS),
       SETTLE_MINUTES,
       JOINER_FIRST_MESSAGE_EVENT,
       RETRY_AFTER_MINUTES,
@@ -329,10 +336,17 @@ export async function backfillCandidates(): Promise<number[]> {
   return result.rows.map((row) => row.user_id);
 }
 
-/** Writes each candidate's first message, one after another; logs ids and counts only. */
-export async function runBackfill(userIds: readonly number[]): Promise<number> {
+/**
+ * Writes each candidate's first message, one after another; logs ids and
+ * counts only. It stops the moment the Tbilisi night begins (Misho, 31 Oct).
+ */
+export async function runBackfill(
+  userIds: readonly number[],
+  now: () => Date = () => new Date(),
+): Promise<number> {
   let sent = 0;
   for (const userId of userIds) {
+    if (isRealUserNight(now())) break;
     try {
       if (await sendJoinerFirstMessage(userId, REAL_JOINER_TEXT)) sent += 1;
     } catch (err) {
