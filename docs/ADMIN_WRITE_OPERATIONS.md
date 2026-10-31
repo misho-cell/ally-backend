@@ -6688,3 +6688,10 @@ question, and „everything" here answered the texts on the table; it is asked a
   - 07:05Z rework on a08d4946 (surname needed): 126 with a way in, 351 none; 8 still shared only the surname.
   - 07:50Z rework on 1fe0490c (in a list of people the first word is the first name): 477 rows, 118 with a way in (every one carries the row's first name and surname), 359 none, 0 unchecked. Nothing was sent to anybody.
 
+## 99 · #8449: THE FIRST MESSAGE FOR EVERY MEMBER WHO NEVER OPENED NETAI (the founder's „yes", 31 Oct 15:34Z; Misho: „როგორც იტყვის ისე გააკეთე")
+
+- **Who authorises:** the founder on board #8449 (via the tester, box 79560): „yes", no day limit, each once, never 03:00–08:30 Tbilisi. Misho, his chat, 31 Oct: the founder decides and we do as he says.
+- **Who:** real Netai accounts (registered through Netai, not deleted, not test seats) that registered more than 7 days ago, never typed a line, and have no first message yet. A rough count at 15:45Z, before the test-seat and already-welcomed exclusions: about 1,030, registered 14 Jul – 24 Oct.
+- **What:** `POST /admin/joiner-first-messages/backfill {"days": 3650, "dry_run": true}`, read the count, then `{"days": 3650, "dry_run": false}`. Each call takes at most 100, oldest first. Batches go only by day in Tbilisi, an hour or more apart; a run stops by itself when the night begins.
+- **Undo:** a message cannot be unsent. Its row can be undone as in §96.
+

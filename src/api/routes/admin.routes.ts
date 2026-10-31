@@ -486,6 +486,8 @@ import {
   MAX_JOINER_SEATS,
   runJoinerFirstMessagesForSeats,
   backfillCandidates,
+  BACKFILL_DAYS,
+  MAX_BACKFILL_DAYS,
   runBackfill,
 } from '../../services/joinerFirstMessage.service';
 import { searchUserContacts, UserContactsOutcome } from '../../services/adminUserContacts.service';
@@ -9722,14 +9724,21 @@ adminRouter.post('/joiner-first-messages', async (req: Request, res: Response) =
   }
 });
 
-//   POST /admin/joiner-first-messages/backfill { dry_run } → 200 { candidates, started }
+//   POST /admin/joiner-first-messages/backfill { dry_run, days? } → 200 { candidates, started }
+// #8449 (the founder, 31 Oct): days reaches further back than the week, up to MAX_BACKFILL_DAYS.
 // Misho, 30 Oct: the real members of the last BACKFILL_DAYS who never opened a
 // chat and never got a first message get it, once. The writes run after the
 // reply, one after another; the count of the ones written is in the log.
 adminRouter.post('/joiner-first-messages/backfill', async (req: Request, res: Response) => {
-  const dryRun = (req.body as { dry_run?: unknown }).dry_run !== false;
+  const body = req.body as { dry_run?: unknown; days?: unknown };
+  const dryRun = body.dry_run !== false;
+  const days = body.days === undefined ? BACKFILL_DAYS : Number(body.days);
+  if (!Number.isInteger(days) || days < 1 || days > MAX_BACKFILL_DAYS) {
+    res.status(400).json({ success: false, error: `days: 1 to ${MAX_BACKFILL_DAYS}` });
+    return;
+  }
   try {
-    const candidates = await backfillCandidates();
+    const candidates = await backfillCandidates(days);
     if (!dryRun) void runBackfill(candidates);
     // eslint-disable-next-line no-console
     console.log(

@@ -29,6 +29,8 @@ import {
   JOINER_FIRST_MESSAGE_EVENT,
   JoinerText,
   backfillCandidates,
+  MAX_BACKFILL_DAYS,
+  runBackfill,
   fittingField,
   joinerEventBody,
   JoinerSeatOutcome,
@@ -197,5 +199,19 @@ describe('the backfill', () => {
     expect(String(sql)).toContain("c.kind = 'message' AND c.content <> ''");
     expect(String(sql)).toContain('AND NOT (');
     expect(params?.[0]).toBe(7);
+  });
+
+  // The founder, 31 Oct (#8449): every member who never opened Netai, however long ago.
+  it('reaches as far back as the admin says, within bounds', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    await backfillCandidates(400);
+    expect(mockQuery.mock.calls[0][1]?.[0]).toBe(400);
+    await backfillCandidates(99_999);
+    expect(mockQuery.mock.calls[1][1]?.[0]).toBe(MAX_BACKFILL_DAYS);
+  });
+
+  it('writes nothing once the Tbilisi night has begun (Misho, 31 Oct)', async () => {
+    const night = (): Date => new Date('2026-11-01T01:00:00Z');
+    expect(await runBackfill([7, 8], night)).toBe(0);
   });
 });
