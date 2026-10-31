@@ -13091,6 +13091,7 @@ async function processToolBlocks(
   // turn, after that result is in context.) Promise.all preserves result order.
   // #1694: an ask to a person with a boundary is never announced by name.
   const unnamed = shown ? await askStepsToKeepUnnamed(toolBlocks) : new Set<string>();
+  const heldSendCaptions = new Map<string, string>();
   const askNames = shown ? await askStepNames(userId, toolBlocks) : new Map<string, string>();
   for (const block of toolBlocks) {
     const clean = askNames.get(block.id);
@@ -13109,9 +13110,8 @@ async function processToolBlocks(
         // 3368: every tool leaves a step, so every run that used one has steps.
         genericStepCaption(runLang(runId)));
     if (progressMsg && shown) {
-      emitToolProgress(userId, threadId, runId, progressMsg);
-      runLastCaption.set(runId, progressMsg);
-      keepCaption(userId, threadId, runId, progressMsg);
+      if (SEND_STEP_TOOLS.has(block.name)) heldSendCaptions.set(block.id, progressMsg);
+      else showCaption(userId, threadId, runId, progressMsg);
     }
   }
   // #397: one status line per source, replaced in place.
@@ -13149,13 +13149,54 @@ async function processToolBlocks(
    * same step" is a fact about the turn.
    */
   const approvingThisTurn = toolBlocks.some((b) => b.name === 'approve_task_plan');
-  return Promise.all(
+  const results = await Promise.all(
     toolBlocks.map((block) =>
       approvingThisTurn && block.name === 'present_choices'
         ? Promise.resolve(choicesRefusedBesideAnApproval(block, userId, threadId, runId))
         : runOneToolBlockOrSayWhy(userId, threadId, runId, block, ownerAbsent),
     ),
   );
+  for (const [i, block] of toolBlocks.entries()) {
+    const caption = heldSendCaptions.get(block.id);
+    if (caption !== undefined && toolResultSucceeded(results[i])) {
+      showCaption(userId, threadId, runId, caption);
+    }
+  }
+  return results;
+}
+
+/**
+ * The tester's 79564 (a real member, 30 Oct): „✉️ ირო ცაგარეიშვილის ასისტენტს
+ * ვწერ…" was shown, and the ask itself was refused — nothing went. A step that
+ * writes to someone is announced only once it has gone; every other step is
+ * announced as it starts.
+ */
+const SEND_STEP_TOOLS: ReadonlySet<string> = new Set([
+  'ask_contact',
+  'request_introduction',
+  'relay_ask',
+]);
+
+/** True when a tool's result carries no refusal or error. */
+export function toolResultSucceeded(result: Anthropic.ToolResultBlockParam): boolean {
+  if (result.is_error === true || typeof result.content !== 'string') return false;
+  try {
+    const parsed: unknown = JSON.parse(result.content);
+    return (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      !('error' in parsed) &&
+      (parsed as { sent?: unknown }).sent !== false
+    );
+  } catch {
+    return false;
+  }
+}
+
+function showCaption(userId: string, threadId: number, runId: string, caption: string): void {
+  emitToolProgress(userId, threadId, runId, caption);
+  runLastCaption.set(runId, caption);
+  keepCaption(userId, threadId, runId, caption);
 }
 
 /**
