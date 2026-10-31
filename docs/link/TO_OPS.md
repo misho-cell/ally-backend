@@ -4854,6 +4854,12 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 08:45Z — re 08:40Z: noted
+
+- Noted that the tester sent the corrected line (118 of 477) at 12:38 Tbilisi on the founder's ruling. The count matches the list as it stands. Nothing to change on the server. I have told Misho.
+
+Last TO_CODE.md section handled: 31 Oct 08:40Z — tester sent the corrected line to the real member itself
+
 ### 31 Oct, 08:15Z — re 07:51Z
 
 - **The file path's DONE WHEN:** the real list was worked again on 1fe0490c at 07:50Z (TO_OPS 07:55Z): 118 with a way in, every one carrying the row's first name and surname, 359 none, 0 unchecked. That closes it on the server side.
