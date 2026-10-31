@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { isRealUserNight } from './realUserNight';
 import { query } from '../db/postgres/client';
 import { processChat } from './chat.service';
 import { factsAboutMe } from './factsAboutMe.service';
@@ -31,8 +32,12 @@ import { getOrCreateDefaultThread } from './threads.service';
 const QUERY_TIMEOUT_MS = 8_000;
 /** Registered at least this long ago, so registration research has had its turn. */
 const SETTLE_MINUTES = 15;
-/** And at most this long ago: „within the hour", with one more for a restart. */
-const WITHIN_MINUTES = 120;
+/**
+ * And at most this long ago: „within the hour", with one more for a restart,
+ * and the night's 5½ hours on top (realUserNight), so whoever joins at night
+ * gets theirs at 08:30 instead of falling out of the window.
+ */
+const WITHIN_MINUTES = 8 * 60;
 const MAX_PER_RUN = 20;
 /** The joiner's own fact fields that say what they work in. */
 const WORK_FIELDS: ReadonlySet<string> = new Set([
@@ -219,8 +224,13 @@ export async function sendJoinerFirstMessage(userId: number, text: JoinerText): 
   return true;
 }
 
-/** One run: each due joiner gets their first message. Returns how many were written. */
-export async function runJoinerFirstMessages(): Promise<number> {
+/**
+ * One run: each due joiner gets their first message. Returns how many were
+ * written. Nothing is written at night in Tbilisi (Misho, 31 Oct); the morning
+ * run takes whoever joined meanwhile.
+ */
+export async function runJoinerFirstMessages(now: Date = new Date()): Promise<number> {
+  if (isRealUserNight(now)) return 0;
   let sent = 0;
   for (const userId of await joinersDue()) {
     try {

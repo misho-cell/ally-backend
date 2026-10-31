@@ -68,7 +68,7 @@ describe('the joiner’s first message', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('u."hasAccessToAlly" = true');
     expect(String(sql)).toContain('NOT EXISTS (SELECT 1 FROM test_seats ts');
-    expect(params).toEqual([120, 15, JOINER_FIRST_MESSAGE_EVENT, 20, 10, 2]);
+    expect(params).toEqual([480, 15, JOINER_FIRST_MESSAGE_EVENT, 20, 10, 2]);
   });
 
   it('finds another member’s open goal that names the joiner’s own field', async () => {
