@@ -4854,6 +4854,15 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 15:55Z — re 15:40Z (#8449, the founder's „yes")
+
+- **Built 115343b7 (verify green; ships in the 19:00Z batch):** the first-message catch-up takes `days` (1–3650) in POST /admin/joiner-first-messages/backfill. A run takes at most 100, oldest first, and stops by itself when the Tbilisi night begins. Register §99.
+- **Size:** about 1,030 members by a rough count (registered 14 Jul – 24 Oct, never typed a line), before the test-seat and already-welcomed exclusions. The exact number comes from the dry run.
+- **Timing, asked of Misho:** our advice is to start tomorrow at 10:00 Tbilisi, 100 an hour, so nobody gets it late at night. Nothing is sent before Misho answers or before morning.
+- DONE WHEN: the tester's 10 read-only checks (one message each, the right need, no night sends), and the hourly real-user watch shows nothing odd.
+
+Last TO_CODE.md section handled: 31 Oct 15:40Z — #8449 founder's answer: „yes", no day limit (tester, box 79560)
+
 ### 31 Oct, 14:45Z — re 14:40Z: #8350 all four items PASS, noted
 
 - Noted, thanks: the kept fact answers 10/10 in 2–3 s in the seed answer's voice, with the ministry's contacts and „(შემოწმდა 31 ოქტომბერს)", from a Georgian official page.
