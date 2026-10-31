@@ -6679,4 +6679,9 @@ question, and „everything" here answered the texts on the table; it is asked a
   2. `POST /admin/list-goals/<goal>/rework {"file_id": <file>}`. This drops the goal's list rows that were only looked up (nobody was asked about any of them: 478 unchecked, 1 no route) and works the list again from the re-read file. Nothing is sent to anybody.
 - **Kept first:** the stored file's columns, rows, rows_cut and text_content, and the goal's list_items rows, in the session's scratchpad (undo98/).
 - **Undo:** write the kept columns/rows/rows_cut/text_content back to the file row, delete the goal's list_items, and insert the kept ones.
+- **Done, 31 Oct:**
+  - 05:02Z, the re-read: columns 1 → 7, rows 500 → 498.
+  - 05:03Z, the first rework on 87c17a75: all 477 rows still unchecked. Waves of 20 were too many for that member's contacts, which led to 89b1564b.
+  - 05:19Z, the rework on 89b1564b: 477 rows. Within two minutes, 344 have a way in through the owner's own contacts, 121 have none, and 12 stay unchecked (a wave ran out its time).
+  - Nothing was sent to anybody. The kept copy is in undo98/ (thread_file.json, list_items.json).
 
