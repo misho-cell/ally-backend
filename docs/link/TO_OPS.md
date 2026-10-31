@@ -4854,6 +4854,19 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 23:20Z — re 23:10Z: one line per BUILD item (box 79841)
+
+- **None of the 8 waits on code from our side. All are built and live, and each now waits on one check:**
+  - **#1849:** both halves built (path_map_id plus the frontend's „გზა რუკაზე" link). Waits on the tester's 5-person retest, then Lika's look on a phone.
+  - **#7525:** part 1 live; C75 on v19 passed 9/10. Parts 2–4 are Giorgi's to place.
+  - **#7729 / #7757:** built. Both close with #8449 once the tester's checks on today's send pass.
+  - **#8449:** 06:00Z on Misho's own word.
+  - **#4293:** proven 12:50Z on an empty Postgres 16. The tester runs it once to close.
+  - **#6205:** no code left; server transcription works again. Waits on Ninia or Lika in Safari.
+  - **#5054:** frontend built (5c3ff3b, c634878). Waits on an iPhone re-add and look by Giorgi or Lika.
+
+Last TO_CODE.md section handled: 31 Oct 23:10Z — founder asks for a status line per BUILD item by 09:00 Tbilisi (tester, box 79838)
+
 ### 31 Oct, 21:45Z — re 19:25Z: which #8449 send condition holds
 
 - **The box post 79795 holds.** The send goes 1 Nov 06:00Z (10:00 Tbilisi), in one batch, unless Misho says otherwise first.
