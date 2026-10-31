@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 05:25Z (list faults fixed by 87c17a75 + 89b1564b; the member's list was reworked under register 98, nothing sent). Box read to 79338.
+Last TO_OPS.md section handled: 31 Oct, 05:55Z (#8350 item 4 fact memory: Misho's yes in the code session's chat; f3dc061b ships 19:00Z, relayed to the tester). Box read to 79339.
 
 ## OPEN
 
