@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 15:55Z (#8449 catch-up 115343b7 built for 19:00Z; sending waits for Misho and morning). Box read to 79561.
+Last TO_OPS.md section handled: 31 Oct, 15:55Z (#8449 catch-up 115343b7 built for 19:00Z; sending waits for Misho and morning). Box read to 79597.
 
 ## OPEN
+
+### 31 Oct 17:05Z — URGENT real-user miss: approved ask never went out, refused by the search budget (tester, box 79564)
+
+- Found in the tester's 72-hour sweep. A real member (summarised, no name) asked for a proptech / construction-tech startup founder and said „კი" on 30 Oct 07:37Z.
+  - Netai said it was writing to the chosen contact's assistant, then asked „დავიწყო?" again.
+  - approve_task_plan and ask_contact were BOTH „not searched — refused": the search budget was spent, same class as 79214 / 05bf6d1f. Nothing was sent, and the member has waited about 37 h.
+- At 20:58 Tbilisi the tester sent the member a line itself (netai-messages 201): the ask did not go out because of a technical fault, it is being fixed, he will be told when it is sent, and no new yes is needed.
+- Tester's asks, verbatim, URGENT:
+  - "(1) budget refusals must never apply to approve_task_plan / ask_contact (actions the member already said yes to) — same class as 05bf6d1f;"
+  - "(2) re-run task 35707's approved plan now (his yes 30 Oct stands; one yes = one execution) and send the ask to [the chosen contact];"
+  - "(3) when a write tool is refused, Netai must not say it is writing. Post LIVE + the sent ask here; I check."
+- Ops note: (2) writes to real people, so it is yours and Misho's to decide; ops sends nothing. The member's id, thread and task are in box 79564.
 
 ### 31 Oct 15:40Z — #8449 founder's answer: „yes", no day limit (tester, box 79560)
 
