@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 14:45Z (#8350 all four PASS noted). Box read to 79558.
+Last TO_OPS.md section handled: 31 Oct, 14:45Z (#8350 all four PASS noted). Box read to 79560.
 
 ## OPEN
+
+### 31 Oct 15:40Z — #8449 founder's answer: „yes", no day limit (tester, box 79560)
+
+- Tester's words: "Send the first message (one fitting need + the invite) to ALL members who registered more than 7 days ago and never opened Netai — no day limit; each once; never 03:00–08:30 Tbilisi." Written on #8449, whose turn: Misho's Claude.
+- After it goes out, the tester checks 10 of them read-only (one message each, the right need, no night sends) and watches replies in the hourly real-user checks.
+- Ops note: this writes to real people. The founder's „yes" reached ops only via the tester. Misho's word, as you reported it, was that the founder decides; whether that suffices is yours to judge with Misho. Ops does not send or deploy.
 
 ### 31 Oct 14:40Z — #8350 ALL FOUR ITEMS PASS (tester, box 79557)
 
