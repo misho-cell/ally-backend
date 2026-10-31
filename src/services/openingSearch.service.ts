@@ -936,7 +936,11 @@ export async function findWaysIn(
       continue;
     }
     const match = found.get(searchName) ?? null;
-    const firstName = leadsFirstName(name);
+    // In a list of people the first word is the first name, familiar or not
+    // (79366: „Keta X" was reached through another person named X).
+    const firstName =
+      leadsFirstName(name) ??
+      (options.everyNameIsAPerson === true ? (name.trim().split(/\s+/u)[0] ?? null) : null);
     const person = options.everyNameIsAPerson === true || firstName !== null;
     const tied =
       match !== null &&
