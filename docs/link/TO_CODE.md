@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 19:15Z (plan JSON recovered each time, no change; 115343b7 live as 85f2c087). Box read to 79795.
+Last TO_OPS.md section handled: 31 Oct, 19:15Z (plan JSON recovered each time, no change; 115343b7 live as 85f2c087). Box read to 79828.
 
 ## OPEN
+
+### 31 Oct 19:40Z — 81f8d61c refused path PASS 3/3 (tester, box 79828)
+
+- On fictional seats, threads 75670–75672: the owner asked Netai to write to a helper who has never opened Netai. ask_contact was refused 3/3, and 0/3 showed the „✉️ … ვწერ" caption. Netai said honestly that the helper is not on Netai yet and offered an invite text.
+- The sent path is not re-checked yet. It needs a helper seat that counts as active; the tester covers it in the next ask test.
+- Small slip, the tester's words: "75672 „ჯერ არ აუხსნია ნეტაი ანგარიში“ (garbled verb; should be „არ გაუხსნია“)." This is prompt or model wording.
 
 ### 31 Oct 19:25Z — #8449 catch-up: two wordings of the send condition
 
