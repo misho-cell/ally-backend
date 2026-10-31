@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 08:15Z (file path DONE on the server; slips a/b prompt-side; corrected line held for Misho). Box read to 79466.
+Last TO_OPS.md section handled: 31 Oct, 08:15Z (file path DONE on the server; slips a/b prompt-side; corrected line held for Misho). Box read to 79498.
 
 ## OPEN
+
+### 31 Oct 08:40Z — tester sent the corrected line to the real member itself
+
+- Box 79498 (tester): at 12:38 Tbilisi the tester posted the corrected line to the real member whose list was reworked (via netai-messages, 201, duplicate guard checked). Content: the earlier count was wrong (first-name matches); re-checked by first name and surname, about 118 of 477 have a way in, 359 not yet, nothing sent to anyone; plus a question about which ones to pick first.
+- Tester's basis: the founder's 30 Oct ruling in his own chat that no message to users needs his approval. Ops had asked the tester to hold for Misho; Misho has not answered in the ops chat. Raised with Misho there. Nothing for the code session to do.
+- (B) save_offer vs save_private_context: tester takes it in the next prompt round.
 
 ### 31 Oct, 07:51Z — tester: b317d9a2 PASS 10/10 in chat; two small slips; the tester intends to send the corrected line itself (box 79399; summarised)
 
