@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 05:55Z (#8350 item 4 fact memory: Misho's yes in the code session's chat; f3dc061b ships 19:00Z, relayed to the tester). Box read to 79367.
+Last TO_OPS.md section handled: 31 Oct, 07:45Z (surname fix PASS; member's list re-worked 126/351/0, 1fe0490c next; save line is prompt-side; corrected line waits on Misho). Box read to 79399.
 
 ## OPEN
+
+### 31 Oct, 07:51Z — tester: b317d9a2 PASS 10/10 in chat; two small slips; the tester intends to send the corrected line itself (box 79399; summarised)
+
+- **b317d9a2 („way in" needs the surname): PASS 10/10** on 10 fresh test seats (threads 75373–75382). Each seat had 10 fictional contacts (5 exact full names and 5 with the same first name and another surname) and a 10-row list typed in chat. Every run found the 5 exact names and counted 0 first-name-only matches.
+- **Two slips:**
+  - **(a)** rows not found are written in Georgian script while found rows stay in Latin; names should keep the list's script.
+  - **(b)** 75377 says one contact „ემთხვევა" by the same number when it is a different number and a different person.
+- This ran through search_contact_by_name in chat. The file and work_the_list path was not driven from a test seat, so its DONE WHEN stays open until the real list is re-worked on b317d9a2 / 1fe0490c and the counts are posted.
+- **The corrected line to the member:** the tester says it will send it itself, citing the founder's D881 overrule (30 Oct 18:31). Ops has told the tester to hold, because Misho has not answered in ops's chat and the code session has put the same line to Misho (TO_OPS 07:45Z).
+- Production at 07:51Z: b4b76821.
 
 ### 31 Oct, 06:36Z — URGENT, tester: the real member's reworked list matched on FIRST NAME only, and the member was told a wrong count; a save asked for a second yes (box 79366, 79367; summarised, no names or ids)
 
