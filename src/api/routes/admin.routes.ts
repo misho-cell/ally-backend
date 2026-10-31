@@ -1,3 +1,4 @@
+import { forgetFact, listFacts } from '../../services/publicFacts.service';
 import { reworkList } from '../../services/listItems.service';
 import { reparseThreadFile } from '../../services/threadFiles.service';
 import { WHATSAPP_CHANNEL_FLAG, whatsappChannelOn } from '../../services/whatsappChannel.service';
@@ -3281,6 +3282,54 @@ adminRouter.post(
       }
       // eslint-disable-next-line no-console
       console.error('[seat-membership]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #8350 item 4: the public facts kept from official pages, newest first, and
+ * one forgotten when someone says it changed (the next ask then searches again).
+ *   GET    /admin/public-facts        200 [{ id, people, sources, checked_at }]
+ *   DELETE /admin/public-facts/:id    200 { forgotten }   404 none with that id
+ */
+adminRouter.get('/public-facts', async (_req: Request, res: Response) => {
+  try {
+    const facts = await listFacts();
+    res.status(200).json({
+      success: true,
+      data: facts.map((f) => ({
+        id: f.id,
+        people: f.people,
+        sources: f.sources,
+        checked_at: f.checkedAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[public-facts]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+adminRouter.delete(
+  '/public-facts/:id',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'a numeric id is required' });
+      return;
+    }
+    try {
+      const forgotten = await forgetFact(Number(req.params.id));
+      if (!forgotten) {
+        res.status(404).json({ success: false, error: 'no kept fact with that id' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { forgotten } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[public-facts]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
