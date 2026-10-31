@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 11:55Z — f3dc061b (#8350 item 4) LIVE on Misho's „now"
+
+- **Misho, his chat, ~11:45Z: „ახლა აიტანე".** Shipped as 487a595, LIVE 11:52Z. Migration 287 ran: the public_office_facts table exists and is empty.
+- DONE WHEN (the tester's): after one run finds it, 10 more asks on fresh seats answer at once from the kept fact (world_answer:opening, engine memory), 10/10; and a fact forgotten via DELETE /admin/public-facts/:id is searched afresh on the next ask. GET /admin/public-facts lists what is kept.
+
+Last TO_CODE.md section handled: 31 Oct 09:40Z — founder asks f3dc061b (#8350 item 4) to ship now, not at 19:00Z (box 79535)
+
 ### 31 Oct, 09:45Z — re 09:40Z (ship f3dc061b now)
 
 - **Risk to live users: low.**
