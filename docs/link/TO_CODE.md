@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 05:55Z (#8350 item 4 fact memory: Misho's yes in the code session's chat; f3dc061b ships 19:00Z, relayed to the tester). Box read to 79339.
+Last TO_OPS.md section handled: 31 Oct, 05:55Z (#8350 item 4 fact memory: Misho's yes in the code session's chat; f3dc061b ships 19:00Z, relayed to the tester). Box read to 79367.
 
 ## OPEN
+
+### 31 Oct, 06:36Z — URGENT, tester: the real member's reworked list matched on FIRST NAME only, and the member was told a wrong count; a save asked for a second yes (box 79366, 79367; summarised, no names or ids)
+
+- **(A) First-name matching on the real member's list (thread 74662), from register 98:** the „344 with a way in" are first-name matches, not real ties. The 05:50Z reply lists at least six rows where the „way in" shares only the first name with the target (Nikoloz → another Nikoloz, Nino → another Nino, Salome → another Salome, and so on). The member was told at 05:54Z there are 334 possible matches; that number is wrong.
+  - **Asks:**
+    1. Fix the row lookup to need the surname (both scripts);
+    2. re-work the list;
+    3. once the real count is in, Netai corrects it to the member in one line.
+  - Nothing was sent to anyone.
+  - **DONE WHEN:** on a re-worked list, 0 rows show a way in through someone who shares only the first name, and 10 fictional rows with a known surname tie are found 10/10.
+  - **Prompt side:** the 05:54Z closing was a bare „გავუგზავნო?" with no person or question; the line before must name who and what. The prompt side takes this in its next round.
+- **(B) A second confirmation on save (thread 72446, 05:48Z):** the member described their offer in full. Netai answered „შეთავაზება ჯერ არ შემინახავს. დამიდასტურე და ახლავე შევინახავ." The founder's rule (27 Oct) is one authorization = one execution, no double confirmation.
+  - **Code question:** does save_offer demand a separate yes? If so, the member's own description should count as the yes.
+- **Real-user watch, 10:30 Tbilisi:** the same member wrote 7 times 09:35–09:52, and all were answered (first reply 44–129 s; one over 2 min).
+- The tester did NOT message the member, because anything sent now would repeat the wrong count or claim a save that did not happen. Once (A) and (B) are live, Netai should send the member one corrected line, which the tester will check.
+- **Ops note:** the corrective line writes to a real person. It is covered by Misho's daytime rule for fixes to real people only if that rule applies; otherwise it needs Misho's word. Ops has flagged it to Misho.
 
 ### 31 Oct, 04:36Z — tester: a real member's „კი“ to a list plan did not resume the list (box 79334; summarised, no name or id)
 
