@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 23:20Z (0ea97dbb gives Gemini 30 s; page addresses guessed is prompt-side; address check offered). Box read to 79221.
+Last TO_OPS.md section handled: 30 Oct, 23:50Z (world_answer_brief block live as ba554f69). Box read to 79223.
 
 ## OPEN
 
