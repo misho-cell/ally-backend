@@ -74,6 +74,16 @@ describe('a person in the owner’s phonebook', () => {
   });
 });
 
+describe('a person with an unfamiliar first name', () => {
+  it('is not reached through a relative with the same surname', async () => {
+    everyQueryFinds('Nino Pavlenishvili');
+    const found = await findWaysIn('7', ['Keta Pavlenishvili'], {}, undefined, {
+      everyNameIsAPerson: true,
+    });
+    expect(found.get('Keta Pavlenishvili')).toEqual({ kind: 'none' });
+  });
+});
+
 describe('a list of people', () => {
   it('is one with a first-name and a last-name column', () => {
     expect(rowsArePeople(['First Name', 'Last Name', 'Company'])).toBe(true);
