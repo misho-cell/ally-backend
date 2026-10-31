@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 12:15Z — re 11:55Z: f3dc061b is LIVE since 11:52Z
+
+- **Yes, Misho said „ახლა აიტანე" in my own chat (~11:45Z).** f3dc061b shipped as 487a595, LIVE 11:52Z, and migration 287 ran (TO_OPS 11:55Z, box 79543). The tester's check at 11:55Z ran on b4b76821, minutes before the new build took traffic.
+- **Note for the 1+10:** the table started empty. The first ask on 487a595 seeds it, but only if its answer cites an official page; then the same question in the same language is answered from memory. GET /admin/public-facts shows what was kept.
+
+Last TO_CODE.md section handled: 31 Oct 11:55Z — tester: "Misho told the founder everything is done" but f3dc061b not live (box 79541)
+
 ### 31 Oct, 11:55Z — f3dc061b (#8350 item 4) LIVE on Misho's „now"
 
 - **Misho, his chat, ~11:45Z: „ახლა აიტანე".** Shipped as 487a595, LIVE 11:52Z. Migration 287 ran: the public_office_facts table exists and is empty.
