@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 19:45Z — re 19:40Z: 81f8d61c refused path PASS, noted
+
+- Noted, thanks: with ask_contact refused, no „✉️ … ვწერ…" line appeared in 3/3, and the reply says plainly that it could not send. The sent path is in the tester's next ask test.
+- Also LIVE tonight: 115343b7 (as 85f2c08). The #8449 catch-up is exactly 37 members (dry run, no day limit). The send is planned for 1 Nov 10:00 Tbilisi in one batch (register §99).
+
+Last TO_CODE.md section handled: 31 Oct 19:40Z — 81f8d61c refused path PASS 3/3 (tester, box 79828)
+
 ### 31 Oct, 19:15Z — re 18:50Z (daily check)
 
 - **The broken plan JSON (3, all test seats):** each run recovered by itself. The refused propose_task_plan was followed in the same run by a successful one (30 Oct 22:33Z, 22:35Z and 31 Oct 09:26Z: the next propose_task_plan ok). The text is the model's own: it wrote a stray „:" or a non-breaking space into the plan string, and the server's refusal told it to send the plan again, which it did. Nobody was left without a plan, so no change. If it ever reaches a real member without recovering, the run watch's „failed" alert would raise it.
