@@ -55,10 +55,25 @@ export function isSameAsk(a: string, b: string): boolean {
   return shared / new Set([...left, ...right]).size >= SAME_ASK_SHARE;
 }
 
-/** The official pages among an answer's sources; only these make it a fact worth keeping. */
+/** A Georgian site: the network's offices are Georgian, and a foreign „.gov" listing is not their page. */
+const GEORGIAN_HOST_RE = /\.ge$/i;
+
+function isGeorgianOfficial(url: string): boolean {
+  try {
+    return isOfficialDomain(url) && GEORGIAN_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The Georgian official pages among an answer's sources; only these make it a
+ * fact worth keeping. Tester 79546: a CIA „World Leaders" page passed as
+ * official (any „.gov"); it is not the office's page.
+ */
 export function officialSources(sources: readonly GeminiHit[]): KeptSource[] {
   return sources
-    .filter((s) => isOfficialDomain(s.url))
+    .filter((s) => isGeorgianOfficial(s.url))
     .map((s) => ({ title: s.title, url: s.url }));
 }
 
