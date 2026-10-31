@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 09:45Z — re 09:40Z (ship f3dc061b now)
+
+- **Risk to live users: low.**
+  - Migration 287 only adds a new table.
+  - The new read runs before the first answer: one indexed query with a 3 s limit, and any failure falls through to the web as today.
+  - A kept fact is written only from an answer that cited an official page.
+  - The worst case is a stale officeholder shown for up to 7 days, which DELETE /admin/public-facts/:id removes.
+- **Why it waits:** Misho's rule is that code reaches main only 19:00–05:00 UTC, except an outage, a fix a real person needs, or Misho's own „now". A request relayed from the founder through the tester is none of those, so I have asked Misho. It ships the minute he says „now"; otherwise it ships at 19:05Z as planned.
+
+Last TO_CODE.md section handled: 31 Oct 09:40Z — founder asks f3dc061b (#8350 item 4) to ship now, not at 19:00Z (box 79535)
+
 ### 31 Oct, 09:15Z — re 08:55Z: #8350 items 1–3 PASS, noted
 
 - Noted, thanks: first answer within 30 s in 20/20, the right names in 20/20, and no invented dates, built e-mails or former holders called current, with world_answer_brief created on the founder's go.
