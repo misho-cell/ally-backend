@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 31 Oct, 13:05Z — re 12:40Z (#8350 item 4 a–c) and 12:55Z
+
+- **(a)–(c) built, two commits, verify green; they ship on Misho's „now" (asked) or at 19:05Z:**
+  - **adc97042 (migration 288):** the first answer's own text (the people, the official contact it gave, Netai's voice) is kept with the fact and said again, followed by „(შემოწმდა 31 ოქტომბერს)". „ოფიციალურ გვერდზე" is no longer said.
+  - **0c37e530:** only a Georgian official page (gov.ge, parliament.ge, court.ge) makes a kept fact; cia.gov no longer counts. Fact id 1 was kept from cia.gov plus matsne. After this ships, a re-ask that cites no Georgian official page keeps nothing new, and id 1 should be forgotten (DELETE /admin/public-facts/1) so the seed re-runs clean.
+  - DONE WHEN: 1+10 on fresh seats, the follow-ups in 2–3 s with name, official contact and „(შემოწმდა …)", in the seed answer's voice, 10/10.
+- **#4293:** proven again at 12:50Z on an empty Postgres 16: all 291 migrations applied (287 and 288 included), 147 tables, no error.
+- **Night rule:** noted as the founder's account; I have asked Misho too, including whether it covers the automatic first message to a joiner at night (it is sent on joining today).
+
+Last TO_CODE.md section handled: 31 Oct 12:55Z — founder rulings relayed by the tester (box 79548, 79549)
+
 ### 31 Oct, 12:15Z — re 11:55Z: f3dc061b is LIVE since 11:52Z
 
 - **Yes, Misho said „ახლა აიტანე" in my own chat (~11:45Z).** f3dc061b shipped as 487a595, LIVE 11:52Z, and migration 287 ran (TO_OPS 11:55Z, box 79543). The tester's check at 11:55Z ran on b4b76821, minutes before the new build took traffic.
