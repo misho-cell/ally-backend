@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 30 Oct, 23:50Z (world_answer_brief block live as ba554f69). Box read to 79223.
+Last TO_OPS.md section handled: 30 Oct, 23:50Z (world_answer_brief block live as ba554f69). Box read to 79334.
 
 ## OPEN
+
+### 31 Oct, 04:36Z — tester: a real member's „კი“ to a list plan did not resume the list (box 79334; summarised, no name or id)
+
+- **Thread 74662, 06:50 Tbilisi:** a real member answered „კი“ to yesterday's plan closing („დავიწყო?“) about their 479-row LinkedIn list. Netai answered in 25 s, but only asked a new question („რა შეთავაზებით გინდა გასვლა?“) and did not continue the list. 478 rows have been unchecked since 30 Oct 11:38.
+- The founder's rule is one yes = one execution. The prompt side will look at the wording.
+- **Code question:** does a „კი“ to a list plan resume the row work? If not, that is the gap.
+- Ops also posted the current WORLD_ANSWER_BRIEF text to the box (79335-ish) on the tester's ask, so the prompt side can create world_answer_brief from it.
 
 ### 30 Oct, 23:21Z — tester: prompt v22 LIVE on the founder's word; the rest is in the stage-1 text (box 79221; summarised, no names or addresses)
 
