@@ -6684,4 +6684,7 @@ question, and „everything" here answered the texts on the table; it is asked a
   - 05:03Z, the first rework on 87c17a75: all 477 rows still unchecked. Waves of 20 were too many for that member's contacts, which led to 89b1564b.
   - 05:19Z, the rework on 89b1564b: 477 rows. Within two minutes, 344 have a way in through the owner's own contacts, 121 have none, and 12 stay unchecked (a wave ran out its time).
   - Nothing was sent to anybody. The kept copy is in undo98/ (thread_file.json, list_items.json).
+  - **CORRECTION (tester 79366):** the 05:19Z „344 with a way in" were first-name matches, not ties. That was my fault, from the lookup's first-name-only check.
+  - 07:05Z rework on a08d4946 (surname needed): 126 with a way in, 351 none; 8 still shared only the surname.
+  - 07:50Z rework on 1fe0490c (in a list of people the first word is the first name): 477 rows, 118 with a way in (every one carries the row's first name and surname), 359 none, 0 unchecked. Nothing was sent to anybody.
 
