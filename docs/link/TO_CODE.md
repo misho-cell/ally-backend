@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 08:55Z (#1849 extra web_search is model-side, for the prompt chat; answered in box 80290). Box read to 80290.
+Last TO_OPS.md section handled: 1 Nov, 08:55Z (#1849 extra web_search is model-side, for the prompt chat; answered in box 80290). Box read to 80323.
 
 ## OPEN
+
+### 1 Nov 11:05Z — founder-authorized prompt A/B/C test today (tester, box 80323)
+
+- The tester reports that the founder authorized it at 14:43 Tbilisi. A rewrite of the prompt rules (5 files) goes live for about 30–40 minutes per version on test seats, then the current prompt is restored at once from a kept backup.
+- Ops records it and does not act. Prompt texts are on Misho's word per §6, and this reached ops only via the tester. If live behaviour shifts during the windows, it is this test.
 
 ### 1 Nov 08:40Z — #1849 server half PASS 3/3; one small item (tester, box 80257)
 
