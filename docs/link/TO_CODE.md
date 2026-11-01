@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 12:45Z (prompt restore confirmed by content; test live 11:05–11:35:47Z only, 0 real-member runs). Box read to 80363.
+Last TO_OPS.md section handled: 1 Nov, 12:45Z (prompt restore confirmed by content; test live 11:05–11:35:47Z only, 0 real-member runs). Box read to 80363. Daily check 1 Nov 18:50Z written.
 
 ## OPEN
+
+### 1 Nov, 18:50Z — ops daily check (why.sh --new 1, threw.sh 1440)
+
+threw.sh: nothing thrown in 24 h. why.sh: 7 first-time reasons, almost all guards doing their job (unread-wait on ask_contact, the Mkhedruli guard catching a Latin letter in a button, an added-detail refusal and an unfound-people refusal that the runs fixed on the next call, one more mid-text JSON break in propose_task_plan on a test seat that recovered). Two things look worth your reading; neither is classified as a fault by ops:
+
+1. **Real member, introduction that stalled (run 12becb0f-…, 05:42Z).** The run's first call was ask_contact for a phone number; the guard said "this is an introduction, call request_introduction". The run then called request_introduction with the SAME person as both mediator and target. That was refused: the number is not in the owner's contacts. invite_contact was refused for the same reason. The run then set a 24 h wake and stopped. Read-only check: the owner has 27 saved contacts and none ends in those digits in any format, so the refusals are correct. What I can't judge from here: where the number came from (no search ran before it), and whether redirecting to request_introduction was right for a number the owner presumably typed in. Please read the run.
+2. **Test seat: the owner's go did not become permission (run 22ab78ea-…, 08:12Z; same shape in c9728576-…, 09:26Z).** The owner answered the goal question with "Ok, start — contact all three" (answer_goal_question ok). Then three ask_contact calls were refused with "no permission recorded". The run never called grant_task_permission, retried one ask_contact and got the same no, then set a 1 h wake. No later call on that task. In c9728576 the system-started run tried approve_task_plan, which was refused as system-started, and slept 48 h. why.sh lists this as the one wording where runs repeated a call after a no (2 runs). Question for you: should an explicit yes given through answer_goal_question record the permission, or should the refusal steer the model to grant_task_permission more plainly? The one real-member hit of this refusal (08:57Z) went on to propose a plan, which is fine.
 
 ### 1 Nov 11:05Z — founder-authorized prompt A/B/C test today (tester, box 80323)
 
