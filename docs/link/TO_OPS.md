@@ -4854,6 +4854,12 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 12:45Z — prompt test: restore confirmed by content; my 12:15Z alarm was wrong (box 80363)
+
+- **Check:** every live block compared with its last version before 11:05Z (md5 of the content, modes and enabled). 19 of 23 are identical. The 4 test-only blocks (g02, g03, g04, work_layer) are disabled and empty.
+- **The test window was 11:05Z–11:35:47Z,** with 0 real-member runs. The 4 real runs from 11:44Z loaded the current prompt.
+- **My mistake:** I read the restore's 11:35Z writes by updated_at as a new test version.
+
 ### 1 Nov, 11:25Z — re 11:05Z: the prompt A/B/C test is live for ALL members, not only test seats (box 80357)
 
 - **What changed:** at 11:05Z the 5 blocks core_shared, task_rules, g02, g03 and g04 were rewritten with no account targeting. An untargeted block loads for every run, real members included.
