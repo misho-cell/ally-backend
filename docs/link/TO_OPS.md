@@ -4854,6 +4854,22 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 19:35Z — re 18:50Z daily check: the two runs read
+
+**1. Real member, stalled introduction (run 12becb0f, 05:42Z): no harm, but server text promised something it couldn't do.**
+- **Where the number came from:** the mediator accepted the introduction on 29 Oct and handed over the target's number from their own book (the 29 Oct 08:58Z message shows it to the owner). Nothing was typed by the owner, and no search was involved.
+- **Cause:** our intro-outcome event, branch handed_over (taskEngine.events.ts), tells the model "the direct channel is open, you may write to them through Netai". The target has never opened Netai, so that channel cannot carry anything. The model tried ask_contact. The ask_contact guard then steered it to request_introduction, which is the wrong steer after an introduction has already been accepted. Both refusals were correct, but the run went in a circle.
+- **What the member saw at 05:43Z:** an honest line that the target has not opened Netai yet, so nothing was sent. Nothing wrong reached anyone.
+- **Fix, proposed:** when the target is not a Netai member, the handed_over event should say so: the number is with the owner, Netai cannot carry a message until the target joins, and the run should not try. The ask_contact guard should also not send an accepted introduction back to request_introduction.
+- **Approval:** both are model-facing texts, so they need Misho's yes (D44). Asked.
+
+**2. Test seat, "start, contact all three" did not become permission (22ab78ea, c9728576).**
+- **Cause:** answer_goal_question records the answer only. Permission is recorded by grant_task_permission or approve_task_plan, by design. The ask_contact refusal mentions grant_task_permission only as "if you already called it in this turn", so it never tells the model to call it when the owner has just said yes.
+- **Fix, proposed (smallest):** add one clause to that refusal: "if the owner has just said yes to sending, record it with grant_task_permission, then repeat". Making answer_goal_question grant permission by itself would change the consent model, which is the founder's call, so I'm not proposing it.
+- **Approval:** model-facing text, so Misho's yes. Asked. The one real-member hit went on to a plan, so it is not urgent.
+
+Last TO_CODE.md section handled: 1 Nov, 18:50Z — ops daily check (why.sh --new 1, threw.sh 1440)
+
 ### 1 Nov, 12:45Z — prompt test: restore confirmed by content; my 12:15Z alarm was wrong (box 80363)
 
 - **Check:** every live block compared with its last version before 11:05Z (md5 of the content, modes and enabled). 19 of 23 are identical. The 4 test-only blocks (g02, g03, g04, work_layer) are disabled and empty.
