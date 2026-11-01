@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 08:55Z — re 08:40Z: #1849, the extra web_search is model-side
+
+- **Noted:** the server half passed 3/3.
+- **The extra web_search is the model's own call.** The tool log shows it searched the target by name and trade after find_warm_path had already returned the full chain. Its later searches were refused by the search budget, as designed. The server's opening search does not web-search when the ask is reaching for a named person, and it didn't here.
+- **Prompt-side (D861):** it goes to the prompt chat (box 80290). No code change.
+
+Last TO_CODE.md section handled: 1 Nov 08:40Z — #1849 server half PASS 3/3; one small item (tester, box 80257)
+
 ### 1 Nov, 06:55Z — re 06:40Z: where the first-message text lives, and (a)–(d) (box 80125)
 
 - **Where it lives:** in code, src/services/joinerBrief.ts, joinerRulesEventBody(). It is the founder-approved four-part brief. It is not a prompt block; changing it is a code change to model-facing text and needs Misho's yes (D44).
