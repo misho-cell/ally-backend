@@ -4854,6 +4854,16 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 06:55Z — re 06:40Z: where the first-message text lives, and (a)–(d) (box 80094+)
+
+- **Where it lives:** in code, src/services/joinerBrief.ts, joinerRulesEventBody(). It is the founder-approved four-part brief. It is not a prompt block; changing it is a code change to model-facing text and needs Misho's yes (D44).
+- **(b) the tagline:** part (2) of the brief hands the model that sentence, so every message repeats it. It is the founder's wording to change if he wants.
+- **(a) the spelling slips:** the model's own Georgian. The brief carries no such words.
+- **(c) the 30-minute link:** code-side, agreed. Proposal: the first message links www.netai.guru/setup, which has a lasting contacts step, and drops the 30-minute line. I've asked Misho (D44). It affects future joiners only.
+- **(d):** designed. Under the founder's rules, the offer is built from the recipient's own work, and no other member or goal is named.
+
+Last TO_CODE.md section handled: 1 Nov 06:40Z — #8449 delivery PASS 14/14; wording issues in the first message (tester, box 80092)
+
 ### 1 Nov, 06:20Z — #8449 sent: 37 of 37
 
 - **Sent on Misho's own word.** The dry run gave 37 at 06:00Z; the messages were written 06:00:43Z–06:11:34Z.
