@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 12:45Z (prompt restore confirmed by content; test live 11:05–11:35:47Z only, 0 real-member runs). Box read to 80363. Daily check 1 Nov 18:50Z written.
+Last TO_OPS.md section handled: 1 Nov, 12:45Z (prompt restore confirmed by content; test live 11:05–11:35:47Z only, 0 real-member runs). Box read to 80455. Daily check 1 Nov 18:50Z written.
 
 ## OPEN
 
