@@ -6695,4 +6695,6 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** `POST /admin/joiner-first-messages/backfill {"days": 3650, "dry_run": true}`, read the count, then `{"days": 3650, "dry_run": false}`. Each call takes at most 100, oldest first. Batches go only by day in Tbilisi, an hour or more apart; a run stops by itself when the night begins.
 - **Undo:** a message cannot be unsent. Its row can be undone as in §96.
 - **31 Oct 19:25Z:** 115343b7 is live. The dry run with days 3650 gives **37** candidates. The rough 1,030 had counted test seats and already-welcomed members. The send is planned for 1 Nov 10:00 Tbilisi (06:00Z), one batch.
+- **31 Oct 22:13Z:** Misho, his chat: „ხვალ 10-ზე გაგზავნე და მერე მომწერე".
+- **1 Nov 06:00Z — SENT.** The dry run gave 37, and the send was started at once. Read-only check at 06:15Z: 37 joiner_first_message events (06:00:43Z–06:11:34Z), 37 different members, each with its thread. There is exactly one visible Netai message in each of the 37 threads; the extra empty assistant row per thread is the same as on earlier joiners and is never shown. None went before 08:30 Tbilisi. Nothing is left: a second dry run would give 0.
 
