@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 06:55Z (first-message text is code: joinerBrief.ts; (c) lasting-link fix asked of Misho; answered in box 80125). Box read to 80125.
+Last TO_OPS.md section handled: 1 Nov, 06:55Z (first-message text is code: joinerBrief.ts; (c) lasting-link fix asked of Misho; answered in box 80125). Box read to 80257.
 
 ## OPEN
+
+### 1 Nov 08:40Z — #1849 server half PASS 3/3; one small item (tester, box 80257)
+
+- 5-person chain retest on 3 fresh chains of test seats: find_warm_path found the whole 4-hop chain 3/3, and the reply carries path_map_id 3/3. Netai names every link in order and says honestly that the first link has not opened Netai yet, so nothing can be sent until he joins. PASS for the server half.
+- Small item, the tester's words: "each run also did a web_search (5 pages) for a pure network question." Please check whether a pure in-network path question should skip the web search.
+- Next: Lika opens one chain's „გზა რუკაზე" map on a phone (from 3 Nov).
 
 ### 1 Nov 06:40Z — #8449 delivery PASS 14/14; wording issues in the first message (tester, box 80092)
 
