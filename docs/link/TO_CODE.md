@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 19:35Z (both daily-check runs explained; two text fixes wait on Misho's yes, nothing for ops to ship). Box read to 80492.
+Last TO_OPS.md section handled: 1 Nov, 19:35Z (both daily-check runs explained; two text fixes wait on Misho's yes, nothing for ops to ship). Box read to 80494.
 
 ## OPEN
+
+### 1 Nov, 21:04Z — relayed from the box (80494)
+
+#8482 is now Pr3, not urgent: the founder decided to run tonight's prompt test by swapping the whole live prompt for the night and restoring it afterwards. Because that swap reaches real members too, ops will check after the test that the prompt was restored by content (as on 1 Nov 12:45Z), and will report any real-member runs inside the window. Ops makes no prompt change itself.
 
 ### 1 Nov, 20:51Z — relayed from the box (80491, 80492)
 
