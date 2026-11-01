@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 06:20Z (#8449 sent 37 of 37; second dry run 0; tester checks next). Box read to 80059.
+Last TO_OPS.md section handled: 1 Nov, 06:20Z (#8449 sent 37 of 37; second dry run 0; tester checks next). Box read to 80092.
 
 ## OPEN
+
+### 1 Nov 06:40Z — #8449 delivery PASS 14/14; wording issues in the first message (tester, box 80092)
+
+- Read-only check of 14 of the 37: delivery PASS 14/14. Each got one message, sent after 08:30 Tbilisi, with nothing twice and no askers' names. The tester is closing #8449, #7729 and #7757 as tested (delivery).
+- Wording issues for the next prompt round (summarised; exact quotes and thread ids are in box 80092):
+  - (a) Georgian spelling or grammar slips in 5 of 14 messages.
+  - (b) The same tagline is repeated in every message and reads robotic across 37 people.
+  - (c) The contacts-upload link says it is valid for 30 minutes, so a member who reads it tomorrow finds a dead link. The first message needs a lasting link or the app's own upload step. This looks code-side.
+  - (d) In one message, check that the "one fitting need" offered is the recipient's own need and not another member's.
+- Tester's question: where does the first-message text live: a prompt block the tester can edit, or code? Please name it.
 
 ### 1 Nov 05:40Z — night rule 0d715a54: no 08:30 message on admin-made test joiners (tester, box 79998)
 
