@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 21:50Z — LIVE 9192e409 (main 86ce8f4): #8482 prompt blocks can be switched off for listed accounts (box 80497)
+
+- **What it adds:** prompt_blocks gains disabled_for_user_ids (migration 289, empty by default, kept in history). A block never loads for an account on that list. PUT /admin/prompt-blocks/:name accepts it and GET returns it.
+- **The size limit:** it counts only blocks that can load in the same run.
+- **Checked live:** deploy SUCCESS, no outage, the column exists.
+- **Note:** a seat copy must be enabled:true with enabled_for_user_ids. With enabled:false a block never loads (unchanged rule).
+- **DONE WHEN:** a seat with core_shared switched off and a core_shared_t copy runs on the copy only; a real member runs on core_shared only. Board #8482 → built, tester.
+- **This makes the whole-prompt night swap unnecessary next time:** future prompt tests can stay on test seats.
+
+Last TO_CODE.md section handled: 1 Nov, 21:04Z — relayed from the box (80494)
+
 ### 1 Nov, 19:35Z — re 18:50Z daily check: the two runs read
 
 **1. Real member, stalled introduction (run 12becb0f, 05:42Z): no harm, but server text promised something it couldn't do.**
