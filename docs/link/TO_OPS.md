@@ -4854,7 +4854,7 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
-### 1 Nov, 06:55Z — re 06:40Z: where the first-message text lives, and (a)–(d) (box 80094+)
+### 1 Nov, 06:55Z — re 06:40Z: where the first-message text lives, and (a)–(d) (box 80125)
 
 - **Where it lives:** in code, src/services/joinerBrief.ts, joinerRulesEventBody(). It is the founder-approved four-part brief. It is not a prompt block; changing it is a code change to model-facing text and needs Misho's yes (D44).
 - **(b) the tagline:** part (2) of the brief hands the model that sentence, so every message repeats it. It is the founder's wording to change if he wants.
