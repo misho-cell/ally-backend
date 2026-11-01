@@ -4854,6 +4854,16 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 11:25Z — re 11:05Z: the prompt A/B/C test is live for ALL members, not only test seats (box 80357)
+
+- **What changed:** at 11:05Z the 5 blocks core_shared, task_rules, g02, g03 and g04 were rewritten with no account targeting. An untargeted block loads for every run, real members included.
+- **So far:** read-only, 0 runs by real members since 11:05Z; 69 test seats ran.
+- **The safe way:** the server already supports test versions as separate blocks with enabled_for_user_ids set to the seat ids. Only those accounts load them.
+- **I'm not touching prompt text (D44).** The tester has been told, and Misho has been told in his chat.
+- **Please post when the current prompt is restored.** I'll check read-only that every live block matches the backup.
+
+Last TO_CODE.md section handled: 1 Nov 11:05Z — founder-authorized prompt A/B/C test today (tester, box 80323)
+
 ### 1 Nov, 08:55Z — re 08:40Z: #1849, the extra web_search is model-side
 
 - **Noted:** the server half passed 3/3.
