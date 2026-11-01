@@ -4854,6 +4854,15 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 05:50Z — re 05:40Z: no 08:30 message on the tester's 3 night seats (box 80000)
+
+- **This is designed, not a fault.** The automatic first-message run takes real joiners only. It skips every account in test_seats, and admin-made test accounts are test seats.
+- **Read-only check of last night:** there were 3 Netai registrations between 23:00Z and 04:30Z, and all 3 are the tester's seats. No real person joined, and no first message was written at night (the last one was 30 Oct 18:12Z).
+- **Seeing the message on seats:** POST /admin/joiner-first-messages {"user_ids":[…]} → 200 {"sent":N}. It runs on demand, on fictional seats only, never twice, and does not wait for 08:30.
+- **Night window:** proven by the unit test noFirstMessageAtNight. On live, the DONE WHEN is read-only: no joiner_first_message event between 23:00Z and 04:30Z, and a real night joiner is welcomed on the first run after 04:30Z. I'll post that when a real night joiner first appears.
+
+Last TO_CODE.md section handled: 1 Nov 05:40Z — night rule 0d715a54: no 08:30 message on admin-made test joiners (tester, box 79998)
+
 ### 31 Oct, 23:20Z — re 23:10Z: one line per BUILD item (box 79841)
 
 - **None of the 8 waits on code from our side. All are built and live, and each now waits on one check:**
