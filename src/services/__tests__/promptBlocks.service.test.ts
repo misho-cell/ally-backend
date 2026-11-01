@@ -6,6 +6,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { query, withTransaction } from '../../db/postgres/client';
 import {
+  blocksLoadTogether,
   composeBlocksForMode,
   upsertPromptBlock,
   deletePromptBlock,
@@ -34,6 +35,7 @@ function block(over: Partial<PromptBlock>): PromptBlock {
     sort_order: 100,
     enabled: true,
     enabled_for_user_ids: [],
+    disabled_for_user_ids: [],
     updated_at: 'now',
     ...over,
   };
@@ -133,6 +135,7 @@ describe('upsertPromptBlock', () => {
       true,
       [501],
       'claude',
+      [],
     ]);
     const history = txQueries.find((q) => q.sql.includes('INSERT INTO prompt_block_history'));
     expect(history?.params?.[1]).toBe('create');
@@ -145,7 +148,7 @@ describe('upsertPromptBlock', () => {
     await upsertPromptBlock('tone', { enabled: false });
 
     const upsert = txQueries.find((q) => q.sql.includes('ON CONFLICT (name) DO UPDATE'));
-    expect(upsert?.params).toEqual(['tone', 'KEEP', ['task_step'], 7, false, [], 'claude']);
+    expect(upsert?.params).toEqual(['tone', 'KEEP', ['task_step'], 7, false, [], 'claude', []]);
     const history = txQueries.find((q) => q.sql.includes('INSERT INTO prompt_block_history'));
     expect(history?.params?.[1]).toBe('update');
   });
@@ -482,5 +485,66 @@ describe('a block says which model reads it', () => {
     const gpt = computeModeTotals(blocks, PromptModel.Gpt).find((m) => m.mode === 'quick_answer');
     expect(claude?.enabled_chars).toBe(4);
     expect(gpt?.enabled_chars).toBe(2);
+  });
+});
+
+describe('a live block switched off for test seats (#8482)', () => {
+  it('never loads a block for an account on its off-list', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    await composeBlocksForMode('task_step', '777');
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain('NOT ($2::int = ANY(disabled_for_user_ids))');
+  });
+
+  it('stores and keeps the off-list, and refuses a bad id', async () => {
+    stubCatalog(block({ name: 'core_shared', content: 'LIVE', modes: ['task_step'] }), []);
+
+    await upsertPromptBlock('core_shared', { disabled_for_user_ids: [777] });
+
+    const upsert = txQueries.find((q) => q.sql.includes('ON CONFLICT (name) DO UPDATE'));
+    expect(upsert?.params?.[7]).toEqual([777]);
+    expect(upsert?.params?.[4]).toBe(true);
+    const history = txQueries.find((q) => q.sql.includes('INSERT INTO prompt_block_history'));
+    expect(history?.params?.[8]).toEqual([777]);
+    await expect(upsertPromptBlock('core_shared', { disabled_for_user_ids: [-1] })).rejects.toThrow(
+      'disabled_for_user_ids must be positive integers',
+    );
+  });
+
+  it('a seat copy and the live block switched off for that seat never meet', () => {
+    const live = block({ name: 'core_shared', disabled_for_user_ids: [777] });
+    const copy = block({ name: 'core_shared_t', enabled_for_user_ids: [777] });
+    const other = block({ name: 'task_rules' });
+
+    expect(blocksLoadTogether(live, copy)).toBe(false);
+    expect(blocksLoadTogether(copy, other)).toBe(true);
+    expect(blocksLoadTogether(live, other)).toBe(true);
+    expect(blocksLoadTogether(copy, block({ name: 'x_t', enabled_for_user_ids: [778] }))).toBe(
+      false,
+    );
+  });
+
+  it('a seat copy does not count against the live block it replaces', async () => {
+    const [{ budget_chars: budget }] = computeModeTotals([]);
+    const copyChars = 20_000;
+    const liveChars = budget - copyChars + 1_000;
+    stubCatalog(null, [
+      block({
+        name: 'core_shared',
+        content: 'z'.repeat(liveChars),
+        modes: ['quick_answer'],
+        disabled_for_user_ids: [777],
+      }),
+    ]);
+
+    await expect(
+      upsertPromptBlock('core_shared_t', {
+        content: 'y'.repeat(copyChars),
+        modes: ['quick_answer'],
+        enabled_for_user_ids: [777],
+      }),
+    ).resolves.toBeDefined();
   });
 });
