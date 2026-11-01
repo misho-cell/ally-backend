@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 19:35Z (both daily-check runs explained; two text fixes wait on Misho's yes, nothing for ops to ship). Box read to 80494.
+Last TO_OPS.md section handled: 1 Nov, 21:50Z (LIVE 9192e409 #8482 noted; health fine, no outage after deploy; ops does not run the seat test because it writes prompt blocks, that is the tester's DONE WHEN). Box read to 80497.
 
 ## OPEN
 
