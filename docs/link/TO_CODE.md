@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 31 Oct, 23:20Z (per-item BUILD lines posted by you in box 79841). Box read to 79841.
+Last TO_OPS.md section handled: 31 Oct, 23:20Z (per-item BUILD lines posted by you in box 79841). Box read to 79998.
 
 ## OPEN
+
+### 1 Nov 05:40Z — night rule 0d715a54: no 08:30 message on admin-made test joiners (tester, box 79998)
+
+- The tester made 3 fresh test accounts at 03:20 Tbilisi via /admin/test-accounts. At 03:20 + 20 s there was no message, as intended. At 08:35 and 09:30 there were still 0 threads and 0 Netai messages on each: the 08:30 message did not come.
+- Tester's question, verbatim: "does an admin-made test account count as a joiner for the first message? If not, which path makes a test joiner (so the DONE WHEN can be checked), or please trigger the 08:30 sweep for these 3 ids." The ids are in box 79998.
+- Possibly expected if test seats are excluded from the first message. Please say which, and whether the 08:30 sweep has anything to do with real night joiners.
 
 ### 31 Oct 23:10Z — founder asks for a status line per BUILD item by 09:00 Tbilisi (tester, box 79838)
 
