@@ -171,7 +171,7 @@ describe('the first message on fictional seats, for the tester (plate v538)', ()
       missing_step: 'contacts',
     });
     const told = String(mockChat.mock.calls[0][2]);
-    expect(told).toContain('get_contacts_upload_link');
+    expect(told).toContain('https://www.netai.guru/setup');
     expect(told).not.toContain('get_invite_link');
   });
 });

@@ -1,5 +1,4 @@
 import { FactAboutMe } from './factsAboutMe.service';
-import { LINK_MINUTES } from './contactUploadLinks.service';
 import { SetupStep } from './setupState.service';
 
 /**
@@ -22,7 +21,6 @@ import { SetupStep } from './setupState.service';
 export const JOINER_FIRST_MESSAGE_EVENT = 'joiner_first_message';
 const APP_URL = 'https://www.netai.guru';
 const SETUP_URL = `${APP_URL}/setup`;
-const CONTACTS_LINK_TOOL = 'get_contacts_upload_link';
 
 /** The joiner's own fact fields that say what they do now. */
 const WORK_FACT_FIELDS: readonly string[] = ['occupation', 'employer', 'headline', 'other_role'];
@@ -71,11 +69,11 @@ function workPart(workFact: string | null): string {
 function stepPart(step: SetupStep | null): string {
   switch (step) {
     case SetupStep.Contacts:
+      // Tester 80092 (c): the first message is often read days later, so it
+      // carries the setup page's lasting contacts step, never a 30-minute link.
       return (
-        `(4) კონტაქტები ჯერ არ აქვს ატვირთული: ${CONTACTS_LINK_TOOL}-ით აიღე ბმული, ჩასვი და ` +
-        'ერთი წინადადებით უთხარი, რას მისცემს — ვნახავ, ვის იცნობს იმ ადამიანებთან ახლოს. ' +
-        // Tester 78972: „30 წუთში ძალაშია" read as „valid in 30 minutes".
-        `ბმულის ვადა ასე თქვი: „${LINK_MINUTES} წუთი მოქმედებს".`
+        `(4) კონტაქტები ჯერ არ აქვს ატვირთული: ჩასვი ბმული ${SETUP_URL} და ერთი წინადადებით ` +
+        'უთხარი, რას მისცემს — ვნახავ, ვის იცნობს იმ ადამიანებთან ახლოს. ბმულის ვადა არ ახსენო.'
       );
     case SetupStep.Notifications:
       return (

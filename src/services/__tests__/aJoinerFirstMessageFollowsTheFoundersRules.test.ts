@@ -58,10 +58,16 @@ describe('the one missing step', () => {
 
   it('comes with its link', () => {
     const contacts = joinerRulesEventBody({ workFact: null, missingStep: SetupStep.Contacts });
-    expect(contacts).toContain('get_contacts_upload_link');
+    expect(contacts).toContain('https://www.netai.guru/setup');
     const push = joinerRulesEventBody({ workFact: null, missingStep: SetupStep.Notifications });
     expect(push).toContain('https://www.netai.guru/setup');
     expect(push).not.toContain('get_contacts_upload_link');
+  });
+
+  it('never hands a joiner a link that dies before they read it (tester 80092 c)', () => {
+    const contacts = joinerRulesEventBody({ workFact: null, missingStep: SetupStep.Contacts });
+    expect(contacts).not.toContain('get_contacts_upload_link');
+    expect(contacts).not.toContain('წუთი მოქმედებს');
   });
 });
 
