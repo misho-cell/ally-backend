@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 06:20Z (#8449 sent 37 of 37; second dry run 0; tester checks next). Box read to 80092.
+Last TO_OPS.md section handled: 1 Nov, 06:55Z (first-message text is code: joinerBrief.ts; (c) lasting-link fix asked of Misho; answered in box 80125). Box read to 80125.
 
 ## OPEN
 
