@@ -165,6 +165,8 @@ export interface PromptBlock {
   sort_order: number;
   enabled: boolean;
   enabled_for_user_ids: number[];
+  /** #8482: accounts this block never loads for, even when enabled for everyone. */
+  disabled_for_user_ids: number[];
   updated_at: string;
 }
 
@@ -175,6 +177,7 @@ export interface PromptBlockInput {
   sort_order?: number;
   enabled?: boolean;
   enabled_for_user_ids?: number[];
+  disabled_for_user_ids?: number[];
 }
 
 export interface PromptBlockHistoryEntry extends Omit<PromptBlock, 'updated_at'> {
@@ -211,7 +214,7 @@ export function isValidBlockName(name: string): boolean {
   return BLOCK_NAME_RE.test(name);
 }
 
-const BLOCK_COLUMNS = `name, model, content, modes, sort_order, enabled, enabled_for_user_ids, updated_at`;
+const BLOCK_COLUMNS = `name, model, content, modes, sort_order, enabled, enabled_for_user_ids, disabled_for_user_ids, updated_at`;
 
 /**
  * 958 (small talk 8 s, run 1fde7bef): the GPT writer could not start until its
@@ -264,6 +267,7 @@ async function readComposedBlocks(
          AND model = $3
          AND $1 = ANY(modes)
          AND (cardinality(enabled_for_user_ids) = 0 OR $2::int = ANY(enabled_for_user_ids))
+         AND NOT ($2::int = ANY(disabled_for_user_ids))
        ORDER BY sort_order ASC, name ASC`,
       [mode, userId, model],
       BLOCK_QUERY_TIMEOUT_MS,
@@ -362,6 +366,35 @@ function validateInput(input: PromptBlockInput): void {
   ) {
     throw new PromptBlockValidationError('enabled_for_user_ids must be positive integers');
   }
+  if (
+    input.disabled_for_user_ids !== undefined &&
+    input.disabled_for_user_ids.some((id) => !Number.isInteger(id) || id < 1)
+  ) {
+    throw new PromptBlockValidationError('disabled_for_user_ids must be positive integers');
+  }
+}
+
+/** The accounts a targeted block loads for: its list, less the ones it is off for. */
+function targetedAudience(block: PromptBlock): number[] {
+  return block.enabled_for_user_ids.filter((id) => !block.disabled_for_user_ids.includes(id));
+}
+
+/**
+ * #8482: whether two blocks can ever load in the same run. A block for
+ * everyone loads for anyone not on its off-list; a targeted block only for
+ * its list. A test copy for one seat and a live block switched off for that
+ * seat never meet, so the copy does not count against the live block's budget.
+ */
+export function blocksLoadTogether(a: PromptBlock, b: PromptBlock): boolean {
+  const aTargeted = a.enabled_for_user_ids.length > 0;
+  const bTargeted = b.enabled_for_user_ids.length > 0;
+  if (!aTargeted && !bTargeted) return true;
+  if (aTargeted && bTargeted) {
+    const bAudience = targetedAudience(b);
+    return targetedAudience(a).some((id) => bAudience.includes(id));
+  }
+  const [targeted, forEveryone] = aTargeted ? [a, b] : [b, a];
+  return targetedAudience(targeted).some((id) => !forEveryone.disabled_for_user_ids.includes(id));
 }
 
 /**
@@ -373,7 +406,11 @@ async function assertModeBudgets(merged: PromptBlock): Promise<void> {
   if (!merged.enabled || merged.modes.length === 0) return;
   // Each model's blocks ride only that model's calls, so each has its own budget.
   const others = (await listPromptBlocks()).filter(
-    (b) => b.name !== merged.name && b.enabled && (b.model ?? PromptModel.Claude) === merged.model,
+    (b) =>
+      b.name !== merged.name &&
+      b.enabled &&
+      (b.model ?? PromptModel.Claude) === merged.model &&
+      blocksLoadTogether(merged, b),
   );
   for (const mode of merged.modes) {
     const otherChars = others
@@ -395,8 +432,9 @@ async function assertModeBudgets(merged: PromptBlock): Promise<void> {
 }
 
 const HISTORY_INSERT = `INSERT INTO prompt_block_history
-   (block_name, action, content, modes, sort_order, enabled, enabled_for_user_ids, model)
-   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+   (block_name, action, content, modes, sort_order, enabled, enabled_for_user_ids, model,
+    disabled_for_user_ids)
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`;
 const HISTORY_TRIM = `DELETE FROM prompt_block_history
    WHERE block_name = $1 AND id NOT IN (
      SELECT id FROM prompt_block_history
@@ -427,17 +465,19 @@ export async function upsertPromptBlock(
     sort_order: input.sort_order ?? existing?.sort_order ?? 100,
     enabled: input.enabled ?? existing?.enabled ?? true,
     enabled_for_user_ids: input.enabled_for_user_ids ?? existing?.enabled_for_user_ids ?? [],
+    disabled_for_user_ids: input.disabled_for_user_ids ?? existing?.disabled_for_user_ids ?? [],
     updated_at: '',
   };
   await assertModeBudgets(merged);
 
   const stored = await withTransaction(async (client) => {
     const saved = await client.query<PromptBlock>(
-      `INSERT INTO prompt_blocks (name, content, modes, sort_order, enabled, enabled_for_user_ids, model)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO prompt_blocks
+         (name, content, modes, sort_order, enabled, enabled_for_user_ids, model, disabled_for_user_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (name) DO UPDATE SET
          content = $2, modes = $3, sort_order = $4, enabled = $5,
-         enabled_for_user_ids = $6, model = $7, updated_at = NOW()
+         enabled_for_user_ids = $6, model = $7, disabled_for_user_ids = $8, updated_at = NOW()
        RETURNING ${BLOCK_COLUMNS}`,
       [
         name,
@@ -447,6 +487,7 @@ export async function upsertPromptBlock(
         merged.enabled,
         merged.enabled_for_user_ids,
         merged.model,
+        merged.disabled_for_user_ids,
       ],
     );
     await client.query(HISTORY_INSERT, [
@@ -458,6 +499,7 @@ export async function upsertPromptBlock(
       merged.enabled,
       merged.enabled_for_user_ids,
       merged.model,
+      merged.disabled_for_user_ids,
     ]);
     await client.query(HISTORY_TRIM, [name]);
     return saved.rows[0];
@@ -480,6 +522,7 @@ export async function deletePromptBlock(name: string): Promise<boolean> {
       existing.enabled,
       existing.enabled_for_user_ids,
       existing.model,
+      existing.disabled_for_user_ids,
     ]);
     await client.query(HISTORY_TRIM, [name]);
     await client.query(`DELETE FROM prompt_blocks WHERE name = $1`, [name]);
@@ -491,7 +534,7 @@ export async function deletePromptBlock(name: string): Promise<boolean> {
 export async function getPromptBlockHistory(name: string): Promise<PromptBlockHistoryEntry[]> {
   const result = await query<PromptBlockHistoryEntry>(
     `SELECT id, block_name AS name, model, action, content, modes, sort_order, enabled,
-            enabled_for_user_ids, changed_at
+            enabled_for_user_ids, disabled_for_user_ids, changed_at
      FROM prompt_block_history
      WHERE block_name = $1
      ORDER BY id DESC

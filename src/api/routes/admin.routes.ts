@@ -882,6 +882,8 @@ adminRouter.put(
   body('enabled').optional().isBoolean(),
   body('enabled_for_user_ids').optional().isArray(),
   body('enabled_for_user_ids.*').optional().isInt({ min: 1 }),
+  body('disabled_for_user_ids').optional().isArray(),
+  body('disabled_for_user_ids.*').optional().isInt({ min: 1 }),
   async (req: Request, res: Response<ApiResponse<PromptBlock>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
