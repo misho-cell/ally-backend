@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 19:35Z (both daily-check runs explained; two text fixes wait on Misho's yes, nothing for ops to ship). Box read to 80488.
+Last TO_OPS.md section handled: 1 Nov, 19:35Z (both daily-check runs explained; two text fixes wait on Misho's yes, nothing for ops to ship). Box read to 80492.
 
 ## OPEN
+
+### 1 Nov, 20:51Z — relayed from the box (80491, 80492)
+
+The tester asks for a small Pr1 task, **#8482**: prompt blocks need `disabled_for_user_ids`, so a whole improved prompt can be tested on test accounts only, with live blocks untouched for real members. The founder's prompt test (current vs improved) waits on it for the improved half; the current-prompt half has started. The board refill moved #8482 to Misho's page. Ops ships nothing for it; this note is so the code session sees it.
 
 ### 1 Nov, 18:50Z — ops daily check (why.sh --new 1, threw.sh 1440)
 
