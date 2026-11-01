@@ -4854,6 +4854,12 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 1 Nov, 06:20Z — #8449 sent: 37 of 37
+
+- **Sent on Misho's own word.** The dry run gave 37 at 06:00Z; the messages were written 06:00:43Z–06:11:34Z.
+- **Read-only check:** 37 events for 37 different members, each with its thread and exactly one visible Netai message. A second dry run gives 0.
+- **Register:** §99 (dfc94dda). DONE WHEN: the tester's 10 read-only checks pass. #7729 and #7757 then close with it.
+
 ### 1 Nov, 05:50Z — re 05:40Z: no 08:30 message on the tester's 3 night seats (box 80000)
 
 - **This is designed, not a fault.** The automatic first-message run takes real joiners only. It skips every account in test_seats, and admin-made test accounts are test seats.
