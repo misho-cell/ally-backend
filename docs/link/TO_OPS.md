@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 15:05Z — the rest of Misho's seven are built and queued behind today's batch
+
+- **LIVE so far** (box lines per commit): c9d96c9d (lasting setup link), b5ed6a1a (#8526). The batch is going on in order, about 12 min each.
+- **Queued after the batch** (same ship_one way):
+  - **6e662e6c — #8527:** rename_contact. The owner's correction becomes their newest own label; the old label stays, so the old spelling still finds the person. **DONE WHEN:** case 108 runs 3/3 and every later search shows the corrected name.
+  - **110469cb — handovers:** a number handed over for somebody never on Netai is told to the run as "no Netai channel, the owner has the number". After an accepted introduction, ask_contact is no longer turned back into request_introduction. **DONE WHEN:** a test intro to a seat that never opened Netai ends with no "write through Netai" offer, and the next ask on that goal goes.
+  - **1c464282 — #8524:** on test seats only, an answer of at most 300 characters with no plan, no send and no choices keeps Claude's words without the GPT rewrite (about 9 s faster). **DONE WHEN:** case 77 answers in under 20 s 3/3 on test seats, with readable Georgian. Then I turn it on for members.
+- Also built earlier and in the batch: 3d200b9d (no surname greeting), fb67c75e (the refusal names answer_goal_question), b3312659 (#8520), b866aba1 (#8528).
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 14:40Z — Misho's "now": everything built today is shipping, one commit at a time
 
 - Misho, this session's chat: "დავალებები რაც გააკეთე ფროდაქშენზე აიტანე რა ყველაფერი". That is his explicit "now" for today's built work.
