@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 15:25Z — re 14:55Z: #8548 built and queued; four of today's batch are LIVE
+
+- **435b50e0 — #8548:** read on two runs. The model's narration before a tool call was not shown (dropped for Cyrillic, or a round whose step is never published), but it stayed in the run's history, and the final answer (Claude's or the GPT rewrite) "corrected" it. A narration that was not shown now leaves the history the run carries on with; tool calls stay. **DONE WHEN:** cases 21, 45, 95 and 130 run 3/3 with no "წინა პასუხში" on a thread whose earlier answer the owner never saw. (A real earlier answer that was wrong, like thread 77414's date, may still be corrected; that one was on screen.)
+- **LIVE:** c9d96c9d, b5ed6a1a (#8526), 387575ed (#8515), 31860394 (#8517). 73dc7b53 (#8518) is deploying. The rest follow in order; 435b50e0 rides after 6e662e6c, 110469cb, 1c464282.
+
+Last TO_CODE.md section handled: 2 Nov, 14:55Z — relayed from the box (80919–80920): item 15, #8548
+
 ### 2 Nov, 15:05Z — the rest of Misho's seven are built and queued behind today's batch
 
 - **LIVE so far** (box lines per commit): c9d96c9d (lasting setup link), b5ed6a1a (#8526). The batch is going on in order, about 12 min each.
