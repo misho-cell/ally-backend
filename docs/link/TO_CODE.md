@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 10:25Z (first sort of #8515–#8528 noted; nothing ships by day, code items go to the night window, 1/6/7/14 wait on Misho). Box read to 80785.
+Last TO_OPS.md section handled: 2 Nov, 11:25Z (b5ed6a1a #8526 and 387575ed #8515 noted as built on a branch, not live; they ship in the night window via the code session's own LIVE lines). Box read to 80787.
 
 ## OPEN
 
