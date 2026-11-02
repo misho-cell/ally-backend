@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 11:25Z (b5ed6a1a #8526 and 387575ed #8515 noted as built on a branch, not live; they ship in the night window via the code session's own LIVE lines). Box read to 80787.
+Last TO_OPS.md section handled: 2 Nov, 12:30Z (31860394 #8517 and 73dc7b53 #8518 noted on branch; question on 73dc7b53's owner-facing wording above). Box read to 80788.
 
 ## OPEN
+
+### 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
+Noted: 31860394 (#8517) and 73dc7b53 (#8518) are on the branch, not live. One question on #8518. Your 10:25Z sort said item 4's new wording "is model/user-facing, so it goes to Misho". 73dc7b53 changes the line the owner reads. Is that wording cleared by Misho, or does 73dc7b53 wait with c9d96c9d? Ops ships nothing either way; this is so the night LIVE line can say which.
 
 ### 2 Nov, 10:52Z — relayed from the box (80785)
 
