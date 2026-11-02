@@ -1,3 +1,4 @@
+import { closingQuestion, offersToContact } from './goalIntent';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -20,7 +21,7 @@ export const ASSISTANTS_SENT_LINE: Readonly<
 const SENTENCE_RE = /[^.!?…\n]+[.!?…]*\s*|\n+/gu;
 const TRAILING_SPACE_RE = /\s*$/u;
 const SEND_VERB_RE: Readonly<Partial<Record<RunLanguage, RegExp>>> = {
-  ka: /მივწერე|მივწერ|ვწერ|ვკითხე|ვეკითხები|გავუგზავნე|ვუგზავნი|მივმართე/u,
+  ka: /მივწერე|მივწერ|ვწერ|ვკითხე|ვეკითხები|გავუგზავნე|ვუგზავნი|მივმართე|გადავეცი/u,
   en: /\b(?:wrote|writing|written|asked|sent|messaged|reached out)\b/iu,
 };
 const NAMES_AN_ASSISTANT_RE = /ასისტენტ|assistant/iu;
@@ -97,4 +98,27 @@ function saysItWroteToTheirAssistants(
       stems.some((stem) => stem !== '' && lower.includes(stem))
     );
   });
+}
+
+/**
+ * #8516 (the tester's 80752 item 2, cases 93, 94, 97): the question went in this
+ * run, and the reply still closed on „გავუგზავნო?". The owner read it as nothing
+ * having happened and said yes again. A closing offer to send, when the run has
+ * already sent, goes — when it names nobody or someone already asked. An offer
+ * to write to somebody else („ნინოსაც ვკითხო?") is a real next step and stays.
+ */
+const BARE_OFFER_MAX_WORDS = 3;
+
+export function withoutOfferToSendAgain(reply: string, askedNames: readonly string[]): string {
+  const question = closingQuestion(reply);
+  if (question === '' || !offersToContact(question)) return reply;
+  const lower = question.toLowerCase();
+  const namesAsked = askedNames.map(nameStem).some((stem) => stem !== '' && lower.includes(stem));
+  const bare = question.split(/\s+/u).filter(Boolean).length <= BARE_OFFER_MAX_WORDS;
+  if (!namesAsked && !bare) return reply;
+  const kept = reply
+    .trim()
+    .slice(0, reply.trim().length - question.length)
+    .trim();
+  return kept === '' ? reply : kept;
 }

@@ -725,7 +725,7 @@ import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
-import { withAssistantsSentLine } from './assistantsSentLine';
+import { withAssistantsSentLine, withoutOfferToSendAgain } from './assistantsSentLine';
 import { georgianNamesFor, georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
 import { asksWhyAboutNamed, isShortWhy, whyAnswer } from './whyThisPersonCut';
 
@@ -18770,6 +18770,7 @@ export async function processChat(
     const shownNames =
       language === 'ka' ? await georgianNamesFor(userId, askedOne) : new Map<string, string>();
     effectiveFinal = withAssistantsSentLine(effectiveFinal, askedOne, language, shownNames);
+    effectiveFinal = withoutOfferToSendAgain(effectiveFinal, askedOne);
   }
   // D796 / D800, #6074: a file ask (Excel, Word, Markdown) answered with a list says where the file is.
   if (askedFileFormat(userMessage) !== null && tableFromMessage(effectiveFinal) === null) {

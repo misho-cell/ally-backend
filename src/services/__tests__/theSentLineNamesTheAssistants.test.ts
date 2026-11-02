@@ -1,4 +1,4 @@
-import { withAssistantsSentLine } from '../assistantsSentLine';
+import { withAssistantsSentLine, withoutOfferToSendAgain } from '../assistantsSentLine';
 
 describe('#5149: after a send the owner reads the agreed line (tester 58910, 58911)', () => {
   it('puts the line in place of „I wrote to Giorgi", keeping what follows', () => {
@@ -54,6 +54,37 @@ describe('#5149: after a send the owner reads the agreed line (tester 58910, 589
 
     expect(withAssistantsSentLine(plan, ['ბესო ორთოიძე'], 'ka')).toBe(
       `${plan}\n\nახლა ვწერ ასისტენტებს: ბესო ორთოიძე.`,
+    );
+  });
+});
+
+/** #8516 (the tester's 80752 item 2, cases 93, 94, 97): no „shall I send?" after a send. */
+describe('a closing offer to send, after the run sent', () => {
+  const REPLY =
+    'გია კაპანაძის ასისტენტს გადავეცი, რომ ივნისისთვის ფოტოგრაფი გჭირდება.\n\n' +
+    'ახლა ვწერ ასისტენტებს: გია კაპანაძე.\n\nგავუგზავნო?';
+
+  it('goes when it names nobody', () => {
+    expect(withoutOfferToSendAgain(REPLY, ['გია კაპანაძე'])).toBe(
+      'გია კაპანაძის ასისტენტს გადავეცი, რომ ივნისისთვის ფოტოგრაფი გჭირდება.\n\n' +
+        'ახლა ვწერ ასისტენტებს: გია კაპანაძე.',
+    );
+  });
+
+  it('goes when it names the person already asked', () => {
+    expect(
+      withoutOfferToSendAgain('გადავეცი.\n\nგია კაპანაძის ასისტენტს მივწერო?', ['გია კაპანაძე']),
+    ).toBe('გადავეცი.');
+  });
+
+  it('stays when it offers to write to somebody else', () => {
+    const other = 'გადავეცი.\n\nნინო ბერიძის ასისტენტსაც ვკითხო, ხომ არ იცის ფოტოგრაფი?';
+    expect(withoutOfferToSendAgain(other, ['გია კაპანაძე'])).toBe(other);
+  });
+
+  it('leaves a reply with no closing offer as it is', () => {
+    expect(withoutOfferToSendAgain('გადავეცი, პასუხს მოგწერ.', ['გია'])).toBe(
+      'გადავეცი, პასუხს მოგწერ.',
     );
   });
 });
