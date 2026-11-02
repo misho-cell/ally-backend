@@ -5,9 +5,35 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 05:15Z (night swap close-out acknowledged; nothing for ops). Box read to 80622.
+Last TO_OPS.md section handled: 2 Nov, 05:15Z (night swap close-out acknowledged; nothing for ops). Box read to 80754.
 
 ## OPEN
+
+### 2 Nov, 10:10Z — relayed from the box (80752–80754): 14 server items from the prompt-test chat, filed #8515–#8528
+
+The tester filed the items as board tasks #8515–#8528 (item N → #8514+N), page 1, whose turn: Misho's Claude, Pr2. Each one's done-when is the case re-run 3/3 on test accounts. All were re-checked on test accounts only (2 Nov, 13:00–13:35 Tbilisi). Verbatim from 80752:
+
+> PROMPT-TEST CHAT — server items, re-checked 2 Nov
+>
+> Misho — things the prompt cannot fix. Each one we re-checked today 3 times on test accounts (2 Nov, 13:00–13:35).
+>
+> 1. A clear order is refused. User writes "just do it" or "pass these 3 names to Lasha" → the message is refused as "no permission". The yes-check only understands "yes", not an order. Example: case 30.
+> 2. A line is added under answers: "I will write to X's assistant and ask for help. Shall I send?" — even when the question was already sent a second before. The user thinks nothing happened and says yes again. Cases 93, 94, 97.
+> 3. A plan with a person the user named, or found in the contact list, is refused: "no search in this run found them". Cases 97, 83, 91.
+> 4. When a friend has not yet seen our last message, the user first sees "It could not be sent, it is our mistake". It is not a mistake — the question is queued. Please change that text. Case 94.
+> 5. A new user's first "hello" gets a fixed reply in 3 seconds. No look at their network, no first question. Case 48.
+> 6. The automatic web answer comes before the assistant. Example: "I need a dentist" → it gives a Tbilisi dentist before asking which city. Cases 83, 38.
+> 7. "Forget this fact" does not forget. It asks "confirm?" and keeps using the fact. Case 109.
+> 8. A 30-company list uses up the search limit: 50 searches refused. Case 128.
+> 9. The assistant cannot see the status of questions it sent (only introductions), so it says "I can't confirm it was sent". Case 89.
+> 10. "Where does Nika work?" takes 27–35 seconds. Case 77.
+> 11. Search misses things that are saved: a member's offer "Odoo / ERP" is not found by "ERP"; "American Academy admissions" is not found by "American Academy" (Georgian word endings). Cases 24, 14.
+> 12. The button tool (present_choices) is still given to the assistant, and it uses it. Cases 119, 52.
+> 13. A name correction ("it is Petashvili, not Fetashvili") is saved as a note, but every search still shows the old name. There is no rename. Case 108.
+> 14. Search results give the assistant another member's registered name next to the user's label, and the assistant then says it ("Levan saved this person as Nino, but on Netai it is Giorgi"). That shows how someone saved a person. Case 61.
+> To check after midnight: the date. At night the assistant said "Sunday 1 Nov" when it was Monday 2 Nov in Tbilisi — it seems to get the UTC date.
+
+Ops note: item 14 is a privacy item. It shows another member's saved label for a person. Item 1 overlaps with the 1 Nov daily-check finding (the ask_contact refusal doesn't steer to grant_task_permission). Ops ships nothing until these come back through TO_OPS.
 
 ### 2 Nov, 05:10Z — night prompt swap: restored, 0 real-member runs (ops read-only check)
 
