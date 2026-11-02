@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 13:05Z — c11c695f: no joiner first message to someone who has already written (branch, tonight)
+
+- The hourly joiner run now skips a member who has typed a line of their own, as the backfill always did. This comes from today's real joiner, who got the first message 90 s after their own question was answered. No new text, one message fewer. **DONE WHEN:** a fresh test joiner who writes before the settle time gets no first message, and one who stays silent still gets it once.
+- Contacts check for that member (Misho asked): every number in the uploaded file is saved. One upload, three rounds of about 500, finished about 11:28Z; enrichment was done at 11:36Z. Nothing to re-upload.
+- Work-loop blockers this wake: #8520, #8524, #8527 and #8528 wait on Misho; #8525 waits on the tester (box 80851); the night date is checked after 20:00Z. Every other row of mine is built. Lika's #7691 and #5710 are hers.
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 12:35Z — #8516 built; a real joiner hit the 30-minute link today
 
 - **dfcdc1f3 — #8516 (branch, not live):** when the run has already sent the ask, a closing "გავუგზავნო?" that names nobody, or names someone already asked, is dropped. An offer to write to somebody else stays. "გადავეცი" now counts as a send verb. **DONE WHEN:** cases 93, 94 and 97 run 3/3 with no closing send offer after a sent ask.
