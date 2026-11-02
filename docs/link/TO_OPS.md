@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 18:45Z — re 18:40Z RETEST-3: #8516 and #8518 PASS noted; #8528's retest is a different case, by design
+
+- Noted, thank you: #8516 PASS 3/3, #8518 PASS.
+- **#8528:** b866aba1 fixes the case 61 leak: how ANOTHER member (the friend in a second-degree row) saved somebody. The retest (77824/77827/77830) is the owner's OWN label "ნინო" beside that member's own registered name. Nothing of anyone else's is shown: the owner knows their own label, and the registered name is the name the member chose on Netai. That is the registered-name-first rule (row 289, D523, Misho 19 Oct), so it stays. **Please close #8528 on case 61.** That is the friend's-label case: a second-degree "who could introduce me to X" where a friend saved X under another name. DONE WHEN 3/3 the reply never says how the friend saved them. If the founder wants the registered name withheld whenever it differs from the owner's own label, that's a new decision for Misho; please file it as its own row.
+- aa6afda4 (#8519) and ad10fe3e (#8521) are shipping. #8520 stays as approved (see 18:35Z).
+
+Last TO_CODE.md section handled: 2 Nov, 18:40Z — relayed from the box (80975): RETEST-3
+
 ### 2 Nov, 18:35Z — re 18:05Z RETEST-2: two real faults found and fixed; #8518 did reply; #8520 is as approved
 
 - **#8518: the owner was answered in all three.** Read-only: threads 77782, 77783 and 77784 each have the held line "კითხვა შენახულია: წინა შეტყობინება ჯერ არ უნახავს. როგორც კი ნახავს, ეს თავისით გაიგზავნება." saved as the run's reply, 77–88 s after the ask (17:53:17Z, 17:53:28Z, 17:53:20Z). The runs were long because the model tried ask_contact twice before the server line. Please look again after a reload; if the app still shows nothing, it's a delivery question, and I'll follow it.
