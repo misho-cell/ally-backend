@@ -292,6 +292,8 @@ import {
   setLaterDays,
   tappedPersonOnThread,
   ownerLineNamesThisContact,
+  ownerNamedThisPersonLately,
+  alreadyAskedOnThisGoal,
   openQuestionsToMe,
 } from './taskAsks.service';
 import { askThreadForName } from './askThreadByName';
@@ -9474,6 +9476,7 @@ export function wayInPhonesIn(raw: unknown): string[] {
 export async function peopleNoSearchFound(
   userId: string,
   threadId: number,
+  taskId: number | undefined,
   plan: unknown,
   inForce: TaskPlan | null,
   searched: ReadonlySet<string> | undefined,
@@ -9483,15 +9486,26 @@ export async function peopleNoSearchFound(
   const added = peopleAddedToPlan(plan, inForce).filter(
     (p) => !found.has(phoneDigits((p as { phone?: unknown } | null)?.phone)),
   );
-  if (added.length === 0) return [];
-  const said = (await planConsentOnScreen(threadId).catch(() => null))?.lastOwnerMessage ?? '';
   const unfound: string[] = [];
   for (const person of added) {
-    if (said !== '' && (await lineNamesTheAddedPerson(userId, said, person))) continue;
+    if (await ownerOrGoalAlreadyHasThem(userId, threadId, taskId, person)) continue;
     const name = (person as { name?: unknown } | null)?.name;
     unfound.push(typeof name === 'string' && name.trim() !== '' ? name.trim() : '?');
   }
   return unfound;
+}
+
+/** #8517: named by the owner in a recent line, or already asked on this goal. */
+async function ownerOrGoalAlreadyHasThem(
+  userId: string,
+  threadId: number,
+  taskId: number | undefined,
+  person: unknown,
+): Promise<boolean> {
+  const phone = (person as { phone?: unknown } | null)?.phone;
+  if (typeof phone !== 'string' || phone.trim() === '') return false;
+  if (taskId !== undefined && (await alreadyAskedOnThisGoal(taskId, phone))) return true;
+  return ownerNamedThisPersonLately(threadId, { fromUserId: userId, contactPhone: phone });
 }
 
 export function planNamesUnfound(names: readonly string[]): string {
@@ -11944,6 +11958,7 @@ async function executeToolCall(
           : await peopleNoSearchFound(
               userId,
               threadId,
+              Number.isFinite(taskId) ? taskId : undefined,
               input['plan'],
               (planTask?.plan ?? null) as TaskPlan | null,
               runWayInPhones.get(runId),

@@ -41,7 +41,12 @@ import { phoneDigits } from './phone';
 import { isFictionalNumber } from './fictionalNumbers';
 import { ownPeopleDigits } from './targetScoring.service';
 import { isDeceasedOrBlockedFor } from './block.service';
-import { closingQuestion, looksLikeContactInstruction, offersToContact } from './goalIntent';
+import {
+  closingQuestion,
+  forbidsContact,
+  looksLikeContactInstruction,
+  offersToContact,
+} from './goalIntent';
 import { questionForReader, relayedForReader } from './askTranslation.service';
 import { choicesFit, labelFits, messageLanguage } from './oneLanguageAsk';
 import {
@@ -1151,6 +1156,63 @@ export async function ownerLineNamesThisContact(
     // Fails towards the plan, which asks the owner rather than writing to anyone.
     // eslint-disable-next-line no-console
     console.error('[ask] could not read whom the owner named:', error);
+    return false;
+  }
+}
+
+/**
+ * #8517 (the tester's 80752 item 3, cases 97, 83, 91): the plan's "no search
+ * found them" check read only the owner's LAST line. „ჰკითხე გია …" one line
+ * earlier, followed by „კი, დაიწყე", left Gia unnamed; and „ბესოს ვიცნობ …
+ * საქმე გააკეთე" names Beso without a contact verb. Naming is what that check
+ * asks about, not an order, so any of the owner's recent typed lines counts,
+ * and a case form of the name counts when exactly one contact fits it.
+ */
+const OWNER_LINES_THAT_NAME = 6;
+
+export async function ownerNamedThisPersonLately(
+  threadId: number,
+  contact: { readonly fromUserId: string; readonly contactPhone: string },
+): Promise<boolean> {
+  try {
+    const lines = await query<{ content: string }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = $1 AND role = 'user'
+          AND COALESCE(kind, '') <> 'event' AND content <> ''
+        ORDER BY created_at DESC LIMIT $2`,
+      [threadId, OWNER_LINES_THAT_NAME],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    for (const { content } of lines.rows) {
+      if (forbidsContact(content)) continue;
+      if (await namesThisPerson(content, contact)) return true;
+      if (await onlyContactByLabelStart(content, contact)) return true;
+    }
+    return false;
+  } catch (error) {
+    // Fails towards the refusal, which asks the plan again without this person.
+    // eslint-disable-next-line no-console
+    console.error('[plan] could not read whom the owner named lately:', error);
+    return false;
+  }
+}
+
+/** #8517: somebody this goal has already asked is a way in the goal already took. */
+export async function alreadyAskedOnThisGoal(taskId: number, phone: string): Promise<boolean> {
+  try {
+    const result = await query<{ asked: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM "UserPhone" up
+          WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+            AND up."userId" IN (SELECT to_user_id FROM task_asks WHERE task_id = $1)
+       ) AS asked`,
+      [taskId, phone],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.asked === true;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`[plan] task ${taskId}: could not read who was already asked:`, error);
     return false;
   }
 }

@@ -804,6 +804,11 @@ export function offersToContact(question: string): boolean {
   return OFFER_TO_CONTACT_RE.test(question) && !OFFER_NEGATED_RE.test(question);
 }
 
+/** #8517: does the line tell Netai NOT to contact somebody („ნუ მისწერ", „don't ask")? */
+export function forbidsContact(line: string): boolean {
+  return NEGATED_CONTACT_RE.test(line);
+}
+
 export function looksLikeContactInstruction(message: string): boolean {
   const text = message.trim();
   if (text.length === 0 || text.length > MAX_INSTRUCTION_CHARS) return false;
