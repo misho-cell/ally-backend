@@ -70,6 +70,11 @@ describe('the joiner’s first message', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('u."hasAccessToAlly" = true');
     expect(String(sql)).toContain('NOT EXISTS (SELECT 1 FROM test_seats ts');
+    // A real joiner on 2 Nov wrote first and got the first message 90 s after their answer.
+    expect(String(sql)).toContain('AND NOT EXISTS (\n      SELECT 1 FROM conversations c');
+    expect(String(sql)).toContain(
+      "c.role = 'user'\n         AND c.kind = 'message' AND c.content <> ''",
+    );
     expect(params).toEqual([480, 15, JOINER_FIRST_MESSAGE_EVENT, 20, 10, 2]);
   });
 
