@@ -18,6 +18,7 @@ import type { McpToolPayload } from './handlers';
  */
 export const APP_ONLY_TOOLS: ReadonlyMap<string, string> = new Map([
   ['ask_owner_decision', 'it draws a decision card on the app screen'],
+  ['rename_contact', 'built in the app first (#8527); the connector catches up later'],
   ['web_search', 'Claude and ChatGPT search the web themselves'],
   ['fetch_page', 'Claude and ChatGPT read web pages themselves'],
   ['get_own_contact_number', 'it hands out a number, and the connector never carries one'],

@@ -550,6 +550,7 @@ import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
+import { RenameRefusal, renameOwnContact } from './renameContact.service';
 import {
   contactsNamed,
   goalForInstruction,
@@ -1407,6 +1408,36 @@ const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
     type: 'object',
     properties: {},
     required: [],
+  },
+};
+
+const RENAME_REFUSALS: Readonly<Record<RenameRefusal, string>> = {
+  [RenameRefusal.NoName]: 'Not renamed: the new name is empty. Ask the owner for the name.',
+  [RenameRefusal.TooLong]: 'Not renamed: that is not a name. Ask the owner for the name alone.',
+  [RenameRefusal.NotYourContact]:
+    "Not renamed: that number is not in the owner's own contacts. Find the contact with a " +
+    'search first and pass its phone id.',
+};
+
+/**
+ * #8527 (the tester's 80752 item 13, case 108; Misho's yes, 2 Nov): the owner's
+ * name correction was only a note, and every search kept the old name.
+ */
+const RENAME_CONTACT_TOOL: AnthropicTool = {
+  name: 'rename_contact',
+  description:
+    'The owner corrects how one of THEIR OWN contacts is named („it is Petashvili, not ' +
+    'Fetashvili", „save him as Nika Beridze"). Saves the corrected name as the owner\'s own ' +
+    "label for that number; only the owner's own record changes, nobody else's, and nobody is " +
+    'told. Use it instead of a note when the owner corrects a name. WHEN: the owner says a ' +
+    "contact's name is wrong or asks to rename a contact.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id, from a search result." },
+      new_name: { type: 'string', description: 'The corrected name, as the owner gave it.' },
+    },
+    required: ['phone', 'new_name'],
   },
 };
 
@@ -10882,6 +10913,16 @@ async function executeToolCall(
     }
     case 'get_thread_context':
       return getThreadContext(userId);
+    case 'rename_contact': {
+      const outcome = await renameOwnContact(
+        userId,
+        String(input['phone'] ?? ''),
+        String(input['new_name'] ?? ''),
+      );
+      return outcome.renamed
+        ? { renamed: true, name: outcome.name }
+        : { renamed: false, error: RENAME_REFUSALS[outcome.reason] };
+    }
     case 'save_contact_fact':
       // Only 'debrief' may be claimed by the model; 'sweep' and 'label' are
       // server-side pipelines and stay unreachable from here (fail-closed).
@@ -16820,6 +16861,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   UPDATE_USER_PROFILE_TOOL,
   SAVE_PRIVATE_CONTEXT_TOOL,
   SAVE_CONTACT_FACT_TOOL,
+  RENAME_CONTACT_TOOL,
   GET_CONTACT_FACTS_TOOL,
   SET_USER_STATE_TOOL,
   MARK_CONTACT_DECEASED_TOOL,
