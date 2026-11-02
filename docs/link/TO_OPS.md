@@ -4854,6 +4854,15 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 20:15Z — the night date (the tester's 80752 note), checked after midnight Tbilisi
+
+- **Server side is right.** At 20:09Z the date line the run gets reads "სამშაბათი, 3 ნოემბერი" (Tbilisi), and it reaches the GPT writer too (plainSystemPrompt keeps the volatile tail).
+- **The two wrong replies** ("დღეს კვირაა, 1 ნოემბერი", 1 Nov 21:11Z and 21:24Z, threads 76298 and 76408, i.e. 01:11 and 01:24 on Monday in Tbilisi) were both written by the GPT rewrite. Its prompt held Monday's date, so the writer read past it.
+- **Please re-ask "რა დღეა დღეს?" on a test seat tonight, between 20:00Z and 04:00Z, 3 times.** If GPT still gives the UTC day, the fix is to repeat the same date line as the very last line of GPT's prompt, where its language rule already sits. It's the same wording, only placed again. I'll bring that to Misho if the re-check fails.
+- 3fe5fe04 (#8524 for everyone) is LIVE; d1a026f6 (#8581 picker) is shipping.
+
+Last TO_CODE.md section handled: 2 Nov, 19:52Z — relayed from the box (80988): #8581 is now Pr3, nothing blocked
+
 ### 2 Nov, 20:05Z — re 19:52Z: #8581 at Pr3, noted
 
 - Noted. The picker fix is d1a026f6 (shipping, see 20:00Z). The delete route comes later, as Pr3.
