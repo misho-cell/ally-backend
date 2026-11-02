@@ -3,6 +3,7 @@ import { query } from '../db/postgres/client';
 import { PUBLIC_BASE_URL } from '../config/publicUrl';
 import { importContacts, parseVcf } from './contacts.service';
 import type { ImportContact } from '../types';
+import { tellContactsReceived } from './contactsReceivedLine.service';
 
 /**
  * #5744 (A), the founder's D822: inside Claude or ChatGPT a member asks for a
@@ -155,9 +156,14 @@ export async function startUploadThroughLink(token: string, vcf: string): Promis
     throw new EmptyVcfError('no contacts in the file');
   }
   void importAll(userId, contacts)
-    .then((outcome) => {
+    .then(async (outcome) => {
       // eslint-disable-next-line no-console
       console.log(`[contact-upload] ${outcome.inFile} in the file, ${outcome.imported} new`);
+      if (outcome.imported === 0) return;
+      await tellContactsReceived(Number(userId)).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[contact-upload] received line not written:', (err as Error).message);
+      });
     })
     .catch(async (err: unknown) => {
       // eslint-disable-next-line no-console
