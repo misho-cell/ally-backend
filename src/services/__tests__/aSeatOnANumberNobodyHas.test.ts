@@ -90,6 +90,22 @@ describe('the number is earned, not chosen', () => {
     await expect(firstFreeFictionalPhone()).rejects.toBeInstanceOf(SeatCreationRefused);
   });
 
+  /** #8581 (the tester's 80982/80988): every number saved somewhere, but only by test seats. */
+  it('falls back to a number only test seats have saved, never one a real phonebook holds', async () => {
+    const { allFictionalNumbers } = await import('../fictionalNumbers');
+    const every = allFictionalNumbers().map((phone) => ({ phone }));
+    mockQuery
+      .mockResolvedValueOnce(rows(every) as never)
+      .mockResolvedValueOnce(rows(every.filter((r) => r.phone !== '+447700900005')) as never);
+
+    expect(await firstFreeFictionalPhone()).toBe('+447700900005');
+    const [fallback] = mockQuery.mock.calls[1] as [string];
+    expect(fallback).toContain(
+      'WHERE NOT EXISTS (SELECT 1 FROM test_seats s WHERE s.user_id = h."contactId")',
+    );
+    expect(fallback).toContain('FROM "UserPhone" WHERE phone = ANY($1)');
+  });
+
   /** The caller cannot hand one in: a number a caller supplies is unchecked. */
   it('takes no phone from its caller', () => {
     const src = readFileSync(join(__dirname, '..', 'testSeatCreate.service.ts'), 'utf8');

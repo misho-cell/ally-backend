@@ -88,26 +88,55 @@ const TAKEN_FICTIONAL_SQL = `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
      SELECT phone FROM test_seats WHERE phone = ANY($1)`;
 
 /**
+ * #8581 (the tester's 80982/80988, 2 Nov): every reserved number is now saved
+ * in some seat's phonebook, so „saved by nobody" found none, while a number the
+ * caller names is taken when only test seats hold it (chosenFictionalPhone).
+ * The picker keeps that same rule as its second choice: nobody registered, no
+ * seat on it, and no phonebook holding it that is not a test seat.
+ */
+const TAKEN_BY_A_REAL_HOLDER_SQL = `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
+     UNION
+     SELECT phone FROM test_seats WHERE phone = ANY($1)
+     UNION
+     SELECT h.phone FROM (
+       SELECT phone, "contactId" FROM "UserAlias" WHERE phone = ANY($1)
+       UNION
+       SELECT phone, "contactId" FROM "UserTags" WHERE phone = ANY($1)
+     ) h
+     WHERE NOT EXISTS (SELECT 1 FROM test_seats s WHERE s.user_id = h."contactId")`;
+
+async function takenBy(
+  sql: string,
+  candidates: readonly string[],
+  client?: PoolClient,
+): Promise<ReadonlySet<string>> {
+  const taken =
+    client === undefined
+      ? await query<{ phone: string }>(sql, [candidates], SEAT_QUERY_TIMEOUT_MS)
+      : await client.query<{ phone: string }>(sql, [candidates]);
+  return new Set(taken.rows.map((r) => r.phone));
+}
+
+/**
  * The first slot in the fictional range that nobody is registered on and
- * nobody has saved. Both halves are asked of the live database in one
- * statement, so the answer cannot be stale between the two questions. Given a
- * transaction's client, it is asked inside that transaction.
+ * nobody has saved; when there is none, the first that only test seats have
+ * saved. Each question is asked of the live database in one statement. Given
+ * a transaction's client, it is asked inside that transaction.
  */
 export async function firstFreeFictionalPhone(client?: PoolClient): Promise<string> {
   const candidates = allFictionalNumbers();
-
-  const taken =
-    client === undefined
-      ? await query<{ phone: string }>(TAKEN_FICTIONAL_SQL, [candidates], SEAT_QUERY_TIMEOUT_MS)
-      : await client.query<{ phone: string }>(TAKEN_FICTIONAL_SQL, [candidates]);
-  const used = new Set(taken.rows.map((r) => r.phone));
-  const free = candidates.find((p) => !used.has(p));
-  if (free === undefined) {
+  const usedAtAll = await takenBy(TAKEN_FICTIONAL_SQL, candidates, client);
+  const untouched = candidates.find((p) => !usedAtAll.has(p));
+  if (untouched !== undefined) return untouched;
+  const usedByReal = await takenBy(TAKEN_BY_A_REAL_HOLDER_SQL, candidates, client);
+  const seatsOnly = candidates.find((p) => !usedByReal.has(p));
+  if (seatsOnly === undefined) {
     throw new SeatCreationRefused(
-      `no free number left in ${FICTIONAL_RANGES_TEXT} — every one is registered or saved in somebody's phonebook`,
+      `no free number left in ${FICTIONAL_RANGES_TEXT} — every one is registered, a seat's own, ` +
+        'or saved by a phonebook that is not a test seat',
     );
   }
-  return free;
+  return seatsOnly;
 }
 
 interface ChosenPhoneHolders {
