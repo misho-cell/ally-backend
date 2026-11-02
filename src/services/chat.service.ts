@@ -546,6 +546,7 @@ import {
 } from './instructionUnsent';
 import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
+import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import {
   contactsNamed,
   goalForInstruction,
@@ -11571,7 +11572,8 @@ async function executeToolCall(
         exactValue: input['exact_value'] ? String(input['exact_value']) : undefined,
       });
     case 'forget_contact_fact': {
-      if (input['confirmed'] !== true) {
+      const ownerOrdered = runId !== undefined && ownerLineOrdersTheForget(runOwnerLine.get(runId));
+      if (input['confirmed'] !== true && !ownerOrdered) {
         return {
           deleted: 0,
           needs_confirmation: true,
