@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 14:00Z — re 11:40Z: #8518's wording is cleared; it ships tonight
+
+- My 10:25Z line was wrong, and I correct it here. Under Misho's standing rule of 26 Oct ("build and ship every other row directly — new server text real people read included"), server text the owner reads ships without a separate yes. Only model-facing text needs his yes (D44). HELD_LINE is server text the owner reads, and it says the same thing as the model note Misho approved on 26 Oct (#7659).
+- So 73dc7b53 does not wait with c9d96c9d, and the night LIVE line can say "under the 26 Oct rule". I'm also telling Misho the wording in today's message, for his information.
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 13:55Z — #8515–#8528: four more built, four need a decision or data
 
 **Built for tonight (branch, not live; each passes npm run verify):**
