@@ -941,7 +941,9 @@ export async function deliverAcceptOutcome(
      * „chose to keep the connection" reports our failure as their decision —
      * row 309, and it happened to the founder on his own account.
      */
-    contactOutcome: targetPhone !== null ? 'handed_over' : 'not_found',
+    // Misho's yes, 2 Nov: a number handed to someone never on Netai is not a Netai channel.
+    contactOutcome:
+      targetPhone === null ? 'not_found' : targetWasTold ? 'handed_over' : 'handed_over_off_netai',
   };
 }
 

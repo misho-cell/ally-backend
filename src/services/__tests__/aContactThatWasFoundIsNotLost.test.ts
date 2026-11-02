@@ -114,7 +114,12 @@ describe('a lookup failing is never reported as somebody’s decision', () => {
 
   /** The `direct` branch: empty means we failed, not that they chose. */
   it('calls an empty direct result not_found, not kept_by_mediator', () => {
-    expect(BODY).toMatch(/contactOutcome: targetPhone !== null \? 'handed_over' : 'not_found'/);
+    expect(BODY).toContain("targetPhone === null ? 'not_found'");
+  });
+
+  /** Misho's yes, 2 Nov: a number handed to somebody never on Netai is not a Netai channel. */
+  it('tells a handover to somebody off Netai apart from a Netai channel', () => {
+    expect(BODY).toContain("targetWasTold ? 'handed_over' : 'handed_over_off_netai'");
   });
 
   /** The `via_mediator` branch is the only one that is a choice. */
@@ -218,5 +223,16 @@ describe('a refusal says what to do instead of it', () => {
     // And it gives the reader somewhere to go instead of another guess.
     expect(message).toMatch(/შემოსული/);
     expect(message.length).toBeGreaterThan('მოთხოვნა ვერ მოიძებნა'.length + 80);
+  });
+});
+
+/** Misho's yes, 2 Nov (the 1 Nov daily check): no promised Netai channel to somebody off Netai. */
+describe('a handover to somebody who never opened Netai', () => {
+  it('is told to the run as a number the owner holds, with no Netai channel', () => {
+    const events = readFileSync(join(__dirname, '..', 'taskEngine.events.ts'), 'utf8');
+    const at = events.indexOf('handed_over_off_netai:');
+    expect(at).toBeGreaterThan(-1);
+    expect(events.slice(at, at + 400)).toContain('Netai-ის არხი არ არის');
+    expect(events).toContain('is not on Netai yet, so there is no Netai channel to them');
   });
 });
