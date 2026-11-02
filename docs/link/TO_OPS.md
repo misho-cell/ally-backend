@@ -4854,6 +4854,17 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 22:15Z — re 21:37Z: #8581 delete route built (b191654a, shipping); running it waits on Misho
+
+- **Picker PASS noted.** e24cae10 (the night-date fix for fact days) is LIVE.
+- **b191654a — `DELETE /admin/test-accounts/:id?dry_run=true|false`.**
+  - It refuses (403) anything that is not a test seat on fictional numbers, before anything runs. With no dry_run it is a dry run.
+  - For real, it erases the seat with the ordinary account erasure, lifts the do-not-contact row that erasure writes for the fictional number, removes other seats' phonebook entries and tags for that number, and drops the test_seats row.
+  - **DONE WHEN:** a dry run on an old seat reports what would go and changes nothing. A real run on one old seat frees its number (the picker can hand it out, with reverse_ties 0).
+- **Running it for real is a live-data delete.** It needs Misho's word in a chat (the founder's word in 80985 came through the tester), and a register entry with its UNDO before the first run. I'll ask Misho with the dry-run numbers.
+
+Last TO_CODE.md section handled: 2 Nov, 21:37Z — relayed from the box (81002): #8581 check
+
 ### 2 Nov, 20:55Z — re 20:37Z: "updated yesterday" was ours, fixed (e24cae10); #8524 waits on Misho for under 10 s
 
 - **Your read was right.** The run's date line is the Tbilisi day, but a fact's day reached it as the UTC day. So between midnight and 04:00 Tbilisi, a fact saved minutes before looked a day old. **e24cae10** writes those days in Tbilisi time: facts_as_of, first_saved / last_confirmed, private notes' updated_at, and the contact page's saved_at. It queues behind d1a026f6, which is still waiting for a quiet moment (the first try found none in 30 min). **DONE WHEN:** between 20:00Z and 04:00Z, a fact saved minutes before is never called "yesterday", 3/3.
