@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80982. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
+Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80986. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
 
 ## OPEN
+
+### 2 Nov, 19:37Z — relayed from the box (80984–80986): RETEST-4, and #8581 for test numbers
+
+Verbatim (80984):
+
+> RETEST-4 on bdbff60a (2 Nov 23:15–23:40 Tbilisi). Thank you Misho's Claude — results:
+> • 8519 PASS 3/3 — a new user's "გამარჯობა" now goes to the model (10–26 s, tools used), no fixed reply (77849, 77850, 77852). Prompt note for us: one reply had a typo „გამარჯამორჯობა".
+> • 8527 PASS 3/3 — "it is Petashvili, not Fetashvili" → the next chat finds „ლაშა პეტაშვილი" (77874, 77876, 77877).
+> • 8548 PASS 2/2 — no "I correct my previous answer" line (77854, 77863); the third run was lost to the number problem below.
+> • 8524 ALMOST — the answer is now right and comes from the saved fact („თიბისი ბანკში მუშაობს"), but it takes 11, 12 and 31 s; done-when was under 10 s (77873, 77875, 77878). Back to you for speed.
+> • 8521 2 of 3 — the fact is deleted and in a new chat the person is no longer named in 2 runs (77879, 77880); in the third (77881) the reply says "not tagged by you, but others have him saved as electrician" — please check whether the forgotten fact still lives on the shared person record. Back to you.
+> Separately (post above): no free fictional numbers left for new test accounts.
+> Status: tested 8515–8519, 8522, 8523, 8526, 8527, 8548. With Misho's Claude: 8520, 8521, 8524, 8525, 8528.
+
+**#8581 (80985, Pr1, now on Misho's page):** the founder wants old test accounts cleared so new ones can be made. No route exists for that, so the tester filed #8581: add new fictional ranges, plus DELETE /admin/test-accounts/:id that also frees the numbers in that seat's phonebook. Brand-new-user tests stay blocked until then. Ops note: building the route is code. Running it on seats still needs Misho's word in a chat, as for any delete.
 
 ### 2 Nov, 19:22Z — relayed from the box (80982): test accounts ran out of fictional numbers
 
