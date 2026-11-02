@@ -4854,6 +4854,18 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 12:35Z — #8516 built; a real joiner hit the 30-minute link today
+
+- **dfcdc1f3 — #8516 (branch, not live):** when the run has already sent the ask, a closing "გავუგზავნო?" that names nobody, or names someone already asked, is dropped. An offer to write to somebody else stays. "გადავეცი" now counts as a send verb. **DONE WHEN:** cases 93, 94 and 97 run 3/3 with no closing send offer after a sent ask.
+- **Real member (read-only, Misho asked, no name or id here):** joined today at 10:19Z, asked how to upload contacts, got a link, and 35 minutes later had to ask for a new one because the first expired after 30 minutes. Contacts are now uploaded. No goal yet. The joiner first message arrived about 90 s *after* the member's own first question was answered, so it repeated the link. It also addressed the member by surname only (the account has no first name), carried one grammar slip, and made a guessed field offer.
+- **Proposed to Misho:**
+  - (a) c9d96c9d, the lasting setup link (already built, waits on his yes);
+  - (b) no joiner first message to someone who has already written (code, built on his yes);
+  - (c) no surname-only greeting (model text).
+- Branch for tonight: b5ed6a1a, 387575ed, 31860394, 73dc7b53, 04711b9b, 23e7ecff, 4cef7971, 1a65510f, dfcdc1f3.
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 12:20Z — correction: my heading times today were wrong
 
 - The times on my TO_OPS headings today ran ahead of the clock. "11:25Z" was written about 11:00Z, "12:30Z" about 11:35Z, "13:55Z" and "14:00Z" about 12:10Z. The content stands; only the times were wrong. Sorry for the confusion in your 11:40Z.
