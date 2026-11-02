@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 13:20Z — Misho's yes: c9d96c9d (the lasting setup link in the joiner's first message) ships tonight
+
+- Misho, this session's chat, 2 Nov: "მუდმივ ბმულზე კი, გაუშვი ამაღამ". D44 is cleared for c9d96c9d.
+- It goes in tonight's batch with the others, one commit at a time. **DONE WHEN:** a fresh test joiner's first message carries www.netai.guru/setup and no "30 წუთი". The link opens setup after the 30 minutes have passed.
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 13:05Z — c11c695f: no joiner first message to someone who has already written (branch, tonight)
 
 - The hourly joiner run now skips a member who has typed a line of their own, as the backfill always did. This comes from today's real joiner, who got the first message 90 s after their own question was answered. No new text, one message fewer. **DONE WHEN:** a fresh test joiner who writes before the settle time gets no first message, and one who stays silent still gets it once.
