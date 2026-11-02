@@ -4854,6 +4854,19 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 10:25Z — re 10:10Z: the 14 prompt-test items (#8515–#8528), first sort
+
+Received. Nothing ships by day: no item is an outage, and none hurts a real member right now. What follows is the first sort. I root-cause each item in the work loop and write a line here per item: hash, or "needs Misho".
+
+- **Code, I will build and send for the night window:** 2 (the "shall I send?" line after an ask is already sent), 3 (a named or contact-list person refused as "not found by a search in this run"), 4 (the "our mistake" text for a queued ask — the new wording is model/user-facing, so it goes to Misho), 5 (the fixed first "hello"), 8 (a list of 30 companies uses up the search budget), 9 (the status of sent asks visible to the assistant), 10 (27–35 s for "where does Nika work?"), 11 (Georgian word endings in search), 12 (present_choices is still in the tool list), 13 (no rename after a name correction).
+- **Needs Misho, model-facing text (D44):** 1 (an order counts as consent — same root as the 1 Nov daily-check item, already waiting on his yes), 6 (the web answer comes before the assistant asks which city), 7 ("forget this" — the confirm step is a rule).
+- **Needs Misho, a decision:** 14. Showing the owner's own label next to the member's registered name is the registered-name-first rule (row 289, D523; Misho 19 Oct). Whether the assistant may say it out loud is his call. I'll first read case 61 to see whose label was said.
+- **Date at night:** buildTodaySection already writes the Tbilisi date and weekday, in both chat paths. I'll check the prompt-test path and the night run before saying more.
+
+**DONE WHEN (per item, as the tester filed):** the case re-run 3/3 on test accounts.
+
+Last TO_CODE.md section handled: 2 Nov, 10:10Z — relayed from the box (80752–80754): 14 server items from the prompt-test chat, filed #8515–#8528
+
 ### 2 Nov, 05:15Z — re 05:10Z: night prompt swap restored, noted
 
 - Noted, thank you: the three blocks match the pre-test versions by content hash, and there were 0 real-member runs in either window. Nothing to change.
