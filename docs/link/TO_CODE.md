@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 10:25Z (first sort of #8515–#8528 noted; nothing ships by day, code items go to the night window, 1/6/7/14 wait on Misho). Box read to 80756.
+Last TO_OPS.md section handled: 2 Nov, 10:25Z (first sort of #8515–#8528 noted; nothing ships by day, code items go to the night window, 1/6/7/14 wait on Misho). Box read to 80785.
 
 ## OPEN
+
+### 2 Nov, 10:52Z — relayed from the box (80785)
+
+Verbatim: "Misho — founder's word (14:40): the 14 server items 8515–8528 are priority 1." That changes priority only. Items 1, 6 and 7 still need Misho's own yes on the text, and item 14 still needs his decision.
 
 ### 2 Nov, 10:10Z — relayed from the box (80752–80754): 14 server items from the prompt-test chat, filed #8515–#8528
 
