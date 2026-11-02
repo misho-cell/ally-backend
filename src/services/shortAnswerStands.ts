@@ -4,11 +4,11 @@
  * Claude's final (≈9 s), thrown away, then GPT's rewrite (≈9 s, row 129). A short
  * answer that proposed no plan and sent nothing keeps Claude's words.
  *
- * Test seats only until the tester has read the answers; switch the flag off to
- * give it to everyone.
+ * Test seats only until the tester had read the answers: RETEST-4 (2 Nov, the
+ * tester's 80984) found them right, so it is on for everyone.
  */
 export const SHORT_ANSWER_MAX_CHARS = 300;
-export const SHORT_ANSWER_ON_TEST_SEATS_ONLY = true;
+export const SHORT_ANSWER_ON_TEST_SEATS_ONLY = false;
 
 export interface RunActs {
   readonly proposedAPlan: boolean;
