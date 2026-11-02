@@ -17,7 +17,6 @@ import type { McpToolPayload } from './handlers';
  * their wording into the app's is model text and waits for Misho's word (D44).
  */
 export const APP_ONLY_TOOLS: ReadonlyMap<string, string> = new Map([
-  ['present_choices', 'it draws buttons on the app screen'],
   ['ask_owner_decision', 'it draws a decision card on the app screen'],
   ['web_search', 'Claude and ChatGPT search the web themselves'],
   ['fetch_page', 'Claude and ChatGPT read web pages themselves'],

@@ -116,8 +116,8 @@ describe('the tool', () => {
     expect(chat).toContain("case 'share_contact_number_with_asker': {");
   });
 
-  it('tells the model never to type the number and to offer matches as buttons', () => {
-    expect(chat).toContain('first offer the matches with present_choices');
+  it('tells the model never to type the number and to ask in words which match is meant', () => {
+    expect(chat).toContain('first ask in words which one they mean');
     expect(chat).toContain('never type the number yourself');
   });
 });

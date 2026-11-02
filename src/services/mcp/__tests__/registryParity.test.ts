@@ -14,7 +14,7 @@ import * as path from 'path';
 // one-sided names (search_contact_by_name/search_by_tag/
 // search_contacts_by_country merge into the connector's search_contacts;
 // get_contact_full_profile/lookup_contact_by_phone merge into
-// get_contact_profile; present_choices renders UI buttons and has no
+// get_contact_profile; ask_owner_decision draws an app card and has no
 // connector meaning; etc.). An equality test over that reality is either
 // permanently red, or gets "fixed" by wiring tools onto the connector that
 // never belonged there.
@@ -32,7 +32,6 @@ const APP_ONLY: Readonly<Record<string, string>> = {
     '6997: OFF until the store is loaded on live; joins the connector with its prompt line',
   list_offers: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
   delete_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
-  present_choices: 'renders tappable UI buttons — meaningless outside the app',
   set_reminder:
     '#502: writes a reminder into an app conversation and rings the app; a connector has no such conversation',
   get_what_netai_knows_about_me:

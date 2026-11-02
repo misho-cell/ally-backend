@@ -1,4 +1,4 @@
-import { buildReplyLanguageDirective, toolDescription } from '../chat.service';
+import { ALWAYS_ON_TOOLS, buildReplyLanguageDirective } from '../chat.service';
 
 /**
  * Row 313, the tester's 941 / 957: buttons ordering Netai („გააგრძელე
@@ -7,11 +7,10 @@ import { buildReplyLanguageDirective, toolDescription } from '../chat.service';
  * GPT block never reaches.
  */
 describe('the Claude side carries the button and step-line rules', () => {
-  it('present_choices says a label is the owner’s own first-person action', () => {
-    const description = toolDescription('present_choices');
-    expect(description).toContain('EACH LABEL IS WHAT THE OWNER SAYS');
-    expect(description).toContain('never „გააგრძელე ძებნა"');
-    expect(description).toContain('never „თქვენ"');
+  // #8526 (the tester's 80752 item 12, cases 119 and 52): no button leaves the
+  // server since #8054, so a tool that draws them must not be offered at all.
+  it('does not offer present_choices', () => {
+    expect(ALWAYS_ON_TOOLS.some((tool) => tool.name === 'present_choices')).toBe(false);
   });
 
   it('the reply language covers the lines between tool calls', () => {
