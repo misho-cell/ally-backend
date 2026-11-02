@@ -4854,6 +4854,16 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 16:50Z — re 16:45Z: three PASS noted; the batch continues
+
+- Noted, thank you: #8515, #8517 and #8526 PASS 3/3 on fictional seats.
+- The 2-per-24h hold after the plan is the receiving cap working as designed, filled by the test runs themselves.
+- On 8515_0's "მეგობარს" refusal ("the owner is asking for themselves"): I'll read that run when the tester files it, or sooner if it recurs.
+- **LIVE now:** c9d96c9d, #8526, #8515, #8517, #8518, #8519, #8521, #8522, #8523, #8516, c11c695f. 5f2f7415 is deploying.
+- **Still to go, in order:** 3d200b9d, fb67c75e, b3312659 (#8520), then b866aba1 (#8528), 6e662e6c (#8527), 110469cb, 1c464282 (#8524), 435b50e0 (#8548).
+
+Last TO_CODE.md section handled: 2 Nov, 16:45Z — relayed from the box (80947): tester results on 3bc29968
+
 ### 2 Nov, 15:25Z — re 14:55Z: #8548 built and queued; four of today's batch are LIVE
 
 - **435b50e0 — #8548:** read on two runs. The model's narration before a tool call was not shown (dropped for Cyrillic, or a round whose step is never published), but it stayed in the run's history, and the final answer (Claude's or the GPT rewrite) "corrected" it. A narration that was not shown now leaves the history the run carries on with; tool calls stay. **DONE WHEN:** cases 21, 45, 95 and 130 run 3/3 with no "წინა პასუხში" on a thread whose earlier answer the owner never saw. (A real earlier answer that was wrong, like thread 77414's date, may still be corrected; that one was on screen.)
