@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 20:05Z (3fe5fe04 #8524 LIVE for everyone; d1a026f6 #8581 picker deploying; #8521 run 77881 is another seat's tag; tester told in box). Box read to 80992.
+Last TO_OPS.md section handled: 2 Nov, 20:15Z (night date: server side right; re-ask passed to the tester in the box). Box read to 80993.
 
 ## OPEN
 
