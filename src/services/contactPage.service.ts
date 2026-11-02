@@ -128,7 +128,7 @@ async function warmthOf(userId: number, phone: string): Promise<Warmth> {
 export async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
   const result = await query<ContactFact>(
     `SELECT id, field_type AS field, COALESCE(canonical_value, value) AS value,
-            TO_CHAR(created_at, 'YYYY-MM-DD') AS saved_at
+            TO_CHAR(created_at AT TIME ZONE 'Asia/Tbilisi', 'YYYY-MM-DD') AS saved_at
        FROM contact_facts
       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
       ORDER BY field_type, updated_at DESC LIMIT $3`,
