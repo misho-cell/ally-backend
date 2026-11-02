@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80986. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
+Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80989. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
 
 ## OPEN
+
+### 2 Nov, 19:52Z — relayed from the box (80988): #8581 is now Pr3, nothing blocked
+
+The tester corrects their earlier report. New test accounts CAN be made by giving POST /admin/test-accounts an explicit free phone inside the ranges, and three seats were made that way. Only the automatic number picker wrongly says "no free number left". The tester now picks numbers itself, so nothing is blocked. Their ask: fix the picker and add the delete route when convenient.
 
 ### 2 Nov, 19:37Z — relayed from the box (80984–80986): RETEST-4, and #8581 for test numbers
 
