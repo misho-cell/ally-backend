@@ -73,7 +73,7 @@ export interface PrivateContextLine {
 /** The whole store, so a person can see what is held about them and remove it. */
 export async function listPrivateContext(userId: string): Promise<PrivateContextLine[]> {
   const result = await query<PrivateContextLine>(
-    `SELECT key, value, TO_CHAR(updated_at, 'YYYY-MM-DD') AS updated_at
+    `SELECT key, value, TO_CHAR(updated_at AT TIME ZONE 'Asia/Tbilisi', 'YYYY-MM-DD') AS updated_at
      FROM user_private_context WHERE user_id = $1 ORDER BY key`,
     [userId],
   );

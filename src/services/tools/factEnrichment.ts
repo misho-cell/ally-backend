@@ -55,7 +55,7 @@ export async function fetchFactsForPhones(
   }>(
     `SELECT neo4j_contact_id AS phone, field_type,
             COALESCE(canonical_value, value) AS value,
-            TO_CHAR(updated_at, 'YYYY-MM-DD') AS as_of,
+            TO_CHAR(updated_at AT TIME ZONE 'Asia/Tbilisi', 'YYYY-MM-DD') AS as_of,
             (submitted_by_user_id = $2) AS own
      FROM contact_facts
      WHERE neo4j_contact_id = ANY($1)

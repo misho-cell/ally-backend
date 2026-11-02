@@ -816,8 +816,8 @@ export async function getVisibleFacts(
       // it repeats a fact, so a July note read as written today and nobody
       // could retract by date. Both dates now travel.
       `SELECT field_type, COALESCE(canonical_value, value) AS value, is_public, is_matchable,
-              TO_CHAR(created_at, 'YYYY-MM-DD') AS first_saved,
-              TO_CHAR(updated_at, 'YYYY-MM-DD') AS last_confirmed
+              TO_CHAR(created_at AT TIME ZONE 'Asia/Tbilisi', 'YYYY-MM-DD') AS first_saved,
+              TO_CHAR(updated_at AT TIME ZONE 'Asia/Tbilisi', 'YYYY-MM-DD') AS last_confirmed
        FROM contact_facts
        WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
        ORDER BY field_type, updated_at DESC`,
