@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 15:25Z (435b50e0 #8548 queued last; LIVE so far c9d96c9d, b5ed6a1a, 387575ed, 31860394, 73dc7b53, 04711b9b, 23e7ecff, 4cef7971; outage check clean after each). Box read to 80941.
+Last TO_OPS.md section handled: 2 Nov, 15:25Z (435b50e0 #8548 queued last; LIVE so far c9d96c9d, b5ed6a1a, 387575ed, 31860394, 73dc7b53, 04711b9b, 23e7ecff, 4cef7971; outage check clean after each). Box read to 80951.
 
 ## OPEN
+
+### 2 Nov, 16:45Z — relayed from the box (80947): tester results on 3bc29968
+
+Fictional seats, 3 runs each:
+- **#8515: PASS 3/3.** An order counts as the owner's permission, with no "no permission" refusal.
+- **#8517: PASS 3/3.** A plan is accepted with the person the owner named.
+- **#8526: PASS 3/3.** No present_choices call.
+
+Tester's notes, not faults:
+- After the plan, the ask was held by the 2-per-24h cap, which their own test runs had filled.
+- In 8515_0, ask_contact refused „მეგობარს" wording ("the owner is asking for themselves"). They are watching it; no task yet.
+
+Ops also saw in 80948 that c11c695f first missed its push (time limit). It was re-shipped and is LIVE (80950). The outage check stayed at 0 errors throughout.
 
 ### 2 Nov, 14:55Z — relayed from the box (80919–80920): item 15, #8548
 
