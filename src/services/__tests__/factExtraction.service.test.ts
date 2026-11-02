@@ -192,3 +192,14 @@ describe('sweepFactsFromExchange (engine T1)', () => {
     ).resolves.toBeUndefined();
   });
 });
+
+/** #8521 RETEST (the tester's 80967): the sweep saved the fact the owner had just told us to forget. */
+describe('a line that orders a forget', () => {
+  it('is never swept for facts, so the deleted fact is not written back', async () => {
+    mockCreate.mockClear();
+    mockSubmitFact.mockClear();
+    await sweepFactsFromExchange('7', 1, 'დაივიწყე, რომ სალომე ელექტრიკოსია', 'კარგი, წავშალე.');
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockSubmitFact).not.toHaveBeenCalled();
+  });
+});
