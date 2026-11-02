@@ -34,26 +34,79 @@ describe('a plan person no search found', () => {
 
   beforeEach(() => {
     mockQuery.mockReset();
-    // planConsentOnScreen: no cards, and an owner line that names nobody.
+    // No ask on the goal yet, and no owner line that names anybody.
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 });
   });
 
   it('is refused by name when the run searched and found others', async () => {
-    await expect(peopleNoSearchFound('9', 1, plan, null, new Set(['111']))).resolves.toEqual([
+    await expect(peopleNoSearchFound('9', 1, 7, plan, null, new Set(['111']))).resolves.toEqual([
       'Levan',
     ]);
   });
 
   it('is not judged when the run searched for nobody', async () => {
-    await expect(peopleNoSearchFound('9', 1, plan, null, undefined)).resolves.toEqual([]);
-    await expect(peopleNoSearchFound('9', 1, plan, null, new Set())).resolves.toEqual([]);
+    await expect(peopleNoSearchFound('9', 1, 7, plan, null, undefined)).resolves.toEqual([]);
+    await expect(peopleNoSearchFound('9', 1, 7, plan, null, new Set())).resolves.toEqual([]);
   });
 
   it('is kept when the plan in force already holds them', async () => {
     const inForce = { people_to_involve: [{ name: 'Levan', phone: '+222' }] };
     await expect(
-      peopleNoSearchFound('9', 1, plan, inForce as never, new Set(['111'])),
+      peopleNoSearchFound('9', 1, 7, plan, inForce as never, new Set(['111'])),
     ).resolves.toEqual([]);
+  });
+
+  // #8517 (the tester's 80752 item 3, case 97): Levan was named one line before
+  // „კი, დაიწყე", and the goal had already asked him.
+  it('is kept when this goal has already asked them', async () => {
+    mockQuery.mockImplementation((sql: string) =>
+      Promise.resolve(
+        sql.includes('FROM task_asks WHERE task_id')
+          ? { rows: [{ asked: true }], rowCount: 1 }
+          : { rows: [], rowCount: 0 },
+      ),
+    );
+    await expect(peopleNoSearchFound('9', 1, 7, plan, null, new Set(['111']))).resolves.toEqual([]);
+  });
+
+  it('is kept when a recent owner line names them by the owner’s own label', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes("role = 'user'") && sql.includes('ORDER BY created_at DESC LIMIT $2')) {
+        return Promise.resolve({
+          rows: [{ content: 'კი, დაიწყე' }, { content: 'ჰკითხე ლევან ბერიძეს, იცნობს თუ არა' }],
+          rowCount: 2,
+        });
+      }
+      if (
+        sql.includes('FROM "UserAlias" ua') &&
+        sql.includes('ORDER BY LENGTH(TRIM(ua.alias)) DESC')
+      ) {
+        return Promise.resolve({ rows: [{ phone: '+222', alias: 'ლევან ბერიძე' }], rowCount: 1 });
+      }
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    });
+    await expect(peopleNoSearchFound('9', 1, 7, plan, null, new Set(['111']))).resolves.toEqual([]);
+  });
+
+  it('is still refused when the line that names them says not to contact them', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes("role = 'user'") && sql.includes('ORDER BY created_at DESC LIMIT $2')) {
+        return Promise.resolve({ rows: [{ content: 'ლევან ბერიძეს არ მისწერო' }], rowCount: 1 });
+      }
+      if (sql.includes('FROM "UserAlias" ua')) {
+        return Promise.resolve({ rows: [{ phone: '+222', alias: 'ლევან ბერიძე' }], rowCount: 1 });
+      }
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    });
+    await expect(peopleNoSearchFound('9', 1, 7, plan, null, new Set(['111']))).resolves.toEqual([
+      'Levan',
+    ]);
+  });
+
+  it('is still refused when the goal is unknown and no line names them', async () => {
+    await expect(
+      peopleNoSearchFound('9', 1, undefined, plan, null, new Set(['111'])),
+    ).resolves.toEqual(['Levan']);
   });
 
   it('is told to the model with no reason to give', () => {
