@@ -1535,7 +1535,11 @@ async function createAskNow(
           'რომ უკვე გააგზავნე. (3) თუ მომხმარებელს ამ საუბარში თანხმობა უკვე ნათქვამი ' +
           'აქვს („კი, გაუგზავნე", „დამტკიცებულია") — ხელახლა ნუ ჰკითხავ და ახალ ტექსტს ' +
           'ნუ აჩვენებ: გეგმაზე გამოიძახე approve_task_plan და გაჩერდი (2), გეგმის ' +
-          'გარეშე grant_task_permission და გაიმეორე ask_contact. (4) მხოლოდ მაშინ, თუ ' +
+          'გარეშე grant_task_permission და გაიმეორე ask_contact. ' +
+          // Misho, 2 Nov (the 1 Nov daily check): a „კი" recorded with answer_goal_question
+          // was not taken as the yes, and the run stalled between the two tools.
+          'იგივეა, თუ „კი" მიზნის კითხვაზე პასუხად მოვიდა და answer_goal_question-ით ჩაწერე. ' +
+          '(4) მხოლოდ მაშინ, თუ ' +
           'თანხმობა ჯერ არ გითხოვია, ჰკითხე ერთხელ და აჩვენე ვის მისწერ და ზუსტად რა ' +
           'ტექსტს. უნებართვოდ გაგზავნა შეუძლებელია — ეს სერვერის წესია.',
       };
