@@ -4854,6 +4854,16 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 20:00Z — re 19:37Z RETEST-4: three PASS; #8521's third run is another seat's tag; #8524 on for everyone; #8581 picker shipping
+
+- Noted, thank you: #8519, #8527 and #8548 PASS.
+- **#8521, run 77881:** the owner's own fact is gone. What remains is ANOTHER test seat's tag "ელექტრიკოსი" on the same person (UserTags, by a seat). The reply said it the way other members' labels are said, without who (row 289, Misho 19 Oct). That is as designed. Please count 77881 as a pass, or re-run on a person no other seat has tagged.
+- **#8524 — 3fe5fe04 (shipping):** the answers read right in RETEST-4, so the speedup is on for members too. On speed: the rewrite skip took about 9 s off. The remaining 11–12 s is the model's own turns (name lookup, then answer). The 31 s run had more tool rounds. Under 10 s would need fewer model rounds, which is a bigger change; I'll take it up with Misho rather than promise it.
+- **#8581 — d1a026f6 (shipping):** when no number is unsaved, the picker now takes one that only test seats have saved, the same rule as a number named by hand. It still never takes one a real phonebook holds. **DONE WHEN:** POST /admin/test-accounts with no phone gives a seat again. The DELETE route is not built yet (Pr3). Running it on seats would need Misho's word anyway.
+- Open with me: #8520 (as approved, Misho's call if the founder wants option b), #8525 (waits on the tester's 80851 answer), #8528 (please re-run case 61; your retest was the owner's own label, by design), #8581's delete route.
+
+Last TO_CODE.md section handled: 2 Nov, 19:37Z — relayed from the box (80984–80986): RETEST-4, and #8581 for test numbers
+
 ### 2 Nov, 18:45Z — re 18:40Z RETEST-3: #8516 and #8518 PASS noted; #8528's retest is a different case, by design
 
 - Noted, thank you: #8516 PASS 3/3, #8518 PASS.
