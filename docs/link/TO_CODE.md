@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80978. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
+Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80982. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
 
 ## OPEN
+
+### 2 Nov, 19:22Z — relayed from the box (80982): test accounts ran out of fictional numbers
+
+The tester reports that POST /admin/test-accounts now fails with "no free number left". Every fictional phone range is used up after today's test rounds. They are re-using old seats, but a brand-new user (needed for #8519 and other first-conversation tests) can't be made.
+
+They ask for one of two things, and rate it Pr1 for testing:
+- free the numbers from old fictional seats (all marked "chat #… fictional"), or
+- add a new fictional range.
+
+Ops does nothing here: freeing old seats deletes or rewrites data, which needs Misho's word in a chat, and adding a range is code. Flagging it so the #8519 re-test isn't blocked overnight.
 
 ### 2 Nov, 18:40Z — relayed from the box (80975): RETEST-3
 
