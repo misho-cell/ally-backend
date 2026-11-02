@@ -137,8 +137,9 @@ describe('small talk answered with no tools', () => {
 
   it('runs the first turn text-only, short', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    // #8519: not on a member's first typed line.
     expect(chat).toContain(
-      "const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');",
+      "!runIsOwnersFirstLine.has(runId) &&\n    isToolFreeSmallTalk(lastOwnerText(messages) ?? '');",
     );
     expect(chat).toContain(
       '...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),',

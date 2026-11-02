@@ -11,7 +11,11 @@ const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 describe('a listed small-talk line', () => {
   it('is given the short prompt instead of building the full one', () => {
     expect(chat).toContain(
-      'const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);',
+      'const smallTalkLine = !ownerAbsent && isToolFreeSmallTalk(userMessage);',
+    );
+    // #8519: a member's first typed line gets the full prompt.
+    expect(chat).toContain(
+      'const listedSmallTalk = smallTalkLine && !runIsOwnersFirstLine.has(runId);',
     );
     expect(chat).toContain('? smallTalkAgentPrompt(userId, userMessage)');
   });
