@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 20:55Z (e24cae10 night-date fix queued behind d1a026f6; d1a026f6 first try exited 4 (no quiet moment), now re-deploying; #8524 waits on Misho). Box read to 81002.
+Last TO_OPS.md section handled: 2 Nov, 22:15Z (b191654a delete route LIVE; dry run only until Misho's word and a register entry with UNDO). Box read to 81004.
 
 ## OPEN
 
