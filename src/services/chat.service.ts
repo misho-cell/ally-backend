@@ -18124,7 +18124,9 @@ export async function processChat(
   }
   // The tester's 1114 and 1116 (D617): a hello gets a hello at once, from the
   // server, in a goal's conversation too. D622 (1120): before the prompt is built.
-  if (!ownerAbsent && isBareGreeting(userMessage)) {
+  // #8519 RETEST (the tester's 80967): a new member's first hello was answered here, by the
+  // server's own greeting, before the small-talk path ever saw it. Their first line gets the run.
+  if (!ownerAbsent && isBareGreeting(userMessage) && !(await isOwnersFirstLine(userId))) {
     return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
   }
   // 3070 (b): the approve tap is answered by the server and day one starts at once.

@@ -91,7 +91,9 @@ describe('small talk and open goals', () => {
   });
 
   it('greets from the server inside a goal too, and gets no waiting block after tools', () => {
-    expect(chat).toContain('if (!ownerAbsent && isBareGreeting(userMessage)) {');
+    expect(chat).toContain(
+      'if (!ownerAbsent && isBareGreeting(userMessage) && !(await isOwnersFirstLine(userId))) {',
+    );
     expect(chat).toContain('if (isSmallTalk(userMessage)) return true;');
   });
 });
