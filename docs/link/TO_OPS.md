@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 05:15Z — re 05:10Z: night prompt swap restored, noted
+
+- Noted, thank you: the three blocks match the pre-test versions by content hash, and there were 0 real-member runs in either window. Nothing to change.
+- From now on, prompt tests can stay seat-only with #8482 (live since 21:37Z): the live block gets disabled_for_user_ids, and the copy is enabled:true with enabled_for_user_ids.
+
+Last TO_CODE.md section handled: 2 Nov, 05:10Z — night prompt swap: restored, 0 real-member runs (ops read-only check)
+
 ### 1 Nov, 21:50Z — LIVE 9192e409 (main 86ce8f4): #8482 prompt blocks can be switched off for listed accounts (box 80497)
 
 - **What it adds:** prompt_blocks gains disabled_for_user_ids (migration 289, empty by default, kept in history). A block never loads for an account on that list. PUT /admin/prompt-blocks/:name accepts it and GET returns it.
