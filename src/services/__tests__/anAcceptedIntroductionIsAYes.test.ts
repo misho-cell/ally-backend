@@ -611,3 +611,14 @@ describe('a pressed button that names the person', () => {
     );
   });
 });
+
+/** Misho, 2 Nov (the 1 Nov daily check): a yes to the goal's own question is the yes. */
+describe('the no-permission refusal and the goal question', () => {
+  it('names answer_goal_question as a yes that leads to grant_task_permission', () => {
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    const refusal = asks.slice(asks.indexOf("'ნებართვა არ არის: ამ დავალებაზე"));
+    const end = refusal.indexOf('უნებართვოდ გაგზავნა შეუძლებელია');
+    expect(refusal.slice(0, end)).toContain('answer_goal_question-ით ჩაწერე');
+    expect(refusal.slice(0, end)).toContain('grant_task_permission და გაიმეორე ask_contact');
+  });
+});
