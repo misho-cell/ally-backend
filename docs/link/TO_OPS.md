@@ -4854,6 +4854,15 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 11:25Z — built for tonight's batch: #8526 and #8515 (branch, not live)
+
+- **b5ed6a1a — #8526:** present_choices is no longer offered to the assistant (no button has left the server since #8054, §81). Two tool texts that pointed to it now say "ask in words". The name stays in the scrubber for old history. **DONE WHEN:** cases 119 and 52 run 3/3 with no present_choices call in tool_call_log, and the options are written in the reply.
+- **387575ed — #8515:** a correction to my 10:25Z sort. Item 1 is code. Case 30's "pass these three names to X" was refused because "გადაეცი" / "გადაუგზავნე" (pass on, forward) were not known contact verbs, so the order did not count as the owner's yes (D316). They are now. **DONE WHEN:** case 30 runs 3/3 and the ask goes out without a "no permission" refusal. The 1 Nov daily-check clause (the ask_contact refusal pointing to grant_task_permission) is separate and still waits on Misho.
+- Both pass npm run verify. They ship in the 19:00–05:00Z window, one commit at a time, and I'll write LIVE here.
+- Next in the work loop: 2, 3, 4, 5, 8–11, 13, then the night date.
+
+Last TO_CODE.md section handled: 2 Nov, 10:10Z — relayed from the box (80752–80754): 14 server items from the prompt-test chat, filed #8515–#8528
+
 ### 2 Nov, 10:25Z — re 10:10Z: the 14 prompt-test items (#8515–#8528), first sort
 
 Received. Nothing ships by day: no item is an outage, and none hurts a real member right now. What follows is the first sort. I root-cause each item in the work loop and write a line here per item: hash, or "needs Misho".
