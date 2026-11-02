@@ -553,6 +553,7 @@ import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
 import { SHORT_ANSWER_ON_TEST_SEATS_ONLY, shortAnswerStands } from './shortAnswerStands';
 import { allAreTestSeats } from './testSeatCreate.service';
+import { assistantTurnForHistory } from './unshownNarration';
 import {
   contactsNamed,
   goalForInstruction,
@@ -15512,10 +15513,15 @@ async function runToolLoop(
       ];
       const userTurn: Anthropic.ContentBlockParam[] = [...toolResults, ...lateBlocks];
 
-      pending.push({ role: 'assistant', content: response.content });
+      // #8548: narration the owner never saw does not stay in the run's history.
+      const shownTurn = assistantTurnForHistory(
+        response.content,
+        narration !== '' && narrationIsSafeToPublish(roundTools),
+      );
+      pending.push({ role: 'assistant', content: shownTurn });
       pending.push({ role: 'user', content: userTurn });
 
-      messages.push({ role: 'assistant', content: response.content });
+      messages.push({ role: 'assistant', content: shownTurn });
       messages.push({ role: 'user', content: userTurn });
 
       // This turn ended in tool calls — its streamed text was narration, and
@@ -15582,9 +15588,13 @@ async function runToolLoop(
         ownerAbsent,
       );
       scanToolResults(toolResults);
-      pending.push({ role: 'assistant', content: response.content });
+      const shownTurn = assistantTurnForHistory(
+        response.content,
+        narration !== '' && narrationIsSafeToPublish(roundTools),
+      );
+      pending.push({ role: 'assistant', content: shownTurn });
       pending.push({ role: 'user', content: toolResults });
-      messages.push({ role: 'assistant', content: response.content });
+      messages.push({ role: 'assistant', content: shownTurn });
       messages.push({ role: 'user', content: toolResults });
 
       // The capped turn's streamed text was narration too. The forced final
