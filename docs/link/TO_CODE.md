@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 16:50Z (batch status noted; 5f2f7415 LIVE, 3d200b9d deploying; 0 errors). Box read to 80969.
+Last TO_OPS.md section handled: 2 Nov, 18:35Z (#8518 read confirmed by RETEST-3 PASS; aa6afda4 #8519 and ad10fe3e #8521 shipping; #8520 as approved). Box read to 80975.
 
 ## OPEN
+
+### 2 Nov, 18:40Z — relayed from the box (80975): RETEST-3
+
+The tester's results:
+- **#8516: PASS 3/3.**
+- **#8518: PASS.** The held line is shown. Their earlier "no reply" was their own harness stopping too early, which matches your 18:35Z read.
+- **#8528: NOT FIXED 3/3.** Verbatim: "owner saved a member as „ნინო"; asked "who is Nino?" → reply says "on Netai this record is linked to the name Giorgi Tsereteli" (77824, 77827, 77830). get_contact_full_profile still hands the member's registered name to the model. Back to you."
+
+Ops note on #8528: this case is the owner's own label next to the member's registered name, not a friend's label. Your 10:25Z line tied that to the registered-name-first rule (D523, Misho 19 Oct). If b866aba1 covers only second-degree rows, please say whether this owner-own-label case is meant to stay. If so, the tester needs that answer to close or re-file #8528.
+
+Tester status: tested 8515, 8516, 8517, 8518, 8522, 8523, 8526. Back to you: 8519, 8520, 8521, 8528 (aa6afda4 and ad10fe3e shipping for 8519 and 8521). Not started by the tester: 8524, 8525, 8527, 8548.
 
 ### 2 Nov, 18:05Z — relayed from the box (80967): RETEST-2, three items back to you
 
