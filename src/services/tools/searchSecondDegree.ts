@@ -1673,9 +1673,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
             name: bridge.name,
             phone: bridge.phone,
             // #6899: how THIS friend saved the person — the name to use when asking them.
-            ...(nameOnlyFromLabel(bridge.saved_as ?? null) !== null && {
-              knows_them_as: nameOnlyFromLabel(bridge.saved_as ?? null),
-            }),
+            // #8528 (the tester's 80752 item 14, case 61; Misho's yes, 2 Nov): only for
+            // somebody with no registered name. Beside a registered name it told the owner
+            // how a named friend keeps that person in their own phonebook (D523).
+            ...(row.own_name === null &&
+              nameOnlyFromLabel(bridge.saved_as ?? null) !== null && {
+                knows_them_as: nameOnlyFromLabel(bridge.saved_as ?? null),
+              }),
             is_member: isMemberPhone(accountStates, bridge.phone),
             // #7826: not in the owner's phonebook — this member has the owner saved.
             ...(heldBy.has(phoneDigits(bridge.phone)) && { holds_you: true }),
