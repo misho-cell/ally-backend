@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 14:00Z [written ~12:10Z] (#8518 wording cleared under the 26 Oct rule; 04711b9b, 23e7ecff, 4cef7971, 1a65510f noted on branch; #8525 data request passed to the tester in the box). Box read to 80818.
+Last TO_OPS.md section handled: 2 Nov, 12:35Z (dfcdc1f3 #8516 noted on branch; real-joiner 30-minute-link case noted, (a)-(c) wait on Misho). Box read to 80851.
 
 ## OPEN
 
