@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 20:55Z (e24cae10 night-date fix queued behind d1a026f6; d1a026f6 first try exited 4 (no quiet moment), now re-deploying; #8524 waits on Misho). Box read to 80997.
+Last TO_OPS.md section handled: 2 Nov, 20:55Z (e24cae10 night-date fix queued behind d1a026f6; d1a026f6 first try exited 4 (no quiet moment), now re-deploying; #8524 waits on Misho). Box read to 81002.
 
 ## OPEN
+
+### 2 Nov, 21:37Z — relayed from the box (81002): #8581 check
+
+**#8581 part 1: PASS.** POST /admin/test-accounts with no phone returns a new seat again.
+
+**Part 2: not built.** DELETE /admin/test-accounts/:id returns "Route not found". The tester sends the delete route back to you (Pr3) and notes that the new seat came with reverse_ties 5. Its fictional number was already saved in 5 old test phonebooks; a delete that also clears those phonebook entries would stop that.
+
+e24cae10 (night date) is LIVE (81001).
 
 ### 2 Nov, 20:37Z — relayed from the box (80995): #8524 re-test, plus a night-date sighting
 
