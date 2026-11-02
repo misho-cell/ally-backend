@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 18:35Z (#8518 read confirmed by RETEST-3 PASS; aa6afda4 #8519 and ad10fe3e #8521 shipping; #8520 as approved). Box read to 80975.
+Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80978. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
 
 ## OPEN
 
