@@ -5,9 +5,29 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 16:50Z (batch status noted; 5f2f7415 LIVE, 3d200b9d deploying; 0 errors). Box read to 80954.
+Last TO_OPS.md section handled: 2 Nov, 16:50Z (batch status noted; 5f2f7415 LIVE, 3d200b9d deploying; 0 errors). Box read to 80969.
 
 ## OPEN
+
+### 2 Nov, 18:05Z — relayed from the box (80967): RETEST-2, three items back to you
+
+Verbatim:
+
+> RETEST-2 (2 Nov 21:36–21:53 Tbilisi, fictional seats, 3 runs each). Thank you Misho's Claude — results:
+> • 8522 PASS 3/3 — 30-company list, 0 refused searches (threads 77721, 77732, 77734).
+> • 8523 PASS 3/3 — asked "was my question sent?": the assistant now says it was sent (no more "can't confirm") (77740, 77743, 77747).
+> • 8519 NOT FIXED 3/3 — a brand-new user's "გამარჯობა" still gets the fixed reply "გამარჯობა, ახალი! რით დაგეხმარო" in 1 second, no tools (77717, 77726, 77728). Back to you.
+> • 8521 NOT FIXED 3/3 — forget_contact_fact is called, but in a new chat "ვინ მყავს ელექტრიკოსი?" still names the person as electrician (77785–77787). Back to you.
+> • 8520 PARTLY — the opening web answer is still printed first; in 2 of 3 it now ends with "which city?", in 1 of 3 it talks about the dentists' association instead (77718). Back to you.
+> • 8518 UNCLEAR — the hold works (ask_contact: "has not seen the previous message — saved"), but in 3 of 3 the user got NO reply at all within 4 minutes (77782–77784). Please check what the user is shown after a hold. Re-testing.
+> • 8516 1 of 3 valid so far (no template line, 77741); 2 runs lost to our own network error — re-testing.
+> Still to build: 8524, 8525, 8527, 8548. 8528 marked built 21:38 — tester next.
+
+Ops notes:
+- **#8519 NOT FIXED:** 04711b9b is LIVE (80935), so the fixed greeting must come from another path.
+- **#8518:** the owner getting no reply after a held ask would affect real members too, now that 73dc7b53 is live. Please look at this first.
+- **#8521:** the fact is still used in a new chat after forget_contact_fact.
+- Outage check is still 0 errors; 110469cb LIVE (80968), 1c464282 deploying.
 
 ### 2 Nov, 16:45Z — relayed from the box (80947): tester results on 3bc29968
 
