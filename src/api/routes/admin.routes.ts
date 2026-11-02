@@ -126,6 +126,7 @@ import {
 } from '../../services/unconfirmedChorusAsks.service';
 import { NextFunction, Router, Request, Response } from 'express';
 import { body, header, param, query as queryParam, validationResult } from 'express-validator';
+import { deleteTestSeat } from '../../services/testSeatDelete.service';
 import {
   buildWarRoomCards,
   CARD_STATUSES,
@@ -3245,6 +3246,56 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-payment]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #8581 (the tester's 80985 / 81002): an old fictional seat erased, and its
+ * reserved numbers given back for new seats. Refused (403) for anything that
+ * is not a test seat on fictional numbers. `dry_run=true` reports what would go
+ * and changes nothing. Running it for real is a live-data delete: Misho's word
+ * first, registered in ADMIN_WRITE_OPERATIONS.
+ *
+ *   DELETE /admin/test-accounts/:id?dry_run=true|false
+ *   200 { dryRun, erasure, numbersFreed, seatEntriesRemoved }   403 { refusal }
+ */
+adminRouter.delete(
+  '/test-accounts/:id',
+  param('id').isInt({ min: 1 }),
+  queryParam('dry_run').optional().isIn(['true', 'false']),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res
+        .status(400)
+        .json({ success: false, error: 'a seat id and dry_run true|false are expected' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const dryRun = req.query['dry_run'] !== 'false';
+    try {
+      const outcome = await deleteTestSeat(seatId, dryRun);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-delete] admin ${(req as AuthenticatedRequest).user.userId} seat ${seatId} ` +
+          `dry_run=${dryRun}: ` +
+          (outcome.ok
+            ? `${outcome.numbersFreed} number(s), ${outcome.seatEntriesRemoved} entries`
+            : outcome.refusal),
+      );
+      if (!outcome.ok) {
+        res.status(403).json({ success: false, error: outcome.refusal });
+        return;
+      }
+      const { erasure, numbersFreed, seatEntriesRemoved } = outcome;
+      res.status(200).json({
+        success: true,
+        data: { dryRun: outcome.dryRun, erasure, numbersFreed, seatEntriesRemoved },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-delete]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
