@@ -545,6 +545,7 @@ import {
   HELD_LINE,
 } from './instructionUnsent';
 import { questionHeldOnThread } from './paceUntilSeen';
+import { isOwnersFirstLine } from './firstOwnerLine';
 import {
   contactsNamed,
   goalForInstruction,
@@ -6549,6 +6550,9 @@ const runWebFound = new Set<string>();
  */
 const runLooksUpTheWeather = new Set<string>();
 
+/** #8519: runs answering a member's first typed line, which never take the small-talk shortcut. */
+const runIsOwnersFirstLine = new Set<string>();
+
 /**
  * 3106, the speed half (the tester's 58029, 14 Oct: 18.0 / 19.2 / 19.1 s against
  * 12). A weather run spent one whole model turn deciding to call the web search
@@ -10223,6 +10227,7 @@ function clearRunState(runId: string): void {
   runAnswerSent.delete(runId);
   runAskSent.delete(runId);
   runAskRefused.delete(runId);
+  runIsOwnersFirstLine.delete(runId);
   runAskSentTo.delete(runId);
   runRouteClosed.delete(runId);
   runRelaySent.delete(runId);
@@ -15167,7 +15172,10 @@ async function runToolLoop(
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
-  const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
+  const smallTalkOnly =
+    !ownerAbsent &&
+    !runIsOwnersFirstLine.has(runId) &&
+    isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
   const weatherLookUp =
     !ownerAbsent &&
     asksTheWeather(lastOwnerText(messages) ?? '') &&
@@ -18199,7 +18207,13 @@ export async function processChat(
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
   }
 
-  const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);
+  const smallTalkLine = !ownerAbsent && isToolFreeSmallTalk(userMessage);
+  if (smallTalkLine && (await isOwnersFirstLine(userId))) {
+    runIsOwnersFirstLine.add(runId);
+    // eslint-disable-next-line no-console
+    console.log(`[small-talk] run ${runId}: the member's first line — the full run answers it`);
+  }
+  const listedSmallTalk = smallTalkLine && !runIsOwnersFirstLine.has(runId);
   steps.mark('named');
   // 3106 (speed): the two reads the run's language needs depend on nothing the
   // prompt build does, so they start beside it instead of after it.
@@ -18954,7 +18968,7 @@ export async function processChat(
   );
   requestsEarly.catch(() => undefined);
   const verdict =
-    !ownerAbsent && isToolFreeSmallTalk(userMessage)
+    !ownerAbsent && !runIsOwnersFirstLine.has(runId) && isToolFreeSmallTalk(userMessage)
       ? { safe: true }
       : await moderateReply(cleanedFinal, userId);
   lap(postRun, 'moderation');
