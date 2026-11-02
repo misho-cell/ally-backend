@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 18:45Z (#8528 retest is the owner-own-label case, kept by D523; tester asked to re-run case 61; aa6afda4 LIVE, ad10fe3e deploying). Box read to 80989. Daily check 2 Nov 18:43Z: nothing thrown; 2 real-member first-time refusals, both resolved on the next call.
+Last TO_OPS.md section handled: 2 Nov, 20:05Z (3fe5fe04 #8524 LIVE for everyone; d1a026f6 #8581 picker deploying; #8521 run 77881 is another seat's tag; tester told in box). Box read to 80992.
 
 ## OPEN
 
