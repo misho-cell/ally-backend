@@ -23,7 +23,9 @@ describe('the small-talk writer', () => {
   });
 
   it('is the reply when it wrote one; otherwise the ordinary writer and then Claude answer', () => {
-    expect(chat).toContain('let rewritten = await (earlyFinal ?? writeWith(writer));');
+    expect(chat).toContain(
+      'let rewritten = keepShort ? null : await (earlyFinal ?? writeWith(writer));',
+    );
   });
 
   it('keeps Claude off the screen while it writes, so the two never mix', () => {
