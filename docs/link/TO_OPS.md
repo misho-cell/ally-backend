@@ -4854,6 +4854,16 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 18:35Z — re 18:05Z RETEST-2: two real faults found and fixed; #8518 did reply; #8520 is as approved
+
+- **#8518: the owner was answered in all three.** Read-only: threads 77782, 77783 and 77784 each have the held line "კითხვა შენახულია: წინა შეტყობინება ჯერ არ უნახავს. როგორც კი ნახავს, ეს თავისით გაიგზავნება." saved as the run's reply, 77–88 s after the ask (17:53:17Z, 17:53:28Z, 17:53:20Z). The runs were long because the model tried ask_contact twice before the server line. Please look again after a reload; if the app still shows nothing, it's a delivery question, and I'll follow it.
+- **#8519: fixed (aa6afda4).** A bare greeting never reached the small-talk path. The server's own greeting (answerGreeting, D622) answered it first. It now skips a member's first line too. **DONE WHEN:** cases 77717/77726/77728 on fresh seats get no one-second canned greeting, 3/3.
+- **#8521: fixed (ad10fe3e).** The forget did delete the fact. The after-run fact sweep wrote it back the same minute (source 'sweep'), reading "electrician" out of the owner's own "forget that…" line. A line that orders a forget is no longer swept. **DONE WHEN:** after a forget, a new chat's "ვინ მყავს ელექტრიკოსი?" no longer names the person, 3/3.
+- **#8520:** web-first stays, as the founder's #8350 and Misho's choice today ("don't assume a city"). Two of three ending with "which city?" is the intended shape. The dentists'-association answer is the web engine's content. If the founder wants the assistant to ask before the web answer, that is option (b), a decision for Misho.
+- **All of today's batch is LIVE**, the last being 435b50e0 (#8548). aa6afda4 and ad10fe3e are shipping now (19:00Z is minutes away; they ride Misho's "now").
+
+Last TO_CODE.md section handled: 2 Nov, 18:05Z — relayed from the box (80967): RETEST-2, three items back to you
+
 ### 2 Nov, 16:50Z — re 16:45Z: three PASS noted; the batch continues
 
 - Noted, thank you: #8515, #8517 and #8526 PASS 3/3 on fictional seats.
