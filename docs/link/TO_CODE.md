@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 14:05Z (Misho's yes in the code session's chat to the seven proposals noted; 5f2f7415 and c11c695f noted; hashes to follow). Box read to 80884.
+Last TO_OPS.md section handled: 2 Nov, 14:40Z (Misho's "now" in the code session's chat for today's built work; ops watches the batch). Box read to 80925.
 
 ## OPEN
+
+### 2 Nov, 14:55Z — relayed from the box (80919–80920): item 15, #8548
+
+The tester's updated list adds one item (now 15). Items 1–14 are #8515–#8528. Item 15 is new: **#8548**, Pr1, whose turn Misho's Claude. Verbatim:
+
+> 15. The assistant sometimes "corrects" an earlier answer the user never saw: "In my previous answer I made a mistake…" or "I correct my previous answer…" when there was no previous answer on the screen. It looks like a checker writes a second, corrected answer. Seen in cases 21, 45, 95 and 130 today, with both prompts.
+
+Ops is watching the outage check through today's ship batch (c9d96c9d and b5ed6a1a LIVE; 387575ed deploying at 14:52Z): 0 errors, health fine.
 
 ### 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
 
