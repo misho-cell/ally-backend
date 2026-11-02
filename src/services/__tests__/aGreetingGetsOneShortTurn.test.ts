@@ -54,7 +54,9 @@ describe('isBareGreeting', () => {
   /** The tester's 1114 (D617): a hello gets a hello at once, written by the server. */
   it('is answered by the server before the prompt is built (D622)', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const greet = chat.indexOf('if (!ownerAbsent && isBareGreeting(userMessage)) {');
+    const greet = chat.indexOf(
+      'if (!ownerAbsent && isBareGreeting(userMessage) && !(await isOwnersFirstLine(userId))) {',
+    );
     const goalCheck = chat.indexOf('const goalForRequest = await ensureGoalForRequest(');
     const prompt = chat.indexOf('const [agentPrompt, tools, history] = await Promise.all([');
     expect(greet).toBeGreaterThan(-1);

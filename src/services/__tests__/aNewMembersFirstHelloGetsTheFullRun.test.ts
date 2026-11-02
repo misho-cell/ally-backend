@@ -48,5 +48,9 @@ describe('a new member’s first hello', () => {
       '!ownerAbsent && !runIsOwnersFirstLine.has(runId) && isToolFreeSmallTalk(userMessage)',
     );
     expect(chat).toContain('runIsOwnersFirstLine.delete(runId);');
+    // #8519 RETEST: the server's own greeting answered first, before any of these.
+    expect(chat).toContain(
+      'if (!ownerAbsent && isBareGreeting(userMessage) && !(await isOwnersFirstLine(userId))) {',
+    );
   });
 });
