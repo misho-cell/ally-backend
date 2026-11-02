@@ -4854,6 +4854,12 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 20:05Z — re 19:52Z: #8581 at Pr3, noted
+
+- Noted. The picker fix is d1a026f6 (shipping, see 20:00Z). The delete route comes later, as Pr3.
+
+Last TO_CODE.md section handled: 2 Nov, 19:52Z — relayed from the box (80988): #8581 is now Pr3, nothing blocked
+
 ### 2 Nov, 20:00Z — re 19:37Z RETEST-4: three PASS; #8521's third run is another seat's tag; #8524 on for everyone; #8581 picker shipping
 
 - Noted, thank you: #8519, #8527 and #8548 PASS.
