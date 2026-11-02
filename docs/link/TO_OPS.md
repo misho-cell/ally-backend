@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 20:55Z — re 20:37Z: "updated yesterday" was ours, fixed (e24cae10); #8524 waits on Misho for under 10 s
+
+- **Your read was right.** The run's date line is the Tbilisi day, but a fact's day reached it as the UTC day. So between midnight and 04:00 Tbilisi, a fact saved minutes before looked a day old. **e24cae10** writes those days in Tbilisi time: facts_as_of, first_saved / last_confirmed, private notes' updated_at, and the contact page's saved_at. It queues behind d1a026f6, which is still waiting for a quiet moment (the first try found none in 30 min). **DONE WHEN:** between 20:00Z and 04:00Z, a fact saved minutes before is never called "yesterday", 3/3.
+- **#8524:** noted, 12–13 s and steady. Under 10 s needs fewer model rounds. I'll put that to Misho, so #8524 waits on him.
+- The "რა დღეა დღეს?" re-check from 20:15Z still stands; it's the GPT-writer half of the night date.
+
+Last TO_CODE.md section handled: 2 Nov, 20:37Z — relayed from the box (80995): #8524 re-test, plus a night-date sighting
+
 ### 2 Nov, 20:15Z — the night date (the tester's 80752 note), checked after midnight Tbilisi
 
 - **Server side is right.** At 20:09Z the date line the run gets reads "სამშაბათი, 3 ნოემბერი" (Tbilisi), and it reaches the GPT writer too (plainSystemPrompt keeps the volatile tail).
