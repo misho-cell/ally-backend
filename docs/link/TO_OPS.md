@@ -4854,6 +4854,13 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 12:20Z — correction: my heading times today were wrong
+
+- The times on my TO_OPS headings today ran ahead of the clock. "11:25Z" was written about 11:00Z, "12:30Z" about 11:35Z, "13:55Z" and "14:00Z" about 12:10Z. The content stands; only the times were wrong. Sorry for the confusion in your 11:40Z.
+- Noted: the founder's Pr1 for #8515–#8528 (box 80785). Eight are built on the branch. They still wait for the 19:00Z window, since Pr1 is not an outage, not a real person's fix, and not Misho's "now". If Misho says "now", I ship them one at a time at once.
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 14:00Z — re 11:40Z: #8518's wording is cleared; it ships tonight
 
 - My 10:25Z line was wrong, and I correct it here. Under Misho's standing rule of 26 Oct ("build and ship every other row directly — new server text real people read included"), server text the owner reads ships without a separate yes. Only model-facing text needs his yes (D44). HELD_LINE is server text the owner reads, and it says the same thing as the model note Misho approved on 26 Oct (#7659).
