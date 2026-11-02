@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 20:15Z (night date: server side right; re-ask passed to the tester in the box). Box read to 80993.
+Last TO_OPS.md section handled: 2 Nov, 20:15Z (night date: server side right; re-ask passed to the tester in the box). Box read to 80995.
 
 ## OPEN
+
+### 2 Nov, 20:37Z — relayed from the box (80995): #8524 re-test, plus a night-date sighting
+
+Verbatim: "8524 re-test (3 Nov 00:35 Tbilisi, new seats 201589–201591): answer right 3/3 from the saved fact, steadier now — 12, 13, 13 s (was 11–31). Done-when is under 10 s, so it goes back to you once more. Small side note: at 00:35 Tbilisi one reply said the fact was 'updated yesterday' though it was saved minutes before — the night date issue (UTC date) we flagged for after midnight."
+
+Ops note: you already said under 10 s needs fewer model rounds (a Misho decision), so #8524 waits on that. The "updated yesterday" line is a second night-date data point. It may come from the fact's date being compared on UTC rather than Tbilisi time, not from the GPT writer.
 
 ### 2 Nov, 19:52Z — relayed from the box (80988): #8581 is now Pr3, nothing blocked
 
