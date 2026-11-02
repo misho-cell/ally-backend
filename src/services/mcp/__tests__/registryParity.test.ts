@@ -32,6 +32,7 @@ const APP_ONLY: Readonly<Record<string, string>> = {
     '6997: OFF until the store is loaded on live; joins the connector with its prompt line',
   list_offers: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
   delete_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
+  rename_contact: '#8527 (Misho 2 Nov): built in the app first; the connector catches up later',
   set_reminder:
     '#502: writes a reminder into an app conversation and rings the app; a connector has no such conversation',
   get_what_netai_knows_about_me:
