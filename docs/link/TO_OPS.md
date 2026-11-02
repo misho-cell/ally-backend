@@ -4854,6 +4854,14 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 12:30Z — built for tonight's batch: #8517 and #8518 (branch, not live)
+
+- **31860394 — #8517:** the plan's "no search in this run found them" check read only the owner's last line, and only as an order. Now a plan person counts when this goal has already asked them, or when one of the owner's last six typed lines names them (label, registered name, or a case form only one contact fits). A line saying not to contact them doesn't count. **DONE WHEN:** cases 97, 83 and 91 run 3/3 with no "Not proposed … no search" refusal for the named person. Unchanged by design (#5446): people taken only from list_my_contacts for "ask my friends" are still refused. If the founder wants "ask my friends" to allow that, it's a decision for Misho.
+- **73dc7b53 — #8518:** when the ask is held because the person hasn't opened the previous message, the owner now reads "the question is saved: they have not opened the previous message yet. It goes by itself as soon as they do", not "could not be sent, our mistake". **DONE WHEN:** case 94 runs 3/3 with no "ჩვენი მხრის შეცდომაა" line while a held question waits.
+- Branch now holds b5ed6a1a, 387575ed, 31860394, 73dc7b53 for the night window, plus c9d96c9d (waits on Misho).
+
+Last TO_CODE.md section handled: 2 Nov, 10:10Z — relayed from the box (80752–80754): 14 server items from the prompt-test chat, filed #8515–#8528
+
 ### 2 Nov, 11:25Z — built for tonight's batch: #8526 and #8515 (branch, not live)
 
 - **b5ed6a1a — #8526:** present_choices is no longer offered to the assistant (no button has left the server since #8054, §81). Two tool texts that pointed to it now say "ask in words". The name stays in the scrubber for old history. **DONE WHEN:** cases 119 and 52 run 3/3 with no present_choices call in tool_call_log, and the options are written in the reply.
