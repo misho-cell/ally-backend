@@ -1401,27 +1401,6 @@ const GET_THREAD_CONTEXT_TOOL: AnthropicTool = {
   },
 };
 
-const PRESENT_CHOICES_TOOL: AnthropicTool = {
-  name: 'present_choices',
-  description:
-    'Present a list of options for the user to tap and select. Call this instead of listing options as bullet points in text. The UI renders them as tappable buttons. The selected item will arrive as the next user message. WHEN: the user asks for options/variants to pick from, you are about to end a reply with an either/or question, or your reply would otherwise list 2-5 alternatives as bullets.' +
-    // Row 313, the tester's 941/957: the buttons are written HERE, by this
-    // model — the GPT writer's Georgian rules never reached them, which is why
-    // „გააგრძელე მოძებნა" and „კი, მაჩვენე გეგმა" kept coming back.
-    ' EACH LABEL IS WHAT THE OWNER SAYS, as their own action in the first person — never an order to you. In Georgian: „დავურეკავ ერთ-ერთს", „ჯერ არა", „ძებნას ვაგრძელებთ" — never „გააგრძელე ძებნა", „მაჩვენე", „მოძებნე". Address the owner as „შენ", never „თქვენ". No English or Latin words in a Georgian label.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      items: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'The options to display as tappable buttons',
-      },
-    },
-    required: ['items'],
-  },
-};
-
 const SAVE_CONTACT_FACT_TOOL: AnthropicTool = {
   name: 'save_contact_fact',
   description:
@@ -2317,8 +2296,8 @@ const SHARE_CONTACT_NUMBER_TOOL: AnthropicTool = {
     "Give the person who asked this question one contact's number from the owner's OWN " +
     "phonebook. Only when the owner's own latest message says to share that contact's number " +
     '(e.g. „გაუგზავნე დათოს ნომერი"); never on your own. If the name the owner gave matches ' +
-    'more than one contact, first offer the matches with present_choices and call this with the ' +
-    'one they tap. The server checks the owner’s words and sends the name and number itself; ' +
+    'more than one contact, first ask in words which one they mean and call this with the ' +
+    'one they name. The server checks the owner’s words and sends the name and number itself; ' +
     'afterwards say in one line whose number went to whom — never type the number yourself.',
   input_schema: {
     type: 'object',
@@ -12246,8 +12225,8 @@ async function executeToolCall(
           thanks_loop_offer: true,
           note:
             'This user was invited to Netai and just got their first real result. Ask, once, if ' +
-            'they would like to thank whoever invited them — present it as a one-tap choice ' +
-            '(present_choices), not a paragraph. Then call respond_to_thanks_loop_offer with ' +
+            'they would like to thank whoever invited them — in one short line, not a ' +
+            'paragraph. Then call respond_to_thanks_loop_offer with ' +
             'their answer.',
         }),
       };
@@ -16808,7 +16787,6 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   RESPOND_TO_INTRODUCTION_TOOL,
   GET_INTRO_STATUS_TOOL,
   GET_THREAD_CONTEXT_TOOL,
-  PRESENT_CHOICES_TOOL,
   SET_TASK_RESULT_TOOL,
   CREATE_TASK_TOOL,
   GET_MY_TASKS_TOOL,
@@ -16955,8 +16933,18 @@ async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<A
 // matched whole. Per-user insight tools are not here — their names are built
 // from the account's own fields at call time — and that is a real gap rather
 // than an oversight.
+//
+// #8526: a tool taken out of the offered list still sits in old threads'
+// history, and a run that reads that history can repeat its name. It stays
+// here so the scrubber still removes it.
+const RETIRED_TOOL_NAMES: readonly string[] = ['present_choices'];
+
 const INTERNAL_TOOL_NAMES = [
-  ...new Set([...Object.keys(ALL_TOOL_DEFINITIONS), ...ALWAYS_ON_TOOLS.map((t) => t.name)]),
+  ...new Set([
+    ...Object.keys(ALL_TOOL_DEFINITIONS),
+    ...ALWAYS_ON_TOOLS.map((t) => t.name),
+    ...RETIRED_TOOL_NAMES,
+  ]),
 ].sort((a, b) => b.length - a.length);
 
 // The optional trailing group is the Georgian case ending — see the comment on
