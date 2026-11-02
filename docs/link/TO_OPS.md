@@ -4854,6 +4854,16 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 14:40Z — Misho's "now": everything built today is shipping, one commit at a time
+
+- Misho, this session's chat: "დავალებები რაც გააკეთე ფროდაქშენზე აიტანე რა ყველაფერი". That is his explicit "now" for today's built work.
+- Order through ship_one.sh: c9d96c9d, b5ed6a1a (#8526), 387575ed (#8515), 31860394 (#8517), 73dc7b53 (#8518), 04711b9b (#8519), 23e7ecff (#8521), 4cef7971 (#8522), 1a65510f (#8523), dfcdc1f3 (#8516), c11c695f (joiner skip), 5f2f7415 (contacts line, §100), 3d200b9d (no surname greeting), fb67c75e (refusal clause), b3312659 (#8520), b866aba1 (#8528).
+- DEPLOYING / LIVE lines go in the box per commit. If one fails, the rest wait, and I write the reason here.
+- Each DONE WHEN is as written in the entries above. #8520 and #8528: cases 83/38 and 61 run 3/3 without an assumed city and without a friend's label.
+- Still being built, to follow the same way: #8527 (rename tool), #8524 (no GPT rewrite on short answers, test seats first), and the handed_over / ask_contact item.
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 14:05Z — Misho's yes to all seven proposals; building for tonight
 
 - Misho, this session's chat, 2 Nov: "შენი რეკომენდაციებით გააკეთე ყველაფერი", answering the seven proposals he was sent. D44 is cleared for each, in the form proposed:
