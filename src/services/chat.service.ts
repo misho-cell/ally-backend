@@ -542,7 +542,9 @@ import {
   threadAskedSomebody,
   NOT_ON_NETAI_LINE,
   NOT_SENT_LINE,
+  HELD_LINE,
 } from './instructionUnsent';
+import { questionHeldOnThread } from './paceUntilSeen';
 import {
   contactsNamed,
   goalForInstruction,
@@ -14399,6 +14401,11 @@ async function serverSendsOrSaysSo(
       text: outcome.people.map((person) => personLineForOwner(person, language)).join('\n'),
       nothingWent: !outcome.people.some((person) => person.result === InstructedAskResult.Sent),
     };
+  }
+  if (await questionHeldOnThread(threadId)) {
+    // eslint-disable-next-line no-console
+    console.log(`[instruction-unsent] run ${runId} thread ${threadId}: held, not failed (#8518)`);
+    return { text: HELD_LINE[language] };
   }
   // eslint-disable-next-line no-console
   console.warn(

@@ -94,3 +94,30 @@ export async function noteHeldAskOutcome(id: number, outcome: string): Promise<v
     HOLD_QUERY_TIMEOUT_MS,
   );
 }
+
+/** #8518: a held question kept this recently belongs to the run that just ended. */
+const HELD_JUST_NOW_MINUTES = 10;
+
+/**
+ * #8518 (the tester's 80752 item 4, case 94): is a question from a goal on this
+ * conversation waiting, kept in the last minutes, for somebody to open the
+ * previous message? Fails towards false, which keeps the old line.
+ */
+export async function questionHeldOnThread(threadId: number): Promise<boolean> {
+  try {
+    const result = await query<{ held: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM pace_held_asks h JOIN tasks k ON k.id = h.task_id
+          WHERE k.thread_id = $1 AND h.released_at IS NULL
+            AND h.created_at > NOW() - ($2 || ' minutes')::INTERVAL
+       ) AS held`,
+      [threadId, HELD_JUST_NOW_MINUTES],
+      HOLD_QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.held === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[pace] thread ${threadId}: held question not read:`, (err as Error).message);
+    return false;
+  }
+}
