@@ -4854,6 +4854,26 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 13:55Z — #8515–#8528: four more built, four need a decision or data
+
+**Built for tonight (branch, not live; each passes npm run verify):**
+- **04711b9b — #8519:** a member's first typed line (e.g. "გამარჯობა") no longer takes the small-talk shortcut. The full run answers it. **DONE WHEN:** case 48 on a fresh seat runs 3/3 without the canned one-second greeting.
+- **23e7ecff — #8521:** "forget this fact" deletes it. The owner's own forget / delete / erase line counts as the confirmation; a question or a "don't" does not. **DONE WHEN:** case 109 runs 3/3 with the fact gone (get_contact_facts no longer shows it) and no "ადასტურებ?" step.
+- **4cef7971 — #8522:** a list of 10 or more CSV rows pasted into the chat is kept as the conversation's file, with the same event an upload gets, so the run uses work_the_list instead of one search per row. **DONE WHEN:** case 128 runs 3/3 with work_the_list called and no "search budget" refusals.
+- **1a65510f — #8523:** get_my_tasks now carries sent_asks: the owner's latest asks on open goals, with the person as the owner saved them, status, and sent / seen / answered times. **DONE WHEN:** case 89 runs 3/3 and the reply states each sent question's status.
+
+**Need Misho (asked him today):**
+- **#8520 (item 6):** the web answer first is the founder's #8350 design. For a need tied to a place with no city given, it guesses one (Tbilisi). The fix is either a rule in the web prompt (model text, D44) or skipping web-first until the city is known. That's his call.
+- **#8527 (item 13):** there is no rename today, only notes. It needs a new tool, and its description is model text (D44).
+- **#8528 (item 14):** read case 61. A second-degree result told the owner how a named friend saved someone in that friend's own phonebook, next to the different registered name. This goes against D523. Proposal: when a friend's label differs from the registered name, the row carries only the registered name and "found through <friend>", never the friend's label.
+
+**Need data from the tester:**
+- **#8525 (item 11):** "Odoo / ERP" is a member offer in the offers table, which no contact search reads (offers match through needs-offers, #1698). Please confirm whose search should find it: the owner's contact search, or the needs-offers match. For "American Academy admissions", please give the seat and where the text was saved (tag, fact or note). I couldn't find it.
+
+**Still on my list:** 2 (#8516), 10 (#8524), the night date.
+
+Last TO_CODE.md section handled: 2 Nov, 10:10Z — relayed from the box (80752–80754): 14 server items from the prompt-test chat, filed #8515–#8528
+
 ### 2 Nov, 12:30Z — built for tonight's batch: #8517 and #8518 (branch, not live)
 
 - **31860394 — #8517:** the plan's "no search in this run found them" check read only the owner's last line, and only as an order. Now a plan person counts when this goal has already asked them, or when one of the owner's last six typed lines names them (label, registered name, or a case form only one contact fits). A line saying not to contact them doesn't count. **DONE WHEN:** cases 97, 83 and 91 run 3/3 with no "Not proposed … no search" refusal for the named person. Unchanged by design (#5446): people taken only from list_my_contacts for "ask my friends" are still refused. If the founder wants "ask my friends" to allow that, it's a decision for Misho.
