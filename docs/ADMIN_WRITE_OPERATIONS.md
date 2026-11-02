@@ -6698,3 +6698,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **31 Oct 22:13Z:** Misho, his chat: „ხვალ 10-ზე გაგზავნე და მერე მომწერე".
 - **1 Nov 06:00Z — SENT.** The dry run gave 37, and the send was started at once. Read-only check at 06:15Z: 37 joiner_first_message events (06:00:43Z–06:11:34Z), 37 different members, each with its thread. There is exactly one visible Netai message in each of the 37 threads; the extra empty assistant row per thread is the same as on earlier joiners and is never shown. None went before 08:30 Tbilisi. Nothing is left: a second dry run would give 0.
 
+
+## 100 · ONE LINE WHEN A MEMBER'S CONTACTS HAVE ARRIVED (Misho, his chat, 2 Nov; built under the 26 Oct standing rule)
+
+- **Who authorises:** Misho's standing rule of 26 Oct (new server text real people read is built and shipped directly). The reason is a real joiner on 2 Nov whose upload loaded in the background with no word from Netai. Misho was told in his chat before it was built.
+- **What:** new server text real people read, and a write to live data. When an upload through the contacts link has saved at least one contact, the member gets ONE line in their main chat: „კონტაქტები მივიღე. ახლა შენს წრეში შემიძლია ძებნა — მითხარი, ვინ ან რა გჭირდება." (en/ru/es the same). It is recorded first in product_events as `contacts_received_line`. A push goes with it only outside Tbilisi quiet hours; in quiet hours the line is written with no push. Chat-attached parts (the connector) do not trigger it.
+- **Undo:** revert the commit. Lines already written stay. They are listed with `SELECT user_id, props->>'thread_id' FROM product_events WHERE event = 'contacts_received_line'`, and each can be deleted from conversations by its thread and text.
