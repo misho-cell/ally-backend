@@ -449,9 +449,14 @@ export function goalTitleFrom(message: string): string {
  * is the owner speaking of themselves. The present „გიას ვთხოვ …" (I'm asking Gia,
  * through you) stays an instruction. „უთხრა" and „სთხოვა" tell what somebody
  * else did. None of them is an instruction.
+ *
+ * #8515 (the tester's 80752 item 1, case 30): „ამ სამ ბროკერს … X-ს გადაეცი,
+ * სახელებით" — pass these three names to X — was refused as „no permission":
+ * „გადაეცი" and „გადაუგზავნე" (pass on, forward) were not contact verbs, so the
+ * owner's order did not count as their yes (D316).
  */
 const CONTACT_VERB_RE =
-  /(ჰკითხე|(?<!ვ)კითხე|(?<!\p{L})მისწერ[ეო]?|(?<!\p{L})მიწერ[ეო]?|(?<!ვ)უთხარი|(?<!ვ)უთხ(?!რა(?!\p{L}))|(?<!ვ)ს?თხოვ(?:[ეო]|(?!ა))|(?<=ვ)თხოვ(?![ეოა]|\p{L})|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
+  /(ჰკითხე|(?<!ვ)კითხე|(?<!\p{L})მისწერ[ეო]?|(?<!\p{L})მიწერ[ეო]?|(?<!ვ)უთხარი|(?<!ვ)უთხ(?!რა(?!\p{L}))|(?<!ვ)ს?თხოვ(?:[ეო]|(?!ა))|(?<=ვ)თხოვ(?![ეოა]|\p{L})|დაუკავშირდ|გაუგზავნ|(?<!\p{L})გადაეც(?:ი|ით)?(?!\p{L})|გადაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b|\bpass\b[^.!?]*\bto\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
 
 /**
  * „write to nobody", „არავის არ მისწერო" — the verb is present and the
@@ -462,7 +467,7 @@ const CONTACT_VERB_RE =
 // მიწერო" read as an instruction to contact them — only „არავის არ" and „ნუ" were
 // known negations. „არ" right before the contact verb takes it back as well.
 const NEGATED_CONTACT_RE =
-  /(write to (nobody|no one)|(do not|don't|never)\s+(write|message|contact|ask))|(არავის\s+(არ\s+)?(მისწერ|მიწერ|დაუკავშირდ)|(?:^|[\s,.!?])(?:ნუ|არ)\s+(მისწერ|მიწერ|დაუკავშირდ|ჰკითხ|შეეხმიან))/iu;
+  /(write to (nobody|no one)|(do not|don't|never)\s+(write|message|contact|ask))|(არავის\s+(არ\s+)?(მისწერ|მიწერ|დაუკავშირდ)|(?:^|[\s,.!?])(?:ნუ|არ)\s+(მისწერ|მიწერ|დაუკავშირდ|ჰკითხ|შეეხმიან|გადაეც|გადაუგზავნ))/iu;
 
 /**
  * An instruction is short. Row 104's are 30 to 80 characters; a paragraph that
