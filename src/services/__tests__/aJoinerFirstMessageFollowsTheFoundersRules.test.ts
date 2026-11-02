@@ -110,3 +110,12 @@ describe('a first message a deploy cut off', () => {
     expect(service).toContain("WHERE ${welcomedSql('s.id', '$1', '$3', '$4')}");
   });
 });
+
+/** Misho, 2 Nov: a real joiner whose account carried only a surname was addressed by it. */
+describe('the joiner is never addressed by surname', () => {
+  it('says so in the brief, and names only a known first name', () => {
+    const body = joinerRulesEventBody({ workFact: null, missingStep: null } as never);
+    expect(body).toContain('გვარით არასდროს');
+    expect(body).toContain('სახელით მიმართე მხოლოდ მაშინ, თუ მისი სახელი ნამდვილად იცი');
+  });
+});

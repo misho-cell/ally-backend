@@ -93,8 +93,12 @@ function stepPart(step: SetupStep | null): string {
 /** What the model is told for the joiner's first message under the founder's rules. */
 export function joinerRulesEventBody(brief: JoinerBrief): string {
   return [
+    // Misho, 2 Nov („შენი რეკომენდაციებით გააკეთე ყველაფერი"): a real joiner whose account
+    // carried only a surname was addressed by it. A surname is never the address.
     'ეს ადამიანი ახლახან შემოვიდა Netai-ზე და ეს მისი პირველი შეტყობინებაა Netai-სგან. დაწერე ' +
-      'ერთი მოკლე შეტყობინება მისივე ენაზე, სახელით მიმართე და „შენ"-ით. ოთხი ნაწილი, ამ რიგით:',
+      'ერთი მოკლე შეტყობინება მისივე ენაზე, „შენ"-ით. სახელით მიმართე მხოლოდ მაშინ, თუ მისი ' +
+      'სახელი ნამდვილად იცი; თუ ანგარიშზე მხოლოდ გვარი წერია ან სახელი არ ჩანს, სახელის გარეშე ' +
+      'მიმართე — გვარით არასდროს. ოთხი ნაწილი, ამ რიგით:',
     workPart(brief.workFact),
     '(2) ერთი წინადადება იმაზე, რაში გამოადგება Netai: მომეცი ნებისმიერი საქმე — კლიენტი, ' +
       'მომწოდებელი, საჭირო ადამიანი თუ რჩევა — და ბოლომდე მივიყვან; ხალხის პოვნა მხოლოდ საშუალებაა.',
