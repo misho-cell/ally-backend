@@ -27,8 +27,8 @@ describe('a short answer', () => {
     expect(shortAnswerStands('   ', QUIET)).toBe(false);
   });
 
-  it('is tried on test seats first, and only skips the rewrite', () => {
-    expect(SHORT_ANSWER_ON_TEST_SEATS_ONLY).toBe(true);
+  it('is on for everyone since RETEST-4, and only skips the rewrite', () => {
+    expect(SHORT_ANSWER_ON_TEST_SEATS_ONLY).toBe(false);
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
       'let rewritten = keepShort ? null : await (earlyFinal ?? writeWith(writer));',
