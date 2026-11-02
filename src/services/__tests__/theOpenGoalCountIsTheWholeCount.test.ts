@@ -43,8 +43,9 @@ describe('the open goals the in-app tool reads', () => {
   it('is what get_my_tasks answers in the app', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const tool = chat.slice(chat.indexOf("case 'get_my_tasks': {"));
-    expect(tool.slice(0, tool.indexOf("case 'update_task'"))).toContain(
-      'return getMyTasksPage(userId, status);',
-    );
+    const body = tool.slice(0, tool.indexOf("case 'update_task'"));
+    expect(body).toContain('getMyTasksPage(userId, status),');
+    // #8523: the page goes out whole, with the sent questions beside it.
+    expect(body).toContain('return { ...page, sent_asks: sentAsks };');
   });
 });

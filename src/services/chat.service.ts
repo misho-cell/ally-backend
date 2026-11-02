@@ -294,6 +294,8 @@ import {
   ownerLineNamesThisContact,
   ownerNamedThisPersonLately,
   alreadyAskedOnThisGoal,
+  getSentAsksForOwner,
+  SentAskStatus,
   openQuestionsToMe,
 } from './taskAsks.service';
 import { askThreadForName } from './askThreadByName';
@@ -11698,7 +11700,16 @@ async function executeToolCall(
       // Lika's №134 (15 Oct): the list holds the newest 50, and with no total
       // beside it the reply said „50 open" of her 74. The total is the same
       // count the connector reports (getMyTasksPage).
-      return getMyTasksPage(userId, status);
+      // #8523: the questions the owner sent on open goals, and where each stands.
+      const [page, sentAsks] = await Promise.all([
+        getMyTasksPage(userId, status),
+        getSentAsksForOwner(userId).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.warn('[get-my-tasks] sent asks not read:', (err as Error).message);
+          return [] as SentAskStatus[];
+        }),
+      ]);
+      return { ...page, sent_asks: sentAsks };
     }
     case 'update_task': {
       const status = input['status'] as string;
