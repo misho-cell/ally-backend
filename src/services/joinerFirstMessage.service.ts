@@ -120,6 +120,19 @@ function welcomedSql(
                    AND c.created_at > e.created_at))))`;
 }
 
+/**
+ * SQL: the member has typed a line of their own somewhere. A real joiner on
+ * 2 Nov wrote at once, was answered, and the first message arrived about 90 s
+ * later, repeating the link they had just been given. The backfill always
+ * skipped such members; the hourly run now does too.
+ */
+function typedALine(account: string): string {
+  return `EXISTS (
+      SELECT 1 FROM conversations c
+       WHERE c.user_id::text = ${account} AND c.role = 'user'
+         AND c.kind = 'message' AND c.content <> '')`;
+}
+
 /** Real people who registered on Netai SETTLE–WITHIN minutes ago and have had no first message. */
 export async function joinersDue(): Promise<number[]> {
   const result = await query<Joiner>(
@@ -130,6 +143,7 @@ export async function joinersDue(): Promise<number[]> {
         -- keep arriving in "User" too and never opened Netai.
         AND u."hasAccessToAlly" = true
         AND ${notATestSeat('u.id')}
+        AND NOT ${typedALine('u.id::text')}
         AND NOT ${welcomedSql('u.id::text', '$3', '$5', '$6')}
       ORDER BY u."createdAt"
       LIMIT $4`,
@@ -316,10 +330,7 @@ export async function backfillCandidates(days: number = BACKFILL_DAYS): Promise<
         AND u."deletedAt" IS NULL
         AND ${notATestSeat('u.id')}
         -- Never opened a chat: not one typed line of their own anywhere.
-        AND NOT EXISTS (
-              SELECT 1 FROM conversations c
-               WHERE c.user_id::text = u.id::text AND c.role = 'user'
-                 AND c.kind = 'message' AND c.content <> '')
+        AND NOT ${typedALine('u.id::text')}
         AND NOT ${welcomedSql('u.id::text', '$3', '$4', '$5')}
       ORDER BY u."createdAt"
       LIMIT $6`,
