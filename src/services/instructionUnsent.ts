@@ -127,6 +127,18 @@ export const NOT_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
 };
 
 /**
+ * #8518 (the tester's 80752 item 4, case 94): the question did not fail, it
+ * waits — the person has not opened the previous message (#7659). „It could
+ * not be sent, our mistake" was untrue; this says what happens instead.
+ */
+export const HELD_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'კითხვა შენახულია: წინა შეტყობინება ჯერ არ უნახავს. როგორც კი ნახავს, ეს თავისით გაიგზავნება.',
+  en: 'The question is saved: they have not opened the previous message yet. It goes by itself as soon as they do.',
+  ru: 'Вопрос сохранён: предыдущее сообщение ещё не открыто. Он уйдёт сам, как только его откроют.',
+  es: 'La pregunta está guardada: aún no ha abierto el mensaje anterior. Saldrá sola en cuanto lo abra.',
+};
+
+/**
  * T2509 (WIDE GATE, conv 42888): the person named is not on Netai, so nothing
  * can go to them — „write it again" was the wrong answer. Neutral on purpose:
  * whether they have an account is not said (taskAsks, recipient_not_on_netai).

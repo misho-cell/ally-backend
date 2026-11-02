@@ -6,7 +6,13 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { PACE_UNTIL_SEEN_ON, previousAskUnseen, previousAskUnseenNote } from '../paceUntilSeen';
+import {
+  PACE_UNTIL_SEEN_ON,
+  previousAskUnseen,
+  previousAskUnseenNote,
+  questionHeldOnThread,
+} from '../paceUntilSeen';
+import { HELD_LINE } from '../instructionUnsent';
 
 const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
 
@@ -61,5 +67,34 @@ describe('a held question goes once the earlier one is seen', () => {
     const send = asks.slice(asks.indexOf('export async function sendHeldAsks('));
     expect(send.slice(0, 900)).toContain('await createAsk(');
     expect(send.slice(0, 900)).toContain('await claimHeldAsks(readerUserId)');
+  });
+});
+
+/** #8518 (the tester's 80752 item 4, case 94): a held question is not a failure. */
+describe('a question held for an unseen message', () => {
+  it('is found on the conversation while it waits, kept in the last minutes', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ held: true }] });
+    expect(await questionHeldOnThread(76)).toBe(true);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('k.thread_id = $1 AND h.released_at IS NULL');
+    expect(params).toEqual([76, expect.any(Number)]);
+  });
+
+  it('reads as not held when the lookup fails', async () => {
+    mockQuery.mockRejectedValue(new Error('timeout'));
+    expect(await questionHeldOnThread(76)).toBe(false);
+  });
+
+  it('is told to the owner as waiting, never as our mistake', () => {
+    for (const line of Object.values(HELD_LINE)) {
+      expect(line).not.toMatch(/შეცდომ|mistake|fault|ошибк|fallo/iu);
+    }
+    expect(HELD_LINE.ka).toContain('თავისით გაიგზავნება');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const fn = chat.slice(chat.indexOf('async function serverSendsOrSaysSo('));
+    expect(fn.indexOf('questionHeldOnThread(threadId)')).toBeGreaterThan(-1);
+    expect(fn.indexOf('questionHeldOnThread(threadId)')).toBeLessThan(
+      fn.lastIndexOf('NOT_SENT_LINE[language]'),
+    );
   });
 });
