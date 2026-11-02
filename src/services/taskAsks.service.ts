@@ -3856,6 +3856,38 @@ export async function getAsksForTask(taskId: number): Promise<TaskAsk[]> {
   return result.rows;
 }
 
+/**
+ * #8523 (the tester's 80752 item 9, case 89): „what is happening with the
+ * questions I sent?" — the run read check_my_inbox, get_intro_status and
+ * get_my_tasks, and none of them carries an ask, so it said „I can't confirm
+ * it was sent". The owner's latest asks on open goals, with where each stands.
+ */
+export const SENT_ASKS_SHOWN = 20;
+
+export interface SentAskStatus {
+  readonly task_id: number;
+  readonly goal: string;
+  readonly to_name: string | null;
+  readonly status: string;
+  readonly sent_at: string;
+  readonly seen_at: string | null;
+  readonly answered_at: string | null;
+}
+
+export async function getSentAsksForOwner(userId: string): Promise<SentAskStatus[]> {
+  const result = await query<SentAskStatus>(
+    `SELECT ta.task_id, t.title AS goal, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS to_name,
+            ta.status, ta.created_at AS sent_at, ta.seen_at, ta.answered_at
+       FROM task_asks ta JOIN tasks t ON t.id = ta.task_id
+      WHERE ta.from_user_id = $1::int AND t.user_id = $1::text AND t.status = 'open'
+      ORDER BY ta.created_at DESC
+      LIMIT $2`,
+    [userId, SENT_ASKS_SHOWN],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 export interface PendingAsk {
   ask_id: number;
   from_name: string | null;
