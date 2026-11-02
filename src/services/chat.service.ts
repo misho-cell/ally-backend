@@ -551,6 +551,8 @@ import { isOwnersFirstLine } from './firstOwnerLine';
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
+import { SHORT_ANSWER_ON_TEST_SEATS_ONLY, shortAnswerStands } from './shortAnswerStands';
+import { allAreTestSeats } from './testSeatCreate.service';
 import {
   contactsNamed,
   goalForInstruction,
@@ -15624,7 +15626,22 @@ async function runToolLoop(
     // of its correctness. resetTurnStream tells the client to CLEAR what it
     // has buffered; doing it before the call would wipe Claude's answer off
     // the screen on every run where this flag is off or the call then fails.
-    let rewritten = await (earlyFinal ?? writeWith(writer));
+    // #8524: a short answer that planned and sent nothing keeps Claude's words.
+    const keepShort =
+      earlyFinal === null &&
+      writer !== '' &&
+      shortAnswerStands(extractText(response.content), {
+        proposedAPlan: runProposedAPlan.has(runId),
+        sentSomething: runAskSent.has(runId) || runAnswerSent.has(runId) || runIntroSent.has(runId),
+        hasChoices: choices !== undefined && choices.length > 0,
+      }) &&
+      (!SHORT_ANSWER_ON_TEST_SEATS_ONLY ||
+        (await allAreTestSeats([Number(userId)]).catch(() => false)));
+    if (keepShort) {
+      // eslint-disable-next-line no-console
+      console.log(`[final-answer] run ${runId}: short answer — Claude's words stand (#8524)`);
+    }
+    let rewritten = keepShort ? null : await (earlyFinal ?? writeWith(writer));
     // D627: a small writer that fails before writing a word hands the turn to the
     // ordinary one, so trying a small model can cost a moment and never the voice.
     if (

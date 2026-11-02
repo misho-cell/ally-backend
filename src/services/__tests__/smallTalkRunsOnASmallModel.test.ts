@@ -47,7 +47,9 @@ describe('the small-talk turn', () => {
 
   it('is rewritten by the small writer when one is set', async () => {
     expect(chat).toContain('const writer = finalWriterForRun(ownerAbsent, smallTalkOnly);');
-    expect(chat).toContain('let rewritten = await (earlyFinal ?? writeWith(writer));');
+    expect(chat).toContain(
+      'let rewritten = keepShort ? null : await (earlyFinal ?? writeWith(writer));',
+    );
     await expect(smallTalkFinalModelWith('big-writer', 'small-writer')).resolves.toBe(
       'small-writer',
     );
