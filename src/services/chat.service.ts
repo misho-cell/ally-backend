@@ -547,6 +547,7 @@ import {
 import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
+import { keepPastedList } from './pastedList.service';
 import {
   contactsNamed,
   goalForInstruction,
@@ -18131,6 +18132,12 @@ export async function processChat(
       // eslint-disable-next-line no-console
       console.warn(`[ruled-out] run ${runId}: never not kept:`, (err as Error).message),
     );
+    // #8522: a pasted table becomes the conversation's file before the history is read.
+    await keepPastedList(threadId, Number(userId), userMessage).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn(`[pasted-list] run ${runId}: not kept:`, (err as Error).message);
+      return null;
+    });
   }
   // D756: „<helper>-ის პასუხი დამეხმარა" thanks that helper at once — no card, no question.
   if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
