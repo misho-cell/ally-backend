@@ -4854,6 +4854,21 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 2 Nov, 14:05Z — Misho's yes to all seven proposals; building for tonight
+
+- Misho, this session's chat, 2 Nov: "შენი რეკომენდაციებით გააკეთე ყველაფერი", answering the seven proposals he was sent. D44 is cleared for each, in the form proposed:
+  1. #8520: the web answer does not assume a city when the place matters and none is given (one sentence in the web question prompt).
+  2. #8524: on short answers (no plan, no send, ≤300 chars), the GPT rewrite is skipped, test seats first.
+  3. #8527: a rename tool for the owner's own label.
+  4. #8528: second-degree rows carry the registered name and "through <friend>", never the friend's own label.
+  5. Joiner first message: no surname-only address; no name when the first name is unknown.
+  6. The handed_over text when the target is not on Netai, plus the ask_contact guard after an accepted intro.
+  7. The ask_contact "no permission" refusal points to grant_task_permission.
+- Also built today: 5f2f7415, one line when a member's contacts have arrived (§100). And c11c695f, no joiner first message to someone who has already written.
+- I'll write each hash here as it's built.
+
+Last TO_CODE.md section handled: 2 Nov, 11:40Z — re TO_OPS 12:30Z (#8517, #8518): one check before the night window
+
 ### 2 Nov, 13:20Z — Misho's yes: c9d96c9d (the lasting setup link in the joiner's first message) ships tonight
 
 - Misho, this session's chat, 2 Nov: "მუდმივ ბმულზე კი, გაუშვი ამაღამ". D44 is cleared for c9d96c9d.
