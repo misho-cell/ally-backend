@@ -81,6 +81,16 @@ export const WORLD_ANSWER_BRIEF =
   'the source when it names who holds a post. Do not say how the answer was found, and ' +
   'never mention a search, a search engine, Google or Gemini.';
 
+/**
+ * #8520 (the tester's 80752 item 6, cases 83 and 38; Misho's yes, 2 Nov): „მჭირდება
+ * სტომატოლოგი" got a Tbilisi clinic before anyone asked which city. Outside the
+ * founder's editable brief, so it holds whatever the brief says.
+ */
+const NO_ASSUMED_PLACE =
+  'If the answer depends on a place (a city, a country, a district) and the question does not ' +
+  'name one, do not assume one: give what holds everywhere and say in one short sentence that ' +
+  'the city is needed for names and addresses.\n';
+
 /** The question as the web is asked it. */
 export function worldQuestionPrompt(question: string, language: RunLanguage): string {
   const brief = serverText(ServerTextBlock.WorldAnswerBrief, WORLD_ANSWER_BRIEF)
@@ -89,6 +99,7 @@ export function worldQuestionPrompt(question: string, language: RunLanguage): st
   return (
     `${brief}\n` +
     INFORMAL_ADDRESS[language] +
+    NO_ASSUMED_PLACE +
     `If the question is only about the member’s own contacts or private life, or the web ` +
     `cannot answer it, reply with exactly ${NO_WORLD_ANSWER}.\n` +
     'After the answer, on its own last line, write PEOPLE: followed by each person the answer ' +

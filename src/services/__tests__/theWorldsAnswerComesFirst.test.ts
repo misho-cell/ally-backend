@@ -200,3 +200,12 @@ describe('the run (#8350)', () => {
     expect(chat.indexOf('await runToolLoop(', posted)).toBeGreaterThan(posted);
   });
 });
+
+/** #8520 (the tester's 80752 item 6): no city is assumed when the question names none. */
+describe('a question that depends on a place', () => {
+  it('is asked without assuming a city, whatever the editable brief says', () => {
+    const prompt = worldQuestionPrompt('მჭირდება სტომატოლოგი', 'ka');
+    expect(prompt).toContain('do not assume one');
+    expect(prompt).toContain('the city is needed for names and addresses');
+  });
+});
