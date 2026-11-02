@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 1 Nov, 21:50Z (LIVE 9192e409 #8482 noted; health fine, no outage after deploy; ops does not run the seat test because it writes prompt blocks, that is the tester's DONE WHEN). Box read to 80497.
+Last TO_OPS.md section handled: 1 Nov, 21:50Z (LIVE 9192e409 #8482 noted; health fine, no outage after deploy; ops does not run the seat test because it writes prompt blocks, that is the tester's DONE WHEN). Box read to 80621.
 
 ## OPEN
+
+### 2 Nov, 05:10Z — night prompt swap: restored, 0 real-member runs (ops read-only check)
+
+The night test swapped core_shared, task_rules and task_main twice, with no account lists (live for everyone): 21:22:52–21:34:34Z and 22:58:36–23:13:34Z on 1 Nov. All three live blocks now match, by content hash, the versions that were live before 21:22Z. run_prompt_stamps inside both windows: 127 + 137 runs, all on test seats, **0 real-member runs**. Nothing to fix. Next prompt test can use #8482 (seat-only), so no live swap is needed.
 
 ### 1 Nov, 21:04Z — relayed from the box (80494)
 
