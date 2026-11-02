@@ -1,3 +1,5 @@
+import { query } from '../db/postgres/client';
+
 /**
  * T2479 (§98.3; the MASTER TEST RUN's IN-002 / PR-007): „გამაცანი თამთა
  * გამოგონილი, ბახვა გამოგონილი იცნობს." + „ვადასტურებ" — the owner asked to be
@@ -138,3 +140,33 @@ export const USE_INTRODUCTION_REFUSAL =
   'question. Call request_introduction instead: the person who knows them is the go-between, ' +
   'the person the owner wants to meet is the target. Do not tell the owner about this refusal; ' +
   'make the introduction request now.';
+
+const INTRO_LOOKUP_TIMEOUT_MS = 4_000;
+
+/**
+ * Misho's yes, 2 Nov (the 1 Nov daily check): a real member's introduction was
+ * accepted, and the next ask on that goal was refused as „use
+ * request_introduction" because an earlier owner line had asked for the
+ * introduction. The introduction already happened; an ask after it is an ask.
+ * Fails towards false, which keeps the guard.
+ */
+export async function goalHasAcceptedIntroduction(taskId: number): Promise<boolean> {
+  try {
+    const result = await query<{ accepted: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM introduction_requests
+          WHERE requester_task_id = $1 AND status = 'accepted'
+       ) AS accepted`,
+      [taskId],
+      INTRO_LOOKUP_TIMEOUT_MS,
+    );
+    return result.rows[0]?.accepted === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[intro-instruction] task ${taskId}: accepted intro not read:`,
+      (err as Error).message,
+    );
+    return false;
+  }
+}

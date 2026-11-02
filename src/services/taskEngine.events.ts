@@ -214,6 +214,11 @@ export const DAY_ONE_NOTHING_SENT_LINE: Readonly<Record<RunLanguage, string>> = 
 export type IntroContactOutcome =
   /** The mediator chose direct and the contact was resolved: the number moved. */
   | 'handed_over'
+  /**
+   * The number moved, but the person has never opened Netai: the owner holds the number and
+   * there is no Netai channel to them (Misho's yes, 2 Nov; the 1 Nov daily check).
+   */
+  | 'handed_over_off_netai'
   /** The mediator chose to stay in the middle. No number moved, and that is the point. */
   | 'kept_by_mediator'
   /** The mediator chose direct and we could not resolve the contact. Ours to fix, not theirs. */
@@ -474,6 +479,10 @@ function introOutcomeBody(
    */
   const byLanguage: Readonly<Record<RunLanguage, Readonly<Record<IntroContactOutcome, string>>>> = {
     ka: {
+      handed_over_off_netai:
+        `${targetName}-ს Netai ჯერ არ აქვს, ამიტომ მასთან Netai-ის არხი არ არის — მისი კონტაქტი ` +
+        'მფლობელს პირდაპირ გადაეცა და ის მფლობელს უკვე აქვს. Netai-ით მისწერას ნუ შესთავაზებ და ' +
+        'მას შენით არაფერი მისწერო.',
       handed_over:
         `${targetName}-თან პირდაპირი არხი გახსნილია — ახლა შეგიძლია მას პირდაპირ მისწერო ` +
         'Netai-ით, შუამავლის გარეშე. დაწერე რისი თქმა უნდა და მე გადავცემ. ' +
@@ -489,6 +498,10 @@ function introOutcomeBody(
         'ნუ გაგზავნი შუამავალთან თავიდან სათხოვნელად.',
     },
     en: {
+      handed_over_off_netai:
+        `${targetName} is not on Netai yet, so there is no Netai channel to them — their contact ` +
+        'went to the owner directly and the owner already has it. Do NOT offer to write to them ' +
+        'through Netai, and write nothing to them yourself.',
       handed_over:
         `The direct channel to ${targetName} is open — you may now write to them directly ` +
         'through Netai, with the mediator out of the loop. Tell me what to say and I will carry it. ' +
@@ -503,6 +516,10 @@ function introOutcomeBody(
         'have the number, and do NOT send them back to the mediator to ask again.',
     },
     ru: {
+      handed_over_off_netai:
+        `У ${targetName} ещё нет Netai, поэтому канала Netai к нему нет — его контакт передан ` +
+        'владельцу напрямую, и он у владельца уже есть. Не предлагай написать через Netai и сам ' +
+        'ему ничего не пиши.',
       handed_over:
         `Прямой канал к ${targetName} открыт — теперь можно написать напрямую через Netai, ` +
         'без посредника. Скажи, что передать, и я передам. ' +
@@ -517,6 +534,10 @@ function introOutcomeBody(
         'его просить посредника снова.',
     },
     es: {
+      handed_over_off_netai:
+        `${targetName} aún no está en Netai, así que no hay canal de Netai con él — su contacto ` +
+        'pasó al dueño directamente y el dueño ya lo tiene. No ofrezcas escribirle por Netai ni ' +
+        'le escribas nada por tu cuenta.',
       handed_over:
         `El canal directo con ${targetName} está abierto — ya puedes escribirle directamente ` +
         'por Netai, sin el intermediario. Dime qué decir y yo lo llevo. ' +
