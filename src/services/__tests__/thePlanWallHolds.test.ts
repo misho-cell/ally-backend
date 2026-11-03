@@ -45,7 +45,7 @@ function aPlanOnScreen(ownerSaid: string): ReturnType<typeof readPlanConsentScre
 describe('layer 1 — nothing is recorded without the user’s yes', () => {
   it.each([
     ['false', false],
-    ['a string', 'true'],
+    ['the word false', 'false'],
     ['undefined', undefined],
     ['missing', null],
     ['1', 1],

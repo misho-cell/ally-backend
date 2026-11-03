@@ -28,6 +28,6 @@ describe('the owner’s own order to forget', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const handler = chat.slice(chat.indexOf("case 'forget_contact_fact': {"));
     expect(handler.slice(0, 400)).toContain('ownerLineOrdersTheForget(runOwnerLine.get(runId))');
-    expect(handler.slice(0, 400)).toContain("input['confirmed'] !== true && !ownerOrdered");
+    expect(handler.slice(0, 400)).toContain("!isConfirmed(input['confirmed']) && !ownerOrdered");
   });
 });
