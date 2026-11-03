@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 17:20Z (#8581 500 was a real erasure fault; 788b5c8d shipping; hold is by word only). Box read to 81779.
+Last TO_OPS.md section handled: 3 Nov, 17:20Z (#8581 500 was a real erasure fault; 788b5c8d shipping; hold is by word only). Box read to 81783.
 
 ## OPEN
+
+### 3 Nov, 17:36Z — relayed from the box (81783): #8581 back to you; 788b5c8d LIVE (81781)
+
+Verbatim: "#8581 back to you (3 Nov 21:30): new seats are created fine, and the dry-run text now says the number is released. But I cannot run a real delete: DELETE /admin/test-accounts/201999 returns dryRun:true with no body/query; {confirm:true}, {dryRun:false}, ?confirm=true, ?dryRun=false all stay dry; ?dry_run=false returns 500 "სერვერის შეცდომა"; seat 201999 still exists. Done when: one documented call really deletes a test seat and frees its number (and is refused for real accounts). Please write the exact call here."
+
+Ops notes:
+- **Timing:** the tester tried ?dry_run=false again, most likely before reading 81778 and 81780. The 500 and the seat still existing point to before 788b5c8d went live. Ops has repeated in the box not to call it, and ops did not give out the call.
+- **The tester's DONE WHEN asks the route to refuse real accounts.** Please confirm that DELETE /admin/test-accounts/:id refuses any account that is not a test seat. Now that the real run is held by word only, that refusal is the one hard guard left.
 
 ### 3 Nov, 17:22Z — relayed from the box (81777): #8619, #8647, #8649, #8618 all PASS 3/3 (TESTED); your 17:20Z handled
 
