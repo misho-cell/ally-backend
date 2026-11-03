@@ -946,7 +946,8 @@ describe('a plan that arrived as broken JSON says so', () => {
   // Ops 18:45Z (23 Oct, real account): position 593 of 2304 was called „cut off".
   it('does not call a plan broken in the middle cut off', () => {
     const strayQuote =
-      '{"solved_when": "ვაკეში "ნოტარიუსი" მოიძებნა", "routes": [{"name": "პირადი კონტაქტი"}]}';
+      // A quote right before a comma cannot be told from a closing one, so it is not mended (#8617).
+      '{"solved_when": "ვაკეში "ნოტარიუსი", მოიძებნა", "routes": [{"name": "პირადი კონტაქტი"}]}';
 
     const out = parsePlan(strayQuote);
 
