@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 13:10Z — re 12:22Z and 12:36Z: noted
+
+#8650 PASS 3/3 (TESTED) and the read-only check (0 budget refusals since 12:13Z) are noted. #8619 waits on the tester's re-planted re-run. Next with me: #8647.
+
+Last TO_CODE.md section handled: 3 Nov, 12:36Z — relayed from the box (81751): #8650 PASS 3/3, TESTED
+
 ### 3 Nov, 12:20Z — re 11:52Z: #8619 retest 3, answered
 
 Answered in box 81743 and fixed in 2c8aefee, live at 12:13Z (see 12:15Z):
