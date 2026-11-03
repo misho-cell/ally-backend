@@ -1,3 +1,4 @@
+import { professionFamilyKey } from './professionFamilies';
 import { georgianToLatin } from './tools/transliterate';
 /**
  * The old seat's notes to 1101 (32983): the web lead „არქიტექტურული სტუდია
@@ -9,12 +10,37 @@ import { georgianToLatin } from './tools/transliterate';
 const NOT_THE_NAME_RE =
   /^(თბილის|ბათუმ|ქუთაის|რუსთავ|ზუგდიდ|გორ[იში]|თელავ|საქართველ|სტუდი|კომპანი|შპს|სს$|ჯგუფ|სერვის|ცენტრ|მაღაზი|ოფის|tbilisi|batumi|kutaisi|rustavi|georgia|studio|company|llc|ltd|inc|group|services?|center|centre|shop|office|the|and|of)/iu;
 
-/** The organisation's own words, places and generic words removed; '' when nothing is left. */
+/**
+ * #8648 (the prompt-test chat, 3 Nov): of 150 way-in checks in two days, 143
+ * found nobody. Their search words were the page's own words — „შესახებ",
+ * „info", „About", „Our", „Top", „მმართველობა", „ქალაქ", an emoji — and none of
+ * those names an organisation. These words are not looked for either.
+ */
+const PAGE_STEM_RE =
+  /^(შესახებ|ინფორმაცი|მთავარ|მმართველობ|მენეჯმენტ|ქალაქ|ინტერვიუ|გუნდ|კონტაქტ|საჯარო|ყველაზე|საუკეთესო|უფასო|ბიზნეს|სიახლ)/u;
+const PAGE_WORD_RE =
+  /^(about|info|our|top|home|news|contact|team|management|business|special|world|best|free|official|email|buy|you|wholesale|national)$/iu;
+
+/** At least this many letters make a word that can name something. */
+const MIN_NAME_LETTERS = 2;
+const LETTERS_RE = /[\p{L}\p{M}]/gu;
+
+function namesSomething(word: string): boolean {
+  if ((word.match(LETTERS_RE) ?? []).length < MIN_NAME_LETTERS) return false;
+  if (NOT_THE_NAME_RE.test(word) || PAGE_STEM_RE.test(word) || PAGE_WORD_RE.test(word)) {
+    return false;
+  }
+  // A trade is not a firm's name: „სტომატოლოგი" in a title found the owner's
+  // dentist, not a way into that clinic (the same fault as 35521).
+  return professionFamilyKey(word) === null;
+}
+
+/** The organisation's own words, places, page words and trades removed; '' when nothing is left. */
 export function wayInSearchName(leadName: string): string {
   return leadName
     .split(/[\s,;:()|·–—-]+/u)
-    .map((w) => w.trim())
-    .filter((w) => w.length >= 2 && !NOT_THE_NAME_RE.test(w))
+    .map((w) => w.trim().replace(/^#+/u, ''))
+    .filter(namesSomething)
     .join(' ');
 }
 
@@ -60,8 +86,11 @@ export function sameSurname(leadName: string, contactName: string): boolean {
   return contactName.split(NAME_WORD_SPLIT_RE).some((word) => latinForm(word).startsWith(wanted));
 }
 
-/** A web address ending on a firm's name: „Ostati.ge" is the firm Ostati. */
-const DOMAIN_SUFFIX_RE = /\.(ge|com|net|org|io|co|info|biz)$/iu;
+/**
+ * A web address names the firm before its first dot: „Ostati.ge" is Ostati, and
+ * (#8648) „silknet.com/ge/aboutus/management" is Silknet, „trend.az" is Trend.
+ */
+const DOMAIN_SUFFIX_RE = /\.[a-z]{2,}(?:[./][^\s]*)?$/iu;
 
 /**
  * The tester's 1121 (35521): the page title „Ostati.ge სანტექნიკი ონკანის
