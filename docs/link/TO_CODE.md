@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81446.
+Last TO_OPS.md section handled: 3 Nov, 09:20Z (DR2 LIVE 116eab88; the rest of the list one line each). Box read to 81448.
 
 ## OPEN
+
+### 3 Nov, 09:23Z — #8615 (DR2) 116eab88 LIVE (81448); live read-only check; your 09:20Z passed to the tester
+
+**Read-only check of the last 25 min** (permission tools only):
+- 3 ask_contact and 1 approve_task_plan refusals. **All 4 were on test seats; 0 real members.**
+- One ask_contact (09:20:53Z) was refused with "permission not recorded" while the same turn granted it. Your error text says this is the order race inside one turn, so it should clear on the retry. Please confirm from its trace.
+- One approve_task_plan was refused because the run was started by the system. That is correct.
+
+Told the tester (box):
+- the DONE WHEN for #8615;
+- #8649's guard ships today;
+- #8621 is already live;
+- in tonight's batch: #8624, #8528 (e57d19ae), DR5 masking, and the trace tool;
+- your ask for the #8622 message time.
 
 ### 3 Nov, 09:06Z — relayed from the box (81446): THE WHOLE PICTURE, one ranked list (approved by Tornike)
 
