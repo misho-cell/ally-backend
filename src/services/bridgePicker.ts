@@ -330,8 +330,20 @@ function phonesOf(
 }
 
 /** Names as the reader sees them, scrubbed (a label can hold a number), once each. */
-function distinctNames(names: readonly string[]): string[] {
-  return [...new Set(names.map((n) => scrubText(n).trim()).filter((n) => n !== ''))];
+/**
+ * #8649 (Lika's test, 81446): „tornike abuladze Whatsapp, tornike abuladze" —
+ * one person saved twice, under two numbers. A name that is another listed
+ * name with words added after it is the same person, and is listed once.
+ */
+function samePersonAs(name: string, other: string): boolean {
+  const a = name.toLowerCase();
+  const b = other.toLowerCase();
+  return a !== b && a.startsWith(`${b} `);
+}
+
+export function distinctNames(names: readonly string[]): string[] {
+  const unique = [...new Set(names.map((n) => scrubText(n).trim()).filter((n) => n !== ''))];
+  return unique.filter((name) => !unique.some((other) => samePersonAs(name, other)));
 }
 
 /**
