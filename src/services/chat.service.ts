@@ -550,6 +550,7 @@ import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
 import { registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
+import { asksForReasoningSummary, SUMMARIZED_THINKING } from './reasoningOnTestSeats';
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
@@ -13701,10 +13702,17 @@ async function callClaude(
   opts: CallOptions = {},
 ): Promise<Anthropic.Message> {
   const model = opts.model ?? MODEL;
+  // Misho, 3 Nov: a readable reasoning summary, on test seats only (prompt debugging).
+  // Only on the main model and never beside a forced tool, which thinking cannot accompany.
+  const reasoning =
+    model === MODEL && opts.forceTool === undefined && (await asksForReasoningSummary(ctx.userId))
+      ? { thinking: SUMMARIZED_THINKING }
+      : {};
   const stream = anthropic.messages.stream(
     {
       model,
       max_tokens: opts.maxTokens ?? MAX_TOKENS,
+      ...reasoning,
       system: systemBlocks(systemPrompt),
       tools: toCachedTools(tools),
       messages: markLastMessageForCache(messages),

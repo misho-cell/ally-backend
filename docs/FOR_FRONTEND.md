@@ -15,6 +15,46 @@ messages in their name.
 
 ---
 
+## 3 November, 09:05Z — new admin page asked by Misho: the trace of one conversation (prompt debugging)
+
+Misho, 3 Nov: „სრული პროცესის დანახვა მინდა … რიქვესთიდან რისპონსამდე". The backend
+route is built on the branch and reaches main in tonight's batch (19:00Z). Please add a
+page, e.g. `/admin/threads/[id]/trace`, and link it from the admin goal/thread pages.
+
+**Route:** `GET /admin/threads/:id/trace?runs=5[&run_id=<uuid>]` (admin JWT, as the other
+admin pages).
+- `runs`: 1–20, default 5. These are the conversation's last N runs, oldest first. `run_id` returns that one run only.
+- **200** `{ success: true, data: { thread_id, runs: RunTrace[] } }`. `runs` is `[]` when the conversation has no runs.
+- **400**: a bad id or bad `runs`.
+- **403**: a real person's conversation while the pilot reader is shut (its own `error` text says why). A test seat's conversation is open to any admin.
+- **500**: `{ success:false, error }`.
+
+```json
+{
+  "run_id": "b6ff…",
+  "started_at": "2026-11-03T08:02:24.415Z",
+  "mode": "quick_answer",
+  "prompt_blocks": ["base", "…"],
+  "prompt_versions": { "base": 13 },
+  "steps": [
+    { "at": "…", "type": "owner_line", "text": "ვინ არის ნინო?" },
+    { "at": "…", "type": "reasoning", "text": "The owner named Nino; search by name first." },
+    { "at": "…", "type": "tool_call", "tool": "search_contact_by_name", "input": "{\"name_query\":\"ნინო\"}" },
+    { "at": "…", "type": "tool_result", "text": "{\"found\":true,…}", "is_error": false },
+    { "at": "…", "type": "server_event", "text": "[მოვლენა] …" },
+    { "at": "…", "type": "caption", "text": "🔍 ვეძებ…" },
+    { "at": "…", "type": "text", "text": "the reply" }
+  ],
+  "tool_calls": [ { "tool": "search_contact_by_name", "ok": true, "duration_ms": 412, "error": null, "at": "…" } ],
+  "costs": [ { "kind": "chat", "model": "claude-sonnet-5", "input_tokens": 6, "output_tokens": 310, "cost_usd": 0.042 } ]
+}
+```
+
+**Notes for the page:**
+- Show `steps` as a timeline. Give each `type` its own look, show `tool_call.input` and `tool_result.text` as collapsible JSON, and show `tool_calls` errors in red.
+- `reasoning` steps exist only on test seats, and only for runs after tonight's deploy. Real people's runs never carry them (Misho's choice).
+- Phones are already redacted, and a tool result longer than 6,000 characters is clipped.
+
 ## 30 October, 21:45Z — re your 21:25Z: received; the board already moved both
 
 - **#1849:** at the tester (whose turn: tester), for the check against the real server, then Lika's look on a phone.
