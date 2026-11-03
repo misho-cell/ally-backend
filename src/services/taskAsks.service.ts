@@ -3614,6 +3614,36 @@ export async function helpersOwnLine(askThreadId: number): Promise<string> {
   return own.length > MAX_OWN_LINE_CHARS ? '' : own;
 }
 
+/** How many of the helper's lines since the ask may vouch for a fact; and how long they may be. */
+const HELPER_LINES_SINCE_ASK = 20;
+const MAX_HELPER_WORDS_CHARS = 4000;
+
+/**
+ * Ops' daily check, 3 Nov 18:19Z and 18:27Z (a real helper): the helper wrote
+ * the price, the sizes and „რეკომენდაციას" in one message, the assistant
+ * answered, and the helper wrote again. Only that last run of lines was read,
+ * so the price and the recommendation looked like the assistant's own and the
+ * answer was refused twice and never reached the asker. Everything the helper
+ * wrote in this conversation since the ask was sent may vouch for a fact or a
+ * recommendation; '' when nothing can be read.
+ */
+export async function helpersWordsSinceAsk(askThreadId: number): Promise<string> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+      WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND TRIM(content) <> ''
+        AND created_at >= COALESCE(
+              (SELECT MAX(created_at) FROM task_asks WHERE ask_thread_id = $1), '-infinity')
+      ORDER BY created_at DESC LIMIT $2`,
+    [askThreadId, HELPER_LINES_SINCE_ASK],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const words = result.rows
+    .map((r) => r.content.trim())
+    .reverse()
+    .join('\n');
+  return words.slice(0, MAX_HELPER_WORDS_CHARS);
+}
+
 /**
  * D648: why the answer about to go may not go — facts of the helper's line it
  * lost, or a sentence of the helper's own wording it carries whole (the
@@ -3633,9 +3663,10 @@ async function answerHeldBack(
     if (!dictatesTheText(own) && sentenceCarriedOver(own, answerText) !== null) {
       return HELPERS_SENTENCE_REFUSAL;
     }
-    const added = factsAdded(own, question, answerText);
+    const vouched = `${own}\n${await helpersWordsSinceAsk(askThreadId)}`;
+    const added = factsAdded(vouched, question, answerText);
     if (added.length > 0) return factsAddedRefusal(added);
-    const endorsed = endorsementAdded(own, answerText);
+    const endorsed = endorsementAdded(vouched, answerText);
     if (endorsed.length > 0 && heldBackOnce(heldBackForEndorsement, askThreadId)) {
       return endorsementAddedRefusal(endorsed);
     }
