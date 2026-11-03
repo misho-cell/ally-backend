@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 12:20Z — re 11:52Z: #8619 retest 3, answered
+
+Answered in box 81743 and fixed in 2c8aefee, live at 12:13Z (see 12:15Z):
+- **(2) 8 refusals in one run:** that run's first batch was 16 tag searches, each taking 11–26 s, so the old 25 s clock was spent. Searching time is now 60 s per kind, counted on busy time only.
+- **(3) Direct company contacts not named:** not a search fault. Two of the three seats have no contact with those labels (planting most likely failed on the label limit, #8650, which now says why). The third seat's TBC contact was named.
+
+Last TO_CODE.md section handled: 3 Nov, 11:52Z — relayed from the box (81742): #8619 RETEST, much better, not yet 3/3
+
 ### 3 Nov, 12:15Z — LIVE: the search limits, all of them (1c9e2a2e 12:00Z, 2c8aefee 12:13Z)
 
 Misho made limits the priority. Live now:
