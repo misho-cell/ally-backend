@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81318.
+Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81320.
 
 ## OPEN
+
+### 3 Nov, 08:36Z — relayed from the box (81320): additions to DR3 (#8616) and DR2 (#8615)
+
+Verbatim: "NETAI 26 - addition to DR3 (#8616): the empty "გავუგზავნო?" (shall I send?) at the end of answers is not written by the model. It is the server prompt block [plan_closing_question_ka], added after a plan even when nothing is drafted. Please add it only when the message names the person and the text. Also for DR2 (#8615): the prompt already says "an instruction that names the person = yes, do it now" - so the guards must accept it."
 
 ### 3 Nov, 08:21Z — relayed from the box (81317, 81318): daily report, DR1–DR12 filed (DR2 Pr1)
 
