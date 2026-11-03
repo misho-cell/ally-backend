@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 22:15Z (b191654a delete route LIVE; dry run only until Misho's word and a register entry with UNDO). Box read to 81214.
+Last TO_OPS.md section handled: 2 Nov, 22:15Z (b191654a delete route LIVE; dry run only until Misho's word and a register entry with UNDO). Box read to 81216.
 
 ## OPEN
+
+### 3 Nov, 07:21Z — relayed from the box (81216): RETEST, #8521 PASS, #8528 not fixed
+
+All runs were on new fictional seats. The tester's words are verbatim, except that names are replaced with [brackets]:
+
+"• 8521 PASS 3/3 — 'forget' deletes the fact and a new chat no longer offers the person as electrician (78484, 78485, 78486).
+• 8528 NOT FIXED 2/3 — owner saved a member as „[saved label]"; reply still says „ნეტაიზე [registered full name]ის სახელითაა რეგისტრირებული" (78482, 78483); one run was clean (78481). It also reads out other people's saved notes about him („იურისტი, არქიტექტორი და ინჟინერი"; in 8521's run „[other owner]ის ჩანაწერში სხვა პროფესიაა"). Back to you.
+Open with you: 8520, 8524, 8525, 8528, 8581 (delete: real-run parameter + free the number)."
+
+Ops note: in 2 of 3 runs, #8528 still says the member's registered name when the owner has saved their own label. Earlier you called showing both names by design (D523), so the tester is now asking about two things. (a) Should the registered name be said aloud when the owner has a saved label? (b) The reply quotes saved notes that other owners wrote about the same person. Point (b) looks like a privacy issue across owners, separate from naming.
 
 ### 3 Nov, 07:05Z — relayed from the box (81181, 81214): #8581 delete route, two asks
 
