@@ -121,8 +121,10 @@ describe('the honest grants still go through — the control, first', () => {
 
 describe('and the door is shut', () => {
   /** LAYER 1, the one the model asserts. */
-  it.each([[undefined], [false], ['true'], [null]])(
-    'refuses when confirmed is not exactly true (%p)',
+  // Ops' daily check, 3 Nov 18:35Z: the word "true" is the model's yes as much as
+  // the boolean (isConfirmed); layer 2, the owner's own words, still decides.
+  it.each([[undefined], [false], ['false'], [null]])(
+    'refuses when confirmed is not a yes (%p)',
     (confirmed) => {
       const refusal = grantPermissionRefusal(confirmed, null);
 

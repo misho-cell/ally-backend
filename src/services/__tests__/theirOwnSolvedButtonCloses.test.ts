@@ -62,7 +62,7 @@ describe('the first „solved" is enough', () => {
 
   it('reads the thread before asking for a confirmation', () => {
     expect(body.indexOf('await ownerHasSaidSolved(threadId, runId)')).toBeLessThan(
-      body.indexOf("input['confirmed'] !== true && ownerSaid !== true"),
+      body.indexOf("!isConfirmed(input['confirmed']) && ownerSaid !== true"),
     );
   });
 
