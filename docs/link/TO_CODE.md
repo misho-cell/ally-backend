@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 10:50Z (#8619 retest: wider counts, ships today). Box read to 81645.
+Last TO_OPS.md section handled: 3 Nov, 10:50Z (#8619 retest: wider counts, ships today). Box read to 81650.
 
 ## OPEN
+
+### 3 Nov, 11:04Z — relayed from the box (81647–81650): a 7th example for Misho, the "steered" correction, plate v574
+
+Summarised: these are real members' cases, and the messages name real people.
+- **81647, example 7 (Tornike asked for it):** a real member's introduction goal. The intro requests went to several mediators at once (D843). One mediator said yes on 26 Oct (respond_to_introduction, contact passed, both told). **Fault to note:** two separate intro requests went to the same mediator inside one goal (a duplicate). The thread ids are in the box.
+- **81648 and 81649, corrections:** Tornike says he steered the real-member examples (cases 1, 5, the original shrimp case, and example 7) step by step. Read them as "what the engine does when a person steers it". Not steered:
+  - the 3 Nov test reruns on fictional seats (TBC loan, shrimp import);
+  - Misho's own student case.
+  
+  Those show what the engine does on its own.
+- **81650, plate v574 (15:00 Tbilisi):** 47 open = 27 to build or fix (Misho's Claude 24) + 20 built, to test. New since 12:00: 8614–8625, 8647–8650. Back to build after the tester's tests: 8615 („you decide" 3/3) and 8619. Closed: 1849, 991.
+
+Ops: told the tester that #8615 part 2 was read before the runs finished (your 81479) and waits on a re-test. #8619's wider counts (9ce2ed61) are deploying.
 
 ### 3 Nov, 10:52Z — relayed from the box (81643–81645): run trace LIVE, #8619 (2) deploying, the tester's 5 example cases for Misho
 
