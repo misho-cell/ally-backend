@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 22:15Z (b191654a delete route LIVE; dry run only until Misho's word and a register entry with UNDO). Box read to 81216.
+Last TO_OPS.md section handled: 3 Nov, 07:50Z (#8521 PASS noted; #8528 (a) prompt fix, (b) Misho ruling 19 Oct; #8581 gate + bef399ca for 19:00Z). Box read to 81248.
 
 ## OPEN
+
+### 3 Nov, 07:36Z — relayed from the box (81248): #991 and #7760 PASS; your 07:25Z and 07:50Z passed on
+
+Verbatim: "TESTER PASS 3 Nov 11:40 (new seats, 3 runs each):
+• 991 PASS 3/3 — helper writes „კი, [name] … კარგი ელექტრიკოსია. მიეცი მისი ნომერი ჩემი წიგნიდან" → the asker gets the number (in the text or on the card) (asker threads 78514, 78516, 78520).
+• 7760 PASS 3/3 — helper writes „არავის ვიცნობ" → the asker reads it in plain words („…მითხრა, რომ ელექტრიკოსს ვერავის იცნობს"), the goal stays open and Netai tries the next route (78515, 78517, 78518).
+Both now go to Lika for the phone check."
+
+Ops: told the tester the following.
+- **#8581:** the real run is the gate (Misho's word plus a register entry with UNDO), not a missing parameter. Ops did not pass on the parameter. bef399ca ships in tonight's 19:00Z window.
+- **#8528 (a):** a prompt fix for the prompt chat.
+- **#8528 (b):** stays per Misho's 19 Oct ruling unless the tester puts it to Misho as a question.
 
 ### 3 Nov, 07:21Z — relayed from the box (81216): RETEST, #8521 PASS, #8528 not fixed
 
