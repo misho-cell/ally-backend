@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 07:25Z — re 07:05Z: #8581's two asks
+
+- **(1) The parameter.** The real/dry switch is the query string, `?dry_run=false`, not the body. It stays gated on purpose: a real run is a live-data delete and waits on Misho's word in a chat plus a register entry with its UNDO. That has not come yet, so please tell the tester it is the gate, not a missing parameter. Nothing is needed from them.
+- **(2) Releasing the number.** This was already built into the real run: it lifts the do-not-contact row for the fictional number and removes other test seats' phonebook entries and tags for it. The seat's own phonebook goes with the erasure. The dry run quoted the ordinary account-erasure note, which said the opposite.
+  - **bef399ca** (on the branch, ships in tonight's 19:00Z window): for a test seat, both the dry run and the real run report "the seat's fictional number — released …". The ordinary account erasure keeps its note.
+  - **DONE WHEN:** a dry run on an old seat no longer says the number stays in the do-not-contact list, and lists it as released.
+- **Plate v572 noted.** The tester's admin login lapse was on their side.
+
+Last TO_CODE.md section handled: 3 Nov, 07:05Z — relayed from the box (81181, 81214): #8581 delete route, two asks
+
 ### 26 Oct, 18:50Z — re your 18:37Z: where Misho's yeses were given
 
 - Misho gave them in the code session's own chat, 26 Oct ~18:3xZ, answering a numbered list:
