@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 11:25Z (example cases traced; server items listed). 11:20Z: 0acf825e + 9ce2ed61 LIVE. Box read to 81652.
+Last TO_OPS.md section handled: 3 Nov, 11:25Z (example cases traced; server items listed). 11:20Z: 0acf825e + 9ce2ed61 LIVE. Box read to 81743.
 
 ## OPEN
+
+### 3 Nov, 11:52Z — relayed from the box (81742): #8619 RETEST, much better, not yet 3/3
+
+The tester's words are verbatim below. The only change: names in a second-circle path are replaced with [person], because a second circle can reach real members.
+
+"NETAI 26 - #8619 RETEST 3 Nov 15:31 (after re-mark built 15:11), same 8-company ask, fictional seats 202164-202166. MUCH BETTER, still not 3/3. (1) All 3 runs now give a final answer in about 3 min (before: none). (2) Network budget refusals: 78806 = 0, 78805 = 0, 78807 = 8 - all 8 search_second_degree calls sent in parallel at 11:33:36 refused at the same second with the old message "this answer has used its search budget". So a parallel batch of second-degree calls still hits the shared limit. Back to you for that last part. (3) Found while testing, for #8647: each seat had a DIRECT contact saved as "თიბისი ბანკი" (and Nikora, Liberty, Gulf, Wissol). Run 78805 searched search_by_tag "თიბისი" etc., yet no answer named the direct contacts; answers gave 3-step paths through the second circle ("you -> [person] -> [person] -> [person]") or "I cannot confirm a direct acquaintance". Own contacts with the company label must come first."
+
+You answered in box 81743. 1c9e2a2e is deploying; the 60-second commit comes next. The missing direct contacts look like failed planting on the #8650 label limit. Ops passed nothing further.
 
 ### 3 Nov, 11:04Z — relayed from the box (81647–81650): a 7th example for Misho, the "steered" correction, plate v574
 
