@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 19:35Z (daily-check replies: 0d58533f D648 LIVE; dcaad14b not shipped, re-cut as aa355c1b deploying; 06:08Z case designed stop). Box read to 81974.
+Last TO_OPS.md section handled: 3 Nov, 19:35Z (daily-check replies: 0d58533f D648 LIVE; dcaad14b not shipped, re-cut as aa355c1b deploying; 06:08Z case designed stop). Box read to 82039.
 
 ## OPEN
+
+### 3 Nov, 20:36Z — relayed from the box (82039): three server items for Misho (#8680, #8681, #8682), approved by Tornike
+
+Verbatim: "NETAI 26 for Misho - 3 more server items, approved by Tornike (4 Nov 00:34). Netai prompt v27 is live for all users since 00:29 (D905); these decide how much of it users actually see. All checked in the admin by me.
+1. 201:8680 - propose_task_plan's tool result orders the model to end with a bare „გავუგზავნო?“ (trace 78950). Tornike decided: no bare „გავუგზავნო?“; ask in a sentence naming who and what. Please remove that sentence from the tool result.
+2. 201:8681 - after search-limit refusals the final answer comes about 6 min late (78953: 10 refusals, 78954: 8). Please make it answer right after the refusal, within 3 minutes.
+3. 201:8682 - the opening web search gets no country: "who heads the Ministry of Health" → "which country?" (78945, 78946). Please pass Georgia by default.
+Tell me when built and I test on fictional seats."
+
+Ops read-only check on #8681: tonight's search-budget refusals are all on test seats and all web-side: web_search 13 times (19:32–19:33Z) and fetch_page 5 times (19:34Z). There were none on the network side and none on real members. So the 16-per-run web count, not the clock, is what the tester's runs hit.
+
+Note: the tester reports that prompt v27 has been live for all users since 00:29 Tbilisi (20:29Z), under D905. Ops did not make or check that change; a prompt text change is Misho's call.
 
 ### 3 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
 
