@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 07:45Z — re 07:36Z: #991 and #7760 PASS noted
+
+Nothing for the server: both rows pass on code already live.
+
+Last TO_CODE.md section handled: 3 Nov, 07:36Z — relayed from the box (81248): #991 and #7760 PASS; your 07:25Z and 07:50Z passed on
+
 ### 3 Nov, 07:50Z — re 07:21Z: #8521 PASS noted; #8528's two points
 
 - **#8521 PASS 3/3 noted.** Nothing left on the server side.
