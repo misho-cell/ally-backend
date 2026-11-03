@@ -551,6 +551,20 @@ import { isOwnersFirstLine } from './firstOwnerLine';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
 import { SUMMARIZED_THINKING, tracedInFull } from './reasoningSummary';
 import {
+  creditSearchTime,
+  forgetSearchClocks,
+  searchTimedOut,
+  searchTimeSpent,
+  startSearchTiming,
+} from './searchClock';
+import {
+  companyNamesIn,
+  forgetFinds,
+  isFreeCheckOfAFind,
+  noteFoundNames,
+  noteFoundUrls,
+} from './foundThisRun';
+import {
   recordModelCall,
   recordPromptSent,
   recordReplyDropped,
@@ -588,6 +602,7 @@ import {
   ownerAsksForIntroduction,
   ownerLinesInOrder,
   USE_INTRODUCTION_REFUSAL,
+  ownerWantsNoGoBetween,
 } from './introInstruction';
 import { dormantChoices } from './dormantChoices';
 import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
@@ -6358,6 +6373,16 @@ const runFoundPeople = new Map<string, FoundPerson[]>();
 /** 4297: who this run's searches found one step away, with the contacts who know them. */
 const runFoundThroughBridges = new Map<string, FoundThroughBridge[]>();
 
+/** The people a company-base answer lists, as search rows. */
+export function companyPeopleIn(result: unknown): unknown[] {
+  const companies = (result as { companies?: unknown } | null)?.companies;
+  if (!Array.isArray(companies)) return [];
+  return companies.flatMap((company: unknown) => {
+    const people = (company as { people?: unknown } | null)?.people;
+    return Array.isArray(people) ? people : [];
+  });
+}
+
 function notePeopleFound(runId: string, result: unknown, sought?: string): void {
   const found = peopleFoundIn(result);
   if (found.length > 0) runFoundPeople.set(runId, [...(runFoundPeople.get(runId) ?? []), ...found]);
@@ -9351,46 +9376,37 @@ const WEB_BUDGET_TOOLS: ReadonlySet<string> = new Set([WEB_SEARCH_TOOL, 'fetch_p
 const WEB_BUDGET_KEY_SUFFIX = ':web';
 
 /**
- * Misho, 27 Oct („ძალიან ნელია"): since the 26 Oct night batch a run made
- * 5.4 tool calls on average instead of 2.2, and a goal step's median went
- * from 15 s to 37 s. One run on 27 Oct made 30 calls one after another.
- * Each tool was no slower; there were simply more of them. Counting alone
- * cannot bound that, because the two budgets of eight plus the free lookups
- * by name still allow some twenty-five calls. So a run's searching also has a
- * clock, started by its first search of any kind (a lookup by name included):
- * once SEARCH_TIME_BUDGET_MS has passed, every further budgeted search is
- * refused with the same „answer now from what you found". A lookup by name
- * itself stays free, for the members check above.
- */
-const SEARCH_TIME_BUDGET_MS = 25_000;
-const TIMED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
-  ...BUDGETED_SEARCH_TOOLS,
-  'search_contact_by_name',
-]);
-const runFirstSearchAt = new Map<string, number>();
-/** Reads of an official page this run made outside its search budget (officialPageRead). */
-const runOfficialReads = new Map<string, number>();
-
-/**
- * #8619 (the tester's 81317 / 81446, D903): the clock was one for the whole run,
- * so the web, which answers first (D899) and is slow, spent it — 27 refusals in
- * real chats, the network search refused after a few web calls. The web and the
- * network now each have their own clock, as they already had their own count.
+ * Misho, 27 Oct („ძალიან ნელია"): a run made 5.4 tool calls on average instead
+ * of 2.2, one run made 30 calls one after another — so a run's searching has a
+ * clock as well as a count. #8619 (D903) gave the web and the network a clock
+ * each; Misho, 3 Nov („ლიმიტების თემაზე ყველაფერი გააკეთე"): the clock counts the
+ * time searches actually ran, not the model's rounds between them, not a search
+ * that timed out, not the way_in check, and not a free lookup by name. See
+ * searchClock.ts.
  */
 function searchClockKey(runId: string, tool: string): string {
   return WEB_BUDGET_TOOLS.has(tool) ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
 }
 
-/** True when this run started searching of this kind longer ago than its time budget allows. */
+/** Reads of an official page this run made outside its search budget (officialPageRead). */
+const runOfficialReads = new Map<string, number>();
+
+/** True when this kind's searching has run past its time (busy time, or the wall cap). */
 function searchClockSpent(runId: string, tool: string, now: number): boolean {
-  if (!TIMED_SEARCH_TOOLS.has(tool)) return false;
+  return BUDGETED_SEARCH_TOOLS.has(tool) && searchTimeSpent(searchClockKey(runId, tool), now);
+}
+
+/** Starts timing a budgeted search; the returned function ends it, crediting a timeout back. */
+export function timeSearch(runId: string | undefined, tool: string): (result: unknown) => void {
+  if (runId === undefined || !BUDGETED_SEARCH_TOOLS.has(tool)) return () => undefined;
   const key = searchClockKey(runId, tool);
-  const first = runFirstSearchAt.get(key);
-  if (first === undefined) {
-    runFirstSearchAt.set(key, now);
-    return false;
-  }
-  return BUDGETED_SEARCH_TOOLS.has(tool) && now - first > SEARCH_TIME_BUDGET_MS;
+  const startedAt = Date.now();
+  const end = startSearchTiming(key, startedAt);
+  return (result: unknown) => {
+    const endedAt = Date.now();
+    end(endedAt);
+    if (searchTimedOut(result)) creditSearchTime(key, endedAt - startedAt, endedAt);
+  };
 }
 
 /** Counts a budgeted search; true when this one is past the run's budget for its kind or its clock. */
@@ -9513,7 +9529,17 @@ function noteSearchedPhones(runId: string, phones: readonly string[]): void {
 }
 
 /** The tools whose results name ways in: the searches, and the warm-path finder. */
-const WAY_IN_TOOLS: ReadonlySet<string> = new Set([...SEARCH_TOOLS, 'find_warm_path']);
+/**
+ * Example 3 for Misho (the TBC loan test, 3 Nov): the company base returned TBC's
+ * people with their numbers and a phone lookup confirmed them, and the plan with
+ * them was refused twice as „no search in this run found them". Both find people.
+ */
+const WAY_IN_TOOLS: ReadonlySet<string> = new Set([
+  ...SEARCH_TOOLS,
+  'find_warm_path',
+  'find_companies_for_need',
+  'lookup_contact_by_phone',
+]);
 const runWayInPhones = new Map<string, Set<string>>();
 
 function noteWayInPhones(runId: string, phones: readonly string[]): void {
@@ -9530,7 +9556,12 @@ function phoneOf(item: unknown): string[] {
 
 /** Every number a search or warm-path result offers as a way in: the person and who leads to them. */
 export function wayInPhonesIn(raw: unknown): string[] {
-  const r = (raw ?? {}) as { results?: unknown; paths?: unknown };
+  const r = (raw ?? {}) as { results?: unknown; paths?: unknown; companies?: unknown };
+  const companies = Array.isArray(r.companies) ? r.companies : [];
+  const fromCompanies = companies.flatMap((company: unknown) => {
+    const people = (company as { people?: unknown } | null)?.people;
+    return Array.isArray(people) ? people.flatMap(phoneOf) : [];
+  });
   const rows = Array.isArray(r.results) ? r.results : [];
   const fromRows = rows.flatMap((row: unknown) => {
     const via = (row as { via_contacts?: unknown } | null)?.via_contacts;
@@ -9541,7 +9572,8 @@ export function wayInPhonesIn(raw: unknown): string[] {
     const bridges = (path as { bridges?: unknown } | null)?.bridges;
     return Array.isArray(bridges) ? bridges.flatMap(phoneOf) : [];
   });
-  return [...fromRows, ...fromPaths];
+  // A phone lookup's own answer names the one person it found.
+  return [...phoneOf(raw), ...fromRows, ...fromPaths, ...fromCompanies];
 }
 
 /**
@@ -10324,8 +10356,8 @@ function clearRunState(runId: string): void {
   forgetNamesAsked(runId);
   runWithheldByOwnerLine.delete(runId);
   runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
-  runFirstSearchAt.delete(runId);
-  runFirstSearchAt.delete(runId + WEB_BUDGET_KEY_SUFFIX);
+  forgetSearchClocks([runId, runId + WEB_BUDGET_KEY_SUFFIX]);
+  forgetFinds(runId);
   runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
 }
@@ -10569,6 +10601,7 @@ async function executeToolCall(
     runId !== undefined &&
     !freeOfficialRead &&
     !isRouteToSomeoneFound(name, input, runFoundPeople.get(runId) ?? []) &&
+    !isFreeCheckOfAFind(runId, name, input) &&
     searchBudgetSpent(runId, name)
   ) {
     // eslint-disable-next-line no-console
@@ -10766,10 +10799,18 @@ async function executeToolCall(
        * the model has them at the moment it is deciding what to say about
        * each firm rather than in a section it read a minute ago.
        */
+      // Misho, 3 Nov: what this web search found may be checked without spending the budget.
+      noteFoundUrls(runId, found);
+      noteFoundNames(runId, webResultNames(found));
+      const wayInStartedAt = Date.now();
       const waysIn =
         runId !== undefined && runLooksUpTheWeather.has(runId)
           ? new Map<string, WayIn>()
           : await findWaysIn(userId, webResultNames(found), { threadId, runId });
+      // Misho, 3 Nov (#8648): the way_in check does not spend the web's search clock.
+      if (runId !== undefined) {
+        creditSearchTime(runId + WEB_BUDGET_KEY_SUFFIX, Date.now() - wayInStartedAt);
+      }
       noteWaysIn(runId, withoutNamesakes(String(input['query'] ?? ''), waysIn));
       if (waysIn.size === 0) return found;
       return {
@@ -11322,6 +11363,7 @@ async function executeToolCall(
       // Box 54175: unless this person's part of the owner's message is a plain question.
       if (
         askIsTheIntroduction(ownerLines, String(input['contact_name'] ?? '')) &&
+        !ownerWantsNoGoBetween(ownerLines, String(input['contact_name'] ?? '')) &&
         !(await goalHasAcceptedIntroduction(taskId))
       ) {
         // eslint-disable-next-line no-console
@@ -12812,8 +12854,8 @@ async function executeToolCall(
       return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
     case 'find_people_in_base':
       return findPeopleInBase(userId, String(input['need'] ?? ''));
-    case 'find_companies_for_need':
-      return findCompaniesForNeed(
+    case 'find_companies_for_need': {
+      const companies = await findCompaniesForNeed(
         userId,
         String(input['need'] ?? ''),
         String(input['country'] ?? ''),
@@ -12821,6 +12863,12 @@ async function executeToolCall(
         String(input['size'] ?? ''),
         String(input['role'] ?? ''),
       );
+      // Example 3 (the TBC loan test): the walk to a person the company base found is
+      // the route to the answer, never refused by the search budget.
+      if (runId !== undefined) notePeopleFound(runId, { results: companyPeopleIn(companies) });
+      noteFoundNames(runId, companyNamesIn(companies));
+      return companies;
+    }
     case 'find_warm_path': {
       const warm = await findWarmPath(
         userId,
@@ -12944,11 +12992,11 @@ async function runOneToolBlock(
     await postWorkingLineOnce(userId, threadId, runId, runLang(runId));
   }
   // #5974: the owner's old-Ally colours and each person's bubble, one batch per call.
-  const rawResult = await withOldAllyColours(
-    userId,
-    block.name,
-    await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent),
-  );
+  // Misho, 3 Nov: the search clock counts the time this search actually ran.
+  const searchDone = timeSearch(runId, block.name);
+  const executed = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
+  searchDone(executed);
+  const rawResult = await withOldAllyColours(userId, block.name, executed);
   // See runEmptySearches. An empty search result is handed back the list of
   // what this run has already asked for and not found, because without it each
   // attempt arrives with no memory of the last one.

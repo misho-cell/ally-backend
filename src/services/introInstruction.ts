@@ -135,6 +135,29 @@ export function askIsTheIntroduction(
   return OWNER_INTRO_RE.test(named[named.length - 1]);
 }
 
+/**
+ * Example 6 for Misho (a real member, 25 Oct): the goal's own text, written by
+ * the model, read as „introduce me to Beso", and every ask to Beso was refused
+ * thirteen times as „use request_introduction" — after the owner had written
+ * „ბესოს მე პირადადაც ვიცნობ", sent his number, and „არ მინდა ბესოსთან
+ * შუამავლობა". An owner who knows the person, has them saved, or wants no
+ * go-between has asked for no introduction to them.
+ */
+const NO_GO_BETWEEN_RE =
+  /პირადად(?:აც)?\s+ვიცნობ|ვიცნობ\s+პირადად|კონტაქტებში\s+(?:მაქვს|მყავს)|შუამ\S*\s+არ\s+(?:მინდა|მჭირდება)|არ\s+(?:მინდა|მჭირდება)\s+(?:\S+\s+)?შუამ|\bno\s+(?:go-between|intermediary|middleman)\b|\bwithout\s+(?:a\s+)?(?:go-between|intermediary)\b|\bknow\s+(?:him|her|them)\s+personally\b|без\s+посредник|лично\s+знаю/iu;
+
+/** Did the owner say, about this person, that no go-between is needed? */
+export function ownerWantsNoGoBetween(
+  ownerLines: readonly string[],
+  recipientName: string,
+): boolean {
+  const stem = nameStem(recipientName);
+  if (stem === null) return false;
+  return partsOf(ownerLines, false).some(
+    (sentence) => NO_GO_BETWEEN_RE.test(sentence) && sentence.toLowerCase().includes(stem),
+  );
+}
+
 export const USE_INTRODUCTION_REFUSAL =
   'Not sent: the owner asked to be INTRODUCED to someone — that is an introduction, not a ' +
   'question. Call request_introduction instead: the person who knows them is the go-between, ' +

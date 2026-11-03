@@ -3,6 +3,7 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { SEARCH_BUDGET_SPENT, searchBudgetSpent } from '../chat.service';
+import { startSearchTiming } from '../searchClock';
 
 /**
  * Board #959: 92 runs on 4–5 October took over a minute, at about nine model
@@ -38,24 +39,29 @@ describe('a run’s search budget', () => {
     expect(searchBudgetSpent(run, 'find_warm_path')).toBe(true);
   });
 
-  it('stops further network searches once 25 s have passed since the run first searched the network (Misho, 27 Oct)', () => {
+  it('stops further network searches once the network has searched for 25 s (Misho, 27 Oct; 3 Nov)', () => {
     const run = 'budget-run-clock';
     const start = 1_000_000;
-    expect(searchBudgetSpent(run, 'search_contact_by_name', start)).toBe(false);
-    expect(searchBudgetSpent(run, 'search_by_tag', start + 24_000)).toBe(false);
-    expect(searchBudgetSpent(run, 'search_by_tag', start + 26_000)).toBe(true);
+    const done = startSearchTiming(run, start);
+    done(start + 26_000);
+    expect(searchBudgetSpent(run, 'search_by_tag', start + 26_500)).toBe(true);
   });
 
   it('gives the web its own clock, which cannot spend the network’s (#8619, D903)', () => {
     const run = 'budget-run-two-clocks';
     const start = 3_000_000;
-    expect(searchBudgetSpent(run, 'web_search', start)).toBe(false);
-    expect(searchBudgetSpent(run, 'fetch_page', start + 20_000)).toBe(false);
-    // The network starts searching late: its own clock starts now.
-    expect(searchBudgetSpent(run, 'search_by_tag', start + 30_000)).toBe(false);
-    expect(searchBudgetSpent(run, 'web_search', start + 30_000)).toBe(true);
-    expect(searchBudgetSpent(run, 'search_second_degree', start + 50_000)).toBe(false);
-    expect(searchBudgetSpent(run, 'search_by_insight', start + 56_000)).toBe(true);
+    startSearchTiming(`${run}:web`, start)(start + 26_000);
+    expect(searchBudgetSpent(run, 'web_search', start + 27_000)).toBe(true);
+    expect(searchBudgetSpent(run, 'search_by_tag', start + 27_000)).toBe(false);
+  });
+
+  it('does not count the model’s rounds between searches (Misho, 3 Nov)', () => {
+    const run = 'budget-run-rounds';
+    const start = 4_000_000;
+    startSearchTiming(run, start)(start + 5_000);
+    // 40 s of the model thinking, then another short search.
+    startSearchTiming(run, start + 45_000)(start + 50_000);
+    expect(searchBudgetSpent(run, 'search_second_degree', start + 50_100)).toBe(false);
   });
 
   it('keeps a lookup by name and non-search tools free after the clock runs out', () => {
@@ -76,6 +82,8 @@ describe('a run’s search budget', () => {
     expect(chat).toContain('    searchBudgetSpent(runId, name)\n  ) {');
     expect(chat).toContain('runSearchCalls.delete(runId);');
     expect(chat).toContain('runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);');
-    expect(chat).toContain('runFirstSearchAt.delete(runId);');
+    expect(chat).toContain('forgetSearchClocks([runId, runId + WEB_BUDGET_KEY_SUFFIX]);');
+    expect(chat).toContain('forgetFinds(runId);');
+    expect(chat).toContain('const searchDone = timeSearch(runId, block.name);');
   });
 });

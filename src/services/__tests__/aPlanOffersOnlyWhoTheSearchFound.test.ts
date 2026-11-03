@@ -2,7 +2,12 @@ const mockQuery = jest.fn();
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: mockQuery, default: {} }));
 jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
-import { peopleNoSearchFound, planNamesUnfound, wayInPhonesIn } from '../chat.service';
+import {
+  companyPeopleIn,
+  peopleNoSearchFound,
+  planNamesUnfound,
+  wayInPhonesIn,
+} from '../chat.service';
 
 /**
  * #5446 (the tester's 65719, 2 of 3): the search found Maia by her own work, and
@@ -113,5 +118,27 @@ describe('a plan person no search found', () => {
     expect(planNamesUnfound(['Levan'])).toContain(
       'Never give a reason for someone the search did not show',
     );
+  });
+});
+
+describe('people the company base or a phone lookup found (example 3, the TBC loan test)', () => {
+  it('count as found, so a plan with them is not refused', () => {
+    expect(
+      wayInPhonesIn({
+        companies: [{ name: 'TBC Bank JSC', people: [{ name: 'A', phone: '+995500000001' }] }],
+      }),
+    ).toEqual(['+995500000001']);
+    expect(wayInPhonesIn({ found: true, phone: '+995500000002', name: 'B' })).toEqual([
+      '+995500000002',
+    ]);
+  });
+});
+
+describe('the walk to someone the company base found', () => {
+  it('reads the company base’s people as found people', () => {
+    expect(
+      companyPeopleIn({ companies: [{ people: [{ name: 'A', phone: '+995500000001' }] }, {}] }),
+    ).toEqual([{ name: 'A', phone: '+995500000001' }]);
+    expect(companyPeopleIn({ found: false })).toEqual([]);
   });
 });
