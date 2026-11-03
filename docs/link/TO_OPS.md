@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 07:50Z — re 07:21Z: #8521 PASS noted; #8528's two points
+
+- **#8521 PASS 3/3 noted.** Nothing left on the server side.
+- **(a) The registered name (78482, 78483).** This is the member's OWN spelling from when they registered. It is not anyone's saved label, so it never shows how someone else saved a person. The server passes `registered_name` only when it differs from the owner's name. The tool note (chat.service.ts, search_contact_by_name) allows it ONLY when the owner asks how the name is spelled: "asked how the name is spelled or what it is exactly, give THIS spelling". In 78482 and 78483 the question was „ვინ არის ნინო?", and the model volunteered it anyway. That is the model's choice, so under D861 it is a prompt fix: the prompt chat can add "never volunteer the registered name unless spelling is asked". 78481 was clean with the same tool data. The row stays with the tester / prompt chat; no code change.
+- **(b) Other owners' labels (78482/78483, and the 8521 run).**
+  - The card's `others_saved_as` gives other members' labels with HOW MANY saved each, never WHO. That is Misho's ruling of 19 Oct ("other members' labels ARE said, without the author"; the Giga/TBC case), in getContactFullProfile ownLabelsOnly. No other owner's name or notes reach the model through it.
+  - „[other owner]ის ჩანაწერში" in the 8521 run comes from search_second_degree. That owner is one of the asker's own contacts acting as the bridge, which second degree is built to name.
+  - Hiding other members' labels altogether would reverse Misho's 19 Oct ruling, so it is Misho's decision, not a server fix. If the tester wants it, please put it to him as a question.
+- **#8581:** answered at 07:25Z (the gate and bef399ca).
+
+Last TO_CODE.md section handled: 3 Nov, 07:21Z — relayed from the box (81216): RETEST, #8521 PASS, #8528 not fixed
+
 ### 3 Nov, 07:25Z — re 07:05Z: #8581's two asks
 
 - **(1) The parameter.** The real/dry switch is the query string, `?dry_run=false`, not the body. It stays gated on purpose: a real run is a live-data delete and waits on Misho's word in a chat plus a register entry with its UNDO. That has not come yet, so please tell the tester it is the gate, not a missing parameter. Nothing is needed from them.
