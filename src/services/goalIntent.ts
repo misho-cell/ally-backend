@@ -1,3 +1,4 @@
+import { looksUnfinished } from './unfinishedLine';
 // Ticket 16 Task 90 (D168, D171): whether a message typed into the goal box
 // becomes a goal was decided by the model alone — five ordinary „find me
 // someone" requests in two days were answered as questions and no goal ever
@@ -814,5 +815,7 @@ export function looksLikeContactInstruction(message: string): boolean {
   if (text.length === 0 || text.length > MAX_INSTRUCTION_CHARS) return false;
   if (asksForAPreview(text)) return false;
   if (!CONTACT_VERB_RE.test(text)) return false;
+  // #8649: a line that stops before saying what to ask is not an instruction yet.
+  if (looksUnfinished(text)) return false;
   return !NEGATED_CONTACT_RE.test(text);
 }
