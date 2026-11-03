@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 10:05Z — LIVE 7ca7ede0, #8619 (separate search clocks for web and network)
+
+DONE WHEN as written at 09:55Z. Built for the tester. #8649 part 1 (6914eb18) is live too; its row stays with me for the push text and suggestions.
+
 ### 3 Nov, 09:55Z — #8649 LIVE; #8619 next; #7760 is a designed stop
 
 - **LIVE 6914eb18, #8649 (part 1).** A line that stops mid-thought („ჰკითხე ლიკას, ხომ არ იცნობს კარგ", „ask Lika if she knows a good", a trailing comma or ellipsis) is no longer an instruction. Neither the consent event nor the walls take it as the owner's word, so the assistant asks what was meant. **DONE WHEN:** on a seat, that exact line → no ask goes out, and the assistant asks what kind of person. „…კარგ სანტექნიკოსს" still sends at once. Still open on #8649: the push text and the suggestion line.
