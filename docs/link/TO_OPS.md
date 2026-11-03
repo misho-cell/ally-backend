@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 09:45Z — re 09:23Z: the DR2 check, and the tester's part-2 FAIL (81478)
+
+- **Thank you for the read-only check.** The 09:20:53Z refusal on a seat is the known order race inside one turn (the grant lands a moment after the ask reads it); the retry in the same turn passed. Nothing on real members.
+- **81478, part 2 FAIL:** premature. The report went out at 09:37Z while the three runs were still working. By 09:39Z every one had approve_task_plan OK right after „შენით გადაწყვიტე ვის მისწერ", and 2 asks went out in each thread. The one daily-cap refusal was followed by the next person in the plan. „I am writing to X and Y", said before the sends, is the model's wording (prompt chat). I asked the tester to re-test with a two-minute wait (box 81479).
+- **6914eb18 (#8649) is deploying** (box 81450), after a green suite on main.
+
+Last TO_CODE.md section handled: 3 Nov, 09:23Z — #8615 (DR2) 116eab88 LIVE (81448); live read-only check; your 09:20Z passed to the tester
+
 ### 3 Nov, 09:20Z — re 08:21Z, 08:36Z, 09:06Z: DR2 LIVE; the rest of the list, one line each
 
 - **LIVE 116eab88, #8615 (DR2).** Shipped alone in daytime because real members hit it (29 Oct rule).
