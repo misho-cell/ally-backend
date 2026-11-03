@@ -6,32 +6,33 @@ import { SEARCH_BUDGET_SPENT, searchBudgetSpent } from '../chat.service';
 
 /**
  * Board #959: 92 runs on 4–5 October took over a minute, at about nine model
- * rounds and eleven searches each. A run's searches are capped at eight.
+ * rounds and eleven searches each. A run's searches are capped — since #8619's
+ * retest (81578) at 24 network and 16 web, each kind bounded by its own clock.
  */
 describe('a run’s search budget', () => {
-  it('allows eight network searches, then refuses the ninth', () => {
+  it('allows 24 network searches — 8 companies, twice each, with room — then refuses the 25th', () => {
     const run = 'budget-run-1';
-    const verdicts = Array.from({ length: 9 }, (_, i) =>
+    const verdicts = Array.from({ length: 25 }, (_, i) =>
       searchBudgetSpent(run, i % 2 === 0 ? 'search_by_tag' : 'search_second_degree'),
     );
-    expect(verdicts.slice(0, 8).every((spent) => !spent)).toBe(true);
-    expect(verdicts[8]).toBe(true);
+    expect(verdicts.slice(0, 24).every((spent) => !spent)).toBe(true);
+    expect(verdicts[24]).toBe(true);
   });
 
-  it('gives the web its own eight, which network searches cannot spend (#7237)', () => {
+  it('gives the web its own 16, which network searches cannot spend (#7237)', () => {
     const run = 'budget-run-web';
-    for (let i = 0; i < 8; i += 1) expect(searchBudgetSpent(run, 'search_by_tag')).toBe(false);
+    for (let i = 0; i < 24; i += 1) expect(searchBudgetSpent(run, 'search_by_tag')).toBe(false);
     expect(searchBudgetSpent(run, 'search_by_insight')).toBe(true);
-    const web = Array.from({ length: 9 }, (_, i) =>
+    const web = Array.from({ length: 17 }, (_, i) =>
       searchBudgetSpent(run, i % 2 === 0 ? 'web_search' : 'fetch_page'),
     );
-    expect(web.slice(0, 8).every((spent) => !spent)).toBe(true);
-    expect(web[8]).toBe(true);
+    expect(web.slice(0, 16).every((spent) => !spent)).toBe(true);
+    expect(web[16]).toBe(true);
   });
 
   it('leaves a lookup by name and non-search tools free', () => {
     const run = 'budget-run-2';
-    for (let i = 0; i < 8; i += 1) searchBudgetSpent(run, 'search_second_degree');
+    for (let i = 0; i < 24; i += 1) searchBudgetSpent(run, 'search_second_degree');
     expect(searchBudgetSpent(run, 'search_contact_by_name')).toBe(false);
     expect(searchBudgetSpent(run, 'propose_task_plan')).toBe(false);
     expect(searchBudgetSpent(run, 'find_warm_path')).toBe(true);
