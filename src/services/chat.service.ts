@@ -9357,12 +9357,23 @@ const runFirstSearchAt = new Map<string, number>();
 /** Reads of an official page this run made outside its search budget (officialPageRead). */
 const runOfficialReads = new Map<string, number>();
 
-/** True when this run started searching longer ago than its time budget allows. */
+/**
+ * #8619 (the tester's 81317 / 81446, D903): the clock was one for the whole run,
+ * so the web, which answers first (D899) and is slow, spent it — 27 refusals in
+ * real chats, the network search refused after a few web calls. The web and the
+ * network now each have their own clock, as they already had their own count.
+ */
+function searchClockKey(runId: string, tool: string): string {
+  return WEB_BUDGET_TOOLS.has(tool) ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
+}
+
+/** True when this run started searching of this kind longer ago than its time budget allows. */
 function searchClockSpent(runId: string, tool: string, now: number): boolean {
   if (!TIMED_SEARCH_TOOLS.has(tool)) return false;
-  const first = runFirstSearchAt.get(runId);
+  const key = searchClockKey(runId, tool);
+  const first = runFirstSearchAt.get(key);
   if (first === undefined) {
-    runFirstSearchAt.set(runId, now);
+    runFirstSearchAt.set(key, now);
     return false;
   }
   return BUDGETED_SEARCH_TOOLS.has(tool) && now - first > SEARCH_TIME_BUDGET_MS;
@@ -10299,6 +10310,7 @@ function clearRunState(runId: string): void {
   runWithheldByOwnerLine.delete(runId);
   runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
   runFirstSearchAt.delete(runId);
+  runFirstSearchAt.delete(runId + WEB_BUDGET_KEY_SUFFIX);
   runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
 }

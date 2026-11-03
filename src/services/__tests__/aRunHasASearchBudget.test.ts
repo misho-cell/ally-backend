@@ -37,13 +37,24 @@ describe('a run’s search budget', () => {
     expect(searchBudgetSpent(run, 'find_warm_path')).toBe(true);
   });
 
-  it('stops further searches once 25 s have passed since the run first searched (Misho, 27 Oct)', () => {
+  it('stops further network searches once 25 s have passed since the run first searched the network (Misho, 27 Oct)', () => {
     const run = 'budget-run-clock';
     const start = 1_000_000;
     expect(searchBudgetSpent(run, 'search_contact_by_name', start)).toBe(false);
-    expect(searchBudgetSpent(run, 'web_search', start + 24_000)).toBe(false);
+    expect(searchBudgetSpent(run, 'search_by_tag', start + 24_000)).toBe(false);
     expect(searchBudgetSpent(run, 'search_by_tag', start + 26_000)).toBe(true);
-    expect(searchBudgetSpent(run, 'web_search', start + 26_000)).toBe(true);
+  });
+
+  it('gives the web its own clock, which cannot spend the network’s (#8619, D903)', () => {
+    const run = 'budget-run-two-clocks';
+    const start = 3_000_000;
+    expect(searchBudgetSpent(run, 'web_search', start)).toBe(false);
+    expect(searchBudgetSpent(run, 'fetch_page', start + 20_000)).toBe(false);
+    // The network starts searching late: its own clock starts now.
+    expect(searchBudgetSpent(run, 'search_by_tag', start + 30_000)).toBe(false);
+    expect(searchBudgetSpent(run, 'web_search', start + 30_000)).toBe(true);
+    expect(searchBudgetSpent(run, 'search_second_degree', start + 50_000)).toBe(false);
+    expect(searchBudgetSpent(run, 'search_by_insight', start + 56_000)).toBe(true);
   });
 
   it('keeps a lookup by name and non-search tools free after the clock runs out', () => {
