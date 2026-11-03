@@ -549,6 +549,7 @@ import {
 import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
 import { registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
+import { delegatesTheChoiceOfPeople } from './delegatedChoice';
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
@@ -7558,6 +7559,8 @@ export function approvalBelongsToThePlan(
   const pressedSomethingElse = new Set(labelsDealtAfterTheCard.map(canon));
   const approves = (said: string): boolean => {
     if (isApproveLabel(said) || APPROVE_LIKE_RE.test(said)) return true;
+    // DR2 (#8615): „decide yourself whom to write" approves the people the plan picks.
+    if (delegatesTheChoiceOfPeople(said)) return true;
     // A bare yes, or a short go-ahead, only counts when a plan card is the
     // thing being answered. Ticket 19 G2: a tap on a DRAFT's „კი, გააგზავნე"
     // must never read as approving a three-person plan.
@@ -7961,7 +7964,11 @@ export function ownerWordsGrantPermission(
   ownerSaidSinceCard: readonly string[] = [],
 ): boolean {
   const saysYes = (said: string): boolean =>
-    isApproveLabel(said) || APPROVE_LIKE_RE.test(said) || PLAN_YES.test(said) || saysGoAhead(said);
+    isApproveLabel(said) ||
+    APPROVE_LIKE_RE.test(said) ||
+    PLAN_YES.test(said) ||
+    saysGoAhead(said) ||
+    delegatesTheChoiceOfPeople(said);
 
   /**
    * Row 104 / D316. The phonebook half (`messageNamesOwnContact`) is NOT asked

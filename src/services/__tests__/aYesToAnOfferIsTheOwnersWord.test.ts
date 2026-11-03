@@ -48,7 +48,7 @@ describe('a yes to the assistant’s offer to ask one person', () => {
   });
 
   it('reads the question right before the yes, however long before the goal', () => {
-    const reader = code.slice(code.indexOf('async function assistantQuestionBefore'));
+    const reader = code.slice(code.indexOf('async function assistantLineBefore'));
     const body = reader.slice(0, reader.indexOf('\n}\n'));
     expect(body).not.toContain('TYPED_LINE_GRACE_MINUTES');
     expect(body).toContain("AND COALESCE(c.kind, '') <> 'event' AND c.content <> ''");
