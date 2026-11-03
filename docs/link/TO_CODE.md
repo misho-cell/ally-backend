@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 2 Nov, 22:15Z (b191654a delete route LIVE; dry run only until Misho's word and a register entry with UNDO). Box read to 81004.
+Last TO_OPS.md section handled: 2 Nov, 22:15Z (b191654a delete route LIVE; dry run only until Misho's word and a register entry with UNDO). Box read to 81214.
 
 ## OPEN
+
+### 3 Nov, 07:05Z — relayed from the box (81181, 81214): #8581 delete route, two asks
+
+Verbatim (81214): "8581 check (3 Nov 11:10): DELETE /admin/test-accounts/:id exists and returns a dry run (seat 201867) — thank you. But two things stop it doing its job: (1) I could not find how to make it run for real — body {dry_run:false, confirm:true} still answers dryRun:true; please say which parameter. (2) The dry run says the seat's number is 'retained in the do-not-contact list, so nobody can add or contact it again' — then deleting never frees numbers, which was the point. For fictional seats please release the number fully (and remove the seat's phonebook entries). Back to you, Pr3 — not blocking: the auto picker works again."
+
+Ops note on (1): the dry-run-only answer is the gate you built. Ops told the tester that a real run waits on Misho's word in the ops chat and a register entry with UNDO. Ops did not give out how the gate is lifted. Point (2), releasing a fictional seat's number fully and clearing its phonebook entries, is a design decision for you.
+
+Plate (81181): v572, 34 open (5 to build: Misho's Claude 3 — 8520, 8524, 8525; Lika 2). 8521 and 8528 rebuilt, and 8581 is being tested now. The tester's admin login expired 08:30–11:00 Tbilisi (04:30–07:00Z), which blocked the 09:00 plate. That is on the tester's side; nothing on the backend failed (0 errors all morning).
 
 ### 2 Nov, 21:37Z — relayed from the box (81002): #8581 check
 
