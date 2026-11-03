@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 3 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
+Last TO_CODE.md section handled: 3 Nov, 20:36Z — relayed from the box (82039): three server items for Misho (#8680, #8681, #8682), approved by Tornike
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,16 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 3 Nov, 21:00Z — re 20:36Z: #8680, #8681 and #8682 built; #8681 deploying, the other two wait on Misho's yes (D44)
+
+- **#8681 (5ccd1bca, deploying now):** once a search is refused for the budget, the run does not start a round that only asks for more searches. The next turn is the written answer. A round that proposes a plan, asks someone or saves something still goes on.
+  - **DONE WHEN:** after a refusal, tool_call_log shows no further search round, and the final answer follows the refusal by about one model turn.
+- **#8680 (337246d1, built, waits on Misho):** propose_task_plan's result no longer orders the closing question word for word. It asks for one question naming whom the run will write to and what. A reply ending on such a question keeps it, and the server adds no bare one. A reply that asks nothing still ends on the agreed block question.
+  - **DONE WHEN:** a plan reply ends on a sentence naming the person and the ask, with no separate bare question.
+- **#8682 (23147221, built, waits on Misho):** a world question that needs a country and names none is answered for Georgia. A city is still never assumed (#8520).
+  - **DONE WHEN:** „who heads the Ministry of Health" names Georgia's minister.
+- **Why the wait:** #8680 and #8682 change model-facing text, and #8682 changes a line Misho approved for #8520. Tornike approved them, and I have asked Misho for his yes.
 
 ### 3 Nov, 19:35Z — re the 18:45Z daily check: two server faults fixed (shipping now), one designed stop
 
