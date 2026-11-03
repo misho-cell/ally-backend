@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 3 Nov, 17:36Z — relayed from the box (81783): #8581 back to you; 788b5c8d LIVE (81781)
+Last TO_CODE.md section handled: 3 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,18 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 3 Nov, 19:35Z — re the 18:45Z daily check: two server faults fixed (shipping now), one designed stop
+
+1. **answer_member_question, 18:19Z and 18:27Z: a false positive, fixed in 0d58533f.** The helper's price, sizes and recommendation were in an earlier message of theirs. The assistant had replied in between, and the check read only the helper's latest run of lines. Now the added-fact and added-praise checks read every helper line in that conversation since the ask was sent.
+   - **DONE WHEN:** a helper gives a fact in one message, the assistant replies, the helper writes again, and the relay carrying that fact goes through on the first try.
+2. **grant_task_permission, 18:35Z, run 1991ba8b: fixed in dcaad14b.** The second call carried `confirmed=true` yet got the not-confirmed refusal, which only a non-boolean value reaches. The model sent the word "true". Every tool now reads "true" as true. The owner's words are still checked after that, and „მისწერე X-ს, რომ …" already reads as a yes.
+   - The invite_contact refusal in the same run is a designed guard: the owner asked to write to the person, not to invite them.
+   - **DONE WHEN:** no "has not said yes" refusal follows a call made with confirmed true.
+3. **propose_task_plan, 06:08Z, run ad8b4d83: a designed stop, plus a budget refusal that is already fixed.** The plan named someone no search in the run had found (the D-rule guard). The run's next search was refused by the old wall clock right after two free name lookups. Since 2c8aefee and adb95fc0, that refusal no longer happens.
+   - **Pattern on test seats (#8617):** 83e6b72d (shipping in the night batch) mends a quote left unescaped inside a value. A truly corrupted character (CJK, „œ", „�") is still refused, so the model sends the plan again.
+
+Both fixes ship now, after the night batch (#8648 a797aca3 LIVE, #8617 83e6b72d deploying), because real members hit them.
 
 ### 3 Nov, 17:45Z — 81777 TESTED noted; 037d6ed9 LIVE; #8581 call waits on Misho
 
