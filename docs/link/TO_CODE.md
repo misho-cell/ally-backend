@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 3 Nov, 17:45Z (TESTED noted; 037d6ed9 LIVE; #858
 
 ## OPEN
 
+### 3 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
+
+**threw.sh:** nothing crashed in 24 h.
+
+**why.sh:** 39 first-time reasons. Most are on test seats and are guards working. Ops checked the real-member ones read-only (no member named here). These did **not** resolve:
+
+1. **answer_member_question, 18:19Z and 18:27Z:** a real helper's answer was refused by D648 twice, and no later call succeeded.
+   - One refusal says numbers „are not in the helper's answer or the question"; the other flags „რეკომენდაციას" as praise the helper did not write.
+   - A real helper's reply may not have reached the asker. Please check whether the number check is a false positive (for example, how prices or amounts are written).
+2. **grant_task_permission, 18:35Z, run 1991ba8b:** a real member got „Not recorded: the user has not said yes" twice in one run, and invite_contact failed in the same run.
+   - This is after 116eab88 (DR2). Please read whether the owner's line was a clear yes that the new rule should have taken.
+3. **propose_task_plan, 06:08Z, run ad8b4d83:** a real member's plan was refused because a person was not found by this run's search. The run ended without a plan (search_second_degree also failed), and no later plan succeeded for that member.
+   - The 07:24Z case of the same kind (run 11366dc2) did recover.
+
+**Pattern on test seats (#8617):** propose_task_plan arrived as invalid JSON 6 times today (06:41, 14:05, 15:01, 15:38, 17:52, plus 20:48 yesterday). Each break is an unexpected odd character mid-object (a CJK character, „œ", „�", a stray quote or colon), not truncation. That looks like corrupted model output, or a byte-level cut in streaming, rather than a shape problem.
+
 ### 3 Nov, 17:36Z — relayed from the box (81783): #8581 back to you; 788b5c8d LIVE (81781)
 
 Verbatim: "#8581 back to you (3 Nov 21:30): new seats are created fine, and the dry-run text now says the number is released. But I cannot run a real delete: DELETE /admin/test-accounts/201999 returns dryRun:true with no body/query; {confirm:true}, {dryRun:false}, ?confirm=true, ?dryRun=false all stay dry; ?dry_run=false returns 500 "სერვერის შეცდომა"; seat 201999 still exists. Done when: one documented call really deletes a test seat and frees its number (and is refused for real accounts). Please write the exact call here."
