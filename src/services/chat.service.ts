@@ -1,3 +1,4 @@
+import { maskPersonalIds } from './personalIdMask';
 import {
   askedFileFormat,
   contactsAsList,
@@ -5127,13 +5128,15 @@ async function saveMessage(
   // so the app can open their drawn path map (/paths/:id) from the reply.
   pathMapId: string | null = null,
 ): Promise<number> {
-  const textContent = typeof content === 'string' ? content : '';
+  // #8618: the owner's own words are kept without personal ID numbers.
+  const kept = role === 'user' && typeof content === 'string' ? maskPersonalIds(content) : content;
+  const textContent = typeof kept === 'string' ? kept : '';
   const result = await query<{ id: number }>(SAVE_AND_TOUCH_SQL, [
     userId,
     threadId,
     role,
     textContent,
-    JSON.stringify(content),
+    JSON.stringify(kept),
     kind,
     runId,
     choices === null ? null : JSON.stringify(choices),
@@ -18054,13 +18057,15 @@ async function ensureGoalForRequest(
 export async function processChat(
   userId: string,
   threadId: number,
-  userMessage: string,
+  ownerLine: string,
   runId: string,
   // Answer-wake runs pass the verbatim answer so the reply provably carries
   // it (see ensureVerbatimQuote) — the model alone dropped it live (N-01).
   ensureQuoted?: QuoteGuarantee,
   intent?: RunIntent,
 ): Promise<ChatResult> {
+  // #8618: the model never reads a personal ID number the owner typed.
+  const userMessage = maskPersonalIds(ownerLine);
   // The tester's 1136 (37071): „როგორ ხარ?" took 10.1 s and the run itself 4.1 s.
   // Where the time before the model goes is logged, so it is a number.
   const startedAt = Date.now();

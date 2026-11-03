@@ -1,3 +1,4 @@
+import { maskPersonalIds } from './personalIdMask';
 import { isNetaiThread } from './netaiMessage.service';
 import { query } from '../db/postgres/client';
 import { buttonsShown } from './cardButtons';
@@ -1549,7 +1550,9 @@ export async function saveThreadMessage(
   // note) are assistant text too — the mechanical scrub applies to them as to
   // a model reply (Ticket 11 Task 1: three of the first night's messages
   // still carried an em dash, all three written here).
-  const stored = role === 'assistant' ? scrubMechanicalForStorage(content) : content;
+  // #8618: the owner's own words are kept without personal ID numbers.
+  const stored =
+    role === 'assistant' ? scrubMechanicalForStorage(content) : maskPersonalIds(content);
   await query(
     `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind, run_id, choices)
      VALUES ($1, $2, $3, $4, NULL, $5, $6, $7::jsonb)`,
