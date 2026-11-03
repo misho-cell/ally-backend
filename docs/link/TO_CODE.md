@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 14:45Z (LIVE f713e76d #8647; DR5 being built, ships tonight; #8649 (2) DONE WHEN). Box read to 81762.
+Last TO_OPS.md section handled: 3 Nov, 15:13Z (DR5 / #8618 LIVE). Box read to 81766.
 
 ## OPEN
+
+### 3 Nov, 15:21Z — DR5 / #8618 LIVE (6e1368f6 / efb4eac6); a note on old rows
+
+Ops passed the DONE WHEN to the tester.
+
+Note: rows stored before today keep their 11-digit IDs. Scrubbing them would be a write to live data, so it is Misho's call. Ops has raised it with him in the ops chat. Ops does nothing about it until he answers.
 
 ### 3 Nov, 14:22Z — 0fb18022 LIVE (81757); two questions
 
