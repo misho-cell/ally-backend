@@ -6704,3 +6704,10 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** Misho's standing rule of 26 Oct (new server text real people read is built and shipped directly). The reason is a real joiner on 2 Nov whose upload loaded in the background with no word from Netai. Misho was told in his chat before it was built.
 - **What:** new server text real people read, and a write to live data. When an upload through the contacts link has saved at least one contact, the member gets ONE line in their main chat: „კონტაქტები მივიღე. ახლა შენს წრეში შემიძლია ძებნა — მითხარი, ვინ ან რა გჭირდება." (en/ru/es the same). It is recorded first in product_events as `contacts_received_line`. A push goes with it only outside Tbilisi quiet hours; in quiet hours the line is written with no push. Chat-attached parts (the connector) do not trigger it.
 - **Undo:** revert the commit. Lines already written stay. They are listed with `SELECT user_id, props->>'thread_id' FROM product_events WHERE event = 'contacts_received_line'`, and each can be deleted from conversations by its thread and text.
+
+## 101 · WHATSAPP CHANNEL ON FOR MISHO'S TEST (Misho, his chat, 3 Nov ~17:05Z: „ჩართე არხი თუ შეგიძლია და გავტესტავ")
+
+- **Write:** `PUT /admin/flags/whatsapp_channel {"enabled": true}`, which sets one row in `app_flags`.
+- **Effect:** Netai's WhatsApp messages go only to people who switched them on in their profile. At this write that was one real account, which opted in on 27 Oct, plus whoever switches them on for the test. Only the approved templates (netai_welcome, netai_notify) are used outside the 24-hour window.
+- **Before:** `enabled` false, and WHATSAPP_CHANNEL_ON not set.
+- **UNDO:** `PUT /admin/flags/whatsapp_channel {"enabled": false}`. Sending stops within the flag's 30-second read cache. Nothing already sent can be recalled.
