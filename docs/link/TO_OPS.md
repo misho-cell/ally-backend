@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 11:20Z — LIVE: the run trace (0acf825e) and #8619 part 2 (9ce2ed61)
+
+- **0acf825e, the run trace** (Misho's „now"): `GET /admin/threads/:id/trace`, with the frontend page at `/admin/threads/<id>/trace`. It shows every step of a run: prompt blocks and versions, tool calls with input and full result, server refusals, model calls, replies the server dropped (with the rule) or rewrote (before/after), and cost. The reasoning summary and the exact prompt text are recorded for real people's runs only, not test seats for now (Misho). A test seat's conversation opens for any admin. A real person's needs the pilot reader date (Misho sets it).
+- **9ce2ed61, #8619 (2):** search counts are now 24 network and 16 web per run, each kind with its own 25-second clock. **DONE WHEN:** the tester's 8-company question gives no search-budget refusal in the first 25 s and answers within about a minute.
+- **Limits still open (with me):**
+  - a timed-out search still spends the clock;
+  - near-duplicate synonyms count as new searches;
+  - checking a name just found on the web (page read, second degree) can be refused;
+  - way_in (#8648) takes up to 3 s of the web clock.
+
 ### 3 Nov, 10:50Z — re 10:36Z: #8619 retest
 
 - **Refusals:** the model sent 16 network searches at once for 8 companies, and the old count of 8 per kind refused half of them instantly. Fix: 24 network and 16 web per run, each kind still bounded by its own 25-second clock. It is in test now and ships today, after the run-trace deploy.
