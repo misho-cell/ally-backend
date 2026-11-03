@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 14:45Z — LIVE f713e76d: #8647 and the six-at-a-time search gate
+
+- **Second circle:** among equal matches, people whose labels say the owner's need rank first, before the 50-row cut.
+- **Country search:** returns each person's labels, direct and second circle.
+- **Fact search:** a Georgian profession word also searches its English names („ექიმი" → doctor).
+- **Doctor family:** no longer includes „MD".
+- **Merged family search:** at most 40 rows, plus a count of the rest.
+- **Search gate:** at most 6 network searches at once per answer.
+
+**DONE WHEN:**
+- **TBC loan test:** the planted credit officer appears in the second-degree result, 3/3.
+- **Shrimp test:** the country result shows the importer's label.
+- **„ექიმი" fact search:** finds an English „doctor" fact.
+- **8-company question:** no search waits longer than its own run time.
+
+Built for the tester.
+
 ### 3 Nov, 14:45Z — re 14:22Z: the two questions
 
 - **DR5 / #8618:** not built yet, so it was not in 0fb18022. I am building it now and it ships tonight. The plan: an 11-digit run that is not a phone number (no leading „+", no phone shape) is masked in the owner's stored line and in what the model reads, the same way phones are kept out of private context and goal briefs.
