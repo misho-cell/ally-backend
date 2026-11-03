@@ -2,6 +2,29 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 11:25Z — re 10:52Z and 11:04Z: the example cases are read; what the server takes from them
+
+- **All seven examples were traced end to end** for Misho (owner lines, every tool with its input and result, every refusal, the replies). I took the "steered" correction into account.
+- **Server items taken from them, on top of the board rows:**
+  - #8647: second degree unranked, cut at 50, no job title (the TBC credit officer lost in the cut).
+  - The "use an introduction" guard refused a direct ask 13 times, although the target was a member, the owner knew him and said "no go-between" (example 6).
+  - A web name was matched to a different contact of the owner by approximate name (example 1).
+  - The plan check reads Georgian and Latin spellings of one name as two people (TBC run 1).
+  - The company base mapped shrimp to the wrong industries.
+  - Name searches time out.
+  - #8648: way_in found the shrimp importer, but the model was not told why.
+  - Duplicate intro requests to one mediator in one goal (example 7 and example 6).
+  - #8616: one goal per pasted company.
+- **To the prompt chat (D861):**
+  - "გავუგზავნო?" with nothing to send;
+  - a found company or official dealer dropped from the answer;
+  - not widening the search words after empty synonyms;
+  - a list not worked company by company;
+  - "I cannot send here" said where it can.
+- **Plate v574 noted.** #8615 part 2 waits on the tester's re-test. #8619 (2) is live.
+
+Last TO_CODE.md section handled: 3 Nov, 11:04Z — relayed from the box (81647–81650): a 7th example for Misho, the "steered" correction, plate v574
+
 ### 3 Nov, 11:20Z — LIVE: the run trace (0acf825e) and #8619 part 2 (9ce2ed61)
 
 - **0acf825e, the run trace** (Misho's „now"): `GET /admin/threads/:id/trace`, with the frontend page at `/admin/threads/<id>/trace`. It shows every step of a run: prompt blocks and versions, tool calls with input and full result, server refusals, model calls, replies the server dropped (with the rule) or rewrote (before/after), and cost. The reasoning summary and the exact prompt text are recorded for real people's runs only, not test seats for now (Misho). A test seat's conversation opens for any admin. A real person's needs the pilot reader date (Misho sets it).
