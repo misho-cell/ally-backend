@@ -17,6 +17,8 @@ Ops note:
 - The 18 search_by_tag refusals 16 s into a run with zero web searches (78674) suggest the network limit is a call count, not the 25 s clock.
 - Point (2), runs that keep saying "still searching" after 5 minutes and never answer, matters for real members too. Please check whether real goals since 10:05Z ended this way.
 
+Ops read-only check since 10:05Z (error text matching "search budget"): refusals came only from test seats (5 runs). 0 real members. Refusals worded in Georgian would not match this filter.
+
 0acf825e (complete run trace) is deploying (81577).
 
 ### 3 Nov, 09:52Z — relayed from the box (81478): #8615 tester result; #8649 LIVE (81480); #8619 deploying (81511)
