@@ -3422,7 +3422,8 @@ export function planInYourReplyNote(language: RunLanguage): string {
       'შევეცდები მოვაგვარო, რომ ლიკამ რეკომენდაცია გაგიწიოს და დაგაკავშიროს ნინუცასთან". ' +
       'არ აჩვენო ტექსტი, რომელსაც გაუგზავნი — ფორმულირება შენი საქმეა. არ დაწერო „სიგნალი", ' +
       '„გზა", „მოგვარებულად ჩავთვლი" (D561). ვერსია, სათაურები და ველების სახელები არ დაწერო. ' +
-      'მხოლოდ ერთი კითხვა: გეგმა ამ კითხვით დაასრულე: „{closing}". ' +
+      'მხოლოდ ერთი კითხვა, ბოლოს, ერთი წინადადებით — ვის მისწერ და რას (მაგ. „ლიკას მივწერო, რომ ' +
+      'ნინუცასთან დაგაკავშიროს?") და არა მარტო „{closing}". ' +
       PLAN_ANSWER_IN_WORDS.ka,
     en:
       'The plan is saved but not on screen yet. Write it in your reply ONCE, as ONE human ' +
@@ -3430,23 +3431,25 @@ export function planInYourReplyNote(language: RunLanguage): string {
       'the result you will try to get (D663) — e.g. „I will talk to Lika’s assistant and try to ' +
       'arrange for Lika to recommend you and connect you with Ninutsa". Never show the text you ' +
       'will send — the wording is your job. Never the words „signal", „path", „I will count it ' +
-      'solved when" (D561). No version number, no headings, no field labels. ONE question only: ' +
-      'end with this one, word for word: „{closing}". ' +
+      'solved when" (D561). No version number, no headings, no field labels. ONE question only, ' +
+      'at the end, in one sentence naming whom you will write to and what (e.g. „Shall I write ' +
+      'to Lika to connect you with Ninutsa?") — never a bare „{closing}". ' +
       PLAN_ANSWER_IN_WORDS.en,
     ru:
       'План сохранён, но на экране его ещё нет. Напиши его в ответе ОДИН раз, ОДНИМ человеческим ' +
       'предложением, своим голосом, ассистент ассистенту: с чьим ассистентом поговоришь и какого ' +
       'результата постараешься добиться (D663). Не показывай текст, который отправишь, — ' +
       'формулировка твоя забота. Никаких слов «сигнал», «путь», «буду считать решённым» (D561). ' +
-      'Без номера версии, заголовков и названий полей. Только ОДИН вопрос: закончи этим: ' +
-      '„{closing}". ' +
+      'Без номера версии, заголовков и названий полей. Только ОДИН вопрос, в конце, одним ' +
+      'предложением: кому напишешь и о чём — не голое „{closing}". ' +
       PLAN_ANSWER_IN_WORDS.ru,
     es:
       'El plan está guardado pero aún no está en pantalla. Escríbelo en tu respuesta UNA vez, en ' +
       'UNA frase humana, con tu voz, de asistente a asistente: con qué asistente hablarás y qué ' +
       'resultado intentarás lograr (D663). Nunca muestres el texto que enviarás: la redacción es ' +
       'cosa tuya. Nunca las palabras «señal», «camino», «lo daré por resuelto» (D561). Sin número ' +
-      'de versión, títulos ni nombres de campos. UNA sola pregunta: termina con esta: „{closing}". ' +
+      'de versión, títulos ni nombres de campos. UNA sola pregunta, al final, en una frase: a quién ' +
+      'escribirás y qué; nunca un „{closing}" a secas. ' +
       PLAN_ANSWER_IN_WORDS.es,
   };
   return (
@@ -9029,11 +9032,39 @@ async function withWhyInOneSentence(
     : reply;
 }
 
+/** A question of the model's own needs at least this many words to name who and what. */
+const MIN_OWN_QUESTION_WORDS = 3;
+/**
+ * It proposes the run's own next step — a first-person verb („მივწერო",
+ * „ვკითხო", „დავუკავშირდე"; „Shall I", „Should I"; „Написать", „спросить") —
+ * not a question back to the owner („რომელ ქალაქში ხარ?").
+ */
+const OWN_ACTION_QUESTION_RE =
+  /(?:^|[\s,„"(])(?:მი|მო|გა|და|შე|ვ|ჩა|წა|გადა|და)[\p{Script=Georgian}]*ო(?=[\s,?!.])|\b(?:shall|should|may) I\b|(?:написать|спросить|связаться|попросить)/iu;
+
+/**
+ * #8680 (Tornike, 4 Nov, via the tester's 82039): no bare „გავუგზავნო?" — the
+ * plan asks in a sentence naming whom and what. A reply whose last line is
+ * such a question of its own keeps it, and the agreed question is not added.
+ */
+export function endsOnOwnQuestion(reply: string, question: string): boolean {
+  const last = (reply.trimEnd().split('\n').pop() ?? '').trim();
+  if (!last.endsWith('?')) return false;
+  if ([question, ...EARLIER_PLAN_CLOSING_QUESTIONS].some((asked) => last === asked)) return false;
+  const asked = [question, ...EARLIER_PLAN_CLOSING_QUESTIONS];
+  if (asked.some((closing) => isClosingQuestionVariant(last, closing))) return false;
+  return last.split(/\s+/u).length >= MIN_OWN_QUESTION_WORDS && OWN_ACTION_QUESTION_RE.test(last);
+}
+
 export function withClosingQuestion(given: string, language: RunLanguage): string {
   const question = PLAN_CLOSING_QUESTION[language];
   // Box 66992: the plan sentence the owner approves carries no web address.
   const reply = withoutWebLinks(given);
   const at = reply.lastIndexOf(question);
+  if (at === -1 && endsOnOwnQuestion(reply, question)) return reply.trimEnd();
+  if (at !== -1 && endsOnOwnQuestion(reply.slice(0, at), question)) {
+    return reply.slice(0, at).trimEnd();
+  }
   if (at === -1) {
     return `${withoutClosingVariant(reply, question).trimEnd()}\n\n${question}`;
   }
