@@ -9348,9 +9348,15 @@ function forgetEmptySearches(runId: string | undefined): void {
  * the count of eight was set before each kind had its own 25-second clock. The
  * clocks bound a run's searching now, so the counts are wide enough for a list
  * of names: the network's 24, the web's 16.
+ *
+ * Retest at 15:33 (run 131d18ce, the same 8 companies): 14 tag searches and 10
+ * second-degree searches took the 24, so the next batch (8 insight searches,
+ * one per company) was refused while only ~18 s of the 60 s clock was spent.
+ * Three kinds of search for each of 8 companies, with room: 40. The clock is
+ * still the real bound.
  */
-const MAX_NETWORK_SEARCHES_PER_RUN = 24;
-const MAX_WEB_SEARCHES_PER_RUN = 16;
+export const MAX_NETWORK_SEARCHES_PER_RUN = 40;
+export const MAX_WEB_SEARCHES_PER_RUN = 16;
 const WEB_SEARCH_TOOL = 'web_search';
 const BUDGETED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'search_by_tag',

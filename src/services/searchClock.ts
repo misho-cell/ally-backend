@@ -22,7 +22,13 @@
  * A run may search a minute per kind; the wall cap bounds the whole.
  */
 export const SEARCH_BUSY_BUDGET_MS = 60_000;
-export const SEARCH_WALL_CAP_MS = 90_000;
+/**
+ * Retest at 15:34 (run bd316aa8): the web's 9th search was refused 135 s after
+ * its first, with 8 searches done: the 90 s wall had been spent by the model's
+ * own rounds between searches, the very thing the busy clock stopped counting.
+ * The wall is the last bound only, so it is set at three minutes.
+ */
+export const SEARCH_WALL_CAP_MS = 180_000;
 
 interface Interval {
   readonly start: number;

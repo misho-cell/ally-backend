@@ -2,38 +2,49 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { SEARCH_BUDGET_SPENT, searchBudgetSpent } from '../chat.service';
+import {
+  MAX_NETWORK_SEARCHES_PER_RUN,
+  MAX_WEB_SEARCHES_PER_RUN,
+  SEARCH_BUDGET_SPENT,
+  searchBudgetSpent,
+} from '../chat.service';
 import { startSearchTiming } from '../searchClock';
 
 /**
  * Board #959: 92 runs on 4–5 October took over a minute, at about nine model
  * rounds and eleven searches each. A run's searches are capped — since #8619's
- * retest (81578) at 24 network and 16 web, each kind bounded by its own clock.
+ * retest (81578) per kind — now 40 network and 16 web, each kind bounded by its own clock.
  */
 describe('a run’s search budget', () => {
-  it('allows 24 network searches — 8 companies, twice each, with room — then refuses the 25th', () => {
+  it('allows three kinds of network search for 8 companies, then refuses past the cap', () => {
     const run = 'budget-run-1';
-    const verdicts = Array.from({ length: 25 }, (_, i) =>
-      searchBudgetSpent(run, i % 2 === 0 ? 'search_by_tag' : 'search_second_degree'),
+    const kinds = ['search_by_tag', 'search_second_degree', 'search_by_insight'];
+    const verdicts = Array.from({ length: MAX_NETWORK_SEARCHES_PER_RUN + 1 }, (_, i) =>
+      searchBudgetSpent(run, kinds[i % kinds.length]),
     );
-    expect(verdicts.slice(0, 24).every((spent) => !spent)).toBe(true);
-    expect(verdicts[24]).toBe(true);
+    expect(MAX_NETWORK_SEARCHES_PER_RUN).toBeGreaterThanOrEqual(8 * kinds.length);
+    expect(verdicts.slice(0, MAX_NETWORK_SEARCHES_PER_RUN).every((spent) => !spent)).toBe(true);
+    expect(verdicts[MAX_NETWORK_SEARCHES_PER_RUN]).toBe(true);
   });
 
   it('gives the web its own 16, which network searches cannot spend (#7237)', () => {
     const run = 'budget-run-web';
-    for (let i = 0; i < 24; i += 1) expect(searchBudgetSpent(run, 'search_by_tag')).toBe(false);
+    for (let i = 0; i < MAX_NETWORK_SEARCHES_PER_RUN; i += 1) {
+      expect(searchBudgetSpent(run, 'search_by_tag')).toBe(false);
+    }
     expect(searchBudgetSpent(run, 'search_by_insight')).toBe(true);
-    const web = Array.from({ length: 17 }, (_, i) =>
+    const web = Array.from({ length: MAX_WEB_SEARCHES_PER_RUN + 1 }, (_, i) =>
       searchBudgetSpent(run, i % 2 === 0 ? 'web_search' : 'fetch_page'),
     );
-    expect(web.slice(0, 16).every((spent) => !spent)).toBe(true);
-    expect(web[16]).toBe(true);
+    expect(web.slice(0, MAX_WEB_SEARCHES_PER_RUN).every((spent) => !spent)).toBe(true);
+    expect(web[MAX_WEB_SEARCHES_PER_RUN]).toBe(true);
   });
 
   it('leaves a lookup by name and non-search tools free', () => {
     const run = 'budget-run-2';
-    for (let i = 0; i < 24; i += 1) searchBudgetSpent(run, 'search_second_degree');
+    for (let i = 0; i < MAX_NETWORK_SEARCHES_PER_RUN; i += 1) {
+      searchBudgetSpent(run, 'search_second_degree');
+    }
     expect(searchBudgetSpent(run, 'search_contact_by_name')).toBe(false);
     expect(searchBudgetSpent(run, 'propose_task_plan')).toBe(false);
     expect(searchBudgetSpent(run, 'find_warm_path')).toBe(true);
