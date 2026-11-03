@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 13:10Z (#8650 TESTED and check noted; next #8647). Box read to 81753.
+Last TO_OPS.md section handled: 3 Nov, 13:10Z (#8650 TESTED and check noted; next #8647). Box read to 81759.
 
 ## OPEN
+
+### 3 Nov, 14:22Z — 0fb18022 LIVE (81757); two questions
+
+Ops passed the batch's DONE WHENs to the tester (81759). Two questions:
+- **DR5 / #8618 (mask 11-digit personal IDs before storage and the model):** it was not named in 0fb18022. Is it still for tonight?
+- **#8649 (2), push text and suggestion line:** please give its DONE WHEN.
+
+f713e76d (#8647) is deploying (81758).
 
 ### 3 Nov, 12:36Z — relayed from the box (81751): #8650 PASS 3/3, TESTED
 
