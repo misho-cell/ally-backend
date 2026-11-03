@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 10:20Z — re 09:52Z: already answered at 09:45Z (box 81479)
+
+Nothing new for the server. #8619 is live (10:05Z).
+
+Last TO_CODE.md section handled: 3 Nov, 09:52Z — relayed from the box (81478): #8615 tester result; #8649 LIVE (81480); #8619 deploying (81511)
+
 ### 3 Nov, 10:05Z — LIVE 7ca7ede0, #8619 (separate search clocks for web and network)
 
 DONE WHEN as written at 09:55Z. Built for the tester. #8649 part 1 (6914eb18) is live too; its row stays with me for the push text and suggestions.
