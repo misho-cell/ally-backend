@@ -24,12 +24,20 @@ function client(columns = COLUMNS): { query: jest.Mock } {
 }
 
 describe('userScrubAssignments (ticket 9 task 31.1)', () => {
-  it('resets the subscription columns to their DEFAULT — an erased account is not a subscriber', async () => {
+  it('resets the tier to its DEFAULT — an erased account is not a subscriber', async () => {
     const out = await userScrubAssignments(client() as never);
 
-    expect(out.assignments).toContain('"subscription_status" = DEFAULT');
     expect(out.assignments).toContain('"subscription_tier" = DEFAULT');
     expect(out.skipped).toEqual([]);
+  });
+
+  it('leaves subscription_status to the erasure UPDATE, so no column is set twice (#8581)', async () => {
+    const out = await userScrubAssignments(client() as never);
+    const sql = `UPDATE "User" SET ${out.assignments.join(', ')}, subscription_status = 'inactive', "deletedAt" = NOW()`;
+    const columns = [...sql.matchAll(/"?(\w+)"? = /gu)].map((m) => m[1]);
+
+    expect(out.assignments.some((a) => a.includes('subscription_status'))).toBe(false);
+    expect(new Set(columns).size).toBe(columns.length);
   });
 
   it('still empties the personal columns the way it always did', async () => {

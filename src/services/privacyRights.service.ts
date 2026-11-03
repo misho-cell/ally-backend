@@ -141,7 +141,13 @@ export const OWNED_TABLE_LABELS_KA: Readonly<Record<string, string>> = {
  * lie of a different shape, and leaving them was a live account in every count
  * that reads these columns.
  */
-const USER_COLUMNS_TO_RESET = ['subscription_status', 'subscription_tier'];
+/**
+ * subscription_status is not in this list: the erasure's own UPDATE sets it to
+ * 'inactive' (Ticket 14 Task 63), and naming it twice in one SET is refused by
+ * Postgres („multiple assignments to same column"), which failed every real
+ * erasure (#8581, the tester's 81775: a test seat's delete answered 500).
+ */
+const USER_COLUMNS_TO_RESET = ['subscription_tier'];
 
 const USER_COLUMNS_TO_SCRUB = [
   'name',
