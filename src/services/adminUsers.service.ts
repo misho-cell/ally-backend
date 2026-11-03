@@ -99,7 +99,7 @@ export async function listUsers(
             u."createdAt" AS created_at,
             (SELECT MAX(c.created_at) FROM conversations c
               WHERE c.user_id = u.id AND c.role = 'user' AND c.kind = 'message') AS last_active,
-            (SELECT COUNT(*) FROM "UserAlias" ua WHERE ua."contactId" = u.id)       AS contacts_count,
+            (SELECT COUNT(DISTINCT ua.phone) FROM "UserAlias" ua WHERE ua."contactId" = u.id) AS contacts_count,
             ARRAY(SELECT phone FROM "UserPhone" up WHERE up."userId" = u.id ORDER BY phone) AS phones
      FROM "User" u
      WHERE u."deletedAt" IS NULL
@@ -236,7 +236,11 @@ async function getNetwork(userId: number): Promise<UserNetwork> {
   // Separate statements (each its own timeout) so the large UserAlias/UserTags
   // scans don't share one budget and time out the way a bundled query would.
   const [contacts, tags, blocked, deceased, reach, tiers] = await Promise.all([
-    countWhere('SELECT COUNT(*) AS count FROM "UserAlias" WHERE "contactId" = $1', userId),
+    // DR11 (#8624): people, not labels — the count the model gives the owner.
+    countWhere(
+      'SELECT COUNT(DISTINCT phone) AS count FROM "UserAlias" WHERE "contactId" = $1',
+      userId,
+    ),
     countWhere('SELECT COUNT(*) AS count FROM "UserTags" WHERE "contactId" = $1', userId),
     countWhere('SELECT COUNT(*) AS count FROM "UserBlock" WHERE "blockerId" = $1', userId),
     countWhere('SELECT COUNT(*) AS count FROM "ContactDeceased" WHERE "userId" = $1', userId),

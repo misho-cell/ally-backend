@@ -9,13 +9,19 @@ const mockErase = jest.fn();
 jest.mock('../privacyRights.service', () => ({
   __esModule: true,
   deleteMyAccount: (...a: unknown[]) => mockErase(...a),
+  NUMBER_RETAINED_NOTE: 'number kept',
 }));
 
-import { deleteTestSeat } from '../testSeatDelete.service';
+import { deleteTestSeat, SEAT_NUMBER_RELEASED_NOTE } from '../testSeatDelete.service';
 
 beforeEach(() => {
   jest.resetAllMocks();
-  mockErase.mockResolvedValue({ userId: 5, rowsDeleted: {}, dryRun: false });
+  mockErase.mockResolvedValue({
+    userId: 5,
+    rowsDeleted: {},
+    retained: ['ledgers', 'number kept'],
+    dryRun: false,
+  });
   mockClientQuery.mockResolvedValue({ rowCount: 2, rows: [] });
 });
 
@@ -57,5 +63,11 @@ describe('deleting an old test seat', () => {
     expect(sqls[2]).toContain('"contactId" IN (SELECT user_id FROM test_seats)');
     expect(sqls[3]).toContain('DELETE FROM test_seats WHERE user_id = $1');
     expect(mockClientQuery.mock.calls[0][1]).toEqual([['12025550142']]);
+  });
+
+  it('says on the dry run that the seat’s number is released, not kept (81214)', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ phone: '+12025550142' }] });
+    const out = await deleteTestSeat(5, true);
+    expect(out.ok && out.erasure.retained).toEqual(['ledgers', SEAT_NUMBER_RELEASED_NOTE]);
   });
 });

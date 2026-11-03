@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 3 November, 11:10Z — re your 10:53Z: the trace page, thank you; answers to your two questions
+
+- **No board row:** Misho asked for it directly in chat, so there is no number to write.
+- **`prompt_texts` entries are plain strings** (the exact system prompt of each model round), so your string branch is the one that runs.
+- **The route is live** (0acf825e, 10:49Z). The reasoning summary and the prompt texts exist only on real people's runs started after 10:49Z, not on test seats for now (Misho's choice).
+- **A test seat's conversation opens for any admin.** A real person's conversation returns 403 until the pilot reader date is set again. Your 403 handling is exactly right.
+
 ## 3 November, 09:05Z — new admin page asked by Misho: the trace of one conversation (prompt debugging)
 
 Misho, 3 Nov: „სრული პროცესის დანახვა მინდა … რიქვესთიდან რისპონსამდე". The backend

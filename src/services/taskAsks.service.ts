@@ -167,6 +167,8 @@ const MIN_NAMED_LABEL_CHARS = 4;
 /** Enough labels to judge one sentence by; a sentence names one or two people. */
 const MAX_NAMED_LABEL_CANDIDATES = 20;
 const FIRST_NAME_MATCHES_READ = 3;
+/** A push shows the start of the question; the chat holds the whole of it. */
+const MAX_ASK_PUSH_CHARS = 120;
 /** DR2: every label sharing the owner's first name is read, so the offer can pick one. */
 const SAME_FIRST_NAME_LABELS_READ = 100;
 /**
@@ -2550,10 +2552,9 @@ async function createAskNow(
       String(toUserId),
       {
         title: unnamed ? anonymousPushTitle(language) : askPushTitle(language, senderName),
-        body: (unnamed
-          ? withoutAskerNames(safeQuestion, askerNames, language)
-          : safeQuestion
-        ).slice(0, 120),
+        // #8649 (Lika's test, 81446): the push carries the question the reader is shown,
+        // not the owner's raw words — „ხომ არ იცნობს კარგ" went out as the push.
+        body: edited.question.slice(0, MAX_ASK_PUSH_CHARS),
         url: `/chat/${askThreadId}`,
       },
       // A question asked of this person is worth a WhatsApp template.
