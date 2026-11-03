@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 09:20Z — re 08:21Z, 08:36Z, 09:06Z: DR2 LIVE; the rest of the list, one line each
+
+- **LIVE 116eab88, #8615 (DR2).** Shipped alone in daytime because real members hit it (29 Oct rule).
+  - **(1) "Ask Lika":** „კითხე ლიკას" right after the assistant proposed one Lika in full now opens both walls for her. The owner has eleven Likas saved in Latin letters, so the first name alone named nobody. It counts only when the assistant's previous message named exactly one contact with that first name.
+  - **(2) "Decide yourself":** „შენით გადაწყვიტე ვის მიწერ" now counts as the yes on approve_task_plan and grant_task_permission. A line that only asks („what do you decide?") does not.
+  - **DONE WHEN:** on a seat, the assistant proposes one person in full and the owner answers „კითხე <first name>" → the ask goes out with no refusal. „შენით გადაწყვიტე ვის მიწერ" under a plan → the plan is approved and the asks go out.
+  - **(3) The helper's yes in 63032:** that thread was the asker's own. The owner's „კი" answered the assistant's offer to pass a message to Tornike, and the model never called ask_contact. That is the model's choice (prompt chat). The server half, sending it when the model doesn't, is with me as part of #8620/#8649.
+- **#8649, ops' caution:** 116eab88 does not widen it. The unfinished-line guard is being tested now and ships today as its safety counterpart: a line that stops mid-thought („ხომ არ იცნობს კარგ", „ask Lika if she knows a good", a trailing comma or ellipsis) is no longer an instruction, so neither the consent event nor the walls treat it as the owner's word, and the assistant asks what they meant. The push text and the suggestion line are the next parts.
+- **#8621 (DR8):** already fixed by 49b1fd90, live 2 Nov 16:30Z. Dea's case (10:39Z) came before it. Moved to built / tester.
+- **#8624 (DR11):** the model was right: 1,209 is people (distinct phones). The admin screen counted labels (1,223). 474ff319 makes the admin count people too; tonight's batch.
+- **#8528:** e57d19ae: `registered_name` now reaches the model only when the owner's line asks about the name or its spelling; tonight's batch. **DONE WHEN:** case 61 3/3 never says the registered name, and „what is his surname exactly?" still gives the member's own spelling.
+- **#8617 (DR4):** the goal on 77600 is still open, not failed. The run itself stalled ~94 s with no tool call; I am reading why and whether one retry fits. The invalid-JSON plan on 77412 was repaired by the model's own retry 9 s later.
+- **#8618 (DR5), the data question:** yes. Pasted personal ID numbers reach the model as part of the owner's own message and are stored in conversations as typed. Phones are stripped only in private context and goal briefs, and 11-digit IDs are not stripped anywhere. Tool logs redact phone-shaped runs only. The fix (mask 11-digit IDs before storage and the model, without touching +-prefixed phones) is planned for tonight.
+- **#8622 (DR9):** no server step writes links into text, and no tavily link is stored in 76858's messages. Please send the message time.
+- **#8623 (DR10):** there is no list of team accounts yet. Planned: an admin-set list, kept out of routes for real members.
+- **New prompt-debugging tool (Misho):** 424661be `GET /admin/threads/:id/trace` shows each run from the owner's line to the reply: prompt blocks and versions, every tool call with its input and full result, server events, errors and cost. Test seats also get the model's reasoning summary (Misho's choice: seats only). Tonight's batch. A test seat's conversation is open to any admin.
+- **Still with me, in order:** #8619 (search budget, P1), #8647 (ranking + job, P1), #8649 rest, #8620, #8616, #8648, #8650, #8614. Part B frontend items are the frontend's. #7760 (no reply after the „nobody" event) I will read today.
+
+Last TO_CODE.md section handled: 3 Nov, 09:06Z — relayed from the box (81446): THE WHOLE PICTURE, one ranked list (approved by Tornike)
+
 ### 3 Nov, 07:45Z — re 07:36Z: #991 and #7760 PASS noted
 
 Nothing for the server: both rows pass on code already live.
