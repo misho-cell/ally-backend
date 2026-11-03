@@ -5,9 +5,48 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81320.
+Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81446.
 
 ## OPEN
+
+### 3 Nov, 09:06Z — relayed from the box (81446): THE WHOLE PICTURE, one ranked list (approved by Tornike)
+
+The tester's words are verbatim below. The only change: a member's full name in item 5 is replaced with [full name].
+
+> NETAI 26 for Misho / Misho's Claude - THE WHOLE PICTURE, 3 Nov (approved by Tornike). One list, most important first. All checked in admin logs, test accounts or the connector. The prompt already has the rules for these cases; they fail because of tools and server checks. After the fixes the prompt-test chat reruns the same 50 cases with NO prompt change.
+>
+> PART A - SERVER AND SEARCH
+> 1. #8619 (now P1, D903) Search budget is shared: web search eats the time, network search is refused. Give network search its own time limit; web answer stays first (D899).
+> 2. #8615 (P1) Server refuses the assistant's own steps: grant_task_permission ok, then ask_contact "plan not approved"; "you decide" refused. propose_task_plan refused 39/245, ask_contact 32/115. One clear instruction = permission.
+> 3. #8647 (P1, NEW) Search results unranked, no job: second-degree (TBC = 1,730 matches, top 8 with no job, cut at 30/50), country search returns names only, insight matches parts of words with equal scores and no Georgian, tag search adds synonyms (MD). Rank by fit, return label + job.
+> 4. #8648 (P2, NEW) way_in automatic search uses web headlines as phonebook words, 73% empty, eats the budget; its hits are not shown to the model.
+> 5. #8649 (P1, NEW) Unfinished request ("ask Lika if she knows a good ...") sent at once by the server's "instruction = consent" event; the missing word "handyman" was invented; push showed the raw unfinished words; suggestion "[full name] Whatsapp, [full name]" = one person twice.
+> 6. #8620 Answer lands in another goal; the wake does not see it (74218 vs 75465).
+> 7. #8616 Each pasted company becomes a new goal; server block [plan_closing_question_ka] adds an empty "გავუგზავნო?".
+> 8. #8617 One run error fails the goal; invalid JSON plan not repaired.
+> 9. #8618 11-digit personal ID numbers not stripped.
+> 10. #8621 Joiner welcome sent after the user already wrote.
+> 11. Already on your list: #8520 web answer before the assistant, #8524 slow "where does Nika work", #8525 saved offers not found, #8528 other members' registered names, #8581 test-account delete.
+> 12. Smaller: #8623 team accounts as routes, #8622 links inside words / tavily link, #8624 contact count 1,209 vs 1,223, #8614 optional guard on invented actions, #8650 test endpoint label limit (say the reason), #8625 wake schedule (Tornike decides first).
+>
+> PART B - FROM LIKA'S PHONE TESTS (reopened to you)
+> - #7760 "nobody" answer: goal stays open, but after the answer event the assistant sends NO reply (thread 78574 12:39), so the owner is not told the next step.
+> - #6139 Home "setup" bar: tap does nothing; only "not now", then it disappears for good. Profile -> Setup shows 8 pictures, not 6.
+> - #7724 Notification tap: with Netai open in the background on another chat it opens that OLD chat; with Netai closed it opens the right one.
+> - #8385 Keyboard: chat header moves down and back up (small).
+> - #6205 Mac microphone, Safari: 1 of 3 exact, 2 times words replaced.
+> Passed and closed: #1849 path map, #991 number passing. Lika found the WABA ID (7691). Still watching: push text (#7921). Not tested: #8185.
+>
+> Files (Tornike's folder): _PROMPT_v13/LIKA_ROUND1_2026-11-02/TECH_FINDINGS_SEARCH_2026-11-03.md, FOR_NETAI26_DAILY_REPORT_PROBLEMS_2026-11-03.md, _PROMPT_v13/LIKA_ROUND1_2026-11-02/VERIFY_2026-11-02.md, FOR_MISHO_CONSOLIDATED_DRAFT_2026-11-03.md. Tell me when an item is built and I test it on fictional seats.
+
+Ops notes:
+- **New items:**
+  - #8647 (P1): search ranking and job missing from results.
+  - #8648 (P2): way_in automatic search.
+  - #8649 (P1): an unfinished request goes out at once through "instruction = consent", with an invented word.
+  - #8650: the test endpoint's label limit.
+- **#8649 and the DR2 fix:** #8649 is the risk on the other side of the #8615 fix that is deploying now (116eab88). Please make sure 116eab88 does not widen #8649. An unfinished instruction must not count as consent.
+- **Part B items** are reopened to you from Lika's phone tests.
 
 ### 3 Nov, 08:36Z — relayed from the box (81320): additions to DR3 (#8616) and DR2 (#8615)
 
