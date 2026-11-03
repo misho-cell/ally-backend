@@ -5,6 +5,8 @@ import { getExcludedPhones } from '../block.service';
 
 const MAX_FRIEND_PHONES = 3000;
 const MAX_FRIEND_PHONES_FOR_QUERY = 3000;
+/** #8647: a person's labels are shown, clipped so a long list stays short. */
+const MAX_LABELS_CHARS = 120;
 const QUERY_TIMEOUT_MS = 10_000;
 
 const COUNTRY_PREFIX_MAP: Record<string, string> = {
@@ -427,8 +429,13 @@ export async function searchContactsByCountry(userId: string, country: string): 
   const blockedPhones = await getExcludedPhones(userId);
 
   const [directResult, reachResult] = await Promise.all([
-    query<{ name: string | null }>(
-      `SELECT DISTINCT ON (ua.phone) ua.alias AS name
+    query<{ name: string | null; labels: string | null }>(
+      // #8647 (the shrimp test): names alone told the model nothing — the
+      // importer was returned and nobody could see why. The owner's own labels go too.
+      `SELECT DISTINCT ON (ua.phone) ua.alias AS name,
+              (SELECT LEFT(string_agg(DISTINCT t.tag, ', '), ${MAX_LABELS_CHARS})
+                 FROM "UserTags" t
+                WHERE t."contactId" = $1 AND t.phone = ua.phone) AS labels
        FROM "UserAlias" ua
        WHERE ua."contactId" = $1 AND ua.phone LIKE $2
          AND ua.phone != ALL($3)
@@ -462,7 +469,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
     return {
       found: directResult.rows.length > 0 || reachContacts.length > 0,
       prefix,
-      direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
+      direct_contacts: directResult.rows.map((r) => ({ name: r.name, labels: r.labels ?? null })),
       reach_contacts: reachContacts,
       second_degree_contacts: [],
       ...incomplete(),
@@ -502,7 +509,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
     return {
       found: directResult.rows.length > 0 || reachContacts.length > 0,
       prefix,
-      direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
+      direct_contacts: directResult.rows.map((r) => ({ name: r.name, labels: r.labels ?? null })),
       reach_contacts: reachContacts,
       second_degree_contacts: [],
       ...incomplete(),
@@ -518,10 +525,11 @@ export async function searchContactsByCountry(userId: string, country: string): 
 
   interface SecondDegreeRow {
     name: string | null;
+    labels: string | null;
     via_names: string[] | null;
   }
 
-  let secondDegree: Array<{ name: string | null; via: string[] }> = [];
+  let secondDegree: Array<{ name: string | null; labels: string | null; via: string[] }> = [];
 
   if (friendPhones.length > 0) {
     try {
@@ -542,6 +550,11 @@ export async function searchContactsByCountry(userId: string, country: string): 
              AND ua_m.phone != ALL($4)
          )
          SELECT MAX(m.alias)                                                      AS name,
+                -- #8647: what the friends who hold them saved them as.
+                (SELECT LEFT(string_agg(DISTINCT t.tag, ', '), ${MAX_LABELS_CHARS})
+                   FROM "UserTags" t
+                  WHERE t.phone = m.phone
+                    AND t."contactId" IN (SELECT "userId" FROM friend_users))       AS labels,
                 array_agg(DISTINCT COALESCE(ua_via.alias, u_via.name))
                   FILTER (WHERE COALESCE(ua_via.alias, u_via.name) IS NOT NULL)  AS via_names
          FROM matches m
@@ -559,6 +572,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
 
       secondDegree = sdResult.rows.map((r) => ({
         name: r.name ?? null,
+        labels: r.labels ?? null,
         via: r.via_names ?? [],
       }));
     } catch (err) {
@@ -576,7 +590,7 @@ export async function searchContactsByCountry(userId: string, country: string): 
     // Non-empty when other countries share this calling code (+7, +1, +44…):
     // treat the prefix as a hint, not proof of the person's country.
     ...(sharedWith.length > 0 && { prefix_shared_with: sharedWith }),
-    direct_contacts: directResult.rows.map((r) => ({ name: r.name })),
+    direct_contacts: directResult.rows.map((r) => ({ name: r.name, labels: r.labels ?? null })),
     // People whose saved facts tie them to the country (foreign_reach,
     // affiliation, notes) — reach the phone prefix can't see. Present them as
     // "has ties to X", not as being in X.

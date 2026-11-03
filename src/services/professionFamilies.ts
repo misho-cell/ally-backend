@@ -29,7 +29,9 @@ const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
   ['იურისტი', 'ადვოკატი', 'lawyer', 'attorney', 'legal'],
   ['ბუღალტერი', 'ბუღალტერია', 'accountant', 'accounting'],
   ['დიზაინერი', 'დიზაინი', 'designer', 'design', 'UX', 'UI'],
-  ['ექიმი', 'დოქტორი', 'doctor', 'MD'],
+  // #8647 (the tester's 81446): „MD" also reads as Managing Director — a search for a
+  // doctor put CEOs first. The two-letter abbreviation is left out.
+  ['ექიმი', 'დოქტორი', 'doctor'],
   // 3566 (box 51877, 0 of 3): one saver wrote „სტომატოლოგი", the other „კბილის
   // ექიმი", and the second was read as a plain doctor — two trades of one saver each.
   ['სტომატოლოგი', 'კბილის ექიმი', 'dentist', 'stomatologist'],

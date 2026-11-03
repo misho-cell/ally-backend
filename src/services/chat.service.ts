@@ -564,6 +564,7 @@ import {
   noteFoundNames,
   noteFoundUrls,
 } from './foundThisRun';
+import { enterSearchGate } from './searchGate';
 import {
   recordModelCall,
   recordPromptSent,
@@ -9385,6 +9386,11 @@ const WEB_BUDGET_KEY_SUFFIX = ':web';
  * that timed out, not the way_in check, and not a free lookup by name. See
  * searchClock.ts.
  */
+/** The network searches that wait their turn in searchGate.ts. */
+const NETWORK_GATED_TOOLS: ReadonlySet<string> = new Set(
+  [...BUDGETED_SEARCH_TOOLS].filter((tool) => !WEB_BUDGET_TOOLS.has(tool)),
+);
+
 function searchClockKey(runId: string, tool: string): string {
   return WEB_BUDGET_TOOLS.has(tool) ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
 }
@@ -10706,7 +10712,9 @@ async function executeToolCall(
         userId,
         'second_degree',
         input['tag_query'] as string,
-        searchSecondDegree,
+        // #8647: the owner's own line ranks equal matches by the need it names.
+        (uid: string, q: string) =>
+          searchSecondDegree(uid, q, runId === undefined ? '' : (runOwnerLine.get(runId) ?? '')),
         runId,
         threadId,
       );
@@ -12998,10 +13006,20 @@ async function runOneToolBlock(
     await postWorkingLineOnce(userId, threadId, runId, runLang(runId));
   }
   // #5974: the owner's old-Ally colours and each person's bubble, one batch per call.
-  // Misho, 3 Nov: the search clock counts the time this search actually ran.
-  const searchDone = timeSearch(runId, block.name);
-  const executed = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
-  searchDone(executed);
+  // Misho, 3 Nov: a few network searches at a time per run (searchGate.ts), and the
+  // search clock counts the time this search actually ran.
+  const leaveGate =
+    NETWORK_GATED_TOOLS.has(block.name) && runId !== undefined
+      ? await enterSearchGate(runId)
+      : () => undefined;
+  let executed: unknown;
+  try {
+    const searchDone = timeSearch(runId, block.name);
+    executed = await executeToolCall(userId, block.name, input, runId, threadId, ownerAbsent);
+    searchDone(executed);
+  } finally {
+    leaveGate();
+  }
   const rawResult = await withOldAllyColours(userId, block.name, executed);
   // See runEmptySearches. An empty search result is handed back the list of
   // what this run has already asked for and not found, because without it each

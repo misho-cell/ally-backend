@@ -41,6 +41,9 @@ export function familyWordsToSearch(
 }
 
 /** The primary result with every exact hit of the family's other words added once. */
+/** #8647: how many rows a merged family search shows at most. */
+export const MAX_FAMILY_ROWS = 40;
+
 export function mergeFamilyResults(primary: unknown, hits: readonly FamilyHit[]): object {
   const base: Record<string, unknown> =
     typeof primary === 'object' && primary !== null ? { ...(primary as object) } : {};
@@ -53,11 +56,18 @@ export function mergeFamilyResults(primary: unknown, hits: readonly FamilyHit[])
       rows.push({ ...row, matched_word: hit.word });
     }
   }
+  // #8647 (the tester's 81446): a family search came back at up to 95,000
+  // characters. The asked word's rows come first; past the cap the rest is counted.
+  const shown = rows.slice(0, MAX_FAMILY_ROWS);
   return {
     ...base,
     found: rows.length > 0,
-    count: rows.length,
-    results: rows,
+    count: shown.length,
+    ...(rows.length > shown.length && {
+      total: rows.length,
+      more_not_shown: rows.length - shown.length,
+    }),
+    results: shown,
     also_searched: hits.map((h) => h.word),
   };
 }

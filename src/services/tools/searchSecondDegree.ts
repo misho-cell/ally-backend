@@ -5,6 +5,7 @@ const SECOND_DEGREE_QUERY_TIMEOUT_MS = 15_000;
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { buildMeaningWordGroups, toWordStartPattern } from './transliterate';
+import { needPattern } from './needWords';
 import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
@@ -636,7 +637,12 @@ async function pageLinkColours(
   }
 }
 
-export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
+export async function searchSecondDegree(
+  userId: string,
+  tagQuery: string,
+  /** #8647: the owner's own line, whose need words rank equal matches (needWords.ts). */
+  ownerLine: string = '',
+): Promise<object> {
   const began = Date.now();
   const marks: [string, number][] = [];
   let at = began;
@@ -1084,6 +1090,9 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
     // first field type present wins.
     const titleFieldsIdx = factsUserIdx + 1;
     const employerFieldsIdx = factsUserIdx + 2;
+    // #8647: the owner's need words, one alternation (or NULL), ranking equal matches.
+    const needIdx = factsUserIdx + 3;
+    const need = needPattern(ownerLine, groups);
 
     // Rank FIRST, decorate LAST: the old shape joined the display tables
     // (8.4M-row UserAlias among them) onto EVERY match before the LIMIT — a
@@ -1299,6 +1308,13 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        ranked AS (
          SELECT m.phone,
                 (${wordHits})                                             AS word_hits,
+                -- #8647: a label of theirs says the owner's need (the loan, not only the bank).
+                (CASE WHEN $${needIdx}::text IS NULL THEN 0
+                      WHEN bool_or(m.label ~ $${needIdx}::text) THEN 1
+                      WHEN EXISTS (SELECT 1 FROM "UserTags" nt
+                                    WHERE nt.phone = m.phone
+                                      AND ${foldedLower('nt.tag')} ~ $${needIdx}::text) THEN 1
+                      ELSE 0 END)                                         AS need_hit,
                 (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) AS bridge_rank,
                 MAX(crs.strength_score)                                   AS warmth,
                 -- Row 298: how many matched before the LIMIT, so a capped
@@ -1315,6 +1331,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
            AND m.phone != ALL($${blockParamIdx})
          GROUP BY m.phone
          ORDER BY (${wordHits}) DESC,
+                  need_hit DESC,
                   (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
                   MAX(crs.strength_score) DESC NULLS LAST,
                   m.phone
@@ -1457,8 +1474,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                   cf.is_public DESC, cf.updated_at DESC
          LIMIT 1
        ) fj ON TRUE
-       GROUP BY r.phone, r.word_hits, r.bridge_rank, r.warmth, r.total_matches
-       ORDER BY r.word_hits DESC, r.bridge_rank DESC, r.warmth DESC NULLS LAST,
+       GROUP BY r.phone, r.word_hits, r.need_hit, r.bridge_rank, r.warmth, r.total_matches
+       ORDER BY r.word_hits DESC, r.need_hit DESC, r.bridge_rank DESC, r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
       [
@@ -1471,6 +1488,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         userId,
         TITLE_FACT_FIELDS,
         EMPLOYER_FACT_FIELDS,
+        need,
       ],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );

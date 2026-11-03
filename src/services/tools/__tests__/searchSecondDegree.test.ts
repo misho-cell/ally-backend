@@ -117,6 +117,8 @@ describe('searchSecondDegree tag matching', () => {
       '42',
       ['role', 'occupation'],
       ['employer', 'affiliation'],
+      // #8647: no owner line, no need words — the need parameter is NULL.
+      null,
     ]);
   });
 
@@ -177,7 +179,8 @@ describe('searchSecondDegree tag matching', () => {
     // needs: a person carrying both query words must outrank one carrying one.
     // Two groups, written twice — once in the select list and once in the
     // ORDER BY that feeds the LIMIT — so four.
-    expect(sql.match(/bool_or\(/g)).toHaveLength(4);
+    // #8647 adds one more: need_hit asks whether a matched label says the owner's need.
+    expect(sql.match(/bool_or\(/g)).toHaveLength(5);
   });
 
   it('ranks before decorating: display joins hang off the LIMITed ranked set', async () => {
@@ -534,7 +537,7 @@ describe('Ticket 20 row 110: a multi-word query is words, not a phrase', () => {
     // Before bridge_rank and before warmth: matching the query beats being
     // well-connected. Without this the commoner word would swamp the rarer one,
     // which is worse than today's zero.
-    expect(sql).toMatch(/ORDER BY r\.word_hits DESC, r\.bridge_rank DESC/);
+    expect(sql).toMatch(/ORDER BY r\.word_hits DESC, r\.need_hit DESC, r\.bridge_rank DESC/);
   });
 
   it('a single word still behaves as one group — nothing changes for it', async () => {
