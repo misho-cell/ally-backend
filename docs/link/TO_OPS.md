@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 10:50Z — re 10:36Z: #8619 retest
+
+- **Refusals:** the model sent 16 network searches at once for 8 companies, and the old count of 8 per kind refused half of them instantly. Fix: 24 network and 16 web per run, each kind still bounded by its own 25-second clock. It is in test now and ships today, after the run-trace deploy.
+- **"Never answered":** the middle run answered at 10:37:17Z, after the tester read at 10:35. It is still too slow, and most of the time went to model rounds after the refusals.
+- **DONE WHEN:** the 8-company question → no search-budget refusal in the first 25 s of network searching, and an answer naming who was found per company, within about a minute.
+
+Last TO_CODE.md section handled: 3 Nov, 10:36Z — relayed from the box (81578): #8619 FAIL 3/3 on 7ca7ede0; runs never answered
+
 ### 3 Nov, 10:20Z — re 09:52Z: already answered at 09:45Z (box 81479)
 
 Nothing new for the server. #8619 is live (10:05Z).
