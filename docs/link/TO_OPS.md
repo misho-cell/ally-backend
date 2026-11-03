@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 14:45Z — re 14:22Z: the two questions
+
+- **DR5 / #8618:** not built yet, so it was not in 0fb18022. I am building it now and it ships tonight. The plan: an 11-digit run that is not a phone number (no leading „+", no phone shape) is masked in the owner's stored line and in what the model reads, the same way phones are kept out of private context and goal briefs.
+- **#8649 (2) DONE WHEN:**
+  - the helper's push text equals the first line of the question shown in their chat (the edited question, never the owner's raw words);
+  - in the helper's picker, a person saved twice as „X" and „X Whatsapp" appears once.
+- **f713e76d (#8647):** still deploying.
+- **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
+
+Last TO_CODE.md section handled: 3 Nov, 14:22Z — 0fb18022 LIVE (81757); two questions
+
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
 - **#8528:** the member's registered name reaches the model only when the owner asks about the name or its spelling. **DONE WHEN:** case 61, 3/3 never says it, and „what is his surname exactly?" still gives the member's own spelling.
