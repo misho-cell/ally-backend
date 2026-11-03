@@ -30,6 +30,13 @@ const QUERY_TIMEOUT_MS = 8_000;
 export const NOT_A_TEST_SEAT = `NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = "UserPhone"."userId")`;
 const MAX_NAME = 80;
 const MAX_TAG = 40;
+/**
+ * #8650 (the tester's 3 Nov check): a label over 40 characters or with a comma
+ * came back as a bare „bad_tag", and two tests silently lost their planted
+ * contact. The refusal says the rule.
+ */
+export const BAD_TAG_DETAIL = `a label is up to ${MAX_TAG} letters, digits and spaces — no comma or other punctuation; send it empty to save the name alone`;
+export const BAD_NAME_DETAIL = `a name is 1–${MAX_NAME} characters`;
 
 export type ContactRefusal =
   | 'not_a_fictional_number'
@@ -90,8 +97,10 @@ export async function addSeatContact(
   if (!isFictionalNumber(phone)) {
     return { ok: false, refusal: 'not_a_fictional_number', detail: FICTIONAL_RANGES_TEXT };
   }
-  if (cleanName === '' || cleanName.length > MAX_NAME) return { ok: false, refusal: 'bad_name' };
-  if (!isAcceptableTag(cleanTag)) return { ok: false, refusal: 'bad_tag' };
+  if (cleanName === '' || cleanName.length > MAX_NAME) {
+    return { ok: false, refusal: 'bad_name', detail: BAD_NAME_DETAIL };
+  }
+  if (!isAcceptableTag(cleanTag)) return { ok: false, refusal: 'bad_tag', detail: BAD_TAG_DETAIL };
 
   const seat = await query<{ user_id: number }>(
     `SELECT user_id FROM test_seats WHERE user_id = $1 LIMIT 1`,

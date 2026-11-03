@@ -127,7 +127,7 @@ describe('the tag is one the matcher can read', () => {
   it('refuses a tag the matcher would ignore, before writing', async () => {
     const out = await addSeatContact(172101, '+12025550150', 'Someone', 'arci%');
 
-    expect(out).toEqual({ ok: false, refusal: 'bad_tag' });
+    expect(out).toMatchObject({ ok: false, refusal: 'bad_tag' });
     expect(mockQuery).not.toHaveBeenCalled();
   });
 });

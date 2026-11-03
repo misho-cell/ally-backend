@@ -15,7 +15,13 @@
  * actually running (overlapping calls counted once), minus timed-out searches
  * and way_in checks. A wide wall cap still bounds the run as a whole.
  */
-export const SEARCH_BUSY_BUDGET_MS = 25_000;
+/**
+ * #8619 retest 3 (the tester's 81742): one parallel batch of 16 tag searches
+ * for 8 companies ran 11–26 s each, under contention, so a single batch alone
+ * passed 25 s of searching and the second-degree batch after it was refused.
+ * A run may search a minute per kind; the wall cap bounds the whole.
+ */
+export const SEARCH_BUSY_BUDGET_MS = 60_000;
 export const SEARCH_WALL_CAP_MS = 90_000;
 
 interface Interval {

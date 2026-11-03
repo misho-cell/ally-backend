@@ -18,6 +18,13 @@ import {
 
 /** Misho, 3 Nov („ლიმიტების თემაზე ყველაფერი გააკეთე"). */
 describe('the search clock counts the time searches ran', () => {
+  it('lets one big parallel batch through (#8619 retest 3: 16 tag searches, 26 s)', () => {
+    const key = 'clock-batch';
+    for (let i = 0; i < 16; i += 1) startSearchTiming(key, 0)(11_000 + i * 1_000);
+    expect(searchTimeSpent(key, 27_000)).toBe(false);
+    forgetSearchClocks([key]);
+  });
+
   it('counts parallel searches once', () => {
     expect(
       unionMs(
@@ -33,10 +40,10 @@ describe('the search clock counts the time searches ran', () => {
 
   it('gives back the time of a search that timed out, and of the way_in check', () => {
     const key = 'clock-credit';
-    startSearchTiming(key, 0)(30_000);
-    expect(searchTimeSpent(key, 30_000)).toBe(true);
-    creditSearchTime(key, 10_000, 30_000);
-    expect(searchTimeSpent(key, 30_000)).toBe(false);
+    startSearchTiming(key, 0)(65_000);
+    expect(searchTimeSpent(key, 65_000)).toBe(true);
+    creditSearchTime(key, 10_000, 65_000);
+    expect(searchTimeSpent(key, 65_000)).toBe(false);
     forgetSearchClocks([key]);
   });
 

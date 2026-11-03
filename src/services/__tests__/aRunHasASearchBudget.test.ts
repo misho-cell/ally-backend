@@ -39,20 +39,20 @@ describe('a run’s search budget', () => {
     expect(searchBudgetSpent(run, 'find_warm_path')).toBe(true);
   });
 
-  it('stops further network searches once the network has searched for 25 s (Misho, 27 Oct; 3 Nov)', () => {
+  it('stops further network searches once the network has searched for a minute (Misho, 27 Oct; 3 Nov)', () => {
     const run = 'budget-run-clock';
     const start = 1_000_000;
     const done = startSearchTiming(run, start);
-    done(start + 26_000);
-    expect(searchBudgetSpent(run, 'search_by_tag', start + 26_500)).toBe(true);
+    done(start + 61_000);
+    expect(searchBudgetSpent(run, 'search_by_tag', start + 61_500)).toBe(true);
   });
 
   it('gives the web its own clock, which cannot spend the network’s (#8619, D903)', () => {
     const run = 'budget-run-two-clocks';
     const start = 3_000_000;
-    startSearchTiming(`${run}:web`, start)(start + 26_000);
-    expect(searchBudgetSpent(run, 'web_search', start + 27_000)).toBe(true);
-    expect(searchBudgetSpent(run, 'search_by_tag', start + 27_000)).toBe(false);
+    startSearchTiming(`${run}:web`, start)(start + 61_000);
+    expect(searchBudgetSpent(run, 'web_search', start + 62_000)).toBe(true);
+    expect(searchBudgetSpent(run, 'search_by_tag', start + 62_000)).toBe(false);
   });
 
   it('does not count the model’s rounds between searches (Misho, 3 Nov)', () => {
