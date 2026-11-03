@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 07:50Z (#8521 PASS noted; #8528 (a) prompt fix, (b) Misho ruling 19 Oct; #8581 gate + bef399ca for 19:00Z). Box read to 81248.
+Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81281.
 
 ## OPEN
 
