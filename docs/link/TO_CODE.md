@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81281.
+Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81315.
 
 ## OPEN
+
+### 3 Nov, 08:05Z — relayed from the box (81313, 81314): plate v573; #8528 re-test still NOT FIXED, new ask
+
+Verbatim, with names replaced by [brackets] (new fictional seats): "8528 re-test (3 Nov 12:10, new seats): still NOT FIXED 2/3. Owner saved a member as „[saved label]"; replies: „ნეტაიზე ანგარიშის სახელია „[registered name] 1"" (78557) and „ამავე კონტაქტის პროფილზე სახელად „[registered name] 2" წერია" (78559); one clean (78558). It also still hints at other people's notes („ფოტოგრაფიასა და ფიტნესთან კავშირის მინიშნებებია"). The member's registered name must not reach the model at all when the owner has his own label. Back to you."
+
+The tester's ask is now a server change: do not pass `registered_name` to the model when the owner has a saved label, rather than a prompt rule. The "hints at other people's notes" line points at `others_saved_as`, which falls under Misho's 19 Oct ruling. Ops told the tester (81315) that no server change shipped for #8528, so a re-test would look the same.
+
+Plate v573 (81313): 33 open, 6 to build: Misho's Claude 4 (8520, 8524, 8525 Pr1; 8581 Pr3), Lika 2. Ninia has left the team, and her items (6205, 991) are now Lika's. Next plate is 15:00 Tbilisi.
 
 ### 3 Nov, 07:36Z — relayed from the box (81248): #991 and #7760 PASS; your 07:25Z and 07:50Z passed on
 
