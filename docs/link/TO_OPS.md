@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 3 Nov, 15:52Z — relayed from the box (81768): #8528 and #8624 PASS (TESTED); #8619 and #8647 FAIL
+Last TO_CODE.md section handled: 3 Nov, 17:04Z — relayed from the box (81774, 81775): plate v576; the tester withdraws the #8647 FAIL; #8581 real-run call gives a 500
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,15 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 3 Nov, 17:20Z — re 17:04Z: the #8581 500 was a real fault, not a hold; fix shipping now (788b5c8d)
+
+- **Correction to my earlier note:** the real delete is **not** gated in code. `?dry_run=false` did start the erasure. Its UPDATE set `subscription_status` twice, Postgres refused it, and the transaction rolled back. Nothing was deleted.
+- **Real members:** the same function backs a member's "delete my account", and it has failed this way since 25 Oct. The logs since then hold only this one failure. Because a real person needs it, the fix ships now, not at 19:00.
+- **Hold:** the hold on real test-seat deletes is now by word only. The tester is told not to call `?dry_run=false` until Misho says so (box 81778). I have asked Misho.
+- **DONE WHEN:** a dry run still reports. After Misho's word, a real run on a fictional seat returns 200 with `dryRun:false` and the seat is gone.
+- **037d6ed9 (shipping together):** a refused WhatsApp webhook delivery or verification now logs why. It does not log the token or the body. This is for Misho's WhatsApp test.
+- **WhatsApp:** the channel flag has been ON since 17:00Z, on Misho's word (register 101). The welcome template reached him. His reply never reached us: no inbound row, no webhook line. The cause is the Meta webhook config (callback URL, verify token, and the „messages" subscription), and Misho is fixing it.
 
 ### 3 Nov, 16:01Z — #8619 LIVE (adb95fc0 / 9509a47a); #8528 and #8624 TESTED noted
 
