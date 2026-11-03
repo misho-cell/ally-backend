@@ -7868,7 +7868,7 @@ export function planApprovalRefusal(
   confirmed: unknown,
   screen: PlanConsentScreen | null,
 ): PlanApprovalRefusal | null {
-  if (confirmed !== true) {
+  if (!isConfirmed(confirmed)) {
     return {
       approved: false,
       reason: 'not_confirmed',
@@ -8102,11 +8102,25 @@ async function grantFromTheOwnersInstruction(
   }
 }
 
+/**
+ * Ops' daily check, 3 Nov 18:35Z (a real member, run 1991ba8b): grant_task_permission
+ * was called with confirmed=true and refused „the user has not said yes" — the
+ * refusal that only a confirmed other than the boolean true can reach. The model
+ * sent the word "true". Both mean the same yes; the owner's words are still
+ * checked after it.
+ */
+export function isConfirmed(confirmed: unknown): boolean {
+  return (
+    confirmed === true ||
+    (typeof confirmed === 'string' && confirmed.trim().toLowerCase() === 'true')
+  );
+}
+
 export function grantPermissionRefusal(
   confirmed: unknown,
   screen: PlanConsentScreen | null,
 ): GrantPermissionRefusal | null {
-  if (confirmed !== true) {
+  if (!isConfirmed(confirmed)) {
     return {
       granted: false,
       reason: 'not_confirmed',
@@ -11481,7 +11495,7 @@ async function executeToolCall(
       // was written as a GLOBAL opt-out. Without explicit confirmation nothing
       // is stored — the agent is told to ask, or to treat the decline as the
       // answer it already is.
-      if (input['confirmed'] !== true) {
+      if (!isConfirmed(input['confirmed'])) {
         return {
           stopped: false,
           needs_confirmation: true,
@@ -11578,7 +11592,7 @@ async function executeToolCall(
       // verbatim and only after their explicit consent call again" — the same
       // sentence the founder objected to, written by the SERVER, where no
       // prompt edit could reach it. A tool result is read as a rule.
-      if (input['confirmed'] !== true) {
+      if (!isConfirmed(input['confirmed'])) {
         return { sent: false, needs_confirmation: true, note: NEEDS_CONFIRMATION_NOTE };
       }
       if (threadId === undefined) {
@@ -11693,7 +11707,7 @@ async function executeToolCall(
     case 'remove_contact_from_network':
       // Same server gate shape as stop_contacting_me: nothing is deleted
       // without the user's explicit confirmation.
-      if (input['confirmed'] !== true) {
+      if (!isConfirmed(input['confirmed'])) {
         return {
           removed: false,
           needs_confirmation: true,
@@ -11725,7 +11739,7 @@ async function executeToolCall(
       });
     case 'forget_contact_fact': {
       const ownerOrdered = runId !== undefined && ownerLineOrdersTheForget(runOwnerLine.get(runId));
-      if (input['confirmed'] !== true && !ownerOrdered) {
+      if (!isConfirmed(input['confirmed']) && !ownerOrdered) {
         return {
           deleted: 0,
           needs_confirmation: true,
@@ -11782,7 +11796,7 @@ async function executeToolCall(
       if (ownerSaid !== true && thankedThisRun(runId)) {
         return { closed: false, error: THANKED_NOT_ASKED };
       }
-      if (input['confirmed'] !== true && ownerSaid !== true) {
+      if (!isConfirmed(input['confirmed']) && ownerSaid !== true) {
         return {
           closed: false,
           asked: true,
