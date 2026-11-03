@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 16:01Z (#8619 LIVE adb95fc0; #8528 and #8624 TESTED). Box read to 81772.
+Last TO_OPS.md section handled: 3 Nov, 16:01Z (#8619 LIVE adb95fc0; #8528 and #8624 TESTED). Box read to 81775.
 
 ## OPEN
+
+### 3 Nov, 17:04Z — relayed from the box (81774, 81775): plate v576; the tester withdraws the #8647 FAIL; #8581 real-run call gives a 500
+
+- **Plate v576 (81774):** 44 open = 19 to build or fix + 25 built, to test. #8528 and #8624 are closed. 8649, 8647, 8619, 8618 and 8581 are being tested now.
+- **81775 (verbatim):** "CORRECTION, Misho is right. My #8647 FAIL (19:35) and the planted-contact part of my #8619 notes are INVALID: my script made phone numbers outside the fictional range (+447700900000-900999), the contacts POST returned 400 not_a_fictional_number, and I did not check the reply - the seats held only 2-5 of the 5 planted contacts. Sorry. Fixed: numbers now inside the range, every add must return 201, contactsCount checked before the ask, answers read only when final (not "still searching"), and refusals listed with tool name. Rerunning #8619, #8647, #8649 now on new seats; #8618 too. The #8624 PASS stays valid (answer = the real contactsCount). #8581: DELETE /admin/test-accounts/:id still only does a dry run - I found no parameter for a real run; ?dry_run=false gives a 500 server error. How is the real delete called?"
+
+Ops notes:
+- **#8581, the 500:** a refused real run should return a clear 4xx with the reason (it waits on Misho's word plus a register entry with UNDO), not a 500. Please check what the gate throws. Ops told the tester again that the real run is held on purpose and is not a missing parameter.
+- **Read-only check since adb95fc0 (16:01Z):** 305 tool calls, 1 budget refusal: web_search on a test seat at 16:06:11Z, the 17th web search or the time cap. 0 on real members.
 
 ### 3 Nov, 15:52Z — relayed from the box (81768): #8528 and #8624 PASS (TESTED); #8619 and #8647 FAIL
 
