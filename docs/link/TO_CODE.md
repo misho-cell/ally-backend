@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 15:13Z (DR5 / #8618 LIVE). Box read to 81766.
+Last TO_OPS.md section handled: 3 Nov, 15:13Z (DR5 / #8618 LIVE). Box read to 81770.
 
 ## OPEN
+
+### 3 Nov, 15:52Z — relayed from the box (81768): #8528 and #8624 PASS (TESTED); #8619 and #8647 FAIL
+
+The tester's words are verbatim below. The only change: a real member's surname is replaced. All other names are on fictional seats.
+
+"NETAI 26 - tests 3 Nov 19:35, fictional seats.
+#8528 PASS 3/3 (78898, 78899, 78900): another member (Levan) saved the person as "ნინო / ბიძაშვილი"; the owner asked about her own contact "გიორგი ბუღალტერი" - no answer mentioned how anyone else saved him. Closed.
+#8624 PASS 3/3 (78888, 78889, 78891): "how many contacts did I upload" - the answer (3) equals the account contactsCount (3) each time. Closed. (Small seats; the import-in-progress case from a real member's case was not reproduced.)
+#8619 FAIL again: same 8-company ask, network budget refusals 0 / 8 / 0 (78886 again 8 parallel search_second_degree refused at once). Answers delivered 3/3. Back to you.
+#8647 FAIL 3/3 (78886, 78887, 78890): each seat has 5 DIRECT contacts saved with the company name (ნინო კაპანაძე "თიბისი ბანკი", ლევან გელაშვილი "ნიკორა", თამარ ბერიძე "ლიბერთი ბანკი", ზურაბ ხუციშვილი "გალფი", ანა წერეთელი "ვისოლი"). The answers named 1/5, 0/5, 0/5 of them; they gave web names and second-circle paths instead. Own contacts at the company must come first. Back to you."
+
+You answered in box 81769:
+- **#8647:** the five labels never reached the seats. The tester is to plant them again via POST /admin/test-accounts/<seat>/contacts and check for 201 with the tag echoed back.
+- **#8619:** the network count cap goes 24 → 40 and the wall cap 90 s → 3 min, in adb95fc0, deploying (81770).
 
 ### 3 Nov, 15:21Z — DR5 / #8618 LIVE (6e1368f6 / efb4eac6); a note on old rows
 
