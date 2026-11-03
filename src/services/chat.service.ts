@@ -9384,6 +9384,28 @@ const BUDGETED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
 ]);
 const runSearchCalls = new Map<string, number>();
 
+/**
+ * #8681 (Tornike, 4 Nov, via the tester's 82039): after search-limit refusals
+ * the answer came about 6 min late (thread 78953: the first refusal at
+ * 19:33:29, then two more rounds of searching, and the answer at 19:37:10).
+ * The refusal says „write your answer now"; the run now does: once a search
+ * is refused for the budget, a round that only searches again is not started,
+ * and the next turn is the written answer.
+ */
+const runsPastTheirBudget = new Set<string>();
+
+/**
+ * Past its budget and asking only to search again: the round is not started.
+ * A round that also proposes a plan, asks someone or saves something goes on.
+ */
+export function searchesPastTheBudget(runId: string, roundTools: readonly string[]): boolean {
+  return (
+    runsPastTheirBudget.has(runId) &&
+    roundTools.length > 0 &&
+    roundTools.every((tool) => BUDGETED_SEARCH_TOOLS.has(tool))
+  );
+}
+
 export const SEARCH_BUDGET_SPENT =
   'Not searched: this answer has used its search budget (searches or time). Do not search again ' +
   'in this run. Write your answer now from what you found — who or what was found, and the ' +
@@ -10387,6 +10409,7 @@ function clearRunState(runId: string): void {
   runWithheldByOwnerLine.delete(runId);
   runSearchCalls.delete(runId + WEB_BUDGET_KEY_SUFFIX);
   forgetSearchClocks([runId, runId + WEB_BUDGET_KEY_SUFFIX]);
+  runsPastTheirBudget.delete(runId);
   forgetFinds(runId);
   runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
@@ -10636,6 +10659,7 @@ async function executeToolCall(
   ) {
     // eslint-disable-next-line no-console
     console.log(`[search-budget] run ${runId}: ${name} refused, budget spent`);
+    runsPastTheirBudget.add(runId);
     return { found: false, error: SEARCH_BUDGET_SPENT };
   }
   const repeated = runId === undefined ? undefined : runRepeatedGoal.get(runId);
@@ -15593,6 +15617,11 @@ async function runToolLoop(
       response.stop_reason === 'tool_use' &&
       iterations < MAX_TOOL_ITERATIONS &&
       Date.now() - startedAt < RUN_SOFT_BUDGET_MS &&
+      // #8681: a search refused for the budget means the answer is next.
+      !searchesPastTheBudget(
+        runId,
+        response.content.flatMap((b) => (b.type === 'tool_use' ? [b.name] : [])),
+      ) &&
       // Row 113 fourth pass. The owner pressed stop; the tools this turn wants
       // are work on a goal that no longer exists. Checked between turns rather
       // than mid-call, because the call in flight is already paid for and the
