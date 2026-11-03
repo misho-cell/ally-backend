@@ -167,6 +167,8 @@ const MIN_NAMED_LABEL_CHARS = 4;
 /** Enough labels to judge one sentence by; a sentence names one or two people. */
 const MAX_NAMED_LABEL_CANDIDATES = 20;
 const FIRST_NAME_MATCHES_READ = 3;
+/** DR2: every label sharing the owner's first name is read, so the offer can pick one. */
+const SAME_FIRST_NAME_LABELS_READ = 100;
 /**
  * How far before the goal's creation the owner's typed line may be. The line is
  * saved before the run that opens the goal, and a run with web searches can
@@ -865,6 +867,7 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
     // back to the typed line, as 279 run 2 needs.
     const tapped = await latestOwnerLine(person);
     if (tapped !== null && (await lineNamesThisPerson(tapped, person))) return true;
+    if (tapped !== null && (await offeredPersonNamedByFirstName(tapped, person))) return true;
     // #7228 (the tester's audit, 63374): the assistant asked „ვაგზავნი ომიკოსთან?",
     // the owner answered „კი", and both walls refused Omiko — the yes named nobody.
     // A bare yes to the assistant's own question that names exactly this person is
@@ -956,6 +959,12 @@ const YES_GO_RE =
  * right before the owner's newest one is what that line answers, however late.
  */
 async function assistantQuestionBefore(person: NamedPerson): Promise<string | null> {
+  const line = await assistantLineBefore(person);
+  return line !== null && /[?？]$/u.test(line) ? line : null;
+}
+
+/** The assistant's last message before the owner's newest line; null when there is none. */
+async function assistantLineBefore(person: NamedPerson): Promise<string | null> {
   const result = await query<{ content: string }>(
     `SELECT a.content FROM conversations a
         WHERE a.thread_id = $1 AND a.role = 'assistant' AND a.kind = 'message'
@@ -968,7 +977,40 @@ async function assistantQuestionBefore(person: NamedPerson): Promise<string | nu
     ASK_QUERY_TIMEOUT_MS,
   );
   const line = result.rows[0]?.content.trim() ?? '';
-  return /[?？]$/u.test(line) ? line : null;
+  return line === '' ? null : line;
+}
+
+/**
+ * DR2 (#8615, the tester's 81317; thread 76858, 2 Nov): the assistant proposed
+ * „ლიკა ოსეფაშვილს გამოვყოფდი …", the owner answered „კითხე ლიკას", and the ask
+ * to her was refused as „plan not approved" four times — eleven of the owner's
+ * contacts are called Lika, saved in Latin letters, so the first name alone
+ * named nobody. The assistant's own message had already said which Lika. An
+ * instruction naming a first name counts for this person when the assistant's
+ * previous message named exactly one contact with that first name in full,
+ * and that contact is this person.
+ */
+async function offeredPersonNamedByFirstName(line: string, person: NamedPerson): Promise<boolean> {
+  if (!looksLikeContactInstruction(line)) return false;
+  const offered = await assistantLineBefore(person);
+  if (offered === null) return false;
+  const sameFirstName = await query<{ phone: string; alias: string }>(
+    `SELECT ua.phone, ua.alias
+       FROM "UserAlias" ua
+      WHERE ua."contactId" = $1::int
+        AND SPLIT_PART(LOWER(TRIM(ua.alias)), ' ', 1) = ANY($2::text[])
+      LIMIT $3`,
+    [person.fromUserId, plainWordForms(line), SAME_FIRST_NAME_LABELS_READ],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const namedInOffer = new Set(
+    sameFirstName.rows
+      .filter(
+        (row) => labelNamedIn(offered, row.alias) || latinLabelNamedInGeorgian(offered, row.alias),
+      )
+      .map((row) => phoneDigits(row.phone)),
+  );
+  return namedInOffer.size === 1 && namedInOffer.has(phoneDigits(person.contactPhone));
 }
 
 /**
