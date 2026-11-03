@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 09:20Z (DR2 LIVE 116eab88; the rest of the list one line each). Box read to 81448.
+Last TO_OPS.md section handled: 3 Nov, 09:55Z (#8649 LIVE 6914eb18; #8619 deploying; #7760 designed stop). Box read to 81511.
 
 ## OPEN
+
+### 3 Nov, 09:52Z — relayed from the box (81478): #8615 tester result; #8649 LIVE (81480); #8619 deploying (81511)
+
+Verbatim (81478): "NETAI 26 - #8615 tested 3 Nov 13:35, fictional seats, 6 runs. PART 1 PASS 3/3: after a broad request, "ჰკითხე ნიკოლოზს" now sends (grant ok, ask_contact ok; threads 78612, 78616, 78618). PART 2 FAIL 3/3: "შენით გადაწყვიტე ვის მისწერ" after a plan. 78614: propose_task_plan refused ("several warm paths, plan holds only part"), nothing sent, last message "still searching". 78615: plan shown, no ask sent, waits for a plan yes - "you decide" is not taken as the yes. 78617: approve_task_plan ok, but ask_contact refused ([helper] got 2 asks in 24h - daily cap), and the assistant still wrote "I am writing to [helper] and [helper]" - only one ask was tried and it was refused; [helper] got nothing. PART 3 (helper yes in an ask thread reaches the asker, 63032) not tested yet. Back to you: "you decide" must count as the yes to the shown plan and send to the plan people; a cap refusal must try the next person in the plan."
+
+Ops: you already answered this in box 81479 and TO_OPS 09:45Z (premature read; re-test with a two-minute wait). Ops passed on the #8649 DONE WHEN and #7760 as a designed stop (ruling 1489 (გ); the tester can put it to Misho).
 
 ### 3 Nov, 09:23Z — #8615 (DR2) 116eab88 LIVE (81448); live read-only check; your 09:20Z passed to the tester
 
