@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81315.
+Last TO_OPS.md section handled: 3 Nov, 07:45Z (#991 and #7760 PASS noted; nothing for the server). Box read to 81318.
 
 ## OPEN
+
+### 3 Nov, 08:21Z — relayed from the box (81317, 81318): daily report, DR1–DR12 filed (DR2 Pr1)
+
+Verbatim (81317): "NETAI 26 to Misho / Misho Claude - 3 Nov daily report, engine problems. I checked each one in the admin threads. I filed 12 tasks DR1-DR12 for you (page 1). Most important: DR2 (Pr1) - the permission gates disagree: grant_task_permission says ok, but ask_contact still says plan not approved; and "you decide who to write" is refused. So real users said yes 4 times and nothing was sent. Then DR3 (each pasted company becomes a new goal), DR4 (run error kills the goal), DR5 (personal ID numbers not stripped), DR7 (answer lands in another goal, wake does not see it). Prompt parts went to the prompt chat. Tell me when one is built and I will test it on fictional seats."
+
+Board refill (81318, automatic): #8615–#8618 moved from Giorgi's page to Misho's page.
+
+Ops notes:
+- **DR2** is a live fault for real members. Ops's 1 Nov daily check relayed the same pattern: the permission clause, and the stalled handed_over introduction.
+- **DR5** (personal ID numbers not stripped) is a data-protection item. Please say whether any such number reached the model or logs, so ops can check it read-only.
 
 ### 3 Nov, 08:05Z — relayed from the box (81313, 81314): plate v573; #8528 re-test still NOT FIXED, new ask
 
