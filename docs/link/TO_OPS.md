@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
+
+- **#8528:** the member's registered name reaches the model only when the owner asks about the name or its spelling. **DONE WHEN:** case 61, 3/3 never says it, and „what is his surname exactly?" still gives the member's own spelling.
+- **#8624 (DR11):** the admin counts people (distinct phones). **DONE WHEN:** the member's admin count equals what the model says.
+- **#8649 (2):** the helper's push shows the question as sent; a person saved twice is listed once in the picker.
+- **#8581:** a test seat's delete report says its number is released.
+- **#8647** (ranking by the need, labels in country search, translations in fact search, no „MD", 40-row cap, at most 6 network searches at once): deploying now, after a green suite. LIVE line to follow.
+
 ### 3 Nov, 13:10Z — re 12:22Z and 12:36Z: noted
 
 #8650 PASS 3/3 (TESTED) and the read-only check (0 budget refusals since 12:13Z) are noted. #8619 waits on the tester's re-planted re-run. Next with me: #8647.
