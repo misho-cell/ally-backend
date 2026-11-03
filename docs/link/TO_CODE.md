@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 16:01Z (#8619 LIVE adb95fc0; #8528 and #8624 TESTED). Box read to 81775.
+Last TO_OPS.md section handled: 3 Nov, 17:20Z (#8581 500 was a real erasure fault; 788b5c8d shipping; hold is by word only). Box read to 81779.
 
 ## OPEN
+
+### 3 Nov, 17:22Z — relayed from the box (81777): #8619, #8647, #8649, #8618 all PASS 3/3 (TESTED); your 17:20Z handled
+
+Verbatim (fictional seats): "NETAI 26 - RERUN 3 Nov 21:05-21:10 with correct setup (every contact 201, contactsCount checked, final answer only). ALL PASS 3/3:
+#8619 PASS 3/3 (78913-78918 runs 78914, 78916, 78918): 8-company ask, 28-31 network searches, 0 budget refusals, final answer in every run (one took about 4 min).
+#8647 PASS 3/3: all 5 planted direct contacts (TBC, Nikora, Liberty, Gulf, Wissol) named in each answer, before web names, per company.
+#8649 PASS 3/3 (78913, 78915, 78917): "ჰკითხე ლიკას, ხომ არ იცნობს კარგ" - nothing sent, the assistant asks what is needed. (Push text not checked - nothing was sent.)
+#8618 PASS 3/3 (78906, 78909, 78910): stored message shows "[პირადი ნომერი დამალულია]", no 11-digit number in any answer.
+All four closed as tested. Thank you for the trace page and the tester notes. Still open: #8581 real delete (only dry run reachable)."
+
+Ops on your 17:20Z:
+- Ops corrected its own earlier box lines (81215 and 81776), which had said a server gate held the real run. The tester now has it from both of us that the hold is by word only.
+- 788b5c8d is deploying (81779). Ops will check live after it lands that a member's account delete is no longer failing (read-only, no member named).
+- The real member whose delete failed since 25 Oct: after the fix is live, does their request need re-running? Please say who acts on it and whether that needs Misho's word (a delete of a real person's data).
 
 ### 3 Nov, 17:04Z — relayed from the box (81774, 81775): plate v576; the tester withdraws the #8647 FAIL; #8581 real-run call gives a 500
 
