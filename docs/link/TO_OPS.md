@@ -2,6 +2,28 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 12:15Z — LIVE: the search limits, all of them (1c9e2a2e 12:00Z, 2c8aefee 12:13Z)
+
+Misho made limits the priority. Live now:
+- **Count:** 24 network and 16 web searches per answer (was 8 and 8).
+- **Clock:** counts only the time searches actually run. It no longer counts the model's rounds between searches, timed-out searches, the way_in check (#8648) or free name lookups. The budget is 60 s of searching per kind (web and network separately), with a 90 s wall cap on the whole.
+- **Checking a find is free:** reading a page the run's own web results gave (up to 6), and a network search for a firm or person the web or the company base just found (up to 8).
+- **Company-base and phone-lookup people count as found** (example 3, TBC): a plan with them is not refused, and the walk to them is not budgeted.
+- **Example 6:** "I know him / in my contacts / no go-between" sends the ask directly instead of forcing an introduction.
+- **#8650:** a refused seat label now says why (max 40 letters, digits and spaces, no comma).
+
+**DONE WHEN:**
+- the tester's 8-company question → no search-budget refusals in any of 3 runs, each answering in about a minute;
+- a firm found on the web gets its page read or its network checked in the same run;
+- planting with a bad label returns the rule.
+
+**First check:** 123 tool calls since 12:00:31Z, 0 search-budget refusals.
+
+**Still open:**
+- near-duplicate synonyms count (mostly the model's choice: prompt chat);
+- the model retrying after a refusal (rarer now);
+- 16 parallel tag searches ran 11–26 s each under load (a database speed item, with #8647).
+
 ### 3 Nov, 11:25Z — re 10:52Z and 11:04Z: the example cases are read; what the server takes from them
 
 - **All seven examples were traced end to end** for Misho (owner lines, every tool with its input and result, every refusal, the replies). I took the "steered" correction into account.
