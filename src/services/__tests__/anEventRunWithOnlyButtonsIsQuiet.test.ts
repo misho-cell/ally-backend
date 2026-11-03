@@ -14,7 +14,7 @@ describe('a run started by an event that leaves only buttons', () => {
     const block = chat.slice(
       chat.indexOf('if (onlyButtons && userMessage.startsWith(RUN_EVENT_PREFIX)) {'),
     );
-    expect(block.slice(0, 400)).toContain(
+    expect(block.slice(0, 500)).toContain(
       "return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };",
     );
   });

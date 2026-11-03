@@ -550,7 +550,13 @@ import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
 import { registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
-import { asksForReasoningSummary, SUMMARIZED_THINKING } from './reasoningOnTestSeats';
+import { SUMMARIZED_THINKING, tracedInFull } from './reasoningSummary';
+import {
+  recordModelCall,
+  recordPromptSent,
+  recordReplyDropped,
+  recordReplyRewritten,
+} from './runTraceRecorder.service';
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
@@ -13714,12 +13720,15 @@ async function callClaude(
   opts: CallOptions = {},
 ): Promise<Anthropic.Message> {
   const model = opts.model ?? MODEL;
-  // Misho, 3 Nov: a readable reasoning summary, on test seats only (prompt debugging).
-  // Only on the main model and never beside a forced tool, which thinking cannot accompany.
+  // Misho, 3 Nov: real people's runs are debugged in full for now (not the test seats) —
+  // a readable reasoning summary, only on the main model and never beside a forced tool,
+  // which thinking cannot accompany; and the exact prompt this round was sent.
+  const tracedFully = await tracedInFull(ctx.userId);
   const reasoning =
-    model === MODEL && opts.forceTool === undefined && (await asksForReasoningSummary(ctx.userId))
+    tracedFully && model === MODEL && opts.forceTool === undefined
       ? { thinking: SUMMARIZED_THINKING }
       : {};
+  if (tracedFully) void recordPromptSent(ctx.runId, systemPrompt);
   const stream = anthropic.messages.stream(
     {
       model,
@@ -13888,6 +13897,15 @@ async function callClaude(
     runId: ctx.runId,
     threadId: ctx.threadId,
   }).catch(() => {});
+  // Misho, 3 Nov: each model round, for the run trace (best-effort, never awaited).
+  void recordModelCall(ctx.runId, {
+    model: response.model,
+    stop_reason: response.stop_reason ?? null,
+    duration_ms: Date.now() - startedAt,
+    input_tokens: response.usage.input_tokens,
+    output_tokens: response.usage.output_tokens,
+    cache_read_tokens: response.usage.cache_read_input_tokens ?? 0,
+  });
   return response;
 }
 
@@ -14564,7 +14582,15 @@ const MAX_TRAIL_ROWS = 50;
  * ends quietly takes its own captions and steps back with it, so the owner
  * reads the last real answer, not the trail of a search that came to nothing.
  */
-async function dropQuietRunTrail(userId: string, threadId: number, runId: string): Promise<void> {
+async function dropQuietRunTrail(
+  userId: string,
+  threadId: number,
+  runId: string,
+  reason: string,
+  modelReply: string,
+): Promise<void> {
+  // Misho, 3 Nov: what the model wrote and the rule that held it back, for the run trace.
+  void recordReplyDropped(runId, reason, modelReply);
   try {
     const trail = await query<{ id: number; content: string }>(
       `DELETE FROM conversations
@@ -15722,6 +15748,10 @@ async function runToolLoop(
         finalText = scrubFinal(extractText(response.content), runId);
         answeredBy = MODEL;
         finalIsRewrite = false;
+      }
+      // Misho, 3 Nov: Claude's answer and the writer's, side by side in the run trace.
+      if (finalIsRewrite) {
+        void recordReplyRewritten(runId, rewritten.model, extractText(response.content), finalText);
       }
       await recordClaudeUsage({
         userId,
@@ -18929,7 +18959,7 @@ export async function processChat(
     if (effectiveFinal.trim() === '') {
       // eslint-disable-next-line no-console
       console.log(`[chat] run ${runId} thread ${threadId}: answer sent, already thanked — quiet`);
-      await dropQuietRunTrail(userId, threadId, runId);
+      await dropQuietRunTrail(userId, threadId, runId, 'answer_sent_already_thanked', finalText);
       clearRunState(runId);
       return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
     }
@@ -18946,7 +18976,7 @@ export async function processChat(
   if (sentSide === SentSide.Mediator && effectiveFinal.trim() === '') {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: the close line said it all — quiet`);
-    await dropQuietRunTrail(userId, threadId, runId);
+    await dropQuietRunTrail(userId, threadId, runId, 'close_line_said_it_all', finalText);
     clearRunState(runId);
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
@@ -18970,7 +19000,7 @@ export async function processChat(
   if (onlyButtons && userMessage.startsWith(RUN_EVENT_PREFIX)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: an event run left only buttons — quiet`);
-    await dropQuietRunTrail(userId, threadId, runId);
+    await dropQuietRunTrail(userId, threadId, runId, 'event_run_only_buttons', finalText);
     clearRunState(runId);
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
@@ -18979,7 +19009,13 @@ export async function processChat(
   if (ownerAbsent && takeQuietAfterDecline(threadId) && !broughtAResult(pending)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: after a „no", nothing new — quiet`);
-    await dropQuietRunTrail(userId, threadId, runId);
+    await dropQuietRunTrail(
+      userId,
+      threadId,
+      runId,
+      'quiet_after_decline (Misho 1489 გ)',
+      finalText,
+    );
     clearRunState(runId);
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
@@ -19000,7 +19036,7 @@ export async function processChat(
   if (!effectiveFinal.trim() && endsQuietly(ownerAbsent, pending, answeredOnlyInStageDirection)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: system run did its work silently`);
-    await dropQuietRunTrail(userId, threadId, runId);
+    await dropQuietRunTrail(userId, threadId, runId, 'system_run_silent', finalText);
     clearRunState(runId);
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }

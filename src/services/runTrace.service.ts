@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { redactPhones } from './toolCallLog.service';
+import { promptTexts, serverStepsByRun, TraceServerStep } from './runTraceExtras.service';
 
 /**
  * Misho, 3 Nov („სრული პროცესის დანახვა მინდა … რიქვესთიდან რისპონსამდე"):
@@ -55,6 +56,15 @@ export interface TraceCost {
   readonly cost_usd: number;
 }
 
+export interface TraceOptions {
+  /** Tool results whole, not clipped at MAX_TOOL_RESULT_CHARS. */
+  readonly fullResults: boolean;
+  /** The exact prompt texts the run was sent (test seats; large). */
+  readonly withPrompt: boolean;
+}
+
+export const DEFAULT_TRACE_OPTIONS: TraceOptions = { fullResults: false, withPrompt: false };
+
 export interface RunTrace {
   readonly run_id: string;
   readonly started_at: string;
@@ -64,6 +74,9 @@ export interface RunTrace {
   readonly steps: readonly TraceStep[];
   readonly tool_calls: readonly TraceToolCall[];
   readonly costs: readonly TraceCost[];
+  readonly server_steps: readonly TraceServerStep[];
+  readonly prompt_hashes: readonly string[];
+  readonly prompt_texts?: readonly string[];
 }
 
 interface StampRow {
@@ -71,6 +84,7 @@ interface StampRow {
   mode: string;
   block_names: string[] | null;
   block_versions: unknown;
+  prompt_hashes: string[] | null;
   started_at: Date;
 }
 
@@ -88,7 +102,7 @@ async function runStamps(
   runId: string | null,
 ): Promise<StampRow[]> {
   const result = await query<StampRow>(
-    `SELECT run_id, mode, block_names, block_versions, created_at AS started_at
+    `SELECT run_id, mode, block_names, block_versions, prompt_hashes, created_at AS started_at
        FROM run_prompt_stamps
       WHERE thread_id = $1 AND ($3::text IS NULL OR run_id = $3)
       ORDER BY created_at DESC
@@ -194,7 +208,11 @@ function resultText(content: unknown): string {
 }
 
 /** One stored content block as a trace step; null for a block with nothing to show. */
-export function blockStep(block: unknown, at: string): TraceStep | null {
+export function blockStep(
+  block: unknown,
+  at: string,
+  maxResultChars: number = MAX_TOOL_RESULT_CHARS,
+): TraceStep | null {
   if (!isRecord(block)) return null;
   switch (block.type) {
     case 'thinking': {
@@ -216,7 +234,7 @@ export function blockStep(block: unknown, at: string): TraceStep | null {
       return {
         at,
         type: TraceStepType.ToolResult,
-        text: redactPhones(clipped(resultText(block.content), MAX_TOOL_RESULT_CHARS)),
+        text: redactPhones(clipped(resultText(block.content), maxResultChars)),
         is_error: block.is_error === true,
       };
     default:
@@ -231,11 +249,14 @@ function plainStepType(row: ConversationRow): TraceStepType {
 }
 
 /** A stored conversation row as trace steps, in the order they happened. */
-export function rowSteps(row: ConversationRow): TraceStep[] {
+export function rowSteps(
+  row: ConversationRow,
+  maxResultChars: number = MAX_TOOL_RESULT_CHARS,
+): TraceStep[] {
   const at = row.created_at.toISOString();
   if (Array.isArray(row.content_json)) {
     return row.content_json
-      .map((block) => blockStep(block, at))
+      .map((block) => blockStep(block, at, maxResultChars))
       .filter((step): step is TraceStep => step !== null);
   }
   const text = row.content ?? '';
@@ -261,12 +282,16 @@ export function runIndexOf(row: ConversationRow, starts: readonly number[]): num
   return latest;
 }
 
-function stepsByRun(rows: readonly ConversationRow[], stamps: readonly StampRow[]): TraceStep[][] {
+function stepsByRun(
+  rows: readonly ConversationRow[],
+  stamps: readonly StampRow[],
+  maxResultChars: number,
+): TraceStep[][] {
   const starts = stamps.map((stamp) => stamp.started_at.getTime());
   const steps: TraceStep[][] = stamps.map(() => []);
   for (const row of rows) {
     const index = runIndexOf(row, starts);
-    if (index >= 0) steps[index].push(...rowSteps(row));
+    if (index >= 0) steps[index].push(...rowSteps(row, maxResultChars));
   }
   return steps;
 }
@@ -289,16 +314,20 @@ export async function traceThread(
   threadId: number,
   runs: number,
   runId: string | null,
+  options: TraceOptions = DEFAULT_TRACE_OPTIONS,
 ): Promise<RunTrace[]> {
   const stamps = await runStamps(threadId, runs, runId);
   if (stamps.length === 0) return [];
   const runIds = stamps.map((stamp) => stamp.run_id);
-  const [rows, calls, costs] = await Promise.all([
+  const hashes = options.withPrompt ? stamps.flatMap((stamp) => stamp.prompt_hashes ?? []) : [];
+  const [rows, calls, costs, serverSteps, texts] = await Promise.all([
     conversationRows(threadId, stamps[0].started_at),
     toolCalls(runIds),
     runCosts(runIds),
+    serverStepsByRun(runIds),
+    promptTexts(hashes),
   ]);
-  const steps = stepsByRun(rows, stamps);
+  const steps = stepsByRun(rows, stamps, options.fullResults ? Infinity : MAX_TOOL_RESULT_CHARS);
   return stamps.map((stamp, i) => ({
     run_id: stamp.run_id,
     started_at: stamp.started_at.toISOString(),
@@ -308,5 +337,10 @@ export async function traceThread(
     steps: steps[i],
     tool_calls: calls.get(stamp.run_id) ?? [],
     costs: costs.get(stamp.run_id) ?? [],
+    server_steps: serverSteps.get(stamp.run_id) ?? [],
+    prompt_hashes: stamp.prompt_hashes ?? [],
+    ...(options.withPrompt
+      ? { prompt_texts: (stamp.prompt_hashes ?? []).map((hash) => texts.get(hash) ?? '') }
+      : {}),
   }));
 }

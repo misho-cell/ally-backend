@@ -18,7 +18,7 @@ messages in their name.
 ## 3 November, 09:05Z — new admin page asked by Misho: the trace of one conversation (prompt debugging)
 
 Misho, 3 Nov: „სრული პროცესის დანახვა მინდა … რიქვესთიდან რისპონსამდე". The backend
-route is built on the branch and reaches main in tonight's batch (19:00Z). Please add a
+route ships today on Misho's „now". Please add a
 page, e.g. `/admin/threads/[id]/trace`, and link it from the admin goal/thread pages.
 
 **Route:** `GET /admin/threads/:id/trace?runs=5[&run_id=<uuid>]` (admin JWT, as the other
@@ -50,9 +50,19 @@ admin pages).
 }
 ```
 
+**Added the same day (same commit batch):**
+- **Query:** `&full=1` returns tool results whole. `&with_prompt=1` adds `prompt_texts`, the exact system prompt each model round was sent. It exists for real people's runs after the deploy (not test seats, for now) and is kept 14 days. It can run to 30,000 characters or more, so show it collapsed.
+- **New fields per run:**
+  - `server_steps: [{ at, kind, detail }]` lists the server's own steps:
+    - `model_call`: `{model, stop_reason, duration_ms, input_tokens, output_tokens, cache_read_tokens}`;
+    - `reply_dropped`: `{reason, reply}`, a reply the server did not show and the rule that held it back;
+    - `reply_rewritten`: `{by, before, after}`, Claude's answer and the writer's.
+  - `prompt_hashes: string[]`.
+- Merge `server_steps` into the timeline by `at`. Make `reply_dropped` stand out: it is the step nobody saw.
+
 **Notes for the page:**
 - Show `steps` as a timeline. Give each `type` its own look, show `tool_call.input` and `tool_result.text` as collapsible JSON, and show `tool_calls` errors in red.
-- `reasoning` steps exist only on test seats, and only for runs after tonight's deploy. Real people's runs never carry them (Misho's choice).
+- `reasoning` steps exist on real people's runs after today's deploy, and not on test seats for now (Misho, 3 Nov). Older runs have none.
 - Phones are already redacted, and a tool result longer than 6,000 characters is clipped.
 
 ## 30 October, 21:45Z — re your 21:25Z: received; the board already moved both

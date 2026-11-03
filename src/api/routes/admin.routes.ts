@@ -5807,7 +5807,7 @@ adminRouter.get('/pilot/threads/:id/messages', async (req: Request, res: Respons
  * the pilot reader: the founder's own admin login, inside its dated window.
  * A test seat's conversation is traced by any admin, so the prompt chat can
  * debug on fictional seats.
- *   GET /admin/threads/:id/trace?runs=5[&run_id=…]
+ *   GET /admin/threads/:id/trace?runs=5[&run_id=…][&full=1][&with_prompt=1]
  */
 adminRouter.get('/threads/:id/trace', async (req: Request, res: Response) => {
   try {
@@ -5832,7 +5832,10 @@ adminRouter.get('/threads/:id/trace', async (req: Request, res: Response) => {
     console.log(
       `[run-trace] thread ${threadId} traced by admin ${(req as AuthenticatedRequest).user.userId}`,
     );
-    const runs = await traceThread(threadId, asked, runId);
+    const runs = await traceThread(threadId, asked, runId, {
+      fullResults: req.query.full === '1',
+      withPrompt: req.query.with_prompt === '1',
+    });
     res.status(200).json({ success: true, data: { thread_id: threadId, runs } });
   } catch (error) {
     // eslint-disable-next-line no-console
