@@ -1,6 +1,6 @@
 import { query, withTransaction } from '../db/postgres/client';
 import { isFictionalNumber } from './fictionalNumbers';
-import { deleteMyAccount, ErasureReport } from './privacyRights.service';
+import { deleteMyAccount, ErasureReport, NUMBER_RETAINED_NOTE } from './privacyRights.service';
 
 /**
  * #8581 (the tester's 80985 and 81002; the founder's word relayed in 80985):
@@ -12,6 +12,10 @@ import { deleteMyAccount, ErasureReport } from './privacyRights.service';
  */
 const SEAT_DELETE_TIMEOUT_MS = 8_000;
 
+/** #8581 (the tester's 81214): a seat's report says the number is released, not kept. */
+export const SEAT_NUMBER_RELEASED_NOTE =
+  'the seat’s fictional number — released: its do-not-contact row is lifted and other test seats’ phonebook entries for it are removed, so a new seat can take it';
+
 export interface SeatDeleteOutcome {
   readonly ok: true;
   readonly dryRun: boolean;
@@ -21,6 +25,13 @@ export interface SeatDeleteOutcome {
 }
 
 export type SeatDeleteResult = SeatDeleteOutcome | { readonly ok: false; readonly refusal: string };
+
+function withSeatNumberNote(erasure: ErasureReport): ErasureReport {
+  const retained = erasure.retained.map((note) =>
+    note === NUMBER_RETAINED_NOTE ? SEAT_NUMBER_RELEASED_NOTE : note,
+  );
+  return { ...erasure, retained };
+}
 
 async function seatPhones(seatId: number): Promise<string[] | null> {
   const seat = await query<{ phone: string | null }>(
@@ -42,7 +53,7 @@ export async function deleteTestSeat(seatId: number, dryRun: boolean): Promise<S
   if (fictional.length !== phones.length) {
     return { ok: false, refusal: 'the seat has a number outside the fictional ranges — refused' };
   }
-  const erasure = await deleteMyAccount(String(seatId), dryRun);
+  const erasure = withSeatNumberNote(await deleteMyAccount(String(seatId), dryRun));
   if (dryRun) {
     return { ok: true, dryRun, erasure, numbersFreed: fictional.length, seatEntriesRemoved: 0 };
   }

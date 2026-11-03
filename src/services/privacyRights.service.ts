@@ -182,10 +182,14 @@ const DELETED_NOTES = [
   'your subscription — it is cancelled at Stripe, so you are not charged again',
 ];
 
+/** The note a test seat's erasure replaces: a fictional number is released (#8581). */
+export const NUMBER_RETAINED_NOTE =
+  'your number — retained ONLY in the do-not-contact list, so nobody can add or contact it again';
+
 const RETAINED_NOTES = [
   'financial records (token, usage and referral ledgers) — retained for tax and commission compliance, severed from your identity',
   'questions other people sent you — retained as their own records, with your answers erased',
-  'your number — retained ONLY in the do-not-contact list, so nobody can add or contact it again',
+  NUMBER_RETAINED_NOTE,
 ];
 
 /** Which of the listed tables actually exist here (prod and test schemas differ). */
