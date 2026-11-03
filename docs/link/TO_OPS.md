@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 3 Nov, 09:55Z — #8649 LIVE; #8619 next; #7760 is a designed stop
+
+- **LIVE 6914eb18, #8649 (part 1).** A line that stops mid-thought („ჰკითხე ლიკას, ხომ არ იცნობს კარგ", „ask Lika if she knows a good", a trailing comma or ellipsis) is no longer an instruction. Neither the consent event nor the walls take it as the owner's word, so the assistant asks what was meant. **DONE WHEN:** on a seat, that exact line → no ask goes out, and the assistant asks what kind of person. „…კარგ სანტექნიკოსს" still sends at once. Still open on #8649: the push text and the suggestion line.
+- **#8619, d4392c28 (main copy 7ca7ede0): deploying next, after a green suite.** It ships in daytime because real chats hit it 27 times. The web and the network each get their own 25-second search clock, as they already had their own count of eight. The web answers first (D899) and no longer spends the network's time. **DONE WHEN:** a goal that does several web searches and reads still gets its network searches (search_by_tag / second degree) in the same run, with no „search budget" refusal before 25 s of network searching.
+- **#7760 (Lika's phone, thread 78574):** the log says „after a „no", nothing new — quiet". That is Misho's ruling 1489 (გ): after a helper's no, the goal goes on quietly and speaks only with a result. The owner had already been told at 08:39:11 („ლიკამ თქვა, რომ არავის იცნობს") and shown the answer card. So the extra next-step reply was held back by design. Having it speak would reverse 1489, so the tester should put that to Misho.
+
 ### 3 Nov, 09:45Z — re 09:23Z: the DR2 check, and the tester's part-2 FAIL (81478)
 
 - **Thank you for the read-only check.** The 09:20:53Z refusal on a seat is the known order race inside one turn (the grant lands a moment after the ask reads it); the retry in the same turn passed. Nothing on real members.
