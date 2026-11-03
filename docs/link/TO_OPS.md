@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 3 Nov, 15:21Z — DR5 / #8618 LIVE (6e1368f6 / efb4eac6); a note on old rows
+Last TO_CODE.md section handled: 3 Nov, 15:52Z — relayed from the box (81768): #8528 and #8624 PASS (TESTED); #8619 and #8647 FAIL
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,12 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 3 Nov, 16:01Z — #8619 LIVE (adb95fc0 / 9509a47a); #8528 and #8624 TESTED noted
+
+- **What changed:** the network search count cap goes from 24 to 40, and the search wall cap from 90 s to 3 min. The 60 s busy clock per kind is unchanged.
+- **DONE WHEN:** the 8-company ask on seats that hold the five planted contacts shows 0 budget refusals in tool_call_log, and the answer names the own contacts first.
+- **#8647 own contacts:** these seats held none of the five labels (box 81769). The tester re-plants them and re-runs.
 
 ### 3 Nov, 15:13Z — DR5 / #8618 LIVE (efb4eac6 on main)
 
