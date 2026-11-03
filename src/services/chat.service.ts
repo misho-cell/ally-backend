@@ -548,6 +548,7 @@ import {
 } from './instructionUnsent';
 import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
+import { registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
@@ -10578,17 +10579,22 @@ async function executeToolCall(
       if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
       // 5908: the contact card opened next reads the network's names by these words.
       rememberNameAsked(runId, byName, input['name_query']);
+      // #8528: the member's registered name goes only to a question about the name.
+      const ownerLine = runId === undefined ? '' : (runOwnerLine.get(runId) ?? '');
       if (notInThePhonebook(byName)) {
         return withFurtherOut(
           userId,
           input['name_query'],
-          { ...byName, look_further: LOOK_ONE_RING_OUT },
+          { ...registeredNameOnlyWhenAsked(byName, ownerLine), look_further: LOOK_ONE_RING_OUT },
           runId,
         );
       }
       // #7758 (tester 79008): who belongs to which group, current or former, rides with the row.
       return withCommunities(
-        await withLikelyEmployers(userId, await withContactsWhoKnowThem(userId, byName)),
+        await withLikelyEmployers(
+          userId,
+          await withContactsWhoKnowThem(userId, registeredNameOnlyWhenAsked(byName, ownerLine)),
+        ),
       );
     }
     case 'search_by_tag': {

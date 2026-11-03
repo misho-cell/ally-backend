@@ -215,7 +215,9 @@ describe('#5974 (68996): a name search carries who else of the owner’s knows t
 
   it('is wired into search_contact_by_name', () => {
     const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('await withContactsWhoKnowThem(userId, byName)');
+    expect(chat).toMatch(
+      /await withContactsWhoKnowThem\(userId, registeredNameOnlyWhenAsked\(byName, ownerLine\)\)/u,
+    );
   });
 });
 
