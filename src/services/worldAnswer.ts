@@ -86,10 +86,17 @@ export const WORLD_ANSWER_BRIEF =
  * სტომატოლოგი" got a Tbilisi clinic before anyone asked which city. Outside the
  * founder's editable brief, so it holds whatever the brief says.
  */
+/**
+ * #8682 (Tornike, 4 Nov, via the tester's 82039): „who heads the Ministry of
+ * Health" was answered „which country?". The member is in Georgia: a question
+ * that needs a country and names none is about Georgia. A city is still never
+ * assumed (#8520).
+ */
 const NO_ASSUMED_PLACE =
-  'If the answer depends on a place (a city, a country, a district) and the question does not ' +
-  'name one, do not assume one: give what holds everywhere and say in one short sentence that ' +
-  'the city is needed for names and addresses.\n';
+  'The member lives in Georgia: if the answer depends on a country and the question names ' +
+  'none, answer for Georgia. If it depends on a city or a district and the question does not ' +
+  'name one, do not assume one: give what holds across Georgia and say in one short sentence ' +
+  'that the city is needed for names and addresses.\n';
 
 /** The question as the web is asked it. */
 export function worldQuestionPrompt(question: string, language: RunLanguage): string {
