@@ -85,6 +85,10 @@ webhooksRouter.get('/whatsapp', (req: Request, res: Response): void => {
     given !== expected ||
     typeof challenge !== 'string'
   ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[whatsapp] webhook verification refused: ${!expected ? 'WHATSAPP_VERIFY_TOKEN is not set' : 'the verify token does not match'}`,
+    );
     res.status(403).json({ success: false, error: 'Verification failed' });
     return;
   }
@@ -101,6 +105,12 @@ webhooksRouter.post('/whatsapp', (req: Request, res: Response): void => {
     !Buffer.isBuffer(raw) ||
     !signatureIsValid(raw, typeof signature === 'string' ? signature : undefined)
   ) {
+    // Misho's 3 Nov test: a WhatsApp reply never arrived and nothing said why.
+    // A refused delivery is written down, without its body (it holds a phone).
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[whatsapp] webhook refused: ${typeof signature === 'string' ? 'signature does not match WHATSAPP_APP_SECRET' : 'no signature'}`,
+    );
     res.status(401).json({ success: false, error: 'Invalid signature' });
     return;
   }
