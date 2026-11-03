@@ -307,12 +307,25 @@ function unavailable(reason: string): object {
 }
 
 /** The results as the model reads them, whichever engine found them. */
+/**
+ * #8622 (the tester's DR9, thread 76858): a real member read „Coral Travel
+ * (https://tavily.com/knowledge/company/…)". Tavily returns its own company
+ * pages as results, and the model cited them as a source. That address is the
+ * search provider's, not the firm's, so it never reaches the model: the
+ * result keeps its title and text, without an address.
+ */
+const PROVIDER_PAGE_RE = /^https?:\/\/(?:www\.)?tavily\.com\//iu;
+
+export function sourceAddress(url: string): { url?: string } {
+  return PROVIDER_PAGE_RE.test(url) ? {} : { url };
+}
+
 function searchResults(hits: readonly { title: string; url: string; snippet: string }[]): object {
   return {
     guidance: RESULT_GUIDANCE,
     results: hits.map((r) => ({
       title: r.title,
-      url: r.url,
+      ...sourceAddress(r.url),
       snippet: r.snippet.slice(0, SNIPPET_CHARS),
       // Institutional/government domains are the authoritative source for
       // current officeholders — news can be stale. When official:true is
