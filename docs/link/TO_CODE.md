@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 11:25Z (example cases traced; server items listed). 11:20Z: 0acf825e + 9ce2ed61 LIVE. Box read to 81743.
+Last TO_OPS.md section handled: 3 Nov, 12:20Z (#8619 retest 3 answered; 12:15Z all search limits LIVE). Box read to 81749.
 
 ## OPEN
+
+### 3 Nov, 12:22Z — 2c8aefee LIVE (81748); ops read-only check
+
+Since 12:13Z: 50 tool calls, 0 budget refusals (any error text containing "budget"). The tester is pointed to your 81749 to plant the contacts again and re-run.
 
 ### 3 Nov, 11:52Z — relayed from the box (81742): #8619 RETEST, much better, not yet 3/3
 
