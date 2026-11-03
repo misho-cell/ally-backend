@@ -1,6 +1,12 @@
 import { query, withTransaction } from '../db/postgres/client';
 import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
-import { ContactRefusal, isAcceptableTag, NOT_A_TEST_SEAT } from './seatContacts.service';
+import {
+  BAD_NAME_DETAIL,
+  BAD_TAG_DETAIL,
+  ContactRefusal,
+  isAcceptableTag,
+  NOT_A_TEST_SEAT,
+} from './seatContacts.service';
 import {
   mirrorSeatGraph,
   parseSeatLabels,
@@ -64,8 +70,12 @@ function validate(contacts: readonly BulkContactIn[]): Clean[] | Exclude<BulkRes
     if (!isFictionalNumber(phone)) {
       return { ok: false, refusal: 'not_a_fictional_number', index, detail: FICTIONAL_RANGES_TEXT };
     }
-    if (name === '' || name.length > MAX_NAME) return { ok: false, refusal: 'bad_name', index };
-    if (!isAcceptableTag(tag)) return { ok: false, refusal: 'bad_tag', index };
+    if (name === '' || name.length > MAX_NAME) {
+      return { ok: false, refusal: 'bad_name', index, detail: BAD_NAME_DETAIL };
+    }
+    if (!isAcceptableTag(tag)) {
+      return { ok: false, refusal: 'bad_tag', index, detail: BAD_TAG_DETAIL };
+    }
     if (seen.has(phone)) return { ok: false, refusal: 'duplicate_phone', index };
     seen.add(phone);
     clean.push({ phone, name, tag });
