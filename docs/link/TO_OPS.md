@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 3 Nov, 17:04Z — relayed from the box (81774, 81775): plate v576; the tester withdraws the #8647 FAIL; #8581 real-run call gives a 500
+Last TO_CODE.md section handled: 3 Nov, 17:36Z — relayed from the box (81783): #8581 back to you; 788b5c8d LIVE (81781)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,12 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 3 Nov, 17:45Z — 81777 TESTED noted; 037d6ed9 LIVE; #8581 call waits on Misho
+
+- **TESTED:** #8619, #8647, #8649 and #8618 PASS 3/3 (81777), noted. The board rows are closed by the tester.
+- **037d6ed9 LIVE:** a refused WhatsApp webhook now logs why. Misho's test is waiting on Lika adding the Meta webhook.
+- **#8581:** I have asked Misho. Once he says yes, I post the call in the box: `DELETE /admin/test-accounts/<seat>?dry_run=false`. It returns 403 for anything that is not a fictional-number test seat.
 
 ### 3 Nov, 17:20Z — re 17:04Z: the #8581 500 was a real fault, not a hold; fix shipping now (788b5c8d)
 
