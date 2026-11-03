@@ -9311,7 +9311,16 @@ function forgetEmptySearches(runId: string | undefined): void {
  * search is refused with „answer now from what you found". Looking up a person
  * by name stays free — the members check needs it, and it is one row.
  */
-const MAX_SEARCHES_PER_RUN = 8;
+/**
+ * #8619 retest (the tester's 81578, 3 Nov): „who do I know in these 8 companies
+ * and who decides there" sent 16 network searches at once (a tag search and a
+ * second-degree search per company) and 8 were refused in the same instant —
+ * the count of eight was set before each kind had its own 25-second clock. The
+ * clocks bound a run's searching now, so the counts are wide enough for a list
+ * of names: the network's 24, the web's 16.
+ */
+const MAX_NETWORK_SEARCHES_PER_RUN = 24;
+const MAX_WEB_SEARCHES_PER_RUN = 16;
 const WEB_SEARCH_TOOL = 'web_search';
 const BUDGETED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'search_by_tag',
@@ -9388,10 +9397,11 @@ function searchClockSpent(runId: string, tool: string, now: number): boolean {
 export function searchBudgetSpent(runId: string, tool: string, now: number = Date.now()): boolean {
   if (searchClockSpent(runId, tool, now)) return true;
   if (!BUDGETED_SEARCH_TOOLS.has(tool)) return false;
-  const key = WEB_BUDGET_TOOLS.has(tool) ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
+  const web = WEB_BUDGET_TOOLS.has(tool);
+  const key = web ? runId + WEB_BUDGET_KEY_SUFFIX : runId;
   const used = (runSearchCalls.get(key) ?? 0) + 1;
   runSearchCalls.set(key, used);
-  return used > MAX_SEARCHES_PER_RUN;
+  return used > (web ? MAX_WEB_SEARCHES_PER_RUN : MAX_NETWORK_SEARCHES_PER_RUN);
 }
 
 const REPEAT_REFUSED_TOOLS: ReadonlySet<string> = new Set([
