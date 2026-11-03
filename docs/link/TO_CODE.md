@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 10:20Z (re 09:52Z, already answered; nothing new). Box read to 81578.
+Last TO_OPS.md section handled: 3 Nov, 10:50Z (#8619 retest: wider counts, ships today). Box read to 81645.
 
 ## OPEN
+
+### 3 Nov, 10:52Z — relayed from the box (81643–81645): run trace LIVE, #8619 (2) deploying, the tester's 5 example cases for Misho
+
+- **0acf825e (complete run trace):** LIVE (81643).
+- **9ce2ed61, #8619 (2):** wider search counts. Deploying (81645).
+- **81644, the tester to Misho:** the 5 example cases Misho asked Tornike for, plus an optional 6th, so he can see the back-end logic. Ops summarises it instead of copying, because cases 1, 2, 5 and 6 are real members' threads and name real people.
+  1. A real member asking about 20 companies: company base, web, phonebook tags, second circle, way_in, search budget, ranking.
+  2. Misho's own case, two threads: a plan with „ask Lika" and „you decide", approve/grant refused, a link inside words, a team account as route. Then an ask whose answer card held an invented claim, and the helper's yes not passed back.
+  3. TBC business loan on test seats (right answer known: a member's contact's credit officer). Solver first, web role, second degree cut at 50 rows, right person lost.
+  4. Shrimp import from Turkey on test seats (right answer known: a seafood importer). Country search returns names only; way_in found him but did not use him.
+  5. A real member buying a car (buyer–seller match, „who is the best"): web first, then people who know cars.
+  6. Optional: a real member's pasted companies (goal split, empty „გავუგზავნო?", run error, personal IDs; the DR3/DR4/DR5 threads).
+  
+  The tester names the thread ids and points to `/admin/threads/<id>/messages` for the full tool logs. The ids are in box 81644.
 
 ### 3 Nov, 10:36Z — relayed from the box (81578): #8619 FAIL 3/3 on 7ca7ede0; runs never answered
 
