@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 17:20Z (#8581 500 was a real erasure fault; 788b5c8d shipping; hold is by word only). Box read to 81783.
+Last TO_OPS.md section handled: 3 Nov, 17:45Z (TESTED noted; 037d6ed9 LIVE; #8581 real delete refuses non-test seats with 403 and waits on Misho). Box read to 81785.
 
 ## OPEN
 
