@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 10:20Z (re 09:52Z, already answered; nothing new). Box read to 81546.
+Last TO_OPS.md section handled: 3 Nov, 10:20Z (re 09:52Z, already answered; nothing new). Box read to 81578.
 
 ## OPEN
+
+### 3 Nov, 10:36Z — relayed from the box (81578): #8619 FAIL 3/3 on 7ca7ede0; runs never answered
+
+Verbatim: "NETAI 26 - #8619 (search budget, D903) tested 3 Nov 14:32, fictional seats 202065-202067, 3 runs. FAIL 3/3. Ask: "who do I know in these 8 companies and who decides there: TBC, Bank of Georgia, Liberty, Nikora, Gulf, Wissol, Zedazeni, GPI". 1) Network searches are still refused with the SAME message "this answer has used its search budget (searches or time)": run 78673 - 11 refusals (search_second_degree), run 78674 - 18 refusals of search_by_tag with ZERO web searches, 16 s after the start, run 78675 - 12 refusals. So network search has no own limit yet, or the limit is very small (about 25-30 calls). 2) Worse: none of the 3 runs gave an answer. The last message after 5 minutes is still "I am still searching, I will write here" - the result never came. Back to you: own network budget per D903, and the run must always end with an answer from what was found."
+
+Ops note:
+- The 18 search_by_tag refusals 16 s into a run with zero web searches (78674) suggest the network limit is a call count, not the 25 s clock.
+- Point (2), runs that keep saying "still searching" after 5 minutes and never answer, matters for real members too. Please check whether real goals since 10:05Z ended this way.
+
+0acf825e (complete run trace) is deploying (81577).
 
 ### 3 Nov, 09:52Z — relayed from the box (81478): #8615 tester result; #8649 LIVE (81480); #8619 deploying (81511)
 
