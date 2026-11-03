@@ -52,7 +52,7 @@ describe('a country search whose reach leg did not run', () => {
     expect(String(out.note)).toContain('DID NOT RUN');
     expect(String(out.note)).toContain('Do NOT tell the user nobody can reach anyone there');
     // The leg that DID run is still reported.
-    expect(out.direct_contacts).toEqual([{ name: 'Gio' }]);
+    expect(out.direct_contacts).toEqual([{ name: 'Gio', labels: null }]);
     spy.mockRestore();
   });
 

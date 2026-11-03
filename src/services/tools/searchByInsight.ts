@@ -4,6 +4,7 @@ import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { georgianStem } from './georgianStem';
 import { buildSearchTerms } from './transliterate';
+import { relatedProfessionWords } from '../professionFamilies';
 import { isUnsafeContent, isUnsafeQuery } from './contentGuard';
 import {
   fetchAccountStates,
@@ -700,8 +701,15 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
      * happen in practice, the honest next step is to measure how often it is
      * followed — not to build the reverse map first.
      */
+    // #8647 (the tester's 81446): a Georgian query found nothing, because the facts
+    // are mostly in English and a spelling in Latin letters is not a translation.
+    // A profession's other names — „ექიმი" → doctor — ride in the same word group.
     const groups = words.map((word) => {
-      const variants = new Set<string>([word, ...buildSearchTerms(word)]);
+      const variants = new Set<string>([
+        word,
+        ...buildSearchTerms(word),
+        ...relatedProfessionWords(word).filter((w) => !w.includes(' ')),
+      ]);
       return [...variants].filter((v) => v.length >= MIN_WORD_LEN);
     });
     const groupSizes = groups.map((g) => g.length);
