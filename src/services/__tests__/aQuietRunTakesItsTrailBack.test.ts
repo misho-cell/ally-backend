@@ -21,6 +21,11 @@ describe('a run that ends quietly', () => {
   // 1489 (Misho, გ): the fourth is the run after a helper's „no" that brought nothing.
   // #6766 added the fifth: an answer already thanked for in this conversation.
   it('does so on all five quiet endings', () => {
-    expect(chat.split('await dropQuietRunTrail(userId, threadId, runId);').length - 1).toBe(5);
+    // Misho, 3 Nov: each one also names its rule and passes the model's words to the run trace.
+    expect(
+      chat.match(
+        /await dropQuietRunTrail\(\s*userId,\s*threadId,\s*runId,\s*'[^']+',\s*finalText,?\s*\);/gu,
+      ),
+    ).toHaveLength(5);
   });
 });

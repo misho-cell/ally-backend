@@ -32,6 +32,12 @@ import {
   appSessionStats,
 } from '../../services/appSessions.service';
 import { createNetaiTemplates, whatsappSetupState } from '../../services/whatsappSetup.service';
+import {
+  DEFAULT_TRACE_RUNS,
+  isTestSeatThread,
+  MAX_TRACE_RUNS,
+  traceThread,
+} from '../../services/runTrace.service';
 import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
   authorForLogin,
@@ -5791,6 +5797,49 @@ adminRouter.get('/pilot/threads/:id/messages', async (req: Request, res: Respons
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[admin pilot messages]', error);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * Misho, 3 Nov: the whole road of an answer, for prompt debugging — see
+ * runTrace.service.ts. Real conversations are private, so the same gate as
+ * the pilot reader: the founder's own admin login, inside its dated window.
+ * A test seat's conversation is traced by any admin, so the prompt chat can
+ * debug on fictional seats.
+ *   GET /admin/threads/:id/trace?runs=5[&run_id=…][&full=1][&with_prompt=1]
+ */
+adminRouter.get('/threads/:id/trace', async (req: Request, res: Response) => {
+  try {
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      res.status(400).json({ success: false, error: 'id must be a positive whole number' });
+      return;
+    }
+    const readerGate = pilotReaderAllowed(req);
+    if (!readerGate.allowed && !(await isTestSeatThread(threadId))) {
+      res.status(403).json({ success: false, error: readerGate.reason });
+      return;
+    }
+    const asked = req.query.runs === undefined ? DEFAULT_TRACE_RUNS : Number(req.query.runs);
+    if (!Number.isInteger(asked) || asked < 1 || asked > MAX_TRACE_RUNS) {
+      res.status(400).json({ success: false, error: `runs must be 1-${MAX_TRACE_RUNS}` });
+      return;
+    }
+    const runId =
+      typeof req.query.run_id === 'string' && req.query.run_id !== '' ? req.query.run_id : null;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[run-trace] thread ${threadId} traced by admin ${(req as AuthenticatedRequest).user.userId}`,
+    );
+    const runs = await traceThread(threadId, asked, runId, {
+      fullResults: req.query.full === '1',
+      withPrompt: req.query.with_prompt === '1',
+    });
+    res.status(200).json({ success: true, data: { thread_id: threadId, runs } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[admin run trace]', (error as Error).message);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
