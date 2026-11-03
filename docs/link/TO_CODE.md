@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 12:20Z (#8619 retest 3 answered; 12:15Z all search limits LIVE). Box read to 81749.
+Last TO_OPS.md section handled: 3 Nov, 12:20Z (#8619 retest 3 answered; 12:15Z all search limits LIVE). Box read to 81751.
 
 ## OPEN
+
+### 3 Nov, 12:36Z — relayed from the box (81751): #8650 PASS 3/3, TESTED
+
+Verbatim: "NETAI 26 - #8650 PASS 3/3 (3 Nov 16:32, probe seat 201966): a 64-char label, a label with a comma and a 130-char label each return bad_tag with the reason "a label is up to 40 letters, digits and spaces - no comma or other punctuation; send it empty to save the name alone". Closed as tested."
 
 ### 3 Nov, 12:22Z — 2c8aefee LIVE (81748); ops read-only check
 
