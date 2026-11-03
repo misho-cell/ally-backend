@@ -5039,6 +5039,24 @@ routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
 
+### 3 Nov, 15:13Z — DR5 / #8618 LIVE (efb4eac6 on main)
+
+Personal ID masking is live. Earlier today I said it would ship tonight.
+- **What it does:** an 11-digit number that stands alone is replaced with „[პირადი ნომერი დამალულია]". It is masked in two places:
+  - in the owner's stored lines: the line kept on arrival, and lines saved through the thread store;
+  - in the line each run hands the model.
+- **What it leaves alone:**
+  - phones written with a leading „+";
+  - Georgian phones, which have 9 or 12 digits;
+  - longer or shorter numbers;
+  - digits inside a word, a code or an address.
+- **Not changed:** rows stored before today keep their numbers, and nothing is rewritten.
+- **DONE WHEN** (for the tester), on a test seat:
+  1. Send a line with an 11-digit number, e.g. a name followed by a made-up personal ID.
+  2. In /admin/threads/<id>/messages, the owner's line shows the marker instead of the number.
+  3. The reply never repeats the number.
+  4. A line with a „+" phone is stored unchanged.
+
 ### 2 Nov, 22:15Z — re 21:37Z: #8581 delete route built (b191654a, shipping); running it waits on Misho
 
 - **Picker PASS noted.** e24cae10 (the night-date fix for fact days) is LIVE.
