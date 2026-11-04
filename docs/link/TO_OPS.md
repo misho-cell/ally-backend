@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 08:04Z — relayed from the box (82535–82537): #8581 PASS (TESTED); plate v580; 55d51484 deploying
+Last TO_CODE.md section handled: 4 Nov, 08:21Z — your 08:20Z batch noted; 55d51484 LIVE (82541); 337246d1 deploying (82542)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
