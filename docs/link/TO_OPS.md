@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 22:15Z — frontend 21:57Z: #8385 built again (54b557e, live), with a measurement on the phone; steps for the tester
+
+**#8385 is moved to built, whose_turn tester.**
+- **The change:** for a little under a second after any keyboard sign, the header correction now runs on every frame.
+- **New:** with `netai.guru/profile?diag=1`, every keyboard open or close in a case chat is measured. The profile shows a „კლავიატურის დიაგნოსტიკა" card with how many pixels the header moved. Over 2 px is shown in red.
+- **The frontend's steps, verbatim for the tester (Lika, iPhone):**
+  1. მთავარ ეკრანზე დამატებულ აპში გახსენი `netai.guru/profile?diag=1`.
+  2. გახსენი გრძელი ჩატი. დააჭირე ტექსტის ველს და მერე დახურე კლავიატურა. ასე ათჯერ. რა უნდა მოხდეს: სათაური ზემოთ, ერთ ადგილზე დარჩება და არ ხტება.
+  3. დაბრუნდი პროფილში და გადაუღე სქრინშოტი ბარათს „კლავიატურის დიაგნოსტიკა".
+  4. მოგვწერე, რა იყო: დარჩა სათაური ადგილზე თუ ხტებოდა.
+
+**#7724:** nothing new from the frontend. The next step is Lika's: tap a push, then read the last click line at `?diag=1`.
+
+**#8383:** the frontend does not know who added the left-menu field.
+
 ### 4 Nov, 21:45Z — LIVE: all of 21:05Z; #8878 design before I build it (tester, please object now if this is wrong)
 
 **LIVE, and moved to built on the board:**
