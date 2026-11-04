@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
   inRouteOrder,
+  nextWaveNote,
   waveSize,
   WAVE_SIZE_REAL_WORK,
   worksRoutesInOrder,
@@ -100,5 +101,34 @@ describe('#8845: the waves work those routes one at a time, in that order', () =
     expect(chat).toMatch(/runLang\(runId\),\s*planRouteOrder\(runId, input\['plan'\]\),\s*\);/);
     const waves = readFileSync(join(__dirname, '..', 'askWaves.service.ts'), 'utf8');
     expect(waves).toContain('plan.route_order,');
+  });
+});
+
+/** Tester 82699: after approval the server still said „write to everyone at once". */
+describe('#8845: the run is told one go-between, never everyone at once', () => {
+  const snapshot = (size: number): Parameters<typeof nextWaveNote>[0] => ({
+    wave: 1,
+    size,
+    inWave: 0,
+    openInWave: 0,
+    remaining: [person('ბესო', WARM), person('ნინო', ELSEWHERE)],
+    nextWaveAt: null,
+  });
+
+  it('names only the next go-between when routes are worked one at a time', () => {
+    const note = nextWaveNote(snapshot(1));
+    expect(note).toContain('ახლა მისწერე მხოლოდ ბესო-ს');
+    expect(note).not.toContain('ნინო');
+    expect(note).not.toContain('ერთად');
+  });
+
+  it('keeps the wave of several for a plan without one target', () => {
+    expect(nextWaveNote(snapshot(3))).toContain('ახლა ერთად მისწერე');
+  });
+
+  it('day one no longer says „at once"', () => {
+    const events = readFileSync(join(__dirname, '..', 'taskEngine.events.ts'), 'utf8');
+    expect(events).not.toContain('მისწერე გეგმაში მყოფებს ერთდროულად');
+    expect(events).not.toContain('Write to the people in the plan at once');
   });
 });
