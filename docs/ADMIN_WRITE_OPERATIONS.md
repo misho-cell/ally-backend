@@ -6729,3 +6729,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Write:** migration 292 adds tasks.idle_reminders and tasks.idle_reminded_at. From then on, the wake ticker writes those two columns and moves next_wake_at for goals nobody has written in for 2 days or more. Of the 3,000 open goals with a wake when this was written, 1,509 had been idle 2 days and 492 had been idle 5 days.
 - **Effect:** such a goal gets one ordinary reminder at 2 days and one question at 5 days (close it or change it?). After that its next wake moves 30 days on. An owner's message or a helper's answer starts the count again. Answer wakes are not touched.
 - **UNDO:** `UPDATE tasks SET next_wake_at = NOW() + interval '1 day' WHERE status = 'open' AND idle_reminders >= 2;` brings every quieted goal back to a daily wake. To switch the rule off, revert the commit; the two columns are harmless left in place.
+
+## 105 · RUN TRACE READER OPEN ON REAL CONVERSATIONS UNTIL 4 DEC (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", on the recommendation to set the date 30 days out)
+
+- **Write:** Railway variable PILOT_CONVERSATION_READER_UNTIL = 2026-12-04, set with scripts/ops/env.sh at night after the batch. Setting it restarts the service.
+- **Effect:** admins can open the run trace (/admin/threads/:id/trace) for real members' conversations until that date. The route refuses dates more than 45 days out.
+- **UNDO:** `./scripts/ops/env.sh unset PILOT_CONVERSATION_READER_UNTIL`, then a push to main to restart, because unset does not restart by itself.
