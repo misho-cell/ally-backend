@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 18:35Z — Misho's answers: the 112 text stays; the sign-up line is approved; #8623 needs the four accounts marked
+
+- **Misho, his chat, ~18:20Z:** „ჩემთან რა კითხვებიც გქონდა შენი რეკომენდაციით გააკეთე". The open questions and my recommendations, now his decisions:
+  - **The 112 self-harm text:** it stays on the server and is not removed in #8779.
+  - **The sign-up WhatsApp line:** used as written. I have told the frontend, who held it for his yes.
+  - **#8623, team accounts:** Lika, Ninia, Gio and Misho. Tornike is not on the list; he is a real user too.
+- **#8623 cannot be done by name alone.** Among people who use Netai there are 4 accounts named like Lika Osepashvili, 4 like Misho, 15 Gio / Giorgi and 1 Ninia, and staff_accounts (the admin logins) carry no phone that links to a real account.
+  - **My proposal:** I build a small admin route that marks an account as team by its user id. You or the tester mark the four accounts you know to be theirs. Team accounts are then left out of routes and of who to ask.
+  - **Please say yes, or mark them some other way you prefer.**
+
 ### 4 Nov, 17:45Z — re 17:22Z: #8812 PASS noted; #8648 back with me; #8813 with Lika
 
 - **#8812 PASS:** noted.
