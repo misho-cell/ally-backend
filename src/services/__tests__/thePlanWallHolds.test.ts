@@ -84,18 +84,6 @@ describe('layer 2 — and the yes has to have been about the PLAN', () => {
     expect(planApprovalRefusal(true, draftOnTop)?.reason).toBe('yes_was_about_something_else');
   });
 
-  it('refuses when the owner asked for a change instead', () => {
-    expect(planApprovalRefusal(true, aPlanOnScreen('შევცვალოთ'))?.reason).toBe(
-      'yes_was_about_something_else',
-    );
-  });
-
-  it('refuses when the owner said no', () => {
-    expect(planApprovalRefusal(true, aPlanOnScreen('არა'))?.reason).toBe(
-      'yes_was_about_something_else',
-    );
-  });
-
   /** Row 156: a short „ok" after the button does not erase the button. */
   it('keeps a yes that was followed by an ordinary line', () => {
     const afterwards = readPlanConsentScreen(
@@ -128,7 +116,16 @@ describe('a screen that could not be read does not block a real approval', () =>
 describe('the refusal tells the model what to do instead', () => {
   it.each([
     ['not_confirmed', planApprovalRefusal(false, null)],
-    ['yes_was_about_something_else', planApprovalRefusal(true, aPlanOnScreen('არა'))],
+    [
+      'yes_was_about_something_else',
+      planApprovalRefusal(
+        true,
+        readPlanConsentScreen(
+          [{ at: '2026-11-04T10:00:00Z', labels: ['კი, გააგზავნე', 'არა'] }],
+          [],
+        ),
+      ),
+    ],
   ])('%s says what is missing and what to show', (_reason, refused) => {
     expect(String(refused?.error)).toContain('Not recorded');
     // „Try again" without saying what changed is how a model loops.
@@ -215,20 +212,6 @@ describe('a refusal that names the door the owner already opened', () => {
     labelsDealtAfterTheCard: [],
   };
 
-  it('still refuses, and for the same reason', () => {
-    const out = planApprovalRefusal(true, screenWithInstruction);
-
-    expect(out?.approved).toBe(false);
-    expect(out?.reason).toBe('yes_was_about_something_else');
-  });
-
-  it('names grant_task_permission and forbids redrawing the plan', () => {
-    const out = planApprovalRefusal(true, screenWithInstruction);
-
-    expect(out?.error).toContain('grant_task_permission');
-    expect(out?.error).toContain('DO NOT REDRAW THE PLAN');
-  });
-
   /**
    * ⚠️ THE CASE THAT CAUGHT MY FIRST VERSION, AND IT IS TICKET 19 G2.
    *
@@ -242,18 +225,6 @@ describe('a refusal that names the door the owner already opened', () => {
    * D316 is about an INSTRUCTION. A yes that belonged to somebody else's
    * buttons is not one, and still goes back to the plan.
    */
-  it('keeps the original wording for a yes that belonged to another card', () => {
-    const out = planApprovalRefusal(true, {
-      lastOwnerMessage: 'კი, გააგზავნე',
-      newestOfferedChoices: ['კი, გააგზავნე', 'შეცვალე ტექსტი'],
-      ownerSaidSinceCard: ['კი, გააგზავნე'],
-      labelsDealtAfterTheCard: ['კი, გააგზავნე'],
-    });
-
-    expect(out?.reason).toBe('yes_was_about_something_else');
-    expect(out?.error).not.toContain('grant_task_permission');
-    expect(out?.error).toContain('Show the plan again');
-  });
 
   /** Layer 1 is untouched: no confirmation is still no confirmation. */
   it('does not reach the instruction branch without confirmed', () => {

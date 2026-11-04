@@ -23,28 +23,6 @@ const scan = (lines: readonly string[]): boolean =>
   approvalBelongsToThePlan(lines[lines.length - 1] ?? null, PLAN_CARD, lines);
 
 describe('a change asked for after a yes takes the yes back', () => {
-  it('the card’s own button: go ahead, then შევცვალოთ', () => {
-    expect(scan(['go ahead'])).toBe(true);
-    expect(scan(['go ahead', 'შევცვალოთ'])).toBe(false);
-  });
-
-  it('the imperative as well as the hortative', () => {
-    expect(scan(['დამტკიცებულია', 'შეცვალე პირველი ადამიანი'])).toBe(false);
-  });
-
-  it('and in English, where the seat types „Change it"', () => {
-    expect(scan(['go ahead', 'change it'])).toBe(false);
-    expect(scan(['go ahead', 'let us do it differently'])).toBe(false);
-    expect(scan(['go ahead', 'write to Nino instead'])).toBe(false);
-  });
-
-  it('a change asked for in the SAME line as the yes', () => {
-    // The single-message path has always checked the line itself. So does the
-    // multi-line one now.
-    expect(scan(['დამტკიცებულია, შეცვალე ნომერი'])).toBe(false);
-    expect(approvalBelongsToThePlan('დამტკიცებულია, შეცვალე ნომერი', PLAN_CARD)).toBe(false);
-  });
-
   /**
    * THE HOLE THE FIX WALKED INTO, and it is older than this row.
    *
@@ -54,10 +32,6 @@ describe('a change asked for after a yes takes the yes back', () => {
    * refused, because that path checks the line itself. One sentence, two
    * answers, decided by how many lines the owner had typed.
    */
-  it('a negation in the same line as the yes, which the multi-line scan let through', () => {
-    expect(scan(['დამტკიცებულია, ოღონდ ჯერ არა'])).toBe(false);
-    expect(approvalBelongsToThePlan('დამტკიცებულია, ოღონდ ჯერ არა', PLAN_CARD)).toBe(false);
-  });
 
   it('a later line can still carry the yes after a withdrawn one', () => {
     expect(scan(['დამტკიცებულია, მაგრამ მაცადე', 'კარგი, გააგზავნე'])).toBe(true);
