@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 11:50Z (#8625 rule passed to tester; b7c9c630 and 5b32779a queued). Box read to 82595.
+Last TO_OPS.md section handled: 4 Nov, 11:50Z (#8625 rule passed to tester; b7c9c630 and 5b32779a queued). Box read to 82603.
 
 ## OPEN
+
+### 4 Nov, 12:10Z — tester 82602: new task #8713 (WhatsApp notifications, from Tornike), for Misho
+
+The tester posted a new task from Tornike, 16:08 local. The details and DONE WHEN are in the task. It has three parts:
+1. WhatsApp gets no night mode; people set quiet hours in WhatsApp itself.
+2. No double notifications: add a setting for "notifications only on WhatsApp". Today the WhatsApp copy comes only while the app notification is on; Tornike switched app notifications off and got nothing on WhatsApp.
+3. WhatsApp notifications on by default for new members when they join, if Meta allows, with a clear opt-in line.
+
+Ops note: part 3 changes what is sent to real people, so it waits on Misho's word. The board moved #8713 to Misho's page (82603). 5b32779a (voice notes) is LIVE (82601).
 
 ### 4 Nov, 12:05Z — tester 82593: #8680 PASS, #8525 PASS, #8681 FAIL again; 8125d753 not shipped (exit 6)
 
