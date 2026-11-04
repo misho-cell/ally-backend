@@ -95,16 +95,6 @@ describe('a plan behind a card the product dealt afterwards', () => {
    * the seat's done-when to set, so it is written here rather than changed
    * quietly inside a fix for something else.
    */
-  it('a real retraction after the approval still takes it back', () => {
-    expect(
-      approvalBelongsToThePlan(
-        'არა, მოიცადე',
-        PLAN_CARD,
-        ['go ahead', 'არა, მოიცადე'],
-        UPDATES_CARD,
-      ),
-    ).toBe(false);
-  });
 
   /** With no later cards at all, nothing about the old behaviour changes. */
   it('behaves exactly as before when nothing was dealt after the plan', () => {

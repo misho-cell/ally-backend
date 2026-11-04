@@ -7650,85 +7650,32 @@ function saysGoAhead(said: string): boolean {
 export function approvalBelongsToThePlan(
   lastOwnerMessage: string | null,
   newestOfferedChoices: readonly string[] | null,
-  /**
-   * Ticket 20 row 156 — every line the owner has said since the card, oldest
-   * first. Optional so the existing callers and their tests are unchanged; the
-   * last message alone is the old behaviour and the bug.
-   */
+  /** Ticket 20 row 156 — every line the owner has said since the card, oldest first. */
   ownerSaidSinceCard: readonly string[] = [],
   /**
    * Ticket 20 row 237 — the buttons of any card dealt AFTER the plan card.
    * A line that is exactly one of these is the owner pressing THAT button, and
-   * whatever it says, it is not an answer to the plan. Optional, so the older
-   * callers and their tests are unchanged.
+   * whatever it says, it is not an answer to the plan (ticket 19 G2).
    */
   labelsDealtAfterTheCard: readonly string[] = [],
 ): boolean {
-  const planCardOnScreen = (newestOfferedChoices ?? []).some(isApproveChoice);
+  /**
+   * #8779 (the founder, 4 Nov 19:07; Misho the same day): no fixed word lists.
+   * Whether the owner's words say yes is the model's reading — it calls
+   * approve_task_plan with confirmed=true only on that yes. What the server
+   * still checks is structure, not words: a plan card is what the owner is
+   * answering, they have written something since it, and that something is
+   * not simply a press of another card's button.
+   */
   const canon = (text: string): string => text.trim().toLowerCase();
   const pressedSomethingElse = new Set(labelsDealtAfterTheCard.map(canon));
-  const approves = (said: string): boolean => {
-    if (isApproveLabel(said) || APPROVE_LIKE_RE.test(said)) return true;
-    // DR2 (#8615): „decide yourself whom to write" approves the people the plan picks.
-    if (delegatesTheChoiceOfPeople(said)) return true;
-    // A bare yes, or a short go-ahead, only counts when a plan card is the
-    // thing being answered. Ticket 19 G2: a tap on a DRAFT's „კი, გააგზავნე"
-    // must never read as approving a three-person plan.
-    return planCardOnScreen && (PLAN_YES.test(said) || saysGoAhead(said));
-  };
-
-  /**
-   * Row 156 — an approval is not undone by agreeing with it.
-   *
-   * Goal 4100, Ninia's account: at 09:58:38 the owner pressed the approve
-   * button, at 09:58:46 she typed a short „ok", and at 09:59:10 the approval
-   * was refused — three times. The guard read her LAST line, which was the
-   * „ok", and „ok" is not the approve label, so it saw no approval at all.
-   * She was then shown plan v2 and asked to approve again.
-   *
-   * The seat's rule, and it is the right one: when her lines since the card
-   * contain the approve choice and nothing after it asks for a change or says
-   * no, the approval stands. A mixed-script „ok" is still agreement; a line
-   * that asks for a change is not.
-   *
-   * G2 is untouched by this. The window starts at the newest card, so a yes
-   * typed under a DRAFT card is measured against the draft, and the bare-yes
-   * path still requires a plan card to be the thing on screen. What changes is
-   * only that a yes already given is no longer erased by the next sentence.
-   */
-  const lines = ownerSaidSinceCard.map((line) => line.trim()).filter((line) => line !== '');
-  if (lines.length > 0) {
-    // Row 237: a press of a later card's own button is dropped BEFORE the
-    // approval scan, not after. „გააგზავნე" is in the go-ahead list and is also
-    // the draft card's label, so testing it for approval first would be G2.
-    const usable = lines.filter((line) => !pressedSomethingElse.has(canon(line)));
-    /**
-     * THE APPROVING LINE IS HELD TO THE SAME TEST AS THE ONES AFTER IT, and
-     * until today it was not — a hole this row's fix walked straight into.
-     *
-     * „დამტკიცებულია, ოღონდ..." („approved, only...") approved: the scan found
-     * the yes in that line, then looked at everything AFTER it, and there was
-     * nothing after it. The single-message path a few lines down has always
-     * checked the line itself; this one never did, so the same sentence read
-     * two different ways depending on how many lines the owner had typed.
-     *
-     * A later line can still carry the approval: „approved, but..." followed
-     * by „ok, send it" is a yes, and the scan goes on looking.
-     */
-    const at = usable.findIndex((line) => approves(line) && !withdrawsTheApproval(line));
-    if (at !== -1) {
-      // Everything said AFTER the approval decides whether it still stands.
-      return usable.slice(at + 1).every((line) => !withdrawsTheApproval(line));
-    }
-    // Lines existed and none of them approved. Never fall through to the last
-    // message: that would reach back past the card the owner is answering.
-    return false;
-  }
-
-  const said = lastOwnerMessage?.trim() ?? '';
-  if (said === '') return false;
-  if (withdrawsTheApproval(said)) return false;
-  return approves(said);
+  const lines = (ownerSaidSinceCard.length > 0 ? ownerSaidSinceCard : [lastOwnerMessage ?? ''])
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !pressedSomethingElse.has(canon(line)));
+  // A tap on the plan's own approve button is a tap, whether or not its card was recorded.
+  if (lines.some((line) => isApproveChoice(line))) return true;
+  const planCardOnScreen = (newestOfferedChoices ?? []).some(isApproveChoice);
+  return planCardOnScreen && lines.length > 0;
 }
 
 const PLAN_CONSENT_TIMEOUT_MS = 5_000;
@@ -7938,6 +7885,10 @@ export type PlanApprovalRefusal = {
   readonly reason: 'not_confirmed' | 'yes_was_about_something_else';
 };
 
+export const PLAN_NOT_ON_SCREEN_NOTE =
+  "Not recorded: no plan is waiting on the owner's screen, or nothing they wrote since it " +
+  "answers it (only another card's button was pressed). Show the plan with its buttons first.";
+
 export function planApprovalRefusal(
   confirmed: unknown,
   screen: PlanConsentScreen | null,
@@ -7963,67 +7914,12 @@ export function planApprovalRefusal(
       screen.labelsDealtAfterTheCard,
     )
   ) {
-    /**
-     * ⚠️ 25 SEPTEMBER, ROW 251 — THE REFUSAL SENT THE MODEL TO REDRAW THE PLAN
-     * WHEN THE OWNER HAD ALREADY SAID WHAT TO DO.
-     *
-     * Thread 24534. Plan v1 said „Who I will ask: nobody". The owner then
-     * typed, in their own words:
-     *
-     *     „Ask Netai Test 14 if they know a good accountant."
-     *
-     * The model called `approve_task_plan`, this wall refused it — correctly,
-     * because that sentence is not a yes to the plan — and the model did the
-     * only thing the refusal suggested: it drew plan v2 and asked again. The
-     * owner was asked to approve the thing they had just instructed.
-     *
-     * THE WALL IS RIGHT AND THE DOOR BESIDE IT WAS ALREADY OPEN.
-     * `ownerWordsGrantPermission` has implemented D316 since 23 September: a
-     * one-line instruction naming one person and one action is the owner's
-     * yes. It belongs to `grant_task_permission`, not to this tool, and
-     * nothing here said so — so the model never knocked on it.
-     *
-     * The founder's decision, 25 September, asked in these words and answered
-     * „yes, that is consent": the owner writing „ask X about Y" is consent to
-     * write to X. This does not grant it — it stops sending the model the
-     * other way, and names the tool that already implements the rule.
-     *
-     * NOT A WIDENING. The verdict is unchanged, the plan is still unapproved,
-     * and nothing new may be written to anybody: `grant_task_permission` keeps
-     * its own wall, which asks the same predicate again.
-     */
-    /**
-     * ⚠️ AN INSTRUCTION, NOT `ownerWordsGrantPermission` — AND THE TEST IS WHY.
-     *
-     * The first version asked that predicate, which also answers true for a
-     * BARE YES. So on a „კი, გააგზავნე" that belonged to a DRAFT card's button
-     * — ticket 19 G2, where exactly that tap was recorded as approving a
-     * three-person plan and day one wrote to two people the founder had not
-     * chosen — this refusal would have pointed the model at the other door and
-     * told it to grant permission anyway. The wall would have refused and then
-     * explained the way around itself.
-     *
-     * D316 is about an INSTRUCTION: one person, one action, in the owner's own
-     * words. That is the only thing this branch may recognise. A yes that
-     * belonged to somebody else's buttons still gets the original sentence and
-     * still goes back to the plan.
-     */
-    const ownersWordsAlreadyAllowIt = [
-      ...screen.ownerSaidSinceCard,
-      screen.lastOwnerMessage ?? '',
-    ].some((line) => looksLikeContactInstruction(line));
+    // #8779: a structural refusal only — no plan card on screen, nothing
+    // written since it, or only another card's button pressed.
     return {
       approved: false,
       reason: 'yes_was_about_something_else',
-      error: ownersWordsAlreadyAllowIt
-        ? "Not recorded, and DO NOT REDRAW THE PLAN. The user's own words are not a yes to " +
-          'the plan — but they are an instruction, and an instruction naming one person and ' +
-          'one action is their permission for exactly that (D316). Call ' +
-          'grant_task_permission, then do the one thing they asked. Proposing a new plan ' +
-          'here asks them to approve what they have just told you to do.'
-        : "Not recorded: the user's last yes was about something else — the newest buttons " +
-          "on their screen were not a plan's. Show the plan again with its own approve " +
-          'button and call this only after they answer THAT.',
+      error: PLAN_NOT_ON_SCREEN_NOTE,
     };
   }
   return null;
