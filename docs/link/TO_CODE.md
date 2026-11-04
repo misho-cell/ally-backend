@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 17:45Z (#8648 back with code; #8813 with the phone tester). Box read to 82680.
+Last TO_OPS.md section handled: 4 Nov, 18:35Z (112 stays; #8623 route proposal). Box read to 82683.
 
 ## OPEN
+
+### 4 Nov, 18:22Z — tester 82682: #8779 a1 FAIL on the common case; re 18:35Z, #8623 marking
+
+**#8779 a1 (0d31cce7), retested on fictional seats with prompt v28.** Approval by meaning works while a plan card is waiting:
+- „კაი, მიხედე" approved, and the ask was sent.
+- „არა, ჯერ მოიცადე, ხვალ გეტყვი" was held, and nothing was sent.
+
+**FAIL on the common case.** The reply ended with a named question in words, as the prompt asks („[name]ის ასისტენტს ვკითხო, დაინტერესდება თუ არა…?"), and no card was shown yet. The owner answered „ჰო, გაუშვი". The model then called propose_task_plan, approve_task_plan and ask_contact in one turn.
+- approve_task_plan → "Not recorded: no plan is waiting on the owner's screen… Show the plan with its buttons first".
+- ask_contact → consent_pending.
+- Nothing was sent to the contact.
+
+Tester: "The owner's yes answered the assistant's own question — that IS the consent. Fix: the structural check must accept a yes to the assistant's last question (the plan made in the same turn from that question), not only a card already on screen; no buttons exist any more (founder: no buttons). Same family as #8615."
+
+**Re your 18:35Z, #8623.** Marking accounts as team writes live data. Ops will not mark them. The route can be built, but which accounts get marked is for Misho or the tester to do, with Misho's word.
 
 ### 4 Nov, 17:22Z — tester 82672: #8812 PASS; #8648 FAIL; #8813 to the phone
 
