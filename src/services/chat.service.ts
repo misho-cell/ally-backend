@@ -221,6 +221,7 @@ import {
   RespondedRequest,
   pendingIntroInMediatorThread,
   settleTargetAnswer,
+  requestAskedInThread,
 } from './introduction.service';
 import {
   buildTwoItemsSection,
@@ -1194,6 +1195,12 @@ const WORK_THE_LIST_TOOL: AnthropicTool = {
  * status and the brief belong to this conversation's open goal, whatever id
  * the model passed; with none open, the tool says how to open one.
  */
+/** #8949: list_status is about an uploaded list; the status of goals and asks is read elsewhere. */
+const NO_LIST_IN_THIS_CONVERSATION =
+  'No uploaded list is being worked in this conversation, so there is no list status. For the ' +
+  'status of the owner’s goals and the questions sent, call get_my_tasks; for introductions, ' +
+  'get_intro_status. Do not open a goal or work a list for a status question.';
+
 const NO_GOAL_FOR_THE_LIST =
   'Not started: this conversation has no open goal yet. Open one first with create_task ' +
   '(what the owner wants from this list, in their words), then call work_the_list again with ' +
@@ -6547,9 +6554,6 @@ const runRedirectAnswers = new Map<string, string>();
  */
 const runThreadRequest = new Map<string, number>();
 
-function answered(result: object): boolean {
-  return (result as { success?: unknown }).success === true;
-}
 /** #6074: the names this run's list_my_contacts returned, for a file the owner asked for. */
 const runListedContacts = new Map<string, string[]>();
 
@@ -6903,6 +6907,11 @@ function skippedTheMembersFound(
 
 /** #7327: chats where the reader answers someone else's request — a question or an introduction. */
 const GO_BETWEEN_MODES: ReadonlySet<string> = new Set(['incoming_ask', 'request_thread']);
+/** #8949: an answer in one go-between chat never settles another chat's request. */
+const NOT_THIS_CHATS_REQUEST_NOTE =
+  'Not recorded: that introduction request belongs to another conversation, not this one. ' +
+  'An answer given here acts only on what was asked here. Answer this conversation’s own ' +
+  'question; the other request is answered in its own conversation.';
 
 /** How many of the owner's contacts on Netai the members note names. */
 const MEMBERS_IN_THE_BOOK_NAMED = 5;
@@ -10925,7 +10934,15 @@ async function executeToolCall(
       const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
       // 2347 (48280): with no goal the model read only the error and answered „I cannot make an
       // Excel file here". There is no Excel because there is no worked list — #894's own note says so.
-      if (taskId === null) return { error: NO_GOAL_FOR_THE_LIST, download: LIST_DOWNLOAD_NOT_YET };
+      // #8949 (battery 5 Nov, case 10): a status question reached list_status and was told to
+      // open a goal and work a list. With no goal here there is no list: say where status lives.
+      if (taskId === null) {
+        return {
+          found: false,
+          note: NO_LIST_IN_THIS_CONVERSATION,
+          download: LIST_DOWNLOAD_NOT_YET,
+        };
+      }
       const status = await listStatus(userId, taskId);
       return { ...status, download: listDownloadNote(status) };
     }
@@ -11108,10 +11125,21 @@ async function executeToolCall(
         return { success: false, sent: false, note: NOT_FROM_A_GUESSED_CHAT_NOTE };
       }
       const asked = input['request_id'] as number;
-      const first = await answer(asked);
-      const retried = ownRequest !== undefined && ownRequest !== asked && !answered(first);
+      // #8949 (battery 5 Nov, case 2 run 1): a helper's answer typed in one ask chat
+      // accepted another chat's request. In a go-between's chat the answer acts only on
+      // that chat's own request; a request elsewhere is answered where it lives.
+      const inAGoBetweensChat = GO_BETWEEN_MODES.has(runModes.get(runId ?? '') ?? '');
+      const askedHere =
+        ownRequest ??
+        (inAGoBetweensChat && threadId !== undefined
+          ? ((await requestAskedInThread(userId, threadId)) ?? undefined)
+          : undefined);
+      if (askedHere === undefined && inAGoBetweensChat) {
+        return { success: false, sent: false, note: NOT_THIS_CHATS_REQUEST_NOTE };
+      }
+      // #5249: in a request's own chat the answer is that request's, whatever id was passed.
       // #8912: the server writes no close line for a chat answer; the reply says what was done.
-      return retried ? await answer(ownRequest) : first;
+      return answer(askedHere ?? asked);
     }
     case 'get_intro_status': {
       /**
@@ -16466,6 +16494,11 @@ async function runToolLoop(
     !promoted &&
     !answeringALaterTap &&
     runModes.get(runId) !== 'incoming_ask' &&
+    // #8949 (battery 5 Nov, case 5 run 3): a send this very run made, under any goal, is
+    // a send — the check forced a false „nothing went" correction.
+    !runAskSent.has(runId) &&
+    !runIntroSent.has(runId) &&
+    !runRelaySent.has(runId) &&
     (claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText)) &&
     (await goalSentNothing(threadId));
   // #7229: a send claimed in a run whose every ask was refused — the goal may have sent before.

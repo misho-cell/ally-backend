@@ -86,9 +86,8 @@ const ENDORSEMENT_STEMS: readonly string[] = [
   'მირჩევ',
   'ურჩევ',
   'რეკომენდ',
-  // Tester 40162: „…და შეძლებს დაგეხმაროს" — a promise of help she did not make.
-  'დაგეხმარ',
-  'დაეხმარ',
+  // #8949 (battery 5 Nov, case 2): „დაგეხმაროთ / დაეხმაროს" are neutral words, not
+  // praise, and holding the send back on them cost a retry each — they are not read.
   'კარგ',
   'საუკეთესო',
   'სანდო',
@@ -99,11 +98,9 @@ const ENDORSEMENT_STEMS: readonly string[] = [
   'best',
   'trusted',
   'reliable',
-  'help',
   'рекоменд',
   'хорош',
   'лучш',
-  'помож',
 ];
 
 /**
@@ -114,7 +111,6 @@ const ENDORSEMENT_STEMS: readonly string[] = [
  */
 const ENDORSEMENT_FAMILIES: readonly (readonly string[])[] = [
   ['ვურჩევ', 'გირჩევ', 'მირჩევ', 'ურჩევ', 'რეკომენდ', 'recommend', 'рекоменд'],
-  ['დაგეხმარ', 'დაეხმარ', 'help', 'помож'],
   ['კარგ', 'good', 'хорош'],
 ];
 const NEGATION_RE = /^(?:ვერ|არ|not|can't|cannot|cant|never|не|no)$/u;

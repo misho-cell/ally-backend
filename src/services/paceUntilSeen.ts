@@ -17,15 +17,24 @@ const UNSEEN_LOOKUP_TIMEOUT_MS = 4_000;
 const UNSEEN_HOLD_DAYS = 14;
 
 /** Has this asker an ask to this person that they have not opened yet? */
-export async function previousAskUnseen(fromUserId: string, toUserId: number): Promise<boolean> {
+/**
+ * #8949 (battery 5 Nov, case 5 run 3): a new ask was held because of an older,
+ * unrelated one on another goal. Pacing is for one conversation: only an
+ * unseen ask of this same goal holds the next.
+ */
+export async function previousAskUnseen(
+  fromUserId: string,
+  toUserId: number,
+  taskId: number,
+): Promise<boolean> {
   const result = await query<{ found: boolean }>(
     `SELECT EXISTS (
        SELECT 1 FROM task_asks
-        WHERE from_user_id = $1::int AND to_user_id = $2::int
+        WHERE from_user_id = $1::int AND to_user_id = $2::int AND task_id = $4::int
           AND status = 'sent' AND seen_at IS NULL
           AND created_at > NOW() - ($3 || ' days')::INTERVAL
      ) AS found`,
-    [fromUserId, toUserId, UNSEEN_HOLD_DAYS],
+    [fromUserId, toUserId, UNSEEN_HOLD_DAYS, taskId],
     UNSEEN_LOOKUP_TIMEOUT_MS,
   );
   return result.rows[0]?.found === true;

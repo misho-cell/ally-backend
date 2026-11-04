@@ -28,8 +28,6 @@ describe('the list comes back as Excel', () => {
 describe('Excel asked for where no list was worked (2347, 48280)', () => {
   it('reads the „no Excel yet" note beside the no-goal error', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      'if (taskId === null) return { error: NO_GOAL_FOR_THE_LIST, download: LIST_DOWNLOAD_NOT_YET };',
-    );
+    expect(chat).toMatch(/note: NO_LIST_IN_THIS_CONVERSATION,\s+download: LIST_DOWNLOAD_NOT_YET,/);
   });
 });

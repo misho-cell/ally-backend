@@ -2094,7 +2094,7 @@ async function createAskNow(
     PACE_UNTIL_SEEN_ON &&
     parentAskId === undefined &&
     card === undefined &&
-    (await previousAskUnseen(fromUserId, toUserId))
+    (await previousAskUnseen(fromUserId, toUserId, taskId))
   ) {
     // eslint-disable-next-line no-console
     console.log(

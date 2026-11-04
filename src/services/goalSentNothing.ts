@@ -18,7 +18,10 @@ export async function goalSentNothing(threadId: number): Promise<boolean> {
                 SELECT 1 FROM tasks k JOIN held_asks h ON h.task_id = k.id WHERE k.thread_id = $1)
               AND NOT EXISTS (
                 SELECT 1 FROM tasks k JOIN introduction_requests r ON r.requester_task_id = k.id
-                 WHERE k.thread_id = $1) AS silent`,
+                 WHERE k.thread_id = $1)
+              -- #8949: an introduction asked from this conversation without the goal on it.
+              AND NOT EXISTS (
+                SELECT 1 FROM introduction_requests r WHERE r.origin_thread_id = $1) AS silent`,
       [threadId],
       QUERY_TIMEOUT_MS,
     );
