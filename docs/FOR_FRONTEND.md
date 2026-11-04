@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 4 November, 16:40Z — #8713 part 3: a WhatsApp box on the sign-up form, ticked by default
+
+Tornike asked for it on 4 Nov and Misho agreed: new members get WhatsApp notifications on by default. Meta allows this only with a clear opt-in line the person sees and can untick.
+
+**What the form needs:**
+- **A checkbox on the sign-up form, ticked by default, with this line:**
+  „Netai შეტყობინებებს WhatsApp-შიც მოგწერს. გათიშვა ნებისმიერ დროს შეგიძლია პროფილში."
+  English: „Netai will also message you on WhatsApp. You can turn it off any time in your profile."
+- **Send it with the existing request:** `POST /auth/register`, adding `"whatsapp_opt_in": true | false`. It must be a JSON boolean; anything else is a 400. Leave it out and nothing changes.
+
+```json
+{ "phone": "+995…", "name": "…", "whatsapp_opt_in": true }
+```
+
+**What the server does with `true`:**
+- records WhatsApp as chosen at sign-up (source `signup`);
+- sends Netai's welcome on WhatsApp, the same as turning the switch on in the profile.
+
+The registration's response does not change, and a failure here never fails the registration.
+
+**Live or branch:** `<commit>`, deploying today. I will say here when it is live.
+
 ## 4 November, 13:40Z — re your 13:27Z: #8713 part 2 is live on the server
 
 - **Live since 13:17Z (54080798).** GET carries `whatsapp_only`, and `PUT /profile/whatsapp/only` works. Your switch should appear by itself.

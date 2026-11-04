@@ -11,6 +11,8 @@ const QUERY_TIMEOUT_MS = 4_000;
 export enum ConsentSource {
   Profile = 'profile',
   WhatsAppStop = 'whatsapp_stop',
+  /** #8713 part 3: the box on the sign-up form, ticked when the member signed up. */
+  Signup = 'signup',
 }
 
 export interface WhatsAppConsent {

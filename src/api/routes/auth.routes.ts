@@ -15,6 +15,7 @@ import {
   OTP_SENDS_PER_PHONE_PER_HOUR,
 } from '../../services/auth.service';
 import { checkRegistrationEligibility } from '../../services/inviteGate.service';
+import { optInAtSignup } from '../../services/whatsappAtSignup.service';
 import { recordLinkOpened, recordLinkShared } from '../../services/referralLink.service';
 import {
   authenticateJwt,
@@ -288,6 +289,8 @@ authRouter.post(
   body('name').isString().trim().notEmpty().withMessage('name is required'),
   body('referralPhone').optional().isString().trim(),
   body('referralCode').optional().isString().trim(),
+  // #8713 part 3: the sign-up form's WhatsApp box; a JSON boolean when sent.
+  body('whatsapp_opt_in').optional().isBoolean({ strict: true }),
   async (req: Request, res: Response<ApiResponse<{ token: string }>>) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -320,6 +323,9 @@ authRouter.post(
         invitation.referralPhone,
         invitation.referralCode,
       );
+      if ((req.body as { whatsapp_opt_in?: unknown }).whatsapp_opt_in === true) {
+        void optInAtSignup(result.token);
+      }
       res.status(201).json({ success: true, data: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'რეგისტრაცია ვერ მოხერხდა';
