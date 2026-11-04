@@ -32,6 +32,7 @@ import {
   appSessionStats,
 } from '../../services/appSessions.service';
 import { createNetaiTemplates, whatsappSetupState } from '../../services/whatsappSetup.service';
+import { whatsappWebhookState } from '../../services/whatsappWebhookState.service';
 import {
   DEFAULT_TRACE_RUNS,
   isTestSeatThread,
@@ -3750,6 +3751,20 @@ adminRouter.get('/whatsapp', async (_req: Request, res: Response) => {
     res
       .status(200)
       .json({ success: true, data: { ...state, channel_on: await whatsappChannelOn() } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[whatsapp-admin]', (error as Error).message);
+    res.status(502).json({ success: false, error: (error as Error).message });
+  }
+});
+
+/**
+ * Misho's test, 4 Nov: no WhatsApp message reaches the server. Which apps the
+ * business account delivers to, and whether the number's callback URL is ours.
+ */
+adminRouter.get('/whatsapp/webhook', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: await whatsappWebhookState() });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[whatsapp-admin]', (error as Error).message);
