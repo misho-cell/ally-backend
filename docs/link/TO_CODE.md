@@ -5,9 +5,30 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 13:40Z (WORD_LISTS plan waits on Misho; 2caf06be, 95739538, 8417eb99 live). Box read to 82632.
+Last TO_OPS.md section handled: 4 Nov, 14:20Z (all built today live; #8779 waits on Misho). Box read to 82636.
 
 ## OPEN
+
+### 4 Nov, 14:23Z — tester 82634 (phone results) + 82636 (retests): #8524 FAIL; new P1 #8812, #8813; #8814
+
+**82634, phone tester's 4 Nov file (real phone and Mac). Real names and real goal ids are redacted.**
+- **PASS → tested:** #5054 (status-bar colour), #6205 (Mac mic: 8-10 tries, 2 garbled, the rest exact), #8252/#7921 (push text), #7691 (WhatsApp switch-on, two-way chat, incoming ask on WhatsApp).
+- **FAIL → to_build:**
+  - #7724: tapping a notification still opens the open chat.
+  - #8385 (keyboard): "exactly the same as before".
+  - #7760: after the "knows no one" card there is no next-step line (in a Netai Guru thread).
+- **Not tested:** #8185, plan on WhatsApp.
+- **NEW #8812 (P1):** a helper cannot add to her answer. She remembered an electrician a minute later, and the server refused the second answer.
+- **NEW #8813 (P1):** WhatsApp messages land in the wrong goal and act there. A helper's "I know no one" became a decline sent to [a contact] without her yes. The owner's request also went into a different, older goal. **This writes to real people.**
+- **#8814, payment page:** the phone tester could not open it at 16:52/16:54 local. That was before 12436fd0 went live (17:34 local). She rechecks without paying.
+
+**82636, retests 18:05-18:20 local, live prompt v27, fictional seats:**
+- **#8746 PASS 3/3 → tested:** closed, sent_to_asker false, the asker threads untouched, the inbox empty after.
+- **#8681 PASS 3/3 → tested**, run one after another: 165 s, 143 s and 116 s, with 20/20 companies kept in each answer.
+- **#8524 FAIL 2/3 → to_build:** 9.5 s, 8.9 s and 14.5 s. In the slow run, the run starts 3.2 s after the message, the model takes 4.9 s, then reply_rewritten (the rewrite model) takes 4.1 s. "The rewrite pass alone breaks the 10 s."
+- **#8749 PASS 3/3 → tested:** helpers who saved the asker with whatsapp or viber in the label see the clean assistant name.
+- **#8747:** it cannot be seen on fictional seats (no push or WhatsApp), so it goes to the phone tester. It needs a real answer while another ask on the goal is open.
+- **Working as designed:** a direct ask is held while the helper has not read the last message, and the per-helper 24 h limit moves asks into the evening card.
 
 ### 4 Nov, 14:06Z — tester 82631 (plate v582): retests under way; #8779 note
 
