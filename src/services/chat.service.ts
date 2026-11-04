@@ -300,8 +300,9 @@ import {
   getSentAsksForOwner,
   SentAskStatus,
   openQuestionsToMe,
+  closeOpenQuestions,
 } from './taskAsks.service';
-import { askThreadForName } from './askThreadByName';
+import { askThreadForName, askThreadsForName } from './askThreadByName';
 import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
@@ -2507,6 +2508,37 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     required: ['answer_text'],
   },
 };
+
+/**
+ * #8746 (Tornike, 4 Nov, P1): „close these questions" had no tool, so each
+ * asker was answered „it was a test". This closes an open question someone
+ * asked the member and sends the asker nothing.
+ */
+const CLOSE_OPEN_QUESTION_TOOL: AnthropicTool = {
+  name: 'close_open_question',
+  description:
+    'Closes an open question someone asked the user, and sends the asker NOTHING. Use it when ' +
+    'the user wants a question closed, dismissed or ignored without an answer. Inside the ' +
+    "question's own chat it closes that question; from any other chat pass asker_name, and " +
+    'every_from_asker=true to close all of that person’s open questions.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      asker_name: {
+        type: 'string',
+        description: 'Outside the question’s own chat: the asker’s name, as the user said it.',
+      },
+      every_from_asker: {
+        type: 'boolean',
+        description: 'Close every open question from this asker, not only the newest.',
+      },
+    },
+    required: [],
+  },
+};
+
+export const QUESTION_CLOSED_NOTE =
+  'Closed. Nothing was sent to the asker. Tell the user in one line that it is closed.';
 
 /**
  * What send_answer_to_asker says when confirmed is missing.
@@ -11770,6 +11802,19 @@ async function executeToolCall(
       if (sent.sent && runId) runAnswerSent.add(runId);
       return sent.sent ? { ...sent, next: answerSentNote(runLang(runId)) } : sent;
     }
+    case 'close_open_question': {
+      if (threadId === undefined) return { closed: 0, error: 'No thread context for this call.' };
+      const name = String(input['asker_name'] ?? '');
+      const threads =
+        input['every_from_asker'] === true
+          ? askThreadsForName(await openQuestionsToMe(userId), name)
+          : [await askThreadForCall(userId, threadId, runId, input)].filter(
+              (t): t is number => t !== null,
+            );
+      if (threads.length === 0) return { closed: 0, error: await whichQuestionNote(userId) };
+      const closed = await closeOpenQuestions(userId, threads);
+      return { closed, sent_to_asker: false, next: QUESTION_CLOSED_NOTE };
+    }
     case 'list_answer_rules': {
       const rules = await listAnswerRules(userId);
       return {
@@ -17220,14 +17265,14 @@ export async function buildToolsForThread(
     return [
       SEND_ANSWER_TO_ASKER_TOOL,
       // #991: only in a turn the owner is in — the tool rests on his own words.
-      ...(ownerAbsent ? [] : [SHARE_CONTACT_NUMBER_TOOL]),
+      ...(ownerAbsent ? [] : [SHARE_CONTACT_NUMBER_TOOL, CLOSE_OPEN_QUESTION_TOOL]),
       ...enabled.filter((tool) => !ASK_THREAD_WITHHELD_TOOL_NAMES.has(tool.name)),
     ];
   }
   // #991 reopened (tester 74020): an open question can be answered from any chat.
   const answerTools =
     !ownerAbsent && (await hasOpenQuestions(userId))
-      ? [SEND_ANSWER_TO_ASKER_TOOL, SHARE_CONTACT_NUMBER_TOOL]
+      ? [SEND_ANSWER_TO_ASKER_TOOL, SHARE_CONTACT_NUMBER_TOOL, CLOSE_OPEN_QUESTION_TOOL]
       : [];
   return [...answerTools, ...(await buildEnabledTools(userId, ownerAbsent))];
 }

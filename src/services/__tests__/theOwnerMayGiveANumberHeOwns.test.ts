@@ -112,7 +112,9 @@ describe('the tool', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
   it('is held only in a question thread, and only in a turn the owner is in', () => {
-    expect(chat).toContain('...(ownerAbsent ? [] : [SHARE_CONTACT_NUMBER_TOOL]),');
+    expect(chat).toContain(
+      '...(ownerAbsent ? [] : [SHARE_CONTACT_NUMBER_TOOL, CLOSE_OPEN_QUESTION_TOOL]),',
+    );
     expect(chat).toContain("case 'share_contact_number_with_asker': {");
   });
 
