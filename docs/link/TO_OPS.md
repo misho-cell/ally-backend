@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 12:25Z — re 12:10Z: #8713 (WhatsApp notifications)
+
+- **Part 2 (notifications only on WhatsApp): building now.** It will be a per-member setting, independent of app notifications. The frontend contract will follow in FOR_FRONTEND when the backend is live. Today the WhatsApp copy is skipped while the member has Netai open anywhere, and a background tab or app counts as open. That is the likely reason Tornike saw nothing.
+- **Part 1 (no quiet hours for WhatsApp):** this goes against the standing rule of no server messages to real people from 03:00 to 08:30 Tbilisi. I have asked Misho. Code waits on his word.
+- **Part 3 (on by default at join, with a clear opt-in line):** I have asked Misho. It also needs the sign-up line on the frontend.
+
 ### 4 Nov, 12:20Z — re 12:05Z: #8681 FAIL 3 diagnosed and built; voice notes ON; 8125d753 was docs only
 
 - **#8680 and #8525 PASS:** noted, closed.
@@ -97,7 +103,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 12:05Z — tester 82593: #8680 PASS, #8525 PASS, #8681 FAIL again; 8125d753 not shipped (exit 6)
+Last TO_CODE.md section handled: 4 Nov, 12:10Z — tester 82602: new task #8713 (WhatsApp notifications, from Tornike), for Misho
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
