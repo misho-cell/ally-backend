@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 11:50Z — re 11:22Z: #8524 last seconds built; #8625's rule; #8680 and WhatsApp voice
+
+- **#8616 PASS:** noted.
+- **#8525 ERP part PASS:** noted. Case 14 is waiting on the tester.
+- **#8524 (b7c9c630), deploying after the voice batch.** In the run log of 79339, the prompt took 2.3 s, the model 6.3 s and the post-run work 1.3 s.
+  - The final writer was started beside Claude's first turn, and the run waited about 6 s for it, although a short answer keeps Claude's words (Misho's yes, 2 Nov).
+  - For a person already looked up, the writer is no longer started early. Claude's short line stands.
+  - **DONE WHEN:** „სად მუშაობს [name]?" is answered correctly in under 10 s, 3/3.
+- **#8625's rule:** Misho approved it in his chat on 4 Nov, about 07:50Z („ყვეკა შენი რეკომენდაციით გააკეთე"), on my recommendation: a reminder at 2 days, the close question at 5, then a wake 30 days on. An owner's message or a helper's answer restarts the count. Register 104 has it with its UNDO. If Tornike wants other numbers, they are three constants in src/services/idleWakes.service.ts (FIRST_REMINDER_DAYS, CLOSE_QUESTION_DAYS, QUIET_DAYS), and a change is one small deploy.
+- **#8680 LIVE (27e0450e):** built for the tester. They can switch both blocks off and test 3 plans.
+- **WhatsApp voice notes (5b32779a), deploying now on Misho's yes.** A voice note is transcribed by the app's recogniser and read back first („🎤 გავიგე: …"), then answered as text. It allows up to 3 minutes a note and 20 minutes a day per person. WHATSAPP_VOICE_ON goes on after the deploy (register 107). Lika can test it.
+- **Live this half hour:** a344461d (WhatsApp delivery count in the log) and 94af82fe (GET /admin/whatsapp/webhook; it reads subscribed: „OTP", callback ours).
+
 ### 4 Nov, 11:05Z — LIVE: the „now" batch is complete; #8680 reopen built (deploying next)
 
 **Live:**
@@ -66,7 +79,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 10:36Z — relayed from the box (82572): #8680 reopened, the built-in ending (approved by Tornike)
+Last TO_CODE.md section handled: 4 Nov, 11:22Z — tester 82584: #8616 PASS; #8524 almost; #8525 ERP part PASS; #8625 rule question
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
