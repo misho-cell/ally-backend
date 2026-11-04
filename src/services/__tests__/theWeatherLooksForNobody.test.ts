@@ -39,7 +39,9 @@ describe('a weather question looks for nobody (3106)', () => {
     expect(source).toContain(
       "await weatherFoundFirst(userId, threadId, runId, lastOwnerText(messages) ?? '')",
     );
-    expect(source).toContain("const systemPrompt = promptBeforeTheRun + (weatherFound ?? '') + (jobFound ?? '');");
+    expect(source).toContain(
+      "const systemPrompt = promptBeforeTheRun + (weatherFound ?? '') + (jobFound ?? '');",
+    );
     expect(source).toMatch(
       /weatherFound === null\s+\? \{ forceTool: WEB_SEARCH_TOOL \}\s+: \{ forceText: true, maxTokens: DISCUSS_MAX_TOKENS \}/,
     );
@@ -57,7 +59,9 @@ describe('a weather question looks for nobody (3106)', () => {
 
 describe('every call in the run reads the weather the server found (58065)', () => {
   it('is part of the run’s prompt before the first call and the final writer', () => {
-    const at = source.indexOf("const systemPrompt = promptBeforeTheRun + (weatherFound ?? '') + (jobFound ?? '');");
+    const at = source.indexOf(
+      "const systemPrompt = promptBeforeTheRun + (weatherFound ?? '') + (jobFound ?? '');",
+    );
     expect(at).toBeGreaterThan(source.indexOf('const weatherFound = weatherLookUp'));
     expect(at).toBeLessThan(source.indexOf('const writeWith = async (model: string)'));
     expect(at).toBeLessThan(

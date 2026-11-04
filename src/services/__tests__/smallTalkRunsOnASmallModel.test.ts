@@ -70,8 +70,6 @@ describe('the small-talk turn', () => {
 
   // 3106 (16 Oct 07:35): the weather, once found by the server, is read back by the small model.
   it('answers a weather question the server already looked up on the small model', () => {
-    expect(chat).toContain(
-      '(weatherLookUp && weatherFound !== null) || jobFound !== null;',
-    );
+    expect(chat).toContain('(weatherLookUp && weatherFound !== null) || jobFound !== null;');
   });
 });
