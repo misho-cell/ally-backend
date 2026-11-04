@@ -6717,3 +6717,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Write:** `DELETE /admin/test-accounts/<seat>?dry_run=false`, called by the tester.
 - **Scope:** the route refuses (403) anything that is not a test seat on a fictional number before anything runs. The erasure is one transaction (privacyRights.deleteMyAccount), the seat row is released, and its fictional number goes back to the pool.
 - **UNDO:** none for the erased seat's own data. A new seat on the freed number is created with `POST /admin/test-accounts`. Nothing on a real account is touched.
+
+## 103 · OLD PERSONAL ID NUMBERS MASKED IN OWNERS' STORED LINES (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", on the recommendation to clean rows stored before #8618)
+
+- **Write:** migration 291_mask_old_personal_ids.sql, which runs once on deploy. In owner lines (role 'user') that hold a standalone 11-digit number, the number is replaced with „[პირადი ნომერი დამალულია]". 7 rows when written. content_json is kept in step where it is a plain string.
+- **Before:** every changed row's content and content_json is copied into conversations_pid_backup.
+- **UNDO:** `UPDATE conversations c SET content = b.content, content_json = b.content_json FROM conversations_pid_backup b WHERE b.conversation_id = c.id;` Then drop the backup table once the undo is no longer wanted. The backup itself holds the numbers, so it is dropped after 7 days unless Misho says otherwise.
