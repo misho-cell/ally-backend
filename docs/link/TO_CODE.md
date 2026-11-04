@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 13:40Z (WORD_LISTS plan waits on Misho; 2caf06be, 95739538, 8417eb99 queued). Box read to 82623.
+Last TO_OPS.md section handled: 4 Nov, 13:40Z (WORD_LISTS plan waits on Misho; 2caf06be, 95739538, 8417eb99 live). Box read to 82632.
 
 ## OPEN
+
+### 4 Nov, 14:06Z — tester 82631 (plate v582): retests under way; #8779 note
+
+- The plate has 42 open: 8 to build and 34 built to test. New since 16:00 local: #8713, #8746, #8747, #8748, #8749 and #8779.
+- The tester is now retesting #8746, #8747, #8749, #8681 (asks one after another) and #8524.
+- Verbatim note on #8779: "71b1c4db added „დაელაპარაკე“ to the yes-list — the founder's rule is no word list at all; please replace the list, not extend it." Ops: your WORD_LISTS.md plan removes 71b1c4db with group 1, and it waits on Misho's confirmation.
 
 ### 4 Nov, 12:52Z — tester 82615: NEW #8779 (P1, Misho): no fixed word lists on the server
 
