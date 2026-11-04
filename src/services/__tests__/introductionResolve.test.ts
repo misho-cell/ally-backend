@@ -384,7 +384,8 @@ describe('accept outcome (tasks 16/18)', () => {
   const OUTGOING = { id: 12, user_id: 9, type: 'outgoing_request' };
   const INCOMING = { id: 11, user_id: 7, type: 'incoming_request' };
 
-  it('a mediated accept hands the requester the contact and tells a registered target', async () => {
+  // #8945 (battery 5 Nov): a member target is asked first; the number waits for their yes.
+  it('a mediated accept asks a registered target first and hands nothing over yet', async () => {
     setup({
       request: REQUEST_ROW,
       aliasPhones: [{ digits: '995555000005' }],
@@ -400,16 +401,22 @@ describe('accept outcome (tasks 16/18)', () => {
     });
 
     expect(out.ok).toBe(true);
-    // The requester's thread carries a WAY TO TALK: the target's number.
+    // The requester waits: no number before the target agrees.
     const requesterMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
-    expect(requesterMsg?.[3]).toContain('+995555000005');
-    // The registered target got their own thread + push.
+    expect(requesterMsg?.[3]).not.toContain('995555000005');
+    expect(requesterMsg?.[3]).toContain('ვეკითხები');
+    // The registered target got their own thread with the question and two buttons.
     expect(mockCreateThread).toHaveBeenCalledWith('170750', 'regular', expect.any(String));
     const targetMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 77);
     expect(targetMsg?.[3]).toContain('ნინო კახიძე');
-    // The mediator sees what happened in their name.
+    expect(targetMsg?.[6]).toEqual(['კი, გავიცნოთ', 'ახლა არა']);
+    const asked = mockQuery.mock.calls.find((c) =>
+      String(c[0]).includes('target_asked_at = NOW()'),
+    );
+    expect(asked?.[1]).toEqual([5, 77]);
+    // The mediator sees what happened in their name: the target is asked first.
     const mediatorMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 11);
-    expect(mediatorMsg?.[3]).toContain('გადავეცი');
+    expect(mediatorMsg?.[3]).toContain('ჯერ თავად ვკითხავ');
   });
 
   it('degrades honestly when no contact can be found — and never invents one', async () => {

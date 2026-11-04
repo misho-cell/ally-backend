@@ -226,7 +226,9 @@ export type IntroContactOutcome =
   /** The mediator chose to stay in the middle. No number moved, and that is the point. */
   | 'kept_by_mediator'
   /** The mediator chose direct and we could not resolve the contact. Ours to fix, not theirs. */
-  | 'not_found';
+  | 'not_found'
+  /** #8945: the go-between said yes; the member target is being asked; nothing moved yet. */
+  | 'awaiting_target';
 
 /**
  * ⚠️ THE TESTER'S 992 (F2): the MEDIATOR tapped „connect directly", and the
@@ -483,6 +485,10 @@ function introOutcomeBody(
    */
   const byLanguage: Readonly<Record<RunLanguage, Readonly<Record<IntroContactOutcome, string>>>> = {
     ka: {
+      awaiting_target:
+        `შუამავალი დათანხმდა. ${targetName}-ს ახლა თავად ვეკითხებით — მისი კონტაქტი ჯერ არავის ` +
+        'გადასცემია და მხოლოდ მისი თანხმობის შემდეგ გადაეცემა. ნუ ეტყვი მფლობელს, რომ ნომერი აქვს, ' +
+        'და მას შენით არაფერი მისწერო.',
       handed_over_off_netai:
         `${targetName}-ს Netai ჯერ არ აქვს, ამიტომ მასთან Netai-ის არხი არ არის — მისი კონტაქტი ` +
         'მფლობელს პირდაპირ გადაეცა და ის მფლობელს უკვე აქვს. Netai-ით მისწერას ნუ შესთავაზებ და ' +
@@ -502,6 +508,10 @@ function introOutcomeBody(
         'ნუ გაგზავნი შუამავალთან თავიდან სათხოვნელად.',
     },
     en: {
+      awaiting_target:
+        `The mediator agreed. ${targetName} is being asked now — their contact has NOT been passed ` +
+        'on and goes only after they agree. Do not tell the owner they have the number, and write ' +
+        'nothing to them yourself.',
       handed_over_off_netai:
         `${targetName} is not on Netai yet, so there is no Netai channel to them — their contact ` +
         'went to the owner directly and the owner already has it. Do NOT offer to write to them ' +
@@ -520,6 +530,9 @@ function introOutcomeBody(
         'have the number, and do NOT send them back to the mediator to ask again.',
     },
     ru: {
+      awaiting_target:
+        `Посредник согласился. Сейчас спрашиваем ${targetName} — контакт НЕ передан и будет передан ` +
+        'только после его согласия. Не говори владельцу, что номер у него есть, и сам ему не пиши.',
       handed_over_off_netai:
         `У ${targetName} ещё нет Netai, поэтому канала Netai к нему нет — его контакт передан ` +
         'владельцу напрямую, и он у владельца уже есть. Не предлагай написать через Netai и сам ' +
@@ -538,6 +551,9 @@ function introOutcomeBody(
         'его просить посредника снова.',
     },
     es: {
+      awaiting_target:
+        `El intermediario aceptó. Ahora le preguntamos a ${targetName} — su contacto NO se ha pasado ` +
+        'y solo se pasará cuando acepte. No le digas al dueño que tiene el número ni le escribas.',
       handed_over_off_netai:
         `${targetName} aún no está en Netai, así que no hay canal de Netai con él — su contacto ` +
         'pasó al dueño directamente y el dueño ya lo tiene. No ofrezcas escribirle por Netai ni ' +
