@@ -1,7 +1,7 @@
 import { lastQuestionIn } from './buttonsCarryTheQuestion';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { RunLanguage } from './runLanguage';
-import { PLAN_CLOSING_QUESTION } from './taskPlans.service';
+import { PLAN_CLOSING_QUESTION, planClosingQuestionOff } from './taskPlans.service';
 
 /**
  * The tester's 56697 (T4886 follow-up, 13 Oct, 2 of 3): after „რატომ თამაზი?"
@@ -44,7 +44,9 @@ export function withPlanDecisionAgain(
   if ((offered ?? []).length > 0 || lastQuestionIn(reply) !== null) return null;
   if (!planWaitsForTheOwner(task)) return null;
   return {
-    text: `${reply.trimEnd()}\n\n${PLAN_CLOSING_QUESTION[language]}`,
+    text: planClosingQuestionOff(language)
+      ? reply.trimEnd()
+      : `${reply.trimEnd()}\n\n${PLAN_CLOSING_QUESTION[language]}`,
     choices: [APPROVE_LABEL[language], CHANGE_LABEL[language]],
   };
 }

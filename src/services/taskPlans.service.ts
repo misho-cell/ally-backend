@@ -1,5 +1,5 @@
 import { accountDetailsFor, fetchAccountStates } from './tools/membership';
-import { ServerTextBlock, serverText } from './serverTextBlocks';
+import { ServerTextBlock, serverText, serverTextIsOff } from './serverTextBlocks';
 import { notOnNetaiLine } from './mutualGroups';
 import { georgianScriptName } from './georgianScriptName';
 import { query } from '../db/postgres/client';
@@ -1255,6 +1255,19 @@ export const PLAN_CLOSING_QUESTION: Readonly<Record<RunLanguage, string>> = {
   ru: 'Начинаю?',
   es: '¿Empiezo?',
 };
+
+/**
+ * #8680 (Tornike, 4 Nov, the tester's 82572): the team switched the Georgian
+ * closing-question block off — the server then adds no question of its own.
+ */
+export function planClosingQuestionOff(language: RunLanguage): boolean {
+  return language === 'ka' && serverTextIsOff(ServerTextBlock.PlanClosingQuestionKa);
+}
+
+/** The same for the Georgian plan sentence: the assistant's own sentence stands alone. */
+export function planAskSentenceOff(language: RunLanguage): boolean {
+  return language === 'ka' && serverTextIsOff(ServerTextBlock.PlanAskSentenceKa);
+}
 
 /**
  * The agreed question before D663. A model may still write it for a while; it

@@ -31,16 +31,16 @@ describe('a server text the team can edit', () => {
   });
 
   it('is the block once the team has written one, read by its name only', async () => {
-    mockQuery.mockResolvedValue(rows([{ content: '  ვკითხო?  ' }]));
+    mockQuery.mockResolvedValue(rows([{ content: '  ვკითხო?  ', enabled: true }]));
     await loadServerTexts();
     expect(serverText(ServerTextBlock.PlanClosingQuestionKa, 'დავიწყო?')).toBe('ვკითხო?');
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(String(sql)).toContain('WHERE name = $1 AND enabled = TRUE');
+    expect(String(sql)).toContain('WHERE name = $1');
     expect(params).toEqual([expect.any(String)]);
   });
 
   it('keeps the code’s text when the block is empty or the read fails', async () => {
-    mockQuery.mockResolvedValue(rows([{ content: '   ' }]));
+    mockQuery.mockResolvedValue(rows([{ content: '   ', enabled: true }]));
     await loadServerTexts();
     expect(serverText(ServerTextBlock.CardRetellBrief, 'code brief')).toBe('code brief');
     forgetServerTexts();
@@ -60,7 +60,9 @@ describe('the plan the owner reads', () => {
   };
 
   it('fills the team’s sentence with the names and the right „assistant" form', async () => {
-    mockQuery.mockResolvedValue(rows([{ content: '{names} {assistants} ვკითხავ.' }]));
+    mockQuery.mockResolvedValue(
+      rows([{ content: '{names} {assistants} ვკითხავ.', enabled: true }]),
+    );
     await loadServerTexts();
     expect(planInSentences(PLAN, 'ka')).toContain('ასისტენტს ვკითხავ.');
     expect(PLAN_CLOSING_QUESTION.ka).toBe('{names} {assistants} ვკითხავ.');
@@ -76,7 +78,7 @@ describe('the first answer’s brief (tester 79221)', () => {
     );
     forgetServerTexts();
     mockQuery.mockResolvedValue(
-      rows([{ content: 'Answer in {language}. Only dates on the page.' }]),
+      rows([{ content: 'Answer in {language}. Only dates on the page.', enabled: true }]),
     );
     await loadServerTexts();
     const prompt = worldQuestionPrompt('Q?', 'en');
