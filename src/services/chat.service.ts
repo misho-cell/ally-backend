@@ -7530,6 +7530,13 @@ const GO_AHEAD = [
   'მიუწერე',
   'დაუწერე',
   'ჰკითხე',
+  // Misho, 4 Nov (WhatsApp, his own goal): the plan said „… ასისტენტებს
+  // დაველაპარაკები", he answered „კარგი დაელაპარაკე" and it was refused as
+  // „a yes to something else". The plan's own verb, said back, is the go-ahead.
+  'დაელაპარაკე',
+  'დაელაპარაკეთ',
+  'ელაპარაკე',
+  'talk to them',
   'contact them',
   'write to them',
   'ask them',
