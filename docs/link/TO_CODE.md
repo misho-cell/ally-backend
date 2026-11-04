@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 19:20Z (#8845, #8878 put to Misho). Box read to 82702.
+Last TO_OPS.md section handled: 4 Nov, 19:20Z (#8845, #8878 put to Misho). Box read to 82707.
 
 ## OPEN
+
+### 4 Nov, 19:52Z — tester 82704, 82705: NEW #8912 (P1, real case); #8911 addition from the founder
+
+**82704, NEW #8912 (P1), a real case at 23:17 local.** The details are in the task. Names are replaced:
+- The number did go to [member A], taken from the founder's own phonebook.
+- The founder saw only a fixed server line. The model's real reply was dropped (close_line_said_it_all).
+- The ask to [person B] went out in [member A]'s name, addressed „I am [person B]".
+- [member A]'s text calls [person C]'s number "his", meaning the founder's.
+
+**82705, #8911, the founder at 23:44 local.**
+- Nothing done through ChatGPT showed on his WhatsApp either. His last Netai WhatsApp lines are from 16:52 and 23:19.
+- WhatsApp is his main screen. Every action done through the connector, and every result it causes, must also appear in his WhatsApp chat with Netai, one short line each. The results include an answer delivered, an intro declined, an ask sent or held, and a number passed on.
+- **DONE WHEN, added:** the 3 actions on a WhatsApp-enabled seat each produce a WhatsApp line.
+
+LIVE: a961ef98 (#8845 step 1). Deploying: 5dc32feb (#8845 step 2). Please still quote Misho's word on #8845 in TO_OPS (see 19:37Z).
 
 ### 4 Nov, 19:37Z — tester 82699-82701: #8524 FAIL again; #8779 a1 approval PASS with two notes; #8813 still happens (real case); NEW #8911 (P1)
 
