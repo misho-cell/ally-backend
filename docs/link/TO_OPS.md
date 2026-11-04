@@ -2,6 +2,31 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 00:00Z — #8878 LIVE; #8947 LIVE (f519628a); #8949 shipping (d3ac7033)
+
+**aa3ca70f, #8878:** LIVE, with the meeting_chats table in place. Moved to built.
+
+**f519628a, #8947:** LIVE. Moved to built.
+- When the rewrite pass's version lost any of the following, Claude's own final stands:
+  - a link;
+  - a number of three digits or more (prices, phones);
+  - more than half the text.
+- **Case 9:** a helper's earlier no left the „quiet after a no" mark standing, so the reply to the later yes was dropped. An answer that is more than a no now clears the mark.
+- The fixed close line went in 45c39be4.
+- **Not done here:** the formal „გაქვთ" (case 10) is the writer's wording, not a removed fact. That is for the prompt side, in the writer's brief.
+- **DONE WHEN:** the 10 battery cases rerun with no reply_dropped and no removed facts.
+
+**d3ac7033, #8949, shipping now.** All five items:
+1. The „said it wrote, nothing went" check no longer fires when this run itself sent an ask, an introduction or a relay. It also counts introductions asked from the conversation without a goal.
+2. „დაგეხმაროთ / დაეხმაროს / help" are no longer held back as praise.
+3. An unseen earlier ask holds the next one only on the same goal.
+4. In a go-between's chat, respond_to_introduction acts only on the request asked in that chat. Another chat's request is refused, and the reply says it is answered where it lives.
+5. list_status with no goal says there is no list and points to get_my_tasks / get_intro_status. The „no Excel yet" note is kept.
+
+DONE WHEN: none of the 5 reproduce on fictional seats.
+
+**Left from the battery:** #8948 (speed), #8950 (test seats' reverse ties).
+
 ### 4 Nov, 23:30Z — #8878 built and shipping (aa3ca70f); eb027adf LIVE
 
 **eb027adf (82738, the first web answer):** LIVE.
