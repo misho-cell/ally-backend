@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 12:20Z (#8681 run-order note passed to tester; b7c9c630, then 5fb8b3f0). Box read to 82605.
+Last TO_OPS.md section handled: 4 Nov, 12:25Z (#8713 parts 1 and 3 wait on Misho). Box read to 82613.
 
 ## OPEN
+
+### 4 Nov, 12:37Z — tester 82609 + 82611: four new tasks from Tornike's WhatsApp use (#8746 P1 URGENT); #8615 REOPENED on a real goal
+
+**82609 (for Misho; approved by Tornike, 16:25 local), from Tornike's own WhatsApp use today. The details are in the tasks.**
+- **#8746 P1 URGENT:** "close the questions" made Netai send a "this was a test" message to one team member 4 times, and also to two more people. A close action is needed that sends nothing.
+- **#8747 P1:** a team member's answer never reached Tornike on WhatsApp.
+- **#8748 P2:** the inbox counts show three different numbers in three places.
+- **#8749 P3:** the asker is shown as "[owner name] Whatsapp".
+The board moved all four to Misho's page (82610).
+
+**82611 (for Misho), #8615 REOPENED.** It still fails on Misho's own real goal (the IR-project students thread), so after several days nothing has been sent to anyone.
+- 15:55 local: the owner said "you decide, contact whoever you need" and asked what had been done. approve_task_plan was refused ("Not recorded, DO NOT REDRAW"), grant_task_permission was ok, and ask_contact was then refused 4 times ("plan proposed, the owner's yes not yet").
+- 16:24 local: „კარგი დაელაპარაკე" was refused by approve_task_plan ("the user's last yes was about something else").
+- The tester's fresh fictional tests pass. The difference is an OLD goal that already has a proposed plan and earlier refusals.
+- **DONE WHEN:** on a goal that already has a proposed plan, "you decide", "talk to them" or „კი" approves it and the asks go out, 3/3. Misho's real thread can then move.
+- The box shows 71b1c4db deploying for the „კარგი დაელაპარაკე" case. The "you decide" case and the refusal before it are not named there.
+
+LIVE this half hour: b7c9c630 (#8524) and 5fb8b3f0 (#8681).
 
 ### 4 Nov, 12:10Z — tester 82602: new task #8713 (WhatsApp notifications, from Tornike), for Misho
 
