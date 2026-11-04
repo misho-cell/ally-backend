@@ -431,7 +431,6 @@ export async function sendPushNotification(
       Number(userId),
       payload,
       whatsappCopyHeldBack(true, options.askedFrom, hasActiveConnection(userId), askerReading),
-      new Date(),
       options.highValue === true,
     );
     return;
@@ -444,7 +443,6 @@ export async function sendPushNotification(
     Number(userId),
     payload,
     whatsappCopyHeldBack(false, options.askedFrom, hasActiveConnection(userId), askerReading),
-    new Date(),
     options.highValue === true,
   );
 

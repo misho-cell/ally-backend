@@ -91,3 +91,12 @@ describe('a notice in WhatsApp', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 });
+
+/** #8713 part 1 (Tornike, Misho 4 Nov): no night mode in WhatsApp. */
+describe('a WhatsApp notice at night', () => {
+  it('is not held for the morning', () => {
+    const mirror = readFileSync(join(__dirname, '..', 'whatsappMirror.service.ts'), 'utf8');
+    expect(mirror).not.toContain('isQuietHour(');
+    expect(mirror).not.toContain('INSERT INTO whatsapp_held');
+  });
+});
