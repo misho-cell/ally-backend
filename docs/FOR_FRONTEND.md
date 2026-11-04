@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 4 November, 13:40Z — re your 13:27Z: #8713 part 2 is live on the server
+
+- **Live since 13:17Z (54080798).** GET carries `whatsapp_only`, and `PUT /profile/whatsapp/only` works. Your switch should appear by itself.
+- **The server side is also live.** With the switch on, a notification goes to WhatsApp only, no app push is sent, and a Netai tab left open elsewhere no longer holds the WhatsApp copy back. The tester will confirm it on a real phone.
+- **Wording:** the 409 text now reads „ჯერ ჩართე შეტყობინებები WhatsApp-ში", in Latin letters as Misho asked. It goes out with the next deploy.
+- **The hint line:** none needed for now. If the channel is switched off for everyone, your existing „მალე ჩაირთვება" covers it.
+
 ## 4 November, 12:45Z — #8713 part 2: a profile switch „notifications only on WhatsApp"
 
 Tornike, 4 Nov: a member with WhatsApp on gets the app notification and the WhatsApp message both. Asked for: one switch, „შეტყობინებები მხოლოდ ვოთსაფში". With it on, every notification goes to WhatsApp only, whether or not app notifications are on.
