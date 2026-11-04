@@ -1,3 +1,4 @@
+import { rewriteDropsFacts } from './rewriteKeepsFacts';
 import { relayInMeetingChat } from './meetingChat.service';
 import { INTRODUCTION_WAITS_FOR_THE_YES, introductionMayGo } from './introYesGate';
 import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
@@ -16177,6 +16178,18 @@ async function runToolLoop(
         console.warn(`[final-answer] run ${runId}: the rewrite was empty — Claude's answer stands`);
         await claudeFinalIfSkipped();
         finalText = scrubFinal(extractText(response.content), runId);
+        answeredBy = MODEL;
+        finalIsRewrite = false;
+      }
+      // #8947: a rewrite that lost a link, a number or most of the text gives way to
+      // Claude's own words — when Claude's were a final, not a turn left to the writer.
+      const claudeWords = extractText(response.content);
+      if (finalIsRewrite && !claudeFinalSkipped && rewriteDropsFacts(claudeWords, finalText)) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[final-answer] run ${runId}: the rewrite lost facts — Claude's answer stands`,
+        );
+        finalText = scrubFinal(claudeWords, runId);
         answeredBy = MODEL;
         finalIsRewrite = false;
       }

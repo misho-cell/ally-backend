@@ -13,7 +13,7 @@ import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.ser
 import { unheardAnswerOf } from './answerAddition';
 import { randomUUID } from 'crypto';
 import { releaseDueHeldAsks } from './heldAsks.service';
-import { answerOnlySaysNo, noteQuietAfterDecline } from './quietSystemRun';
+import { answerOnlySaysNo, clearQuietAfterDecline, noteQuietAfterDecline } from './quietSystemRun';
 import { DEFAULT_PUSH_TIME_ZONE, isQuietHour } from './pushQuietHours';
 import { WakeOrigin, goalWaitsForMorning, wakeWaitsForMorning } from './quietWakeGuard';
 import {
@@ -737,6 +737,9 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
     owed.every((a) => answerOnlySaysNo(a.answer ?? '', a.declined === true))
   ) {
     noteQuietAfterDecline(threadId);
+  } else if (threadId !== null) {
+    // #8947: a yes or a lead after an earlier no is news, and is said.
+    clearQuietAfterDecline(threadId);
   }
   const wakeBeforeRun = await nextWakeText(taskId);
   const woken = onScreen
