@@ -989,7 +989,24 @@ function recordWayInCheck(userId: string, origin: WayInOrigin, check: WayInCheck
     input: { tag_queries: check.queries.join(' | ') },
     result,
     durationMs: check.durationMs,
+    resultSample: wayInSample(check),
   });
+}
+
+/**
+ * #8648 (the tester's 82639): the way-in check ran once per answer, but the
+ * trace showed no outcome, so its empty rate could not be read. Hits and
+ * empties are written as a line the trace shows — counts only, no names.
+ */
+export function wayInSample(
+  check: Pick<WayInCheck, 'failure' | 'tied' | 'passes' | 'unfinished'>,
+): string {
+  if (check.failure !== null) return `error (${check.passes} passes)`;
+  if (check.unfinished === check.passes) return `timed out (${check.passes} passes)`;
+  const timedOut = check.unfinished > 0 ? `, ${check.unfinished} timed out` : '';
+  return check.tied > 0
+    ? `found ${check.tied} (${check.passes} passes${timedOut})`
+    : `none found (${check.passes} passes${timedOut})`;
 }
 
 /** The way-in verdicts as prompt lines. Empty when nothing was checked. */
