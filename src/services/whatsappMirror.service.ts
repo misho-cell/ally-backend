@@ -1,12 +1,16 @@
 import { query } from '../db/postgres/client';
-import { isQuietHour, nextQuietEnd, pushTimeZone } from './pushQuietHours';
 import { tellInWhatsapp, whatsappChannelOn } from './whatsappChannel.service';
 
 /**
  * Misho, 25 Oct: every notification a person would get as a push also reaches
  * them in WhatsApp, if they chose it there. Not while they are reading Netai
- * itself, and not in their quiet hours: then it waits for their morning, as a
- * push does.
+ * itself.
+ *
+ * #8713 part 1 (Tornike, 4 Nov; Misho the same day, „ყველა ჩემთან დასმული
+ * კითხვა შენი რეკომენდაციებით გააკეთე"): no night mode in WhatsApp — people
+ * set their own quiet hours there. A WhatsApp notice goes at any hour; the
+ * app's pushes still wait for the morning. What already waits is released by
+ * the usual sweep.
  */
 const QUERY_TIMEOUT_MS = 4_000;
 const APP_URL = 'https://www.netai.guru';
@@ -34,19 +38,6 @@ export function whatsappText(notice: MirroredNotice): string {
   return `${title === '' || body.startsWith(title) ? '' : `${title}\n`}${body}${link}`;
 }
 
-async function holdForMorning(
-  userId: number,
-  text: string,
-  threadId: number | null,
-  now: Date,
-): Promise<void> {
-  await query(
-    `INSERT INTO whatsapp_held (user_id, text, thread_id, release_at) VALUES ($1, $2, $3, $4)`,
-    [userId, text, threadId, nextQuietEnd(now, pushTimeZone(null))],
-    QUERY_TIMEOUT_MS,
-  );
-}
-
 /**
  * The notification in WhatsApp too. `reading`: the person has Netai open, so
  * nothing is sent anywhere else. Never throws.
@@ -55,17 +46,12 @@ export async function mirrorToWhatsapp(
   userId: number,
   notice: MirroredNotice,
   reading: boolean,
-  now: Date = new Date(),
   highValue = false,
 ): Promise<void> {
   if (reading || !(await whatsappChannelOn())) return;
   const text = whatsappText(notice);
   const threadId = threadOfUrl(notice.url);
   try {
-    if (isQuietHour(now, pushTimeZone(null))) {
-      await holdForMorning(userId, text, threadId, now);
-      return;
-    }
     await tellInWhatsapp(userId, text, threadId, highValue);
   } catch (err) {
     // eslint-disable-next-line no-console
