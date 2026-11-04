@@ -9451,7 +9451,8 @@ const runsPastTheirBudget = new Set<string>();
  * against a 3-minute limit. Searching ends by this point in the run so the
  * answer has the rest of the three minutes.
  */
-export const SEARCH_PHASE_CAP_MS = 100_000;
+// The tester's 82558 (4 Nov): 170 / 178 / 185 s at 100 s; 15 s earlier leaves the margin.
+export const SEARCH_PHASE_CAP_MS = 85_000;
 
 /** The searches a round asked for, answered without running them: the time is the answer's now. */
 export function unrunSearchResults(
