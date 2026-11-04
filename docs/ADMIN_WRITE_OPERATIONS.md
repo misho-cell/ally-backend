@@ -6735,3 +6735,10 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Write:** Railway variable PILOT_CONVERSATION_READER_UNTIL = 2026-12-04, set with scripts/ops/env.sh at night after the batch. Setting it restarts the service.
 - **Effect:** admins can open the run trace (/admin/threads/:id/trace) for real members' conversations until that date. The route refuses dates more than 45 days out.
 - **UNDO:** `./scripts/ops/env.sh unset PILOT_CONVERSATION_READER_UNTIL`, then a push to main to restart, because unset does not restart by itself.
+
+## 106 · WHATSAPP BUSINESS ACCOUNT SUBSCRIBED TO THE APP (Misho himself, in Meta's Graph API Explorer, 4 Nov ~10:50Z)
+
+- **Write:** POST /{WhatsApp Business Account}/subscribed_apps for the „OTP" app. Before it, GET on the same path returned an empty list, so Meta delivered inbound messages to no app. The webhook itself was set and verified.
+- **Effect:** inbound WhatsApp messages reach /webhooks/whatsapp. Misho's test message at 10:53Z came in and was answered.
+- **UNDO:** DELETE on the same path in the Graph API Explorer, with the app's token. Inbound messages then stop arriving. Outbound templates are not affected.
+- Written down after the fact: Misho made this write himself, in his own Meta account. No id is written here.
