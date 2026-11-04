@@ -2,6 +2,41 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 20:05Z — re 19:37Z: #8845 server part LIVE (routes in order); #8813 real case fixed (shipping); #8524, #8911, held-asks note next
+
+**Misho's word for #8845 and #8878**, quoted as asked: „ახალი დავალებებიც დაგვიმატა ტესტერმა და ყვეკა გააკეთე რა".
+
+**#8845, LIVE: a961ef98 + 5dc32feb. 404610dc is shipping.** Parts (1) and (3) of the task, plus the 22:58 refinement:
+- **Both routes.** find_warm_path also walks from each person the owner is close to: said so to Netai, old-Ally green or blue, or family. When a longer route is warmer than the shortest one, it moves to second place, past the cut of five.
+  - It is marked `route: warmer_longer`; the first route is marked `route: shortest`.
+  - Every route carries `warm: true/false`, and the outcome carries `warmer_longer_route`.
+  - The response note says: offer both, each with its reason, only when the owner wants to choose. Otherwise do not ask; the order is shortest, then warmer, then the rest.
+- **Plan runner.** When a plan asks two or more of the routes this run found to one person, the server stamps `route_order` on the plan. The model cannot set it.
+  - While it holds, every wave is one go-between, in that order. The next one comes after a no or a quiet day (24 h), under the plan's one yes.
+  - Before this, the one-at-a-time wave only knew introductions. That is how four bridges went out at once.
+- **404610dc (your 82699 note):** day one no longer says „მისწერე გეგმაში მყოფებს ერთდროულად". A wave of one says „ახლა მისწერე მხოლოდ X-ს… შემდეგ შუამავალს სერვერი თვითონ დაგისახელებს".
+- **Not built yet:** part (2), learning closeness for members without colours.
+  - (2b), behaviour: answered asks and accepted introductions already feed owner ties and the order within one length. They do not yet make a route count as „warm".
+  - (2a), the early question: still open. Please keep #8845 at to_build, with (1) and (3) testable now.
+- **Done-when for (1) and (3), on fictional seats:**
+  - a cold 2-hop route and a warm 3-hop route (the owner holds the 3-hop bridge green or said close) come back as paths[0] shortest and paths[1] warmer_longer, the second with its why;
+  - a plan naming both, approved without a pick, sends to one go-between first, the shortest; the second goes only after a no or a day.
+
+**#8813, the real case (82700), 79ed4237 is shipping.** All three of the tester's fixes:
+1. An unquoted WhatsApp line goes to the owner's own regular conversation, else his default chat. Only a quoted reply goes into somebody else's question thread.
+2. The helper-question note („…send it with send_answer_to_asker now…") is no longer sent (group e). It is kept only so stored copies stay filtered out of history.
+3. New app-only tool `get_my_whatsapp_setting` returns on / off / never chosen, and whether notices go only to WhatsApp.
+
+I will move #8813 to built once it is live.
+
+**Next, in this order:**
+1. #8911: MCP actions don't show in the app (P1).
+2. The 82699 held-asks line: the server tells the model the asks are held for the evening card.
+3. #8524: under 10 s.
+4. #8878.
+
+Last TO_CODE.md section handled: 4 Nov, 19:37Z — tester 82699-82701: #8524 FAIL again; #8779 a1 approval PASS with two notes; #8813 still happens (real case); NEW #8911 (P1)
+
 ### 4 Nov, 19:20Z — re 19:05Z: #8845 and #8878 noted; both put to Misho first
 
 - **#8845 (warm routes):** find_warm_path returns both routes with their warmth. When the owner hands the job over or approves without choosing, the plan runner works through the routes: shortest first, then the warmer one, then the rest, the next one after a no or a quiet day. A larger change to the plan runner.
