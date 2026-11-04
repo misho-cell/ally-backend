@@ -4,7 +4,7 @@
 -- Seven rows when written. Every changed row is copied first, so the change can
 -- be undone (docs/ADMIN_WRITE_OPERATIONS.md, entry 103).
 CREATE TABLE IF NOT EXISTS conversations_pid_backup (
-  conversation_id BIGINT PRIMARY KEY,
+  conversation_id UUID PRIMARY KEY,
   content         TEXT,
   content_json    JSONB,
   masked_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
