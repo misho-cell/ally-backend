@@ -311,6 +311,20 @@ export async function noteWaveAsk(taskId: number): Promise<void> {
   );
 }
 
+/**
+ * #8845 / #7630: several routes to one person are worked one at a time, so the
+ * wave names one go-between and never says „all at once" (tester 82699).
+ */
+function oneRouteNowNote(wave: number, name: string): string {
+  return (
+    `\n\n## ტალღა ${wave} — ახლა მისწერე (#1685, #8845)\n` +
+    `ახლა მისწერე მხოლოდ ${name}-ს. ერთ ადამიანამდე გზებს რიგრიგობით ვცდით: შემდეგ შუამავალს ` +
+    'სერვერი თვითონ დაგისახელებს, თუ ეს უარს იტყვის ან დღე ჩუმად გავა. გეგმა დამტკიცებულია და ' +
+    'ეს თვითონ არის თანხმობა (D119) — მფლობელს არაფერს ეკითხები. ' +
+    `ბოლოს მფლობელს ერთი ხაზით უთხარი: „ახლა ვწერ ${name}-ს".`
+  );
+}
+
 /** The run's instruction: whom to write to now. '' when no wave is waiting to go. */
 export function nextWaveNote(snapshot: WaveSnapshot | null): string {
   if (snapshot === null) return '';
@@ -331,6 +345,7 @@ export function nextWaveNote(snapshot: WaveSnapshot | null): string {
   const now = snapshot.remaining.slice(0, snapshot.size);
   if (now.length === 0) return '';
   const names = now.map((p) => p.name).join(', ');
+  if (snapshot.size === WAVE_SIZE_ONE_BRIDGE) return oneRouteNowNote(snapshot.wave, names);
   return (
     `\n\n## ტალღა ${snapshot.wave} — ახლა მისწერე (#1685)\n` +
     `ახლა ერთად მისწერე ამ ადამიანებს, გეგმის რიგით: ${names}. გეგმა დამტკიცებულია და ` +
