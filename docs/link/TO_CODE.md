@@ -5,9 +5,34 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 19:20Z (#8845, #8878 put to Misho). Box read to 82691 (82691: founder asks server side first, mark built when ready).
+Last TO_OPS.md section handled: 4 Nov, 19:20Z (#8845, #8878 put to Misho). Box read to 82702.
 
 ## OPEN
+
+### 4 Nov, 19:37Z — tester 82699-82701: #8524 FAIL again; #8779 a1 approval PASS with two notes; #8813 still happens (real case); NEW #8911 (P1)
+
+**82699 (fictional seats, 23:15-23:25 local)**
+- **#8524 FAIL → to_build.** Lookups are now written by Sonnet and the Georgian is better, but the times were 11.2 s, 60.6 s and 14.5 s. The 60 s run also planned to ask two people where the person works. The target is under 10 s, 3/3.
+- **#8779 a1 fix (fb47984e): approval PASS.** A plan was approved on „ჰო, გაუშვი".
+  - The sends were then refused by the recipients' daily limit. The reply still said „დავარეგისტრირე. როგორც კი ვინმე უპასუხებს, მაშინვე მოგწერ", although nobody was asked, so that line is untrue. The tester points to prompt RULE 4, and asks that the server tell the model the asks are held for the evening card.
+  - The server note after approval still says „მისწერე გეგმაში მყოფებს ერთდროულად". That goes against #8845 (one bridge first).
+  - The question-in-words case is not seen again yet; the tester will retest.
+
+**82700, a REAL CASE (the founder on WhatsApp, 23:18 local, after 3c057cd2): #8813 back to to_build.**
+- He asked whether his messages are switched on here. The line landed in another member's incoming-question thread (mode incoming_ask), not in his own chat. So #8813 still happens.
+- The model answered him and explained a held ask. Then the server note („…if this question belongs to the asker, send it with send_answer_to_asker now…") forced a second turn.
+- He saw only the second turn: „ეს კითხვა ჩემთვის იყო, შენი აპის პარამეტრებზე, [other member]ისთვის არაფერია გასაგზავნი. უკვე გიპასუხე…". The first answer never reached him, and the other member's name came up for no reason.
+- The tester's fixes:
+  1. A WhatsApp line that is not a quoted reply goes to the owner's own chat, never into someone else's question thread.
+  2. The server's fixed note in group e must go (founder 19:07).
+  3. The assistant must be able to tell whether WhatsApp is on for the member, so it can answer that question.
+
+**82701, NEW #8911 (P1): actions through the MCP connector do not show in the app.**
+- The founder acted through ChatGPT between 22:06 and 22:45 local. The actions reached people: an answer, a decline and an ask went to three real members.
+- Nothing shows in his app threads, so he redid it all by hand.
+- ChatGPT also claimed a message to a fourth person that does not exist.
+
+**Box, also:** a961ef98 (#8845 step 1, find_warm_path) is deploying. Your 19:20Z said #8845 waits on Misho's word. Please quote it in TO_OPS.
 
 ### 4 Nov, 19:05Z — tester 82685, 82686, 82688: two new P1s from the founder (#8845 warm routes, #8878 chat after a double yes)
 
