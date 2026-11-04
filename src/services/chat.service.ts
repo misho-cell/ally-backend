@@ -1,3 +1,4 @@
+import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
 import { offersMatching, withOffers } from './tools/searchOffers';
 import { lookupAnswersIt, nameAskedWhereTheyWork, whereTheyWorkSection } from './whereTheyWork';
 import { maskPersonalIds } from './personalIdMask';
@@ -496,7 +497,6 @@ import {
   ASK_REFUSED_THIS_RUN_NUDGE,
   HELPER_ASKED_NOBODY_NUDGE,
   helperChatClaimsAnAskNobodyGot,
-  helperAskedAQuestion,
   HELPER_QUESTION_NUDGE,
   PASSED_ON_NUDGE,
   claimsNothingFound,
@@ -2757,6 +2757,13 @@ const GET_MY_TOKEN_BALANCE_TOOL: AnthropicTool = {
   description:
     'The owner asks how many tokens they have, how many they used, or when tokens come back → ' +
     'call this and say the numbers exactly. It is the same balance the app screen shows.',
+  input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+// #8813: the owner asks whether Netai writes to them in WhatsApp.
+const GET_MY_WHATSAPP_SETTING_TOOL: AnthropicTool = {
+  name: 'get_my_whatsapp_setting',
+  description: GET_MY_WHATSAPP_SETTING_DESCRIPTION,
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
@@ -11656,6 +11663,8 @@ async function executeToolCall(
     }
     case 'get_my_token_balance':
       return myTokenBalance(userId);
+    case 'get_my_whatsapp_setting':
+      return myWhatsappSetting(userId);
     case 'get_country_channels':
       return getCountryChannels(
         userId,
@@ -13825,6 +13834,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   get_country_channels: '🌍 არხებს ვამოწმებ...',
   get_netai_info: 'ℹ️ Netai-ს ინფოს ვკითხულობ...',
   get_my_token_balance: '🪙 ტოკენების ბალანსს ვამოწმებ...',
+  get_my_whatsapp_setting: '💬 WhatsApp-ის პარამეტრს ვამოწმებ...',
   stop_contacting_me: '🔕 შეტყობინებებს ვაჩერებ...',
   allow_contacting_me: '🔔 შეტყობინებებს ვაბრუნებ...',
   exclude_contact: '📝 გადაწყვეტილებას ვიმახსოვრებ...',
@@ -16385,9 +16395,6 @@ async function runToolLoop(
       asked: runAskSentTo.get(runId) ?? [],
       anythingWent: runAskSent.has(runId) || runRelaySent.has(runId) || runAnswerSent.has(runId),
     });
-  // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
-  const helperQuestionUnsent =
-    helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
   // The tester's 44364 (case 1): the owner's instruction to ask one of their
   // own people, and the run neither asked nor opened a goal to ask from.
   // 3697 (F20, 10 of 10): „ask Maia to introduce me to Bakhva" with no reason —
@@ -16431,7 +16438,7 @@ async function runToolLoop(
     );
   }
   const promiseGap =
-    ownerAbsent || claimedASendThatDidNotHappen || helperQuestionUnsent || instructionUnsent
+    ownerAbsent || claimedASendThatDidNotHappen || instructionUnsent
       ? null
       : await promisedAnActionItDidNotTake(
           threadId,
@@ -16498,7 +16505,6 @@ async function runToolLoop(
     // T2443: „who do I have?" is answered by the search, not by a plan.
     !asksWhoTheyHave(runOwnerLine.get(runId) ?? '') &&
     !claimedASendThatDidNotHappen &&
-    !helperQuestionUnsent &&
     !answeredWithoutSearching &&
     (await membersNoteFits())
       ? await membersInTheBookSkipped(
@@ -16555,31 +16561,29 @@ async function runToolLoop(
             ? HELPER_ASKED_NOBODY_NUDGE
             : claimedASendThatDidNotHappen
               ? PASSED_ON_NUDGE
-              : helperQuestionUnsent
-                ? HELPER_QUESTION_NUDGE
-                : instructionUnsent
-                  ? INSTRUCTION_UNSENT_NUDGE
-                  : answeredWithoutSearching
-                    ? SEARCH_FIRST_NUDGE
-                    : // The tester's 1150 (38316): a promise and the owner's members together —
-                      // the members note leads to the plan with them, which keeps the promise too.
-                      membersSkipped
-                      ? MEMBERS_SKIPPED_NUDGE
-                      : bookMembersSkipped.length > 0
-                        ? membersInTheBookNudge(bookMembersSkipped)
-                        : promisedWithoutActing
-                          ? promiseGap === PromiseGap.Goal
-                            ? PROMISED_ACTION_NO_GOAL_NUDGE
-                            : PROMISED_ACTION_NUDGE
-                          : farFindUnplanned
-                            ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
-                            : rowsMissing.length > 0
-                              ? listRowsNudge(rowsMissing)
-                              : findsHeldBack
-                                ? FINDS_FIRST_NUDGE
-                                : foreignWord !== null
-                                  ? foreignWordNudge(foreignWord)
-                                  : CLIFFHANGER_NUDGE;
+              : instructionUnsent
+                ? INSTRUCTION_UNSENT_NUDGE
+                : answeredWithoutSearching
+                  ? SEARCH_FIRST_NUDGE
+                  : // The tester's 1150 (38316): a promise and the owner's members together —
+                    // the members note leads to the plan with them, which keeps the promise too.
+                    membersSkipped
+                    ? MEMBERS_SKIPPED_NUDGE
+                    : bookMembersSkipped.length > 0
+                      ? membersInTheBookNudge(bookMembersSkipped)
+                      : promisedWithoutActing
+                        ? promiseGap === PromiseGap.Goal
+                          ? PROMISED_ACTION_NO_GOAL_NUDGE
+                          : PROMISED_ACTION_NUDGE
+                        : farFindUnplanned
+                          ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
+                          : rowsMissing.length > 0
+                            ? listRowsNudge(rowsMissing)
+                            : findsHeldBack
+                              ? FINDS_FIRST_NUDGE
+                              : foreignWord !== null
+                                ? foreignWordNudge(foreignWord)
+                                : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -16588,7 +16592,6 @@ async function runToolLoop(
       claimedARefusedAsk ||
       claimedAHelperAskNobodyGot ||
       claimedASendThatDidNotHappen ||
-      helperQuestionUnsent ||
       instructionUnsent ||
       answeredWithoutSearching ||
       promisedWithoutActing ||
@@ -17362,6 +17365,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_COUNTRY_CHANNELS_TOOL,
   GET_NETAI_INFO_TOOL,
   GET_MY_TOKEN_BALANCE_TOOL,
+  GET_MY_WHATSAPP_SETTING_TOOL,
   GET_CONTACTS_UPLOAD_LINK_TOOL,
 ];
 

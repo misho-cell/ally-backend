@@ -64,7 +64,7 @@ describe('an owner instruction left unsent', () => {
     expect(chat).toContain(
       "(await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))",
     );
-    expect(chat).toMatch(/helperQuestionUnsent \|\|\s+instructionUnsent \|\|/u);
+    expect(chat).toMatch(/claimedASendThatDidNotHappen \|\|\s+instructionUnsent \|\|/u);
   });
 
   it('is never called unsent when this run sent an ask on another goal (4159, conv 48452)', () => {

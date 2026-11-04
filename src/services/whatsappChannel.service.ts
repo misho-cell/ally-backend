@@ -127,14 +127,23 @@ export async function threadOfOurMessage(userId: number, wamid: string): Promise
   return result.rows[0]?.thread_id ?? null;
 }
 
-/** The conversation we last wrote to the person about, for a reply that quotes nothing. */
+/**
+ * The owner's OWN conversation we last wrote to them about, for a reply that
+ * quotes nothing. #8813 (the founder on WhatsApp, tester 82700): a line about
+ * his own settings landed in another member's question thread, because that
+ * was the last thing we had written to him about. Only a quoted reply goes to
+ * somebody else's question; an unquoted line stays in a conversation of his own.
+ */
+const OWN_CONVERSATION_TYPE = 'regular';
+
 export async function lastThreadWeWroteAbout(userId: number): Promise<number | null> {
   const result = await query<{ thread_id: number | null }>(
-    `SELECT thread_id FROM whatsapp_messages
-      WHERE user_id = $1 AND direction = 'out' AND thread_id IS NOT NULL
-      ORDER BY created_at DESC
+    `SELECT m.thread_id FROM whatsapp_messages m
+       JOIN threads t ON t.id = m.thread_id AND t.user_id = m.user_id AND t.type = $2
+      WHERE m.user_id = $1 AND m.direction = 'out' AND m.thread_id IS NOT NULL
+      ORDER BY m.created_at DESC
       LIMIT 1`,
-    [userId],
+    [userId, OWN_CONVERSATION_TYPE],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0]?.thread_id ?? null;
