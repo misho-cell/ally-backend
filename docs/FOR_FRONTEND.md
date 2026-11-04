@@ -15,6 +15,42 @@ messages in their name.
 
 ---
 
+## 4 November, 21:20Z — every frontend task on the tester's board, in one place (Misho: „ფრონტს გაუგზავნე ყველა ფრონტის დავალება")
+
+Below is every open board row that is the app's, as the board reads now. There are two to build; the rest are built and wait for Giorgi's own check (D591).
+
+### To build (whose_turn giorgi)
+
+**#8385 (P1): iPhone, the case chat header jumps when the keyboard opens or closes.**
+- Giorgi, 29 Oct: no screenshot will come. Find the cause in the keyboard handling of the chat layout: the visualViewport/resize handler, the header's position, and the #8153 change. Reproduce it at iPhone size yourselves.
+- The tester's browser check (e49540e, 390×844) showed no jump. A real iPhone keyboard cannot be simulated, so it is still open.
+- Done when: opening and closing the keyboard 10 times in a long case chat in the home-screen app leaves the header fixed at the top, with no jump or slide. Tester PASS, then Giorgi's retest.
+
+**#7724 (P1): a push tap from the home-screen app should land in the conversation.**
+- Your 27 Oct fix (`/` reads the address; the worker keeps the last push's address; `recovered: true` in the click log) waits on a phone check.
+- Lika's 27 Oct file said a push from Salome opened only the home page.
+- If you have no newer change, the next step is Lika's: tap a push, then open `netai.guru/profile?diag=1` and read the last click line. If the log shows the address was lost, the fix is yours again.
+
+### Built, waiting for Giorgi's own check (D591), no code expected unless he reopens
+
+- **#8383:** the text field in the desktop left menu, removed in all versions (Giorgi's decision). The board also asks who added it and why.
+- **#6903:** case titles cut mid-word (target view). The server now cuts on whole words with an ellipsis; the tester's PASS was 3/3.
+- **#6304:** „<bridge>-ს სთხოვე" in a reach goal; the server makes the introduction. Tester 10/10.
+- **#7525:** customers, not contacts (find_companies_for_need). Tester 9/10 on v19.
+- **#4588–#4594, #4596–#4598, #4621:** Giorgi's small UX recommendations (role filters, setup page steps, the thread screen, placeholders, the „…" menu, the profile page, phone home, the member card). Each one is approve or drop for Giorgi, not a fault.
+
+### Coming next from the server, so you can plan for it (nothing to build yet)
+
+**#8878 (P1, founder): after an introduction gets a double yes, a chat opens between the two members**, with both assistants' greetings and the asker's need.
+- I am building it so that it works in today's app with no change: each person gets an ordinary conversation, and the other person's lines arrive in it.
+- If it later needs its own look (a „meeting" thread type, both names in the header), I will write the exact contract here first. Please do not start on it before that.
+
+### Server changes today that touch what the app shows (FYI, no work)
+
+- Through the connector (ChatGPT/Claude), an answer, an ask or an introduction answer now leaves an ordinary assistant line in the owner's chat (#8911). They render like any assistant message.
+- When a go-between answers an introduction in chat, the server no longer writes its fixed close line. The assistant's own reply stands (#8912). A button tap still gets the line.
+- **#8713 parts 2 and 3:** done, see the sections below.
+
 ## 4 November, 18:30Z — #8713 part 3: Misho's yes on the line
 
 Misho wrote in his chat, 4 Nov ~18:20Z: „ჩემთან რა კითხვებიც გქონდა შენი რეკომენდაციით გააკეთე". My open question to him was this line, and my recommendation was to use it as written:
