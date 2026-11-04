@@ -1,3 +1,13 @@
+import {
+  CLOSE_QUESTION_NOTE,
+  IdleDecision,
+  IdleState,
+  IdleWake,
+  idleDecision,
+  idleState,
+  noteIdleReminder,
+  setIdleWake,
+} from './idleWakes.service';
 import { answersElsewhereNote, answersInSiblingGoals } from './answersElsewhere.service';
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
 import { unheardAnswerOf } from './answerAddition';
@@ -1048,12 +1058,24 @@ async function tick(): Promise<void> {
     // Clear FIRST so a failing run doesn't hot-loop every tick; the model
     // re-schedules with set_task_wake when it still needs a revisit.
     await clearTaskWake(task.id);
+    // #8625: a goal nobody has written in for two days is reminded once, asked at five
+    // days whether to close, and then left quiet — not re-raised at every daily wake.
+    const idle = await idleWakeFor(task.id);
+    if (idle?.decision.kind === IdleWake.NotYet && idle.decision.at !== null) {
+      await setIdleWake(task.id, idle.decision.at);
+      continue;
+    }
     const wake = await scheduledWake(task.id);
     if (wake.onlyStillHeld) {
       // eslint-disable-next-line no-console
       console.log(`[task-engine] task ${task.id}: held question still over the limit — no run`);
     } else {
-      await wakeTask(task.id, wake.text);
+      const closing = idle?.decision.kind === IdleWake.CloseQuestion;
+      await wakeTask(task.id, closing ? `${wake.text}\n\n${CLOSE_QUESTION_NOTE}` : wake.text);
+    }
+    if (idle !== null && idle.decision.kind !== IdleWake.Normal && idle.decision.at !== null) {
+      await noteIdleReminder(task.id, idle.state).catch(logIdleFailure);
+      await setIdleWake(task.id, idle.decision.at).catch(logIdleFailure);
     }
     // Line 9: the engine never parks a goal. If the run set no wake, the
     // default does — and the row can never read `next_wake_at: null` again.
@@ -1061,6 +1083,24 @@ async function tick(): Promise<void> {
       // eslint-disable-next-line no-console
       console.error('[task-engine] default wake failed:', (err as Error).message),
     );
+  }
+}
+
+function logIdleFailure(err: unknown): void {
+  // eslint-disable-next-line no-console
+  console.error('[task-engine] idle reminder not recorded:', (err as Error).message);
+}
+
+/** #8625: the idle state and what it decides; null when unreadable (the wake runs as before). */
+async function idleWakeFor(
+  taskId: number,
+): Promise<{ readonly state: IdleState; readonly decision: IdleDecision } | null> {
+  try {
+    const state = await idleState(taskId);
+    return state === null ? null : { state, decision: idleDecision(state, new Date()) };
+  } catch (err) {
+    logIdleFailure(err);
+    return null;
   }
 }
 
