@@ -9481,6 +9481,13 @@ export function searchesPastTheBudget(
   return onlySearches && (runsPastTheirBudget.has(runId) || elapsedMs > SEARCH_PHASE_CAP_MS);
 }
 
+/** #8616: what create_task says when the conversation already holds an open goal. */
+export const SAME_CONVERSATION_GOAL_NEXT =
+  'This conversation already holds an open goal. A company, person or item the owner adds ' +
+  'here belongs to that goal: keep it there (set_task_brief, or the plan) and do not open a ' +
+  'new one. Only if the owner said this is a DIFFERENT, separate need, call create_task again ' +
+  'with separate: true.';
+
 export const SEARCH_BUDGET_SPENT =
   'Not searched: this answer has used its search budget (searches or time). Do not search again ' +
   'in this run. Write your answer now from what you found — who or what was found, and the ' +
@@ -11346,6 +11353,17 @@ async function executeToolCall(
         };
       }
       const occupied = threadId !== undefined ? await getOpenTaskByThread(threadId) : null;
+      // #8616 (DR3, threads 74662 → 77412/77600/77601): each company the owner pasted into
+      // one goal's conversation was opened as a goal of its own, in a new conversation,
+      // and their „yes" then met „my question was unclear". A conversation that already
+      // holds an open goal keeps the new item in it unless the owner said it is separate.
+      if (occupied !== null && input['separate'] !== true) {
+        return {
+          created: false,
+          this_conversation_goal: { task_ref: `task_${occupied.id}`, title: occupied.title },
+          next: SAME_CONVERSATION_GOAL_NEXT,
+        };
+      }
       let goalThreadId = threadId;
       let movedTo: number | undefined;
       if (occupied !== null && threadId !== undefined) {
