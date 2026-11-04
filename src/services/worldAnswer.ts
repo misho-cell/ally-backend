@@ -98,6 +98,18 @@ const NO_ASSUMED_PLACE =
   'name one, do not assume one: give what holds across Georgia and say in one short sentence ' +
   'that the city is needed for names and addresses.\n';
 
+/**
+ * Tester 82738 (5 Nov; the founder's rule): a stuck mortgage got „file a complaint
+ * in the mobile bank, write to the bank, call the hotline, go to the National Bank"
+ * — the job handed back to the owner. Netai is his assistant: what the web finds
+ * is information, and the next step is Netai's. Outside the editable brief, so it
+ * holds whatever the brief says.
+ */
+const INFORMATION_NOT_ORDERS =
+  'Give the facts and any public contacts as information only. Never tell the member to do ' +
+  'something themselves (no „call", „write", „file a complaint", „go to"): their assistant ' +
+  'acts for them. Where it helps, say who decides such a matter there.\n';
+
 /** The question as the web is asked it. */
 export function worldQuestionPrompt(question: string, language: RunLanguage): string {
   const brief = serverText(ServerTextBlock.WorldAnswerBrief, WORLD_ANSWER_BRIEF)
@@ -107,6 +119,7 @@ export function worldQuestionPrompt(question: string, language: RunLanguage): st
     `${brief}\n` +
     INFORMAL_ADDRESS[language] +
     NO_ASSUMED_PLACE +
+    INFORMATION_NOT_ORDERS +
     `If the question is only about the member’s own contacts or private life, or the web ` +
     `cannot answer it, reply with exactly ${NO_WORLD_ANSWER}.\n` +
     'After the answer, on its own last line, write PEOPLE: followed by each person the answer ' +
