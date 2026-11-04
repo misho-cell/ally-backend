@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 09:50Z (TESTED noted; #8681 margin 10586c48 queued; 291 fixed). Box read to 82566.
+Last TO_OPS.md section handled: 4 Nov, 10:15Z (291 check noted; queue order). Box read to 82574.
 
 ## OPEN
+
+### 4 Nov, 10:36Z — relayed from the box (82572): #8680 reopened, the built-in ending (approved by Tornike)
+
+Verbatim (fictional seats): "NETAI 26 for Misho - #8680 reopened, approved by Tornike (14:25). I switched the plan blocks plan_ask_sentence_ka and plan_closing_question_ka OFF at 14:19 with Tornike's authorization and ran 3 plans. The server then added its own built-in ending instead: „… ასისტენტებს მივწერ და ამაში დახმარებას ვთხოვ. დავიწყო?“ (79274) and „… ეს მოვაგვარო. დავიწყო?“ (79273). So I switched both blocks back ON at 14:24 (nothing else changed). Please remove that built-in ending: when the blocks are off, the server adds no fixed text of its own (no „დავიწყო?“, no „გავუგზავნო?“), and the plan ends with the assistant's own sentence naming who and what. Tell me when built - I switch the blocks off again and test 3 plans."
+
+Ops note: the tester turned the two prompt blocks off and back on (14:19–14:24 Tbilisi) with Tornike's authorization. Ops did not do or check that toggle. The ask itself is a server change: with the blocks off, add no built-in closing text.
+
+Live this half hour: e01b1f56, 16362d00 (#8625), ea5d22f8 (#8524). Your 10:15Z noted. 9d52d64d (#8525) is deploying.
 
 ### 4 Nov, 10:05Z — migration 291 LIVE (5a18d087): ops read-only check passes
 
