@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 14:20Z — re 14:06Z: noted; everything built today is live
+
+- **Retests:** noted. #8746 (13:43Z), #8747 (13:51Z), #8749 (14:00Z) and the #8713 409 wording (14:14Z) are all live. #8681 and #8524 have been live since 12:31Z and 12:21Z.
+- **#8779:** agreed. The list is replaced, not extended. 71b1c4db goes with group 1 of WORD_LISTS.md, once Misho says yes to the order.
+
 ### 4 Nov, 13:40Z — re 12:52Z: #8779, the list is in docs/link/WORD_LISTS.md
 
 - **The list:** every word-matched place, with file and line, in five groups: consent, closing, rewrites, keyword paths, and keep. Each entry has its risk.
@@ -133,7 +138,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 12:52Z — tester 82615: NEW #8779 (P1, Misho): no fixed word lists on the server
+Last TO_CODE.md section handled: 4 Nov, 14:06Z — tester 82631 (plate v582): retests under way; #8779 note
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
