@@ -10470,6 +10470,20 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
 const runLastCaption = new Map<string, string>();
 /** The owner's own line this run answers; absent on a run the system started. */
 const runOwnerLine = new Map<string, string>();
+/**
+ * #8813 (Lika, 4 Nov): a WhatsApp line with no quoted message goes to the
+ * conversation we last wrote to her about — her goal's new plan. There her
+ * „არავის ვიცნობ" was taken as an answer to Ninia's introduction request,
+ * which she never saw, and a refusal went to Ninia without her yes. A run
+ * from WhatsApp does not answer another person's request from a conversation
+ * that is not that request's own.
+ */
+const runsFromWhatsapp = new Set<string>();
+export const NOT_FROM_A_GUESSED_CHAT_NOTE =
+  'Nothing was sent. This line came from WhatsApp and was placed in this conversation by a ' +
+  'guess; it is not the request’s own conversation, so it may be about something else. Tell ' +
+  'the owner which request is waiting and ask them to answer it there, or to reply to that ' +
+  'request’s own WhatsApp message.';
 
 /**
  * 0312's status fault (tester box 58942, threads 51948-49): the server told the
@@ -10530,6 +10544,7 @@ function clearRunState(runId: string): void {
   runLooksUpTheWeather.delete(runId);
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
+  runsFromWhatsapp.delete(runId);
   runAskSent.delete(runId);
   runAskRefused.delete(runId);
   runIsOwnersFirstLine.delete(runId);
@@ -11145,6 +11160,9 @@ async function executeToolCall(
           redirect === undefined ? (input['accepted'] as boolean) : false,
           redirect ?? (await mediatorsOwnWords(threadId, input['response'])),
         );
+      if (ownRequest === undefined && runsFromWhatsapp.has(runId ?? '')) {
+        return { success: false, sent: false, note: NOT_FROM_A_GUESSED_CHAT_NOTE };
+      }
       const asked = input['request_id'] as number;
       const first = await answer(asked);
       const retried = ownRequest !== undefined && ownRequest !== asked && !answered(first);
@@ -11778,6 +11796,9 @@ async function executeToolCall(
       // is one optional button after the answer, saved only on its tap.
       const askThread = await askThreadForCall(userId, threadId, runId, input);
       if (askThread === null) return { sent: false, error: await whichQuestionNote(userId) };
+      if (askThread !== threadId && runsFromWhatsapp.has(runId ?? '')) {
+        return { sent: false, note: NOT_FROM_A_GUESSED_CHAT_NOTE };
+      }
       const sent = await sendApprovedAskAnswer(userId, askThread, answerText);
       if (sent.sent && runId) runAnswerSent.add(runId);
       return sent.sent ? { ...sent, next: answerSentNote(runLang(runId)) } : sent;
@@ -17981,6 +18002,8 @@ export interface RunIntent {
   alreadyStored?: boolean;
   /** 5285: the language the owner chose on their profile (`X-Locale`), when they chose one. */
   chosenLanguage?: RunLanguage | null;
+  /** #8813: the line came from WhatsApp, where the conversation is a guess unless quoted. */
+  fromWhatsapp?: boolean;
 }
 
 /**
@@ -18630,6 +18653,7 @@ export async function processChat(
   let language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
   if (!ownerAbsent) runOwnerLine.set(runId, userMessage);
+  if (intent?.fromWhatsapp === true) runsFromWhatsapp.add(runId);
   // #6358: a person the owner rules out is kept out before this run searches.
   if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
     await keepRuledOutBridges(userId, threadId, userMessage).catch((err: unknown) =>
