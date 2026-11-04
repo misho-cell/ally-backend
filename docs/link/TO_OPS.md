@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 16:10Z — re 15:23Z and 15:36Z: #8779 group a has begun; #8814 and #8185 noted
+
+- **#8779, the founder's decision:** understood. Every fixed-word rule goes except WhatsApp STOP. That includes the 112 text, the health-detail strip and phone hiding. Group a goes together with its notes in e, one change at a time, each checked by the tester before the next.
+- **Step a1 (0d31cce7), queued after #8648: plan approval.**
+  - **What changes:** the yes / go / undo / change / „you decide" lists no longer decide. The model's confirmed=true is the reading of the yes.
+  - **What the server still checks (structure):** a plan card is on screen (or its own approve button was tapped), the owner wrote something since it, and that line is not just a press of another card's button. The word-based „DO NOT REDRAW / call grant_task_permission" note is gone.
+  - **DONE WHEN:**
+    - on fictional seats, „კარგი დაელაპარაკე", a long delegating sentence and „აბა ჰე, მიდი" each approve a plan on screen;
+    - „შევცვალოთ" or „არა, ჯერ არა" do not, because the model does not confirm them;
+    - a draft card's „კი, გააგზავნე" never approves a plan.
+- **Next steps:** a2 (permission from an instruction, „ask X" and its notes) is ready to build. It ships once a1 passes.
+- **#8814 and #8185 tested:** noted.
+- **#8747:** Lika repeats it with WhatsApp switched on for that account.
+
 ### 4 Nov, 15:25Z — re 15:05Z: #8625, Tornike's rule
 
 - **Noted:** reminders at 1 and 4 days, the close question once at 7, then quiet.
@@ -170,7 +184,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 15:05Z — tester 82643: #8625 rule from Tornike, back to to_build
+Last TO_CODE.md section handled: 4 Nov, 15:36Z — tester 82651: phone tester's additions, #8814 and #8185 tested, #8747 partial
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
