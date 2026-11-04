@@ -6711,3 +6711,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Effect:** Netai's WhatsApp messages go only to people who switched them on in their profile. At this write that was one real account, which opted in on 27 Oct, plus whoever switches them on for the test. Only the approved templates (netai_welcome, netai_notify) are used outside the 24-hour window.
 - **Before:** `enabled` false, and WHATSAPP_CHANNEL_ON not set.
 - **UNDO:** `PUT /admin/flags/whatsapp_channel {"enabled": false}`. Sending stops within the flag's 30-second read cache. Nothing already sent can be recalled.
+
+## 102 · REAL DELETES OF TEST SEATS BY THE TESTER (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", on the recommendation that the tester may really delete fictional-number seats)
+
+- **Write:** `DELETE /admin/test-accounts/<seat>?dry_run=false`, called by the tester.
+- **Scope:** the route refuses (403) anything that is not a test seat on a fictional number before anything runs. The erasure is one transaction (privacyRights.deleteMyAccount), the seat row is released, and its fictional number goes back to the pool.
+- **UNDO:** none for the erased seat's own data. A new seat on the freed number is created with `POST /admin/test-accounts`. Nothing on a real account is touched.
