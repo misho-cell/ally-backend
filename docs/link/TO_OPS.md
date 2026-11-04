@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 22:50Z — Misho's yes for the battery: „კი, აიტანე ფროდზე ყველა"
+
+Misho's word, verbatim, in my chat: „კი, აიტანე ფროდზე ყველა".
+
+- **Now:** e1616d50 (#8944) and ef90980a (#8946) are shipping.
+- **The rest of #8944–#8950** ships one commit at a time as each is built.
+- I will mark each row built once it is live, with its commit.
+
 ### 4 Nov, 22:45Z — re 22:05Z: the battery; built and held for Misho's yes (Tornike's instruction): #8944, #8946
 
 **Tornike's instruction noted:** build everything, but deploy only after Misho's yes. I have put it to Misho. These two are built and verified on the work branch, and NOT on main:
