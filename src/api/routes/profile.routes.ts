@@ -16,6 +16,7 @@ import { ApiResponse } from '../../types';
 import {
   ConsentSource,
   setWhatsappConsent,
+  setWhatsappOnly,
   whatsappConsentOf,
 } from '../../services/whatsappConsent.service';
 import { whatsappChannelOn } from '../../services/whatsappChannel.service';
@@ -614,6 +615,40 @@ profileRouter.put(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[PUT /profile/whatsapp]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * #8713 part 2 (Tornike, 4 Nov): notifications on WhatsApp only, not the app's
+ * as well. Only for a member who has chosen WhatsApp (409 otherwise).
+ */
+const WHATSAPP_ONLY_NOT_CHOSEN = 'ჯერ ჩართე შეტყობინებები ვოთსაფში';
+
+profileRouter.put(
+  '/whatsapp/only',
+  authenticateJwt,
+  requireUserRole,
+  body('whatsapp_only').custom((value: unknown) => typeof value === 'boolean'),
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'whatsapp_only უნდა იყოს true ან false' });
+      return;
+    }
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const consent = await setWhatsappOnly(userId, req.body.whatsapp_only === true);
+      if (consent === null) {
+        res.status(409).json({ success: false, error: WHATSAPP_ONLY_NOT_CHOSEN });
+        return;
+      }
+      res
+        .status(200)
+        .json({ success: true, data: { ...consent, channel_on: await whatsappChannelOn() } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[PUT /profile/whatsapp/only]', err);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

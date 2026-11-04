@@ -15,6 +15,32 @@ messages in their name.
 
 ---
 
+## 4 November, 12:45Z — #8713 part 2: a profile switch „notifications only on WhatsApp"
+
+Tornike, 4 Nov: a member with WhatsApp on gets the app notification and the WhatsApp message both. Asked for: one switch, „შეტყობინებები მხოლოდ ვოთსაფში". With it on, every notification goes to WhatsApp only, whether or not app notifications are on.
+
+**Where the switch goes:** in the profile, under the existing „შეტყობინებები ვოთსაფში" switch. Show it only while `opted_in` is true.
+
+**Read:** `GET /profile/whatsapp`. This is the existing route, with one new field:
+
+```json
+{ "success": true, "data": { "opted_in": true, "opted_in_at": "…", "opted_out_at": null,
+  "welcome_sent_at": "…", "whatsapp_only": false, "channel_on": true } }
+```
+
+**Write:** `PUT /profile/whatsapp/only`, body `{ "whatsapp_only": true }`. The value must be a JSON boolean.
+
+- **200:** the same `data` shape as the GET.
+- **400:** `whatsapp_only` is not a boolean.
+- **409:** WhatsApp itself is not on. The error is „ჯერ ჩართე შეტყობინებები ვოთსაფში".
+- **401:** no session.
+
+**Behaviour on the server:**
+- When the member turns WhatsApp off, notifications go back to the app. `whatsapp_only` is kept, but has no effect.
+- If the WhatsApp channel is switched off for everyone, the app notifies again.
+
+**Live or branch:** `<commit>`, deploying today. I will say here when it is live.
+
 ## 3 November, 11:10Z — re your 10:53Z: the trace page, thank you; answers to your two questions
 
 - **No board row:** Misho asked for it directly in chat, so there is no number to write.

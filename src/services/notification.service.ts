@@ -1,4 +1,5 @@
-import { WHATSAPP_DEVICE } from './whatsappChannel.service';
+import { WHATSAPP_DEVICE, whatsappChannelOn } from './whatsappChannel.service';
+import { notifiesOnlyInWhatsapp } from './whatsappConsent.service';
 import { mirrorToWhatsapp } from './whatsappMirror.service';
 import { randomBytes } from 'crypto';
 import webpush, { PushSubscription } from 'web-push';
@@ -381,6 +382,27 @@ export function clearPushDedupe(): void {
   recentPushes.clear();
 }
 
+/**
+ * Whether the WhatsApp copy is held back. Always for an answer asked from
+ * WhatsApp (the answer itself goes back there) and while the device that asked
+ * is in use. With both channels on, also while any Netai screen is open; with
+ * WhatsApp only, an open screen elsewhere does not hold it back (#8713).
+ */
+export function whatsappCopyHeldBack(
+  whatsappOnly: boolean,
+  askedFrom: string | null | undefined,
+  anyScreenOpen: boolean,
+  askerReading: boolean,
+): boolean {
+  if (askedFrom === WHATSAPP_DEVICE || askerReading) return true;
+  return !whatsappOnly && anyScreenOpen;
+}
+
+/** WhatsApp only, and the channel is on — otherwise the app notifies as before. */
+async function onlyWhatsappNotifies(userId: number): Promise<boolean> {
+  return (await notifiesOnlyInWhatsapp(userId)) && (await whatsappChannelOn());
+}
+
 export async function sendPushNotification(
   userId: string,
   payload: NotificationPayload,
@@ -400,15 +422,28 @@ export async function sendPushNotification(
     return;
   }
 
+  const askerReading = askerIsReading(options.askedFrom, connectedDevices(userId));
+  // #8713 part 2 (Tornike, 4 Nov): WhatsApp only — one notification, there,
+  // whether or not app notifications are on. A Netai tab left open somewhere
+  // does not hold it back; only the device that asked being in use does.
+  if (await onlyWhatsappNotifies(Number(userId))) {
+    void mirrorToWhatsapp(
+      Number(userId),
+      payload,
+      whatsappCopyHeldBack(true, options.askedFrom, hasActiveConnection(userId), askerReading),
+      new Date(),
+      options.highValue === true,
+    );
+    return;
+  }
+
   // Misho, 25 Oct: the same notice in WhatsApp for a person who chose it —
   // before the push subscriptions, so a person with none still gets it there.
   // Not for an answer asked from WhatsApp: the answer itself goes back there.
   void mirrorToWhatsapp(
     Number(userId),
     payload,
-    options.askedFrom === WHATSAPP_DEVICE ||
-      hasActiveConnection(userId) ||
-      askerIsReading(options.askedFrom, connectedDevices(userId)),
+    whatsappCopyHeldBack(false, options.askedFrom, hasActiveConnection(userId), askerReading),
     new Date(),
     options.highValue === true,
   );
