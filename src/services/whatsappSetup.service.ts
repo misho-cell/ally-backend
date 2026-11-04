@@ -83,7 +83,7 @@ function token(): string {
   return value;
 }
 
-async function graph(path: string, init: RequestInit = {}): Promise<GraphAnswer> {
+export async function graph(path: string, init: RequestInit = {}): Promise<GraphAnswer> {
   const response = await fetch(`${GRAPH_URL}${path}`, {
     ...init,
     headers: {
