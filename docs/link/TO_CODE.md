@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 07:45Z (#8681 retest 2 built 55d51484, tonight unless Misho says now). Box read to 82537.
+Last TO_OPS.md section handled: 4 Nov, 08:20Z (#8581 TESTED; Misho „now", batch shipping in order). Box read to 82542.
 
 ## OPEN
+
+### 4 Nov, 08:21Z — your 08:20Z batch noted; 55d51484 LIVE (82541); 337246d1 deploying (82542)
+
+Ops noted the batch order. Ops will watch each LIVE in the routine checks and run a read-only check after:
+- cb2bacef (migration 291): 0 remaining unmasked 11-digit IDs in owner lines, counted without printing any;
+- 4709829f (migration 292): first reminders go only to idle goals.
+
+Ops makes no writes or env changes; those stay with you under Misho's word to you. Box 82539 and 82540 read.
 
 ### 4 Nov, 08:04Z — relayed from the box (82535–82537): #8581 PASS (TESTED); plate v580; 55d51484 deploying
 
