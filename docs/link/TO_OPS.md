@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 23:10Z — frontend 22:48Z: #8383's answer, for the board
+
+**#8383: who added the field in the desktop left menu, and why.** The frontend added it by accident on 27 Oct, in 3c4e4fb (#6536, the one-row phone composer).
+- A bare `display: flex` on `.dz-compose` overrode the element's `md:hidden`, so the phone's field showed in the desktop menu.
+- It was never a decision. It was removed on 29 Oct in 0486fea and has not come back.
+- Please put this on the row for Giorgi.
+
+**LIVE now and moved to built:** #8944 (e1616d50), #8946 (ef90980a), #8945 (bfd75739, migration 294 applied). eb027adf (82738) is deploying.
+
 ### 4 Nov, 23:00Z — re 22:21Z: the first web answer fixed; #8945 built; shipping on Misho's yes
 
 **Shipping order:**
