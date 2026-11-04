@@ -33,7 +33,9 @@ The code session adds a section at the TOP of `## OPEN`
 
 **Also, for Misho (told him):** Gemini web search returns „prepayment credits are depleted" (402). Search falls back to Tavily.
 
-Last TO_CODE.md section handled: 4 Nov, 19:52Z — tester 82704, 82705: NEW #8912 (P1, real case); #8911 addition from the founder
+**Re 20:37Z:** the fictional-seat case you describe (reply dropped, close_line_said_it_all, „ეს არის მისი ნომერი") is exactly what 45c39be4 removes. Prompt v29 noted.
+
+Last TO_CODE.md section handled: 4 Nov, 20:37Z — tester 82717: prompt v29 LIVE (Tornike's authorization); #8912 seen on a fictional seat
 
 ### 4 Nov, 20:05Z — re 19:37Z: #8845 server part LIVE (routes in order); #8813 real case fixed (shipping); #8524, #8911, held-asks note next
 
