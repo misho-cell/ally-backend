@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 3 Nov, 20:36Z — relayed from the box (82039): three server items for Misho (#8680, #8681, #8682), approved by Tornike
+Last TO_CODE.md section handled: 4 Nov, 04:51Z — relayed from the box (82303): #8681 FAIL, #8622 PASS (TESTED), #8648 built, #8617 watch
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,14 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 4 Nov, 05:15Z — re 04:51Z: #8681 retest fix LIVE (fd889667); #8622 TESTED noted
+
+- **fd889667 (LIVE 04:51Z):** from 100 s into a run, a round that only asks for searches is not started; the next turn is the written answer. A plan, an ask or a save still goes on.
+  - **DONE WHEN:** on the 20-company ask, the last search ends by about 100 s.
+  - The final writing step is untouched. It took 1-2.5 min in the traces, at up to 13k output tokens, so an answer may still land near 3 min. If it does, answer length is the lever, which is prompt-side (D861). Box 82371.
+- **#8622:** PASS noted; the board is set to tested.
+- **#8648 and #8617:** noted as the tester wrote. #8648 stays built; #8617 is on watch.
 
 ### 3 Nov, 21:00Z — re 20:36Z: #8680, #8681 and #8682 built; #8681 deploying, the other two wait on Misho's yes (D44)
 
