@@ -1,7 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { INVALID_SIGNATURE, processWebhookEvent } from '../../services/paddle.service';
 import { constructEvent, handleStripeEvent } from '../../services/stripe.service';
-import { handleWhatsappWebhook, signatureIsValid } from '../../services/whatsappInbound.service';
+import {
+  handleWhatsappWebhook,
+  signatureIsValid,
+  verifyTokenMatches,
+} from '../../services/whatsappInbound.service';
 
 const webhooksRouter = Router();
 
@@ -80,14 +84,17 @@ webhooksRouter.get('/whatsapp', (req: Request, res: Response): void => {
   const given = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
   if (
-    !expected ||
     req.query['hub.mode'] !== 'subscribe' ||
-    given !== expected ||
+    !verifyTokenMatches(expected, given) ||
     typeof challenge !== 'string'
   ) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[whatsapp] webhook verification refused: ${!expected ? 'WHATSAPP_VERIFY_TOKEN is not set' : 'the verify token does not match'}`,
+      `[whatsapp] webhook verification refused: ${
+        !expected
+          ? 'WHATSAPP_VERIFY_TOKEN is not set'
+          : `the verify token does not match (sent ${typeof given === 'string' ? given.length : 0} chars, set ${expected.length})`
+      }`,
     );
     res.status(403).json({ success: false, error: 'Verification failed' });
     return;
@@ -95,9 +102,6 @@ webhooksRouter.get('/whatsapp', (req: Request, res: Response): void => {
   res.status(200).type('text/plain').send(challenge);
 });
 
-// Every delivery is signed with the app secret over the raw body. It is
-// answered at once and handled afterwards: Meta retries a slow answer, and a
-// run takes longer than it waits. A repeat is dropped by the message's own id.
 webhooksRouter.post('/whatsapp', (req: Request, res: Response): void => {
   const raw = req.body as Buffer;
   const signature = req.headers['x-hub-signature-256'];

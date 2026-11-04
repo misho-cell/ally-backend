@@ -180,3 +180,18 @@ export async function handleWhatsappWebhook(payload: unknown): Promise<void> {
     }
   }
 }
+
+/**
+ * Meta's webhook check (Misho's test, 4 Nov 08:28Z): „the verify token does not match"
+ * although the token in Railway and in Meta looked the same. A space or a line break
+ * copied with it is not part of the token, so both sides are trimmed; a mismatch logs
+ * the two lengths (never the token) so a lost or extra character shows.
+ */
+export function verifyTokenMatches(expected: string | undefined, given: unknown): boolean {
+  return (
+    typeof expected === 'string' &&
+    expected.trim() !== '' &&
+    typeof given === 'string' &&
+    given.trim() === expected.trim()
+  );
+}
