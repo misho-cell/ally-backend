@@ -29,6 +29,8 @@ export enum ServerTextBlock {
 interface Kept {
   readonly at: number;
   readonly text: string | null;
+  /** The block is there and switched off by the team (not merely unwritten). */
+  readonly off: boolean;
 }
 
 const kept = new Map<ServerTextBlock, Kept>();
@@ -38,18 +40,24 @@ async function refresh(name: ServerTextBlock): Promise<void> {
   if (inFlight.has(name)) return;
   inFlight.add(name);
   try {
-    const result = await query<{ content: string }>(
-      `SELECT content FROM prompt_blocks WHERE name = $1 AND enabled = TRUE LIMIT 1`,
+    const result = await query<{ content: string; enabled: boolean }>(
+      `SELECT content, enabled FROM prompt_blocks WHERE name = $1 ORDER BY enabled DESC LIMIT 1`,
       [name],
       QUERY_TIMEOUT_MS,
     );
-    const text = result.rows[0]?.content.trim() ?? '';
-    kept.set(name, { at: Date.now(), text: text === '' ? null : text });
+    const row = result.rows[0];
+    const text = row?.enabled === true ? row.content.trim() : '';
+    kept.set(name, {
+      at: Date.now(),
+      text: text === '' ? null : text,
+      off: row !== undefined && row.enabled !== true,
+    });
   } catch (err) {
     // The kept text, or the code's, stays in use; a failed read is no reason to stop a reply.
     // eslint-disable-next-line no-console
     console.warn(`[server-text] ${name} not read:`, (err as Error).message);
-    kept.set(name, { at: Date.now(), text: kept.get(name)?.text ?? null });
+    const before = kept.get(name);
+    kept.set(name, { at: Date.now(), text: before?.text ?? null, off: before?.off ?? false });
   } finally {
     inFlight.delete(name);
   }
@@ -60,6 +68,18 @@ export function serverText(name: ServerTextBlock, fallback: string): string {
   const now = kept.get(name);
   if (now === undefined || Date.now() - now.at >= REFRESH_MS) void refresh(name);
   return now?.text ?? fallback;
+}
+
+/**
+ * #8680 (Tornike, 4 Nov, the tester's 82572): with the plan blocks switched
+ * off, the server still wrote its own „… ეს მოვაგვარო. დავიწყო?". A block the
+ * team switched off means „no fixed text here", not „the code's text". An
+ * unwritten block is not off: the code's text stands until one is written.
+ */
+export function serverTextIsOff(name: ServerTextBlock): boolean {
+  const now = kept.get(name);
+  if (now === undefined || Date.now() - now.at >= REFRESH_MS) void refresh(name);
+  return now?.off ?? false;
 }
 
 /** Reads every block now, so the first replies after a start use the team's text. */

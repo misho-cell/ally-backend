@@ -339,6 +339,8 @@ import {
   planInSentences,
   withAskablePeopleOnly,
   PLAN_CLOSING_QUESTION,
+  planAskSentenceOff,
+  planClosingQuestionOff,
   EARLIER_PLAN_CLOSING_QUESTIONS,
   nobodyCanBeWrittenTo,
   peopleToInvite,
@@ -9076,6 +9078,7 @@ export function withClosingQuestion(given: string, language: RunLanguage): strin
   const question = PLAN_CLOSING_QUESTION[language];
   // Box 66992: the plan sentence the owner approves carries no web address.
   const reply = withoutWebLinks(given);
+  if (planClosingQuestionOff(language)) return reply.trimEnd();
   const at = reply.lastIndexOf(question);
   if (at === -1 && endsOnOwnQuestion(reply, question)) return reply.trimEnd();
   if (at !== -1 && endsOnOwnQuestion(reply.slice(0, at), question)) {
@@ -9132,6 +9135,18 @@ export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
 }
 
 /**
+ * #8680 (Tornike, 4 Nov, the tester's 82572): with the plan-sentence block
+ * switched off, the assistant's own sentence is the plan — the server adds
+ * none. Only when that sentence names everyone the plan will ask; otherwise the
+ * owner would approve without seeing who is written to, and the server's
+ * sentence stays.
+ */
+function ownSentenceStands(reply: string, plan: PlanForReply, language: RunLanguage): boolean {
+  if (!planAskSentenceOff(language) || reply.trim() === '') return false;
+  return plan.names.length > 0 && plan.names.every((name) => reply.includes(name));
+}
+
+/**
  * The plan reply's text: the model's reply with the plan in it, said once and
  * ended on the agreed question.
  */
@@ -9140,6 +9155,13 @@ export function planReplyText(reply: string, plan: PlanForReply, language: RunLa
   // path. 1454: nothing the model wrote before it is kept (box 53296), and a
   // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
   // 50065) — gives way to the server's sentence instead of standing before it.
+  if (ownSentenceStands(reply, plan, language)) {
+    const own = withOnePlanSentence(withoutMatchJustification(reply));
+    return withClosingQuestion(
+      plan.mutualGroups === undefined ? own : `${plan.mutualGroups}\n\n${own}`,
+      language,
+    );
+  }
   if (carriesPlanSentence(plan.text)) {
     const serverSentence = plan.introSentence ?? plan.text;
     const sentence = withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence }));
