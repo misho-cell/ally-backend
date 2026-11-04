@@ -13935,6 +13935,8 @@ interface CallOptions {
   maxTokens?: number;
   // A tool this one turn must call (the weather's web_search); the tools array stays identical.
   forceTool?: string;
+  // #8681: past the search phase, the main model answers without extended thinking.
+  quickThought?: boolean;
 }
 
 /** The owner's newest line in the turn being answered, when it is plain text. */
@@ -13967,6 +13969,53 @@ export function ownerLinesNewestFirst(messages: readonly Anthropic.MessageParam[
   return lines.reverse();
 }
 
+/**
+ * #8681 FAIL 3 (the tester's 82593: 157 / 211 / 218 s against 180): after the
+ * searches, the turn that wrote the answer thought for 38 s before its first
+ * word (run 168a8197), and the writer then rewrote it in 27 s. Past the search
+ * phase the answer is a write-up of what was found, and the writer has the
+ * last word, so that turn runs without extended thinking. If the API refuses
+ * the setting, the turn is sent again as before, and the setting is not sent
+ * again in this process.
+ */
+const NO_THINKING = { type: 'disabled' } as const;
+let quickThoughtRefused = false;
+
+export function refusedTheThinkingSetting(message: string): boolean {
+  return (
+    /thinking/iu.test(message) && /(invalid|not supported|unsupported|not allowed)/iu.test(message)
+  );
+}
+
+/** The run is past its search phase: the next turns write up what was found. */
+export function pastTheSearchPhase(elapsedMs: number): boolean {
+  return elapsedMs > SEARCH_PHASE_CAP_MS;
+}
+
+async function callClaudeLate(
+  messages: Anthropic.MessageParam[],
+  systemPrompt: string,
+  tools: AnthropicTool[],
+  ctx: RunContext,
+  opts: CallOptions,
+  elapsedMs: number,
+): Promise<Anthropic.Message> {
+  if (quickThoughtRefused || !pastTheSearchPhase(elapsedMs)) {
+    return callClaude(messages, systemPrompt, tools, ctx, opts);
+  }
+  try {
+    return await callClaude(messages, systemPrompt, tools, ctx, { ...opts, quickThought: true });
+  } catch (err) {
+    if (!refusedTheThinkingSetting((err as Error).message ?? '')) throw err;
+    quickThoughtRefused = true;
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[chat] run ${ctx.runId}: thinking could not be turned off ("${(err as Error).message.slice(0, 120)}") — sent as before, and not asked again`,
+    );
+    return callClaude(messages, systemPrompt, tools, ctx, opts);
+  }
+}
+
 async function callClaude(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
@@ -13980,9 +14029,11 @@ async function callClaude(
   // which thinking cannot accompany; and the exact prompt this round was sent.
   const tracedFully = await tracedInFull(ctx.userId);
   const reasoning =
-    tracedFully && model === MODEL && opts.forceTool === undefined
-      ? { thinking: SUMMARIZED_THINKING }
-      : {};
+    opts.quickThought === true && model === MODEL
+      ? { thinking: NO_THINKING }
+      : tracedFully && model === MODEL && opts.forceTool === undefined
+        ? { thinking: SUMMARIZED_THINKING }
+        : {};
   if (tracedFully) void recordPromptSent(ctx.runId, systemPrompt);
   const stream = anthropic.messages.stream(
     {
@@ -15871,11 +15922,18 @@ async function runToolLoop(
         walkOffered: tools.some((tool) => tool.name === WARM_PATH_TOOL),
         roundFoundSomeone: peopleFoundCount(runId) > foundBeforeRound,
       });
-      response = await callClaude(messages, systemPrompt, tools, ctx, {
-        onText: stream,
-        model: TOOL_TURN_MODEL,
-        ...(walkNext && { forceTool: WARM_PATH_TOOL }),
-      });
+      response = await callClaudeLate(
+        messages,
+        systemPrompt,
+        tools,
+        ctx,
+        {
+          onText: stream,
+          model: TOOL_TURN_MODEL,
+          ...(walkNext && { forceTool: WARM_PATH_TOOL }),
+        },
+        Date.now() - startedAt,
+      );
     }
 
     // #397: the searching is over; what is left is the reply.
