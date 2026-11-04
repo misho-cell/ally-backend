@@ -226,6 +226,8 @@ interface StoredRequest {
   readonly requesterTaskId: number | undefined;
   /** 5347: whose assistant passed the owner's request on; null when asked first-hand. */
   readonly forwarderName: string | null;
+  /** #8912: the forwarder as the requester saved them; null when nobody passed it on. */
+  readonly forwarderForRequester: string | null;
 }
 
 /**
@@ -250,6 +252,7 @@ async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
       stored.mediatorDisplayName,
       stored.targetName,
       stored.isDirect,
+      stored.forwarderForRequester,
     ),
   ]);
   // 5052: a request thread is titled here, so its short titles are asked for here.
@@ -664,6 +667,11 @@ async function requestIntroductionInner(
     isDirect,
     requesterTaskId: context.requesterTaskId,
     forwarderName,
+    // #8912: the requester reads who passed it on, by their own label for them.
+    forwarderForRequester:
+      forwarderName === null
+        ? null
+        : await nameAsReaderSaved(Number(requesterUserId), Number(bookOwner), forwarderName),
   };
   const requestId = stored.requestId;
   // G-157: the names this request writes in Georgian are spelled as the base spells them.

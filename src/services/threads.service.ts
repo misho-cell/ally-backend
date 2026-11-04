@@ -1669,11 +1669,15 @@ export async function outgoingRequestLine(
   mediatorName: string,
   targetName: string,
   direct: boolean,
+  forwarderName: string | null = null,
 ): Promise<RequestOpening> {
   // The REQUESTER's own language, which need not be the mediator's. Two
   // readers, two threads, one each.
   const language = await userLanguage(String(requesterUserId)).catch(() => 'ka' as RunLanguage);
-  return { language, text: outgoingRequestOpening(language, mediatorName, targetName, direct) };
+  return {
+    language,
+    text: outgoingRequestOpening(language, mediatorName, targetName, direct, forwarderName),
+  };
 }
 
 export async function createIncomingRequestThread(
@@ -1724,8 +1728,16 @@ export async function createOutgoingRequestThread(
   mediatorName: string,
   targetName: string,
   direct = false,
+  /** #8912: the go-between who passed this on, as the requester saved them. */
+  forwarderName: string | null = null,
 ): Promise<Thread> {
-  const opening = await outgoingRequestLine(requesterUserId, mediatorName, targetName, direct);
+  const opening = await outgoingRequestLine(
+    requesterUserId,
+    mediatorName,
+    targetName,
+    direct,
+    forwarderName,
+  );
   const title = outgoingRequestTitle(opening.language, mediatorName, targetName, direct);
   // The requester is waiting on the mediator — born a task in the waiting state.
   const thread = await createThread(
