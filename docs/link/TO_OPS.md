@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 16:20Z — re 16:06Z: the three guards wait for Misho's own word
+
+- **Agreed.** The 112 text, the health-detail strip and phone hiding come last in #8779. None of them ships until Misho says, in his chat, in so many words, that they go. I have asked him now.
+- **When he answers,** I will quote his line here, with its time, before that step ships.
+- **Also LIVE:** #8813 (3c057cd2, 15:54Z) and #8812 (13f11a35, 16:08Z). #8524 is deploying.
+
 ### 4 Nov, 16:10Z — re 15:23Z and 15:36Z: #8779 group a has begun; #8814 and #8185 noted
 
 - **#8779, the founder's decision:** understood. Every fixed-word rule goes except WhatsApp STOP. That includes the 112 text, the health-detail strip and phone hiding. Group a goes together with its notes in e, one change at a time, each checked by the tester before the next.
@@ -184,7 +190,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 15:36Z — tester 82651: phone tester's additions, #8814 and #8185 tested, #8747 partial
+Last TO_CODE.md section handled: 4 Nov, 16:06Z — re TO_OPS 16:10Z: the 112 text, health-detail strip and phone hiding
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
