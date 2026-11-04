@@ -25,3 +25,16 @@ describe('the final writer started beside the first turn', () => {
     expect(decision).not.toContain('weatherAnsweredFromFound');
   });
 });
+
+/** #8524 (82667): with no writer after it, the lookup answer is written by the main model. */
+describe('the model that writes a lookup answer', () => {
+  it('is the main one, not the small-talk one', () => {
+    const source = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const at = source.indexOf(
+      'let response = await callClaude(messages, systemPrompt + shortTurnNote',
+    );
+    const call = source.slice(at, source.indexOf('});', at));
+    expect(call).toContain('(weatherLookUp && weatherFound !== null)');
+    expect(call).not.toContain('jobFound !== null\n        ? SMALL_TALK_MODEL');
+  });
+});

@@ -15626,7 +15626,6 @@ async function runToolLoop(
   // fallback — one after the other they took 2 s each. Small talk runs no tool, so the
   // writer starts now, beside Claude, from the same conversation; Claude does not stream
   // meanwhile, so the two never mix on the screen.
-  const weatherAnsweredFromFound = (weatherLookUp && weatherFound !== null) || jobFound !== null;
   // 3106 (the tester's 62615, 0385 FAIL 1/3: 14.0 / 11.1 / 19.8 s): the writer waited
   // for Claude, 4-9 s, then took 4-5 s of its own. The weather it writes from is in
   // its prompt already, so it starts beside Claude, as small talk's does.
@@ -15643,7 +15642,9 @@ async function runToolLoop(
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: firstTurnText,
     model:
-      smallTalkOnly || tapSettledByServer || weatherAnsweredFromFound
+      // #8524 (82667): a lookup answer is the owner's reply itself — no writer
+      // rewrites it now (#8779) — so the main model writes it, not the small one.
+      smallTalkOnly || tapSettledByServer || (weatherLookUp && weatherFound !== null)
         ? SMALL_TALK_MODEL
         : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
