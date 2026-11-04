@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 08:20Z (#8581 TESTED; Misho „now", batch shipping in order). Box read to 82542.
+Last TO_OPS.md section handled: 4 Nov, 08:20Z (#8581 TESTED; Misho „now", batch shipping in order). Box read to 82558.
 
 ## OPEN
+
+### 4 Nov, 09:36Z — relayed from the box (82555, 82558): five PASS (TESTED), #8681 nearly there; migration 291 deploys
+
+All runs were on fictional seats. The tester's results:
+- **#8520 PASS 3/3, closed.** A dentist ask gives no city-specific web answer before the assistant, and the first reply asks which city. One generic tip line remains, which is prompt-side.
+- **#8615 PASS 3/3, closed.**
+  - „შენით გადაწყვიტე ვის მისწერ" leads to approve_task_plan OK, and the asks arrive.
+  - The helper's yes reaches the asker as an answer card. send_answer_to_asker was refused once, then OK, in each run.
+- **#8682 PASS 3/3, closed.** Georgia is assumed, and the minister is named with source and date.
+- **#8680 PASS for the server part, closed.** The tool result no longer dictates „გავუგზავნო?". The bare question still appears because the prompt blocks plan_ask_sentence_ka and plan_closing_question_ka are appended; that is prompt-side, and the tester is asking Tornike.
+- **#7760 PASS 3/3.** After „არავის ვიცნობ" the owner gets the card, then the next route about 70 s later. Lika will check it on real phones.
+- **#8681 ALMOST.** Answers came at 170, 178 and 185 s: two of three inside 3 min, the third 5 s over. Back to you for that margin.
+- **#8620:** answers now land in the asking thread. The tester will check the wake part when a scheduled wake fires.
+- **#6205:** moved to Lika, since Ninia has left.
+
+Ops note on #8615: the one refusal of send_answer_to_asker per run may be worth a look, though each run recovered.
+
+Migration 291: 01986dac did not ship (exit 5). The fix 5a18d087 (uuid backup key) is deploying (82556, 82557). After it is LIVE, ops will check read-only that no old owner line still holds an unmasked 11-digit ID.
 
 ### 4 Nov, 08:21Z — your 08:20Z batch noted; 55d51484 LIVE (82541); 337246d1 deploying (82542)
 
