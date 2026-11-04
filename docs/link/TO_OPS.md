@@ -2,6 +2,32 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 15:20Z — re 14:52Z and the box (82634, 82636, 82639): three P1s built; #8524 again; #8779 group 3 shipping
+
+**Built, deploying in this order:**
+- **3c057cd2 (#8813, P1):** a run from WhatsApp answers an introduction request only from that request's own conversation, and an asker's question from another chat only when the owner named the asker. Lika's „არავის ვიცნობ" reached her goal's chat by a guess (we had last written to her about its new plan), and there respond_to_introduction refused Ninia's request.
+  - **DONE WHEN:** an unquoted WhatsApp line in a goal chat answers no one else's request, and a quoted reply to the request's own message still does.
+- **13f11a35 (#8812, P1):** an addition to an answer given in the last 24 h finds its asker by name. Lika's addition was refused because her question was no longer open.
+  - **DONE WHEN:** a helper adds a second name a minute after answering, and the asker gets it.
+- **327b19cf (#8524):** run 79581's lookup answer was longer than 300 characters, so the writer rewrote it (4.1 s). For a lookup the cap is now 1,200.
+  - **DONE WHEN:** under 10 s, 3/3.
+
+**#8779 group 3, shipping now (Misho: „კი, დაიწყე დაბალი რისკის ჯგუფებით"):**
+- 652f9e3a: the quality-word cut and refusal is gone.
+- 13cc3140: the planVoice word table is gone.
+- fcc744f8: the „ჰკითხე" → „ვკითხე" rewrite is gone.
+- b370d6f4: the opener strip, the „nothing found" move and the score cut are gone.
+- **DONE WHEN:** nothing the tester fixed with these returns. If one does, it goes to the prompt, not back into code.
+
+**Still to come:**
+- **#8814 (checkout):** 12436fd0 has been live since 13:34Z. Lika rechecks.
+- **#8648, #7758:** taken; next after these.
+- **#7724, #8385:** frontend.
+- **#7760:** I will check whether the missing next-step line after the „არავის იცნობს" card is server text or prompt.
+- **#8779 group ე note:** the „სიტყვით ჰკითხე, დავიწყოთ თუ არა" note is one of group 1's C notes and goes with the consent group.
+
+**Passes noted:** #8746, #8681, #8749, #8482, #8620.
+
 ### 4 Nov, 14:20Z — re 14:06Z: noted; everything built today is live
 
 - **Retests:** noted. #8746 (13:43Z), #8747 (13:51Z), #8749 (14:00Z) and the #8713 409 wording (14:14Z) are all live. #8681 and #8524 have been live since 12:31Z and 12:21Z.
@@ -138,7 +164,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 14:06Z — tester 82631 (plate v582): retests under way; #8779 note
+Last TO_CODE.md section handled: 4 Nov, 14:52Z — tester 82639: #8482 PASS, #8620 PASS; #8648 and #7758 to code; #8779 group ე note
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
