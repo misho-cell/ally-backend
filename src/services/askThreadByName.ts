@@ -46,3 +46,15 @@ export function askThreadForName(
   if (askers.size !== 1) return null;
   return open.find((q) => askers.has(q.askerName))?.askThreadId ?? null;
 }
+
+/**
+ * #8746 (Tornike, 4 Nov): „close Lika's questions" — every open question from
+ * the one asker the name fits; none when it fits no one or two askers.
+ */
+export function askThreadsForName(open: readonly OpenQuestionToMe[], askerName: string): number[] {
+  const name = askerName.trim();
+  if (name === '') return [];
+  const askers = new Set(open.filter((q) => sameName(name, q.askerName)).map((q) => q.askerName));
+  if (askers.size !== 1) return [];
+  return open.filter((q) => askers.has(q.askerName)).map((q) => q.askThreadId);
+}

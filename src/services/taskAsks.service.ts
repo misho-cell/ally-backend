@@ -4435,6 +4435,26 @@ export async function openQuestionsToMe(recipientUserId: string): Promise<OpenQu
 
 const MAX_OPEN_QUESTIONS_READ = 20;
 
+/**
+ * #8746 (Tornike, 4 Nov, P1): „ჩახურე" on old test questions had no way to
+ * close them, so the assistant answered each asker — Lika got „it was a test"
+ * four times. A question the member closes is taken off their list and
+ * NOTHING is sent to the asker. Returns how many were closed.
+ */
+export async function closeOpenQuestions(
+  recipientUserId: string,
+  askThreadIds: readonly number[],
+): Promise<number> {
+  if (askThreadIds.length === 0) return 0;
+  const result = await query(
+    `UPDATE task_asks SET status = 'cancelled', seen_at = COALESCE(seen_at, NOW())
+      WHERE to_user_id = $1::int AND status = 'sent' AND ask_thread_id = ANY($2::int[])`,
+    [recipientUserId, [...askThreadIds]],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rowCount ?? 0;
+}
+
 export async function getAskByThread(askThreadId: number): Promise<IncomingAsk | null> {
   const result = await query<IncomingAsk>(
     `SELECT ta.id, ta.task_id, ta.question, ta.status, ${ASKER_AS_THE_READER_SAVED_THEM} AS from_name
