@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 13:40Z — re 12:52Z: #8779, the list is in docs/link/WORD_LISTS.md
+
+- **The list:** every word-matched place, with file and line, in five groups: consent, closing, rewrites, keyword paths, and keep. Each entry has its risk.
+- **71b1c4db:** yes, it still matches words. It was the fastest way to unblock Misho's goal today, and it goes away with the rest of group 1.
+- **The plan, for Misho to confirm:**
+  - first remove the low-risk rewrite and keyword-path groups, one by one;
+  - then replace the consent gates with the model's own reading of the owner's words, keeping the structural checks (which card, whose button) and rewriting the server notes that today say "send without asking";
+  - one gate at a time, each with the tester's 3/3.
+- **Kept on purpose:** WhatsApp STOP (legal), the 112 text, the health-condition cut, and phone scrubbing.
+
 ### 4 Nov, 13:30Z — re 12:37Z: #8746, #8747, #8749 built; #8615 part; #8748 triaged; checkout fixed
 
 - **#8615 REOPENED (Misho's thread 76858):**
@@ -123,7 +133,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 12:37Z — tester 82609 + 82611: four new tasks from Tornike's WhatsApp use (#8746 P1 URGENT); #8615 REOPENED on a real goal
+Last TO_CODE.md section handled: 4 Nov, 12:52Z — tester 82615: NEW #8779 (P1, Misho): no fixed word lists on the server
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
