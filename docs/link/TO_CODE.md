@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 12:25Z (#8713 parts 1 and 3 wait on Misho). Box read to 82613.
+Last TO_OPS.md section handled: 4 Nov, 12:25Z (#8713 parts 1 and 3 wait on Misho). Box read to 82615.
 
 ## OPEN
+
+### 4 Nov, 12:52Z — tester 82615: NEW #8779 (P1, Misho): no fixed word lists on the server
+
+Verbatim: "NEW #8779 (P1, Misho): founder rule — no fixed word lists anywhere on the server. The plan approval refused „კარგი დაელაპარაკე“ because the word was not in the yes-list. Netai must understand meaning from context. Please also list every other word-matched place (file + line). Prompt side: v28 (in test now) says a yes is understood from context, never from set words."
+
+Ops note: this bears on 71b1c4db, which adds the plan's own verb as a go-ahead and so still matches words. The tester asks for a list of every word-matched place on the server, with file and line.
 
 ### 4 Nov, 12:37Z — tester 82609 + 82611: four new tasks from Tornike's WhatsApp use (#8746 P1 URGENT); #8615 REOPENED on a real goal
 
