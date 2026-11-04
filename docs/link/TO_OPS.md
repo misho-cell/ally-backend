@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 13:30Z — re 12:37Z: #8746, #8747, #8749 built; #8615 part; #8748 triaged; checkout fixed
+
+- **#8615 REOPENED (Misho's thread 76858):**
+  - **„კარგი დაელაპარაკე" (16:24) is LIVE as a go-ahead (71b1c4db).** „დაელაპარაკე", „დაელაპარაკეთ", „ელაპარაკე" and „talk to them" approve a plan on screen, under the usual limits.
+  - **The 15:55 sentence is not covered.** It was long, past-tense delegation („გითხარი ვისთანაც საჭიროდ ჩათვლი დაკავშირებას დაუკავშირდი…"). approve_task_plan was refused, grant_task_permission passed, and the unapproved-plan wall then refused the 4 asks.
+  - **Whether the model or the word lists decide consent is the question Misho asked me to list today.** I have sent him the list. Code waits on his choice; I am not widening consent on my own.
+- **#8746 (2caf06be), deploying.**
+  - **The tool:** close_open_question closes a question asked of the member, in its chat or by asker_name (every_from_asker for all of one person's), and sends the asker nothing.
+  - **DONE WHEN:** „close Lika's questions" closes them, Lika receives nothing, and they leave the inbox.
+- **#8747 (95739538), deploying.**
+  - **Cause:** Lika's answer was shown on Tornike's screen as a card, and the wake after it logged „goal 3763: a step (status waiting) — no push". A shown answer's wake carried no flag saying it held an answer, so a goal still waiting on another helper rang nothing, neither push nor WhatsApp.
+  - **Fix:** both on-screen answer wakes now count as news.
+  - **DONE WHEN:** a helper answers while another ask on the goal is still open, and the owner gets the push and the WhatsApp copy.
+- **#8749 (8417eb99), deploying.** A reader's label with whatsapp, viber or telegram (Latin or Georgian) in it is passed over for a clean label or the registered name.
+  - **DONE WHEN:** Lika's threads name Tornike by his Netai name.
+- **#8748: no single fault found yet.** The counts came at different moments while 19 send_answer_to_asker calls ran (check_my_inbox went 10 → 9 → 7 → 6 within two minutes), and „13" was the model's own sum. Please re-check once #8746 is live, when closing no longer means answering.
+- **Checkout (12436fd0), deploying first.** Every checkout since at least 12:54Z failed with Stripe „No such price: 'prod_…'", because STRIPE_PRICE_ID holds a product id. The fix reads it through to the product's default price, and logs the amount.
+- **#8713 part 2 LIVE (54080798).** The frontend contract is in FOR_FRONTEND.
+- **Not built:** #8623 waits on Misho's team list. #8614 is prompt-side.
+
 ### 4 Nov, 12:25Z — re 12:10Z: #8713 (WhatsApp notifications)
 
 - **Part 2 (notifications only on WhatsApp): building now.** It will be a per-member setting, independent of app notifications. The frontend contract will follow in FOR_FRONTEND when the backend is live. Today the WhatsApp copy is skipped while the member has Netai open anywhere, and a background tab or app counts as open. That is the likely reason Tornike saw nothing.
@@ -103,7 +123,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 12:10Z — tester 82602: new task #8713 (WhatsApp notifications, from Tornike), for Misho
+Last TO_CODE.md section handled: 4 Nov, 12:37Z — tester 82609 + 82611: four new tasks from Tornike's WhatsApp use (#8746 P1 URGENT); #8615 REOPENED on a real goal
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
