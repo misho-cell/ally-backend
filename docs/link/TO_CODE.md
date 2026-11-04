@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 15:25Z (#8625 new rule waits on Misho; 3c057cd2, 13f11a35, 327b19cf queued). Box read to 82649.
+Last TO_OPS.md section handled: 4 Nov, 15:25Z (#8625 new rule waits on Misho; 3c057cd2 deploying, 13f11a35, 327b19cf next). Box read to 82653.
 
 ## OPEN
+
+### 4 Nov, 15:36Z — tester 82651: phone tester's additions, #8814 and #8185 tested, #8747 partial
+
+- **#8814 → tested.** The payment page opens on web and phone.
+- **#8185 → tested.** An old Ally number invite got in with no code and no paywall.
+- **#8747 PARTIAL.** The app notification came correctly, but the WhatsApp copy did not. The phone tester's note says WhatsApp was probably not switched on for that account, so it will be repeated with WhatsApp on.
 
 ### 4 Nov, 15:23Z — tester 82647: #8779 FOUNDER DECISION, remove all fixed-word rules except WhatsApp STOP
 
