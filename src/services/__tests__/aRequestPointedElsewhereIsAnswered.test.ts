@@ -111,10 +111,15 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
   it("answers the conversation's own request when the run names one that is not his", () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('runThreadRequest.set(runId, thread.introduction_request_id);');
-    expect(chat).toContain(
-      'const retried = ownRequest !== undefined && ownRequest !== asked && !answered(first);',
-    );
-    expect(chat).toContain('return retried ? await answer(ownRequest) : first;');
+    expect(chat).toContain('return answer(askedHere ?? asked);');
     expect(chat).toContain('runThreadRequest.delete(runId);');
+  });
+
+  /** #8949 (battery 5 Nov, case 2 run 1): an answer in one ask chat accepted another chat's request. */
+  it("never settles another conversation's request from a go-between's chat", () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('if (askedHere === undefined && inAGoBetweensChat) {');
+    expect(chat).toContain('await requestAskedInThread(userId, threadId)');
+    expect(chat).toContain('note: NOT_THIS_CHATS_REQUEST_NOTE');
   });
 });

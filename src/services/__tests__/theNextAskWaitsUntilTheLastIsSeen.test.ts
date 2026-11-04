@@ -22,17 +22,19 @@ beforeEach(() => jest.resetAllMocks());
 describe('the next ask waits until the last one is seen', () => {
   it('finds an unopened ask from the same asker to the same person', async () => {
     mockQuery.mockResolvedValue({ rows: [{ found: true }] });
-    expect(await previousAskUnseen('7', 42)).toBe(true);
+    expect(await previousAskUnseen('7', 42, 900)).toBe(true);
     const [sql, params, timeout] = mockQuery.mock.calls[0] as [string, unknown[], number];
     expect(sql).toContain("status = 'sent' AND seen_at IS NULL");
     expect(sql).toContain('from_user_id = $1::int AND to_user_id = $2::int');
-    expect(params).toEqual(['7', 42, expect.any(Number)]);
+    // #8949: only an unseen ask of this same goal holds the next.
+    expect(sql).toContain('task_id = $4::int');
+    expect(params).toEqual(['7', 42, expect.any(Number), 900]);
     expect(timeout).toBeGreaterThan(0);
   });
 
   it('lets the ask go once the last one is seen or answered', async () => {
     mockQuery.mockResolvedValue({ rows: [{ found: false }] });
-    expect(await previousAskUnseen('7', 42)).toBe(false);
+    expect(await previousAskUnseen('7', 42, 900)).toBe(false);
   });
 
   it('names the person and says the question goes once they have read the last', () => {

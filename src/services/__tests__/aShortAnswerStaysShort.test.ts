@@ -26,14 +26,15 @@ describe('praise the helper did not write', () => {
 });
 
 /** Tester 40162: „and will be able to help" added to a name-only answer. */
-describe('a promise of help the helper did not make', () => {
-  it('is found', () => {
+describe('a word of help in the answer', () => {
+  // #8949 (battery 5 Nov, case 2): „დაგეხმაროთ / დაეხმაროს" are neutral, not praise.
+  it('is not held back as praise', () => {
     expect(
       endorsementAdded('ნანა სტომატოლოგი', 'ასახელებს ნანას, სტომატოლოგს, და დაგეხმარება.'),
-    ).toEqual(['დაგეხმარება']);
+    ).toEqual([]);
     expect(
       endorsementAdded('Nana, a dentist', 'They name Nana, a dentist, who will help.'),
-    ).toEqual(['help']);
+    ).toEqual([]);
   });
 
   it('is kept when the helper offered it', () => {

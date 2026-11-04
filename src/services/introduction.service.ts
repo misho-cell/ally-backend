@@ -1516,6 +1516,25 @@ export async function pendingIntroInMediatorThread(
 }
 
 /**
+ * #8949: the newest introduction request asked in this conversation, whatever its
+ * state — an answer given here belongs to it, never to a request in another chat.
+ */
+export async function requestAskedInThread(
+  mediatorUserId: string,
+  threadId: number,
+): Promise<number | null> {
+  const result = await query<{ id: number }>(
+    `SELECT id FROM introduction_requests
+      WHERE mediator_thread_id = $1 AND mediator_user_id = $2
+      ORDER BY id DESC
+      LIMIT 1`,
+    [threadId, mediatorUserId],
+    PENDING_INTRO_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.id ?? null;
+}
+
+/**
  * Tester 75902 (thread 65521, 25 Oct): the go-between's yes was recorded as a
  * no, he wrote „I never refused, I agreed to everything", and was told the
  * request was closed. The same go-between may turn his own no into a yes for a

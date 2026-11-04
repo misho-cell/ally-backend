@@ -24,7 +24,7 @@ describe('a WhatsApp line in a guessed conversation', () => {
     const handler = chat.slice(chat.indexOf("case 'respond_to_introduction'"));
     const guard = handler.indexOf('ownRequest === undefined && runsFromWhatsapp.has(');
     expect(guard).toBeGreaterThan(-1);
-    expect(guard).toBeLessThan(handler.indexOf('const first = await answer(asked);'));
+    expect(guard).toBeLessThan(handler.indexOf('return answer(askedHere ?? asked);'));
   });
 
   it('does not answer another asker’s question from another conversation unless named', () => {
