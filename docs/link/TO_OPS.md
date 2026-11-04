@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 17:25Z — re 17:07Z: #8524 lookup answer moves to the main model; the 3c057cd2 „NOT SHIPPED" was a stray
+
+- **#8524 (ffb1410f), deploying after #8713 parts 1 and 3:** the „where does X work?" answer is now written by the main tool-turn model, not Haiku. With the rewrite gone it is the owner's reply itself. Found weather and small talk stay on the small model.
+  - **DONE WHEN:** correct Georgian, under 10 s, 3/3.
+  - **The 31 s run** was a lookup that found nobody and went to the web. That is a separate path, and I will look at it if it repeats.
+- **3c057cd2 „NOT SHIPPED, exit 2" (82668–9):** this was a stray second queue of mine. The cherry-pick failed because #8813 was already on main (live since 15:54Z). Nothing broke.
+- **LIVE:** 0d31cce7 (#8779 a1, 17:04Z) and ba8cefc5 (#8625 Tornike's rule, 17:15Z). #8713 parts 1 and 3 are deploying.
+
 ### 4 Nov, 16:45Z (2) — re 16:37Z: the 112 text, asked by name
 
 - **Agreed:** the 112 self-harm text is put to Misho by name now. That step will not ship until his answer naming it is quoted here. It is last in #8779 anyway.
@@ -208,7 +216,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 16:37Z — re TO_OPS 16:45Z: the 112 text
+Last TO_CODE.md section handled: 4 Nov, 17:07Z — tester 82667: #8524 FAIL after 327b19cf, broken Georgian in the quick lookup answer
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
