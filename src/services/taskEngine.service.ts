@@ -275,6 +275,9 @@ export type WakeResult =
  */
 export type EventText = string | Readonly<Record<RunLanguage, string>>;
 
+/** #8747: passed by the wakes that bring an answer already on screen. */
+export const ANSWER_IS_NEWS = true;
+
 export async function wakeTask(
   taskId: number,
   eventText: EventText,
@@ -282,6 +285,13 @@ export async function wakeTask(
   ensureQuoted?: QuoteGuarantee,
   // #7234: who caused it. Netai's own wakes wait out the quiet hours; the owner's do not.
   origin: WakeOrigin = WakeOrigin.Netai,
+  /**
+   * #8747 (Tornike, 4 Nov): an answer already shown on screen carries no quote
+   * guarantee, so a goal still waiting on another helper read it as „a step"
+   * and rang nothing — Lika's „yes, tomorrow at 7" reached neither his phone
+   * nor his WhatsApp. An answer is news whether or not it was shown first.
+   */
+  carriesAnswer = false,
 ): Promise<WakeResult> {
   if (runningTasks.has(taskId)) return 'busy';
   /**
@@ -588,7 +598,7 @@ export async function wakeTask(
       // Board #386: a quiet run wrote nothing, so there is no news to ring for.
       if (result.quiet === true) return 'woken';
       // #1255: a step of the work is not news; its line stays in the chat.
-      if (!wakeIsNews(status, ensureQuoted !== undefined)) {
+      if (!wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer)) {
         // The tester's 39207: a seat has no push subscription, so a skipped push
         // left no trace anywhere. This line is the trace.
         // eslint-disable-next-line no-console
@@ -730,7 +740,13 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
   }
   const wakeBeforeRun = await nextWakeText(taskId);
   const woken = onScreen
-    ? await wakeTask(taskId, buildShownAnswersWakeEvent(arrived))
+    ? await wakeTask(
+        taskId,
+        buildShownAnswersWakeEvent(arrived),
+        undefined,
+        WakeOrigin.Netai,
+        ANSWER_IS_NEWS,
+      )
     : await wakeTask(
         taskId,
         buildAnswersWakeEvent(arrived),
