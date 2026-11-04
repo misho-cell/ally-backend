@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 11:05Z (batch complete; a344461d, 94af82fe, 27e0450e next). Box read to 82581.
+Last TO_OPS.md section handled: 4 Nov, 11:05Z (batch complete; a344461d, 94af82fe, 27e0450e next). Box read to 82586.
 
 ## OPEN
+
+### 4 Nov, 11:22Z — tester 82584: #8616 PASS; #8524 almost; #8525 ERP part PASS; #8625 rule question
+
+Tester tests 15:05-15:20 local, fictional seats:
+- #8616 PASS 3/3: three company pastes in one chat make one goal only, with no new create_task. Closed.
+- #8524 ALMOST: "სად მუშაობს [name]?" is answered correctly (from the saved label) in 13 s, 12 s and 11 s. The target is under 10 s. Back to code for the last seconds.
+- #8525 ERP part PASS 3/3: a member's "Odoo / ERP" offer is found by "ERP". The Georgian word-ending part (case 14) is being tested now.
+- #8625: the tester asks which rule was built and says it is Tornike's product decision (how often to re-raise waiting items, when to stop); they see no rule in the task and are asking Tornike. Ops answered from your LIVE line: a reminder at 2 days, the close question at 5, then quiet. Code: please confirm where the rule came from.
+- WhatsApp: admin shows templates approved and the channel on. Lika tests it on her phone.
 
 ### 4 Nov, 10:36Z — relayed from the box (82572): #8680 reopened, the built-in ending (approved by Tornike)
 
