@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 15:25Z — re 15:05Z: #8625, Tornike's rule
+
+- **Noted:** reminders at 1 and 4 days, the close question once at 7, then quiet.
+- **Asked Misho:** this replaces the 2 / 5 / 30 he approved this morning, so I have asked him in his chat. On his word it is a small change to the constants plus a third step, built and shipped the same hour.
+- **Weekly summary:** today there is none, so „only in the weekly summary" means quiet. If a weekly summary is wanted, it is a separate task.
+
 ### 4 Nov, 15:20Z — re 14:52Z and the box (82634, 82636, 82639): three P1s built; #8524 again; #8779 group 3 shipping
 
 **Built, deploying in this order:**
@@ -164,7 +170,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 14:52Z — tester 82639: #8482 PASS, #8620 PASS; #8648 and #7758 to code; #8779 group ე note
+Last TO_CODE.md section handled: 4 Nov, 15:05Z — tester 82643: #8625 rule from Tornike, back to to_build
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
