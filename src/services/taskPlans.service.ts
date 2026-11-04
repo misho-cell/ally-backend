@@ -93,6 +93,24 @@ export interface TaskPlan {
    * a small favour — five people per wave instead of three. Absent = small.
    */
   real_work?: boolean;
+  /**
+   * #8845: the go-betweens (phone digits) to ONE person, in the order the
+   * routes are worked — the shortest first, then the warmer longer one, then
+   * the rest. Set by the server from the run's own routes, never by the model.
+   */
+  route_order?: string[];
+}
+
+/** The minimum a route order needs to mean anything: two routes to one person. */
+const MIN_ROUTES_IN_ORDER = 2;
+
+/** #8845: the route order kept to the people the plan still names; absent below two. */
+export function withRouteOrder(plan: TaskPlan, routeOrder: readonly string[]): TaskPlan {
+  const named = new Set(plan.people_to_involve.map((p) => phoneDigits(p.phone)));
+  const kept = [...new Set(routeOrder)].filter((digits) => named.has(digits));
+  const rest: TaskPlan = { ...plan };
+  delete rest.route_order;
+  return kept.length >= MIN_ROUTES_IN_ORDER ? { ...rest, route_order: kept } : rest;
 }
 
 export interface StoredPlan extends TaskPlan {
@@ -450,6 +468,8 @@ export async function proposeTaskPlan(
   raw: unknown,
   /** The conversation's language — the card is read by the owner, not by us. */
   language: RunLanguage = 'ka',
+  /** #8845: the run's routes to one person, in work order (routeOrderForPlan). */
+  routeOrder: readonly string[] = [],
 ): Promise<PlanOutcome<{ version: number; summary: string; everApproved: boolean }>> {
   // A GOAL ID THAT IS NOT A GOAL ID IDENTIFIES NO GOAL. See isARealId: the
   // door hands over `Number(input['task_id'])`, `Number(undefined)` is `NaN`,
@@ -488,7 +508,7 @@ export async function proposeTaskPlan(
   const once = await onePersonPerAccount(allowed);
   const spelled = language === 'ka' ? await withSavedSpelling(userId, once) : once;
   const withReach = await withOwnerTies(userId, await withReachability(userId, spelled));
-  const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
+  const plan = withRouteOrder({ ...parsed.value, people_to_involve: withReach }, routeOrder);
   // Row 140 returns plan_approved_at as well: whether this GOAL has ever had
   // an approved plan decides whether a route may claim to be under way. The
   // UPDATE does not touch that column, so what comes back is the previous

@@ -47,9 +47,33 @@ export function bridgesToOnePerson(plan: unknown): boolean {
   return false;
 }
 
-export function waveSize(plan: Pick<StoredPlan, 'real_work'>): number {
-  if (bridgesToOnePerson(plan)) return WAVE_SIZE_ONE_BRIDGE;
+/** #8845: the plan works several routes to one person, one after another. */
+export function worksRoutesInOrder(plan: Pick<StoredPlan, 'route_order'>): boolean {
+  return (plan.route_order?.length ?? 0) >= 2;
+}
+
+export function waveSize(plan: Pick<StoredPlan, 'real_work' | 'route_order'>): number {
+  if (worksRoutesInOrder(plan) || bridgesToOnePerson(plan)) return WAVE_SIZE_ONE_BRIDGE;
   return plan.real_work === true ? WAVE_SIZE_REAL_WORK : WAVE_SIZE_SMALL;
+}
+
+/**
+ * #8845: the routes to one person in their work order (shortest, warmer,
+ * the rest), ahead of everyone else, who keep the order they came in.
+ */
+export function inRouteOrder(
+  people: readonly PlanPerson[],
+  routeOrder: readonly string[] | undefined,
+): PlanPerson[] {
+  if (routeOrder === undefined || routeOrder.length === 0) return [...people];
+  const place = (p: PlanPerson): number => {
+    const at = routeOrder.indexOf(phoneDigits(p.phone));
+    return at === -1 ? routeOrder.length : at;
+  };
+  return people
+    .map((person, index) => ({ person, index }))
+    .sort((a, b) => place(a.person) - place(b.person) || a.index - b.index)
+    .map(({ person }) => person);
 }
 
 /** The plan's people not yet asked on this goal, in the plan's order. */
@@ -157,10 +181,9 @@ export async function readWave(
     openInWave: asks.filter((a) =>
       a.status === 'held' ? true : isOpenAskState(askStateOf(a, now)),
     ).length,
-    remaining: await inWaveOrder(
-      notYetAsked(plan.people_to_involve, asked),
-      task.title,
-      ownerWords,
+    remaining: inRouteOrder(
+      await inWaveOrder(notYetAsked(plan.people_to_involve, asked), task.title, ownerWords),
+      plan.route_order,
     ),
     nextWaveAt: next_wave_at,
   };

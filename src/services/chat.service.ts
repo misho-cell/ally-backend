@@ -127,6 +127,7 @@ import {
   RouteToPerson,
   routesFromFound,
   routesFromWarmPath,
+  routeOrderForPlan,
   routesWereOffered,
   SEVERAL_ROUTES_LINE,
 } from './severalRoutes';
@@ -6493,6 +6494,18 @@ function planWaitsForRoutePick(
   return true;
 }
 
+/** #8845: the plan's routes to one person, in the order this run found them. */
+function planRouteOrder(runId: string | undefined, plan: unknown): string[] {
+  if (runId === undefined) return [];
+  return routeOrderForPlan(
+    planGoBetweens(plan).map((p) => p.phone),
+    [
+      ...(runWarmPathRoutes.get(runId) ?? []),
+      ...routesFromFound(runFoundThroughBridges.get(runId) ?? []),
+    ],
+  );
+}
+
 /** The people a proposed plan would ask, as the model passed them. */
 function planGoBetweens(plan: unknown): { name: string; phone: string }[] {
   const people = (plan as { people_to_involve?: unknown } | null)?.people_to_involve;
@@ -12275,7 +12288,13 @@ async function executeToolCall(
       if (unfound.length > 0) {
         return { proposed: false, reason: 'not_found_by_search', error: planNamesUnfound(unfound) };
       }
-      const outcome = await proposeTaskPlan(userId, taskId, input['plan'], runLang(runId));
+      const outcome = await proposeTaskPlan(
+        userId,
+        taskId,
+        input['plan'],
+        runLang(runId),
+        planRouteOrder(runId, input['plan']),
+      );
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
       //

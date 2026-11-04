@@ -114,3 +114,22 @@ export function ownerNamedAGoBetween(ownerLine: string, names: readonly string[]
 export function routesWereOffered(offeredAt: number | undefined, now: number): boolean {
   return offeredAt !== undefined && now - offeredAt <= ROUTE_PICK_WINDOW_MS;
 }
+
+/**
+ * #8845 (the founder, 4 Nov 22:58): a plan that asks several of the routes to
+ * one person works them one after another, in the order the routes were found
+ * — the shortest first, then the warmer longer one, then the rest. The plan's
+ * own go-betweens to that person, as digits, in that order; empty when the
+ * plan asks fewer than two routes to any one person.
+ */
+export function routeOrderForPlan(
+  planPhones: readonly string[],
+  routes: readonly RouteToPerson[],
+): string[] {
+  const inPlan = new Set(planPhones.map(phoneDigits).filter((digits) => digits !== ''));
+  for (const links of firstLinksByPerson(routes).values()) {
+    const asked = [...links].filter((digits) => inPlan.has(digits));
+    if (asked.length >= 2) return asked;
+  }
+  return [];
+}
