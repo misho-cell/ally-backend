@@ -34,7 +34,6 @@ import {
   withoutLeadingInterjection,
   withoutLeadingSelfNote,
 } from './leadingSelfNote';
-import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
 import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
 import { greetingName, greetingText, registeredName } from './serverGreeting';
@@ -441,7 +440,6 @@ import {
   recordRunWebSnippetEvidence,
   recordRunLinkedinEvidence,
 } from './officeholderGate';
-import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
 import { BridgeNeed } from './bridgePicker';
@@ -731,7 +729,7 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
-import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
+import { withPlainDigits } from './noScores';
 import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
 import type { UpcomingBirthday } from './birthdayLens.service';
 import { preparedAnswerOn } from './preparedAnswer.service';
@@ -10626,17 +10624,14 @@ export function maskedNumberShapes(reply: string): string[] {
 export function scrubFinal(text: string, runId: string | undefined): string {
   // #432: a working note the model wrote to itself in another script comes off
   // before anything else reads the final.
-  // #365: a bare „nothing found" opening moves after what was found.
   // Misho, 29 Oct: „a delay on our side" becomes „I am looking into this".
   const withoutNote = withoutOurSideApology(
     withoutStrayGeorgianCapitals(
-      withNothingFoundLast(
-        withoutLeadingInterjection(
-          withoutAlreadyShownNote(
-            withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
-          ),
-          runLang(runId),
+      withoutLeadingInterjection(
+        withoutAlreadyShownNote(
+          withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
         ),
+        runLang(runId),
       ),
     ),
     runLang(runId),
@@ -16833,11 +16828,8 @@ async function runToolLoop(
   finalText = withoutInternalText(finalText);
   // The tester's 47588: an English reply never ends on a Georgian paragraph.
   finalText = withoutStrayGeorgian(finalText, runLang(runId));
-  // 3236: digits are 0-9, and an owner asking to be rated gets no score.
+  // 3236: digits are 0-9.
   finalText = withPlainDigits(finalText);
-  if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
-    finalText = withoutScores(finalText);
-  }
 
   // 3169: a found name the reply spelled in the other alphabet goes back as saved.
   const savedNames = takeSavedNames(runId);
@@ -19427,7 +19419,7 @@ export async function processChat(
   // final can reach this point without passing scrubFinal (a promoted step,
   // a question turned into the final) — 30757 and 30823 did, and stayed as
   // written. Idempotent: a reply that already leads with its find is left.
-  let cleanedFinal = withNothingFoundLast(stripProcessOpener(effectiveFinal, threadId));
+  let cleanedFinal = effectiveFinal;
   if (ensureQuoted) {
     cleanedFinal = ensureEveryQuote(cleanedFinal, ensureQuoted);
   }
