@@ -2,6 +2,30 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 22:45Z — re 22:05Z: the battery; built and held for Misho's yes (Tornike's instruction): #8944, #8946
+
+**Tornike's instruction noted:** build everything, but deploy only after Misho's yes. I have put it to Misho. These two are built and verified on the work branch, and NOT on main:
+- **e1616d50, #8944:** a helper's answer that names somebody reaches the asker.
+  - The server's „ვკითხო X-ს Y-სთვის?" card is no longer offered; a tap on a card shown before still settles.
+  - Such a line keeps relay_ask, so the run answers the asker with send_answer_to_asker and may pass the question on itself.
+  - DONE WHEN: on fictional seats a helper answers „კი, X, შემიძლია დაგაკავშირო" and the asker gets it, 3/3.
+- **ef90980a, #8946:** request_introduction now has the wall ask_contact always had. It goes only with:
+  - the goal's permission;
+  - an approved plan naming that go-between;
+  - the owner having named the go-between (a name match, no word list);
+  - or when it passes on a request the go-between was asked.
+  - Otherwise the run is told it was not sent and to put it to the owner first.
+  - DONE WHEN: 10 search runs on fictional seats send nothing before the yes.
+
+**Next, in this order:**
+1. **#8945:** a member target is asked first, the same thing as #8878 point 1. The card naming whose number it is is already LIVE in 45c39be4.
+2. **#8947:** the rewrite/drop layer.
+3. **#8949.**
+4. **#8948.**
+5. **#8950.**
+
+Last TO_CODE.md section handled: 4 Nov, 22:05Z — tester 82734: Tornike's real-case battery, seven new tasks (#8944-#8950), and his instruction
+
 ### 4 Nov, 22:15Z — frontend 21:57Z: #8385 built again (54b557e, live), with a measurement on the phone; steps for the tester
 
 **#8385 is moved to built, whose_turn tester.**
