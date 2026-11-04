@@ -297,24 +297,18 @@ export const PASSED_ON_NUDGE =
   'მოკლედ უთხარი, რომ ჯერ არაფერი გაგზავნილა.)';
 
 /**
- * The tester's 1110 (33950): the helper typed „რატომ სჭირდება? რაზე მუშაობს?",
- * the run called no tool, and the reply said „your question could not be sent".
- * The claim guard reads the model's wording, and the wording keeps changing. A
- * helper's own line that is a question, in a run that sent nothing, is asked
- * about directly: if it is for the asker, it goes to them in their words.
- */
-const QUESTION_LINE_RE = /[?？]\s*$/u;
-
-export function helperAskedAQuestion(helperLine: string): boolean {
-  return QUESTION_LINE_RE.test(helperLine.trim());
-}
-
-/**
  * The tester's 1144 (37520) and the founder's D647: „it is not allowed to send
  * over exact words or quotation." After this note the run still asked „shall I
  * forward it?". The helper's question goes in the assistant's own words, at
  * once — asking it is already the yes — with no apology for a text the user
  * never saw.
+ */
+/**
+ * #8813 / #8779 group e (the founder, 4 Nov 19:07; tester 82700): no longer
+ * sent — it forced a second turn on the founder's own question about his
+ * settings, and the first answer never reached him. Whether the owner's
+ * question is for the asker is the model's call. Kept only so that copies
+ * already stored in a history are still left out of it (MODEL_ONLY_NUDGES).
  */
 export const HELPER_QUESTION_NUDGE =
   '(სისტემური შენიშვნა: მომხმარებელმა კითხვა დაწერა და ამ გაშვებაში არაფერი გაგზავნილა. თუ ეს ' +

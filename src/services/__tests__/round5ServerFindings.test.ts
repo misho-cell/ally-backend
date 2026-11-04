@@ -1,11 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import {
-  claimsToHavePassedItOn,
-  helperAskedAQuestion,
-  HELPER_QUESTION_NUDGE,
-  PASSED_ON_NUDGE,
-} from '../replyGuards';
+import { claimsToHavePassedItOn, PASSED_ON_NUDGE } from '../replyGuards';
 import { relatedProfessionWords } from '../professionFamilies';
 import { whoseAsksWereThey } from '../taskAsks.service';
 
@@ -113,29 +108,22 @@ describe('1102 (f) — whose questions filled a helper’s day', () => {
   });
 });
 
-/** The tester's 1110 (33950): the helper's question back, lost whatever the model wrote. */
+/**
+ * #8813 / #8779 group e (tester 82700): the helper-question note forced a second
+ * turn on the founder's own question; it is no longer sent, only still filtered.
+ */
 describe('a helper’s question back in a run that sent nothing', () => {
-  it('is seen from the helper’s own line', () => {
-    expect(helperAskedAQuestion('რატომ სჭირდება? რაზე მუშაობს?')).toBe(true);
-    expect(helperAskedAQuestion('Why does she need it?')).toBe(true);
-    expect(helperAskedAQuestion('არ ვიცი.')).toBe(false);
+  it('is left to the model — no fixed note is sent for it', () => {
+    expect(chat).not.toContain('? HELPER_QUESTION_NUDGE');
+    const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
+    expect(set.slice(0, 200)).toContain('HELPER_QUESTION_NUDGE');
   });
 
-  it('gets its own note naming the tool, kept out of the owner’s history', () => {
-    expect(HELPER_QUESTION_NUDGE).toContain('send_answer_to_asker');
-    expect(HELPER_QUESTION_NUDGE).toContain('confirmed=true');
-    // D647 (37520): in the assistant's own words, and no „shall I forward it?".
-    expect(HELPER_QUESTION_NUDGE).toContain('შენი სიტყვებით: მისი კითხვის აზრი, არა ციტატა');
-    expect(HELPER_QUESTION_NUDGE).toContain('არ ჰკითხო „გადავუგზავნო?"');
-    expect(HELPER_QUESTION_NUDGE).not.toContain('ზუსტად მისი სიტყვებით');
-    // D751 (§112.4): the passed-on note too — the meaning in our words, the facts exact.
+  it('keeps the passed-on note: the meaning in our words, the facts exact (D751)', () => {
     expect(PASSED_ON_NUDGE).not.toContain('ზუსტად მისი სიტყვებით');
     expect(PASSED_ON_NUDGE).toContain(
       'მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად.',
     );
-    const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
-    expect(set.slice(0, 200)).toContain('HELPER_QUESTION_NUDGE');
-    expect(chat).toContain('      claimedASendThatDidNotHappen ||\n      helperQuestionUnsent ||');
   });
 });
 

@@ -46,6 +46,8 @@ const APP_ONLY: Readonly<Record<string, string>> = {
   list_status: 'reads the items of a list uploaded into an app conversation (#893)',
   share_contact_number_with_asker:
     'answers a question asked of the owner inside the app, on his own typed word (#991)',
+  get_my_whatsapp_setting:
+    'reads the owner’s own WhatsApp choice for their assistant (#8813); a connector caller is not reached on WhatsApp',
   get_my_token_balance:
     'the in-app token badge, read in words (#377); exposing billing to external connectors is a separate decision',
   list_my_contacts:
