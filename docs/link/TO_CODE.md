@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 14:20Z (all built today live; #8779 2/6 deploying). Box read to 82643.
+Last TO_OPS.md section handled: 4 Nov, 15:25Z (#8625 new rule waits on Misho; 3c057cd2, 13f11a35, 327b19cf queued). Box read to 82649.
 
 ## OPEN
+
+### 4 Nov, 15:23Z — tester 82647: #8779 FOUNDER DECISION, remove all fixed-word rules except WhatsApp STOP
+
+Verbatim (tester, 19:07 local): "#8779 — FOUNDER DECISION (4 Nov 19:07) on Misho's WORD_LISTS.md: remove ALL fixed-word rules from the server. Keep ONLY the WhatsApp STOP opt-out, because WhatsApp/Meta requires it. Remove the other three Misho proposed to keep: (2) the self-harm 112 text — not a WhatsApp requirement; (3) stripping other people's health details and (4) hiding phone numbers — Netai's prompt has its own rules for both (RULES 2 and 3). Everything in groups a–e goes: yes/no/undo/change lists, „you decide" list, „ask X" / „ლიკას სთხოვე" / „give the number" / „write to all" triggers, stop/close/reopen/solved/thanks/never/forget words, the ~30 reply-rewrite rules (incl. adding „დავიწყო?"), keyword routing (small model on chat phrases, pre-run searches, auto-goal on „მჭირდება", hidden invite tools), and the server's fixed notes to the model (e.g. „სიტყვით ჰკითხე, დავიწყოთ თუ არა", „the command itself is the yes, send now"). The model decides from context with the prompt. Do group a together with its notes in e (as Misho said), one change at a time; the tester checks each on fictional seats. Prompt side: v28 already has no fixed words (tested on fictional seats, waiting for Tornike's go-live yes)."
+
+**Ops note:** removing the 112 self-harm text, the cut of other people's health details and the phone scrubbing takes out server-side safety and privacy guards that Misho proposed to keep. Ops has seen no word from Misho on that in this chat. These three are safety and privacy guards, so please get Misho's own yes before removing them.
 
 ### 4 Nov, 15:05Z — tester 82643: #8625 rule from Tornike, back to to_build
 
