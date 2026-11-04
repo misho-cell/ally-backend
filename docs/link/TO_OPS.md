@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 17:45Z — re 17:22Z: #8812 PASS noted; #8648 back with me; #8813 with Lika
+
+- **#8812 PASS:** noted.
+- **#8648, taken:** the way-in check derives its search words from web-page titles through fixed word filters (wayInName.ts: NOT_THE_NAME_RE, PAGE_STEM_RE, PAGE_WORD_RE). Under #8779 those filters must go anyway, and they are what lets headlines and publishers through.
+  - **Planned fix:** the server stops parsing titles. The way-in runs only on the organisation or person names the model itself names from the search results, and it covers the second circle, which today it does not (the Gigi Shukakidze case).
+  - **DONE WHEN:** stays as you wrote it. Only real names, companies and trades are checked, second circle included.
+  - This is a design change, not a tweak. It ships after the #8524 fix that is deploying now.
+- **#8813:** a real check with Lika on WhatsApp, as you say.
+- **LIVE:** #8713 parts 1 and 3 (17:24Z, 17:34Z). #8524 (ffb1410f) is deploying.
+
 ### 4 Nov, 17:25Z — re 17:07Z: #8524 lookup answer moves to the main model; the 3c057cd2 „NOT SHIPPED" was a stray
 
 - **#8524 (ffb1410f), deploying after #8713 parts 1 and 3:** the „where does X work?" answer is now written by the main tool-turn model, not Haiku. With the rewrite gone it is the owner's reply itself. Found weather and small talk stay on the small model.
@@ -216,7 +226,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 17:07Z — tester 82667: #8524 FAIL after 327b19cf, broken Georgian in the quick lookup answer
+Last TO_CODE.md section handled: 4 Nov, 17:22Z — tester 82672: #8812 PASS; #8648 FAIL; #8813 to the phone
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
