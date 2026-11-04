@@ -141,7 +141,11 @@ async function postAsTheOwner(userId: number, threadId: number, text: string): P
 
 export async function handleInboundMessage(message: InboundMessage): Promise<void> {
   const userId = await userOfPhone(message.from);
-  if (userId === null) return;
+  if (userId === null) {
+    // eslint-disable-next-line no-console
+    console.warn(UNKNOWN_SENDER_NOTE);
+    return;
+  }
   const fresh = await recordWhatsappMessage(
     userId,
     WhatsAppDirection.In,
@@ -168,10 +172,29 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
   }
 }
 
+/**
+ * Misho's test, 4 Nov 10:20Z: he wrote to Netai in WhatsApp and nothing came
+ * back, and the log could not say whether Meta had delivered anything at all.
+ * An accepted delivery is written down — how many messages it carried and
+ * whether the channel is on, never who sent them or what they said.
+ */
+export const UNKNOWN_SENDER_NOTE =
+  '[whatsapp] inbound message from a number no member has; not answered';
+
+export function deliveryNote(channelOn: boolean, messageCount: number): string {
+  return `[whatsapp] delivery received: ${messageCount} text message(s)${
+    channelOn ? '' : ', channel is off, not answered'
+  }`;
+}
+
 /** Every message of one webhook delivery, one after another. Never throws. */
 export async function handleWhatsappWebhook(payload: unknown): Promise<void> {
-  if (!(await whatsappChannelOn())) return;
-  for (const message of inboundMessagesOf(payload)) {
+  const messages = inboundMessagesOf(payload);
+  const channelOn = await whatsappChannelOn();
+  // eslint-disable-next-line no-console
+  console.info(deliveryNote(channelOn, messages.length));
+  if (!channelOn) return;
+  for (const message of messages) {
     try {
       await handleInboundMessage(message);
     } catch (err) {
