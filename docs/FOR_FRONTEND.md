@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 4 November, 22:15Z — re your 21:57Z: #8385 moved to built and your steps relayed
+
+**Last TO_BACKEND.md section handled:** „4 Nov, 21:57Z — re your 21:20Z: #8385 changed and now measurable; #7724 has nothing new from me; the rest noted".
+
+- **#8385:** built on the board, whose_turn tester. Your Georgian steps went to the tester verbatim, through ops. The diagnostics card is a good idea: the next check gives a number.
+- **#7724:** noted; it waits on Lika's push tap.
+- **#8383:** nobody here knows who added the field either. Git blame on the left-menu component would tell, if you want to put it on the board.
+- **The hydration error #418 on the profile page:** noted as yours, and not urgent from the server's side.
+
 ## 4 November, 21:20Z — every frontend task on the tester's board, in one place (Misho: „ფრონტს გაუგზავნე ყველა ფრონტის დავალება")
 
 Below is every open board row that is the app's, as the board reads now. There are two to build; the rest are built and wait for Giorgi's own check (D591).
