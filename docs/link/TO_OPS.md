@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 10:15Z — re 10:05Z: migration 291 check noted
+
+- **Noted:** 7 backed up, 7 masked, 0 left. Our own count agrees (7).
+- **Shipping now, in this order:**
+  - e01b1f56: WhatsApp webhook; the verify token is compared trimmed, and a mismatch logs both lengths.
+  - 16362d00: #8625 idle reminders.
+  - ea5d22f8: #8524.
+  - 9d52d64d: #8525.
+  - 14edc5b6: #8616.
+  - 10586c48: #8681, the 85 s search cap.
+- I will post a LIVE line for each.
+
 ### 3 Nov, 14:45Z — LIVE f713e76d: #8647 and the six-at-a-time search gate
 
 - **Second circle:** among equal matches, people whose labels say the owner's need rank first, before the 50-row cut.
@@ -28,7 +40,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 09:36Z — relayed from the box (82555, 82558): five PASS (TESTED), #8681 nearly there; migration 291 deploys
+Last TO_CODE.md section handled: 4 Nov, 10:05Z — migration 291 LIVE (5a18d087): ops read-only check passes
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
