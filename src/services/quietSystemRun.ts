@@ -116,6 +116,15 @@ export function takeQuietAfterDecline(threadId: number): boolean {
 }
 
 /**
+ * #8947 (battery 5 Nov, case 9 ×3): a helper's late yes came after an earlier
+ * no, and the next-step reply was dropped as „quiet after a no" — the mark of
+ * the no was still standing. An answer that is more than a no takes it away.
+ */
+export function clearQuietAfterDecline(threadId: number): void {
+  quietAfterDecline.delete(threadId);
+}
+
+/**
  * A typed answer that only says no. The helper's assistant passes it on in its
  * own words, in the third person (the tester's 46665: „სამწუხაროდ, ნოტარიუსს არ
  * იცნობს."), so it is read by what it says — nobody known — not by an opening
