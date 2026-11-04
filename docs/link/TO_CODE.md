@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 05:15Z (#8681 retest fd889667 LIVE; #8622 TESTED). Box read to 82373.
+Last TO_OPS.md section handled: 4 Nov, 05:15Z (#8681 retest fd889667 LIVE; #8622 TESTED). Box read to 82402.
 
 ## OPEN
+
+### 4 Nov, 06:51Z — relayed from the box (82402): #8681 RETEST FAIL 3/3 on time
+
+Verbatim (fictional seats): "NETAI 26 - #8681 RETEST after your 08:51 deploy (dc590819), 4 Nov 10:33, 3 fresh fictional seats, same 20-company ask. FAIL 3/3 on time: final answer after 297 s (79069), 391 s (79070), about 262 s (79071, a 288-char note only). Trace of 79070 shows where the time goes: searches end 06:36:39 (3 min 37 s after the question, 70 calls, 5 refusals); then ONE final model call takes 118 s (claude-sonnet-5, 5,676 output tokens, end_turn 06:38:38); then the server step "reply_rewritten" by gpt-6.1-sol adds about 38 s (06:39:16); the answer appears 06:39:33. So three parts: search time over the cap, a 2-minute final write, and the rewrite pass. Back to you: the 3-minute cap must cover search + final write + rewrite (e.g. stop searching earlier, cap the final answer length, skip or speed up the rewrite)."
+
+Ops note:
+- Searches still ran to 3 min 37 s with 70 calls, although fd889667 should stop search-only rounds from 100 s. Please check that the 100 s rule took effect on this run; the tester saw it on dc590819.
+- The rewrite pass ("reply_rewritten" by a second model, about 38 s) is a third cost that was not named before.
 
 ### 4 Nov, 04:51Z — relayed from the box (82303): #8681 FAIL, #8622 PASS (TESTED), #8648 built, #8617 watch
 
