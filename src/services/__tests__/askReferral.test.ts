@@ -17,14 +17,12 @@ jest.mock('../instructedAsk', () => ({
   ownersLabel: jest.fn(),
 }));
 
-import { relaysBefore } from '../relayChain';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query as _query } from '../../db/postgres/client';
 import { createRelayAsk, sendApprovedAskAnswer } from '../taskAsks.service';
 import { saveThreadMessage } from '../threads.service';
-import { oneContactNamed, ownersLabel } from '../instructedAsk';
-import { offerReferral, ReferralTap, referralChoices, referralTapOf } from '../askReferral.service';
+import { ReferralTap, referralChoices, referralTapOf } from '../askReferral.service';
 import { settleReferralTap } from '../askReferralSettle.service';
 
 /**
@@ -61,47 +59,6 @@ describe('the referral card (1696)', () => {
       expect(referralTapOf(no)).toBe(ReferralTap.No);
     }
     expect(referralTapOf('Eka would know')).toBeNull();
-  });
-
-  it('a line naming one of his own people gets the card, stored on the ask', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 77, from_user_id: 5, asker_name: 'Nino' }] });
-    (oneContactNamed as jest.Mock).mockResolvedValue('+995555000009');
-    mockQuery.mockResolvedValueOnce({ rows: [{ hit: false }] });
-    (ownersLabel as jest.Mock).mockResolvedValue('Eka Beridze');
-    const card = await offerReferral('8', 40, 'not me, but ask Eka Beridze', 'en');
-    expect(card?.text).toBe('Shall I ask Eka Beridze for Nino?');
-    expect(card?.choices).toEqual(referralChoices('en'));
-    const stored = mockQuery.mock.calls.find(([sql]) =>
-      String(sql).includes('referral_phone = $2'),
-    );
-    expect(stored?.[1]).toEqual([77, '+995555000009', 'Eka Beridze']);
-  });
-
-  it('an ordinary answer gets no card and reads nothing', async () => {
-    expect(await offerReferral('8', 40, 'Yes, I know one in Vake.', 'en')).toBeNull();
-    expect(mockQuery).not.toHaveBeenCalled();
-  });
-
-  /** 5347 (the tester's 63493): the second link's „ask Davit, in my name" ended the chain. */
-  it('a passed-on ask gets the card too, and none is offered at the chain’s end', async () => {
-    (relaysBefore as jest.Mock).mockResolvedValueOnce(1);
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 78, from_user_id: 5, asker_name: 'Nino' }] });
-    (oneContactNamed as jest.Mock).mockResolvedValue('+995555000009');
-    mockQuery.mockResolvedValueOnce({ rows: [{ hit: false }] });
-    (ownersLabel as jest.Mock).mockResolvedValue('Davit');
-    expect(await offerReferral('8', 41, 'not me, but ask Davit', 'en')).not.toBeNull();
-
-    mockQuery.mockReset();
-    (relaysBefore as jest.Mock).mockResolvedValueOnce(4);
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 79, from_user_id: 5, asker_name: 'Nino' }] });
-    expect(await offerReferral('8', 42, 'not me, but ask Davit', 'en')).toBeNull();
-  });
-
-  it('naming the asker back is no referral', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 77, from_user_id: 5, asker_name: 'Nino' }] });
-    (oneContactNamed as jest.Mock).mockResolvedValue('+995555000001');
-    mockQuery.mockResolvedValueOnce({ rows: [{ hit: true }] });
-    expect(await offerReferral('8', 40, 'ask Nino herself', 'en')).toBeNull();
   });
 });
 

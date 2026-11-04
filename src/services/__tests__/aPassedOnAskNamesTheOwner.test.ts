@@ -20,7 +20,7 @@ jest.mock('../instructedAsk', () => ({
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
-import { offerReferral, ReferralTap } from '../askReferral.service';
+import { ReferralTap } from '../askReferral.service';
 import { settleReferralTap } from '../askReferralSettle.service';
 import {
   ASKER_AS_THE_READER_SAVED_THEM,
@@ -46,11 +46,6 @@ describe('a question passed on down a chain', () => {
     expect(firstHand).toContain(ASKER_AS_THE_READER_SAVED_THEM);
     expect(relayed).toContain('FROM tasks go_t WHERE go_t.id = ta.task_id');
     expect(relayed).toContain('"contactId" = ta.from_user_id');
-  });
-
-  it('names the owner on the pass-on card', async () => {
-    await offerReferral('8', 40, 'not me, but ask Eka Beridze', 'en');
-    expect(String(mockQuery.mock.calls[0][0])).toContain(QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM);
   });
 
   it('names the owner in the question the next link reads', async () => {

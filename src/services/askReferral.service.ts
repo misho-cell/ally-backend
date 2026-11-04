@@ -1,16 +1,5 @@
-import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
-import { instructionAddressee } from './goalIntent';
-import { contactInstructionIn } from './instructionUnsent';
-import { oneContactNamed, ownersLabel } from './instructedAsk';
-import {
-  recommendedContact,
-  RecommendedContact,
-  recommendsSomebody,
-} from './referralRecommendation';
 import { RunLanguage } from './runLanguage';
-import { MAX_RELAYS_IN_A_CHAIN, relaysBefore } from './relayChain';
-import { QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM } from './savedNameSql';
 
 /**
  * 1696 (A13, D679/D680): the person asked answers „not me — but ask Eka". The
@@ -25,8 +14,6 @@ export enum ReferralTap {
   Unnamed = 'unnamed',
   No = 'no',
 }
-
-const QUERY_TIMEOUT_MS = 5_000;
 
 const REFERRAL_LABELS: Readonly<Record<RunLanguage, Readonly<Record<ReferralTap, string>>>> = {
   ka: {
@@ -79,103 +66,6 @@ export function referralTapOf(message: string): ReferralTap | null {
     }
   }
   return null;
-}
-
-interface LiveAsk {
-  readonly id: number;
-  readonly from_user_id: number;
-  readonly asker_name: string | null;
-}
-
-/**
- * The unanswered ask on this conversation that has not had a referral card yet.
- *
- * 5347 (the tester's 63493): only a first-hand ask could be passed on, so the
- * second link's „ask Davit, in my name" got „answer sent" and the chain stopped
- * at hop 2. A passed-on ask may be passed on again, up to the chain's end.
- */
-async function askOpenForReferral(recipientId: string, threadId: number): Promise<LiveAsk | null> {
-  const result = await query<LiveAsk>(
-    `SELECT ta.id, ta.from_user_id, ${QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM} AS asker_name
-       FROM task_asks ta
-      WHERE ta.ask_thread_id = $1 AND ta.to_user_id = $2::int AND ta.status = 'sent'
-        AND ta.referral_offered_at IS NULL
-      ORDER BY ta.id DESC LIMIT 1`,
-    [threadId, recipientId],
-    QUERY_TIMEOUT_MS,
-  );
-  const ask = result.rows[0];
-  if (ask === undefined) return null;
-  return (await relaysBefore(ask.id)) < MAX_RELAYS_IN_A_CHAIN ? ask : null;
-}
-
-/** Is this phone one of the asker's own numbers? A referral back to the asker is no referral. */
-async function isTheAskersNumber(askerId: number, phone: string): Promise<boolean> {
-  const result = await query<{ hit: boolean }>(
-    `SELECT EXISTS (
-       SELECT 1 FROM "UserPhone"
-        WHERE "userId" = $1::int
-          AND regexp_replace(phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
-     ) AS hit`,
-    [askerId, phone],
-    QUERY_TIMEOUT_MS,
-  );
-  return result.rows[0]?.hit === true;
-}
-
-/** The person the reader's line refers the asker to: an order to ask her, or a recommendation (3731). */
-async function referredContact(
-  recipientId: string,
-  instruction: string | null,
-  line: string,
-): Promise<RecommendedContact | null> {
-  if (instruction !== null) {
-    const phone = await oneContactNamed(recipientId, instruction);
-    if (phone !== null) return { phone, typed: instructionAddressee(instruction) ?? '' };
-  }
-  // 3731 (box 52112): „კი, თამუნა … დაუკავშირდი." reads as an order whose addressee is
-  // garbage; a line the order reading finds nobody in is read as a recommendation.
-  return recommendedContact(recipientId, line);
-}
-
-export interface ReferralCard {
-  readonly text: string;
-  readonly choices: readonly string[];
-  readonly askId: number;
-}
-
-/**
- * The card, when the reader's line on an ask conversation names exactly one
- * person of his own to ask instead; the offer is stored on the ask. Null when
- * the line is no such referral.
- */
-export async function offerReferral(
-  recipientId: string,
-  threadId: number,
-  line: string,
-  language: RunLanguage,
-): Promise<ReferralCard | null> {
-  const sentence = contactInstructionIn(line);
-  if (sentence === null && !recommendsSomebody(line)) return null;
-  const ask = await askOpenForReferral(recipientId, threadId);
-  const asker = ask?.asker_name?.trim() ?? '';
-  if (ask === null || asker === '') return null;
-  const named = await referredContact(recipientId, sentence, line);
-  if (named === null || (await isTheAskersNumber(ask.from_user_id, named.phone))) return null;
-  const phone = named.phone;
-  const name = await ownersLabel(recipientId, phone, named.typed);
-  await query(
-    `UPDATE task_asks
-        SET referral_phone = $2, referral_name = $3, referral_offered_at = NOW()
-      WHERE id = $1 AND referral_offered_at IS NULL`,
-    [ask.id, phone, name],
-    QUERY_TIMEOUT_MS,
-  );
-  return {
-    text: referralQuestion(language, name, asker),
-    choices: referralChoices(language),
-    askId: ask.id,
-  };
 }
 
 const RELAYED_QUESTION: Readonly<Record<RunLanguage, (asker: string, question: string) => string>> =
