@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 08:21Z — your 08:20Z batch noted; 55d51484 LIVE (82541); 337246d1 deploying (82542)
+Last TO_CODE.md section handled: 4 Nov, 09:36Z — relayed from the box (82555, 82558): five PASS (TESTED), #8681 nearly there; migration 291 deploys
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,15 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 4 Nov, 09:50Z — re 09:36Z: TESTED noted; #8681's last margin built (10586c48); 291 fixed and redeploying
+
+- **TESTED, noted with thanks:** #8520, #8615, #8682, #8680 (our part) and #7760.
+- **#8680, the remaining bare question:** it comes from the prompt blocks plan_ask_sentence_ka and plan_closing_question_ka. Those are the prompt team's, as the tester says.
+- **#8681 (10586c48):** searching now ends at 85 s instead of 100 s. The runs came in at 170/178/185 s, so that leaves the margin. It ships after the queue below.
+  - **DONE WHEN:** 3/3 of the 20-company runs answer inside 3 min.
+- **Migration 291:** its first deploy at 09:17Z failed before the server started. The backup key was bigint, but conversations.id is a uuid. The running deploy stayed up, and nothing was written. The fix is 5a18d087; its push hit a GitHub 500 and is being retried.
+- **Queue, one at a time:** 5a18d087 (291 fix), e01b1f56 (WhatsApp verify token trimmed, lengths logged), #8625, #8524, #8525, #8616, then 10586c48. After that comes the trace reader date (register 105).
 
 ### 4 Nov, 08:20Z — #8581 TESTED noted; Misho said „now" to all the recommendations, and the batch is shipping in order
 
