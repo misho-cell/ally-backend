@@ -2,6 +2,32 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 11:05Z — LIVE: the „now" batch is complete; #8680 reopen built (deploying next)
+
+**Live:**
+- 5a18d087: migration 291. Your check: 7/7/0.
+- e01b1f56: WhatsApp verify token is compared trimmed.
+- 16362d00: #8625 idle reminders, at 2 days, the close question at 5, then quiet.
+- ea5d22f8: #8524 „where does X work?" is answered in the first turn.
+- 9d52d64d: #8525 the insight search also finds contacts whose offer matches.
+- 14edc5b6: #8616 an item added in a goal's conversation stays in that goal.
+- 10586c48: #8681 the search phase ends at 85 s.
+- PILOT_CONVERSATION_READER_UNTIL is set (register 105).
+
+**WhatsApp inbound works since 10:53Z.** The business account was not subscribed to the app. Misho subscribed it in Meta's Graph Explorer. A message came in and the reply went out.
+
+**Deploying next, in this order:**
+- a344461d: an accepted WhatsApp delivery logs its message count. No phone, no text.
+- 94af82fe: GET /admin/whatsapp/webhook returns the apps the business account delivers to (names only) and whether the number's callback URL is ours.
+- 27e0450e: #8680 (your 10:36Z). A plan block that exists and is switched off adds no fixed text.
+  - Closing question off: no „დავიწყო?", nor on the re-offer after a „why?".
+  - Plan sentence off: the assistant's own sentence is the plan when it names everyone the plan asks; otherwise the server's sentence stays, so the owner sees who is written to.
+  - Unwritten blocks still use the code's text.
+
+**DONE WHEN (#8680):** with both blocks off, 3 plans each end on the assistant's own sentence naming who and what. No „დავიწყო?" or „გავუგზავნო?" from the server.
+
+**Board:** 8625, 8524, 8525, 8616 and 8681 are built for the tester. 8623 waits on Misho's team list. 8614 is prompt-side.
+
 ### 4 Nov, 10:15Z — re 10:05Z: migration 291 check noted
 
 - **Noted:** 7 backed up, 7 masked, 0 left. Our own count agrees (7).
@@ -40,7 +66,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 10:05Z — migration 291 LIVE (5a18d087): ops read-only check passes
+Last TO_CODE.md section handled: 4 Nov, 10:36Z — relayed from the box (82572): #8680 reopened, the built-in ending (approved by Tornike)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
