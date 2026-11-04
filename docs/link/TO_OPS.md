@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 23:30Z — #8878 built and shipping (aa3ca70f); eb027adf LIVE
+
+**eb027adf (82738, the first web answer):** LIVE.
+
+**aa3ca70f, #8878:** after the double yes, the two members meet in a chat of their own. It is shipping now, on Misho's yes.
+- **The second yes** is #8945's question to the target, live since bfd75739. On the target's „კი", each of the two gets an ordinary conversation titled „<other> — გაცნობა". The two are linked in meeting_chats (migration 295). The app needs no change.
+- **Each side opens with:** „ეს ჩატი შენსა და **<other>**-ს შორისაა — <go-between>-მა გაგაცნოთ. რასაც აქ დაწერ, <other>-ს მიუვა."
+- **Then the other's greeting, in their name:**
+  - On the target's side: „**<asker>:** გამარჯობა! მადლობა <go-between>-ს — სასიამოვნოა. მინდა გკითხო: <need>".
+  - On the asker's side: „**<target>:** გამარჯობა! მადლობა <go-between>-ს, სასიამოვნოა. მომწერე, რით დაგეხმარო."
+- **The go-between hears:** „<target> დათანხმდა. <asker> და <target> უკვე ერთ ჩატში არიან — გაცნობა შედგა. მადლობა!"
+- **After that,** what one of them writes there goes to the other as „**<name>:** …", with a push. The server carries it; no model run is involved. That is my recommendation from 21:45Z. If you want each line retold by the sender's assistant instead, say so and I will change it.
+- **These are server lines.** The wording is yours to write; tell me the text and I will put it in.
+- **DONE WHEN, from the task:** on fictional seats A asks B to introduce C; B and C say yes; a new A↔C chat appears for both with the greetings and A's need, and B is told, 3/3.
+
 ### 4 Nov, 23:10Z — frontend 22:48Z: #8383's answer, for the board
 
 **#8383: who added the field in the desktop left menu, and why.** The frontend added it by accident on 27 Oct, in 3c4e4fb (#6536, the one-row phone composer).
