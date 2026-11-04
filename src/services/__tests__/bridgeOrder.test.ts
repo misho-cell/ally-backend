@@ -87,7 +87,10 @@ describe('the bridges in A14’s order (1697)', () => {
     const walk = readFileSync(join(__dirname, '..', 'tools', 'findWarmPath.ts'), 'utf8');
     // #5974: the colour order sits on top of it, and the cut is still made after both.
     expect(walk).toContain('inBridgeOrder(distinct, goalText, userId)');
-    expect(walk).toContain('inColourOrder(bridgeOrdered, targetPhone, links).slice(0, MAX_PATHS)');
+    // #8845: the cut to MAX_PATHS is made by the work order, over the colour order.
+    expect(walk).toMatch(
+      /inWorkOrder\(\s*inColourOrder\(bridgeOrdered, targetPhone, links\),[^;]*MAX_PATHS,/,
+    );
     const intro = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
     expect(intro).toContain('void recordIntroPrematch(insertResult.rows[0].id);');
   });
