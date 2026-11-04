@@ -605,7 +605,13 @@ export async function mcpRespondToRequest(
     return { success: false, error: 'Unknown request_ref — take it from check_my_inbox.' };
   }
   // D709: a yes connects them; the server picks how.
-  const raw = await respondToIntroduction(userId, requestId, args.accept, args.response);
+  const raw = await respondToIntroduction(
+    userId,
+    requestId,
+    args.accept,
+    args.response,
+    'connector',
+  );
   // #8911 (82705): the answer reaches the owner's WhatsApp too; the app's threads settle themselves.
   if ((raw as { success?: unknown }).success === true) {
     const action = args.accept ? ConnectorAction.IntroAccepted : ConnectorAction.IntroDeclined;

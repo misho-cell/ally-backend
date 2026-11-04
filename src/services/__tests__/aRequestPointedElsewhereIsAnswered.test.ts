@@ -114,7 +114,7 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
     expect(chat).toContain(
       'const retried = ownRequest !== undefined && ownRequest !== asked && !answered(first);',
     );
-    expect(chat).toContain('const responded = retried ? await answer(ownRequest) : first;');
+    expect(chat).toContain('return retried ? await answer(ownRequest) : first;');
     expect(chat).toContain('runThreadRequest.delete(runId);');
   });
 });

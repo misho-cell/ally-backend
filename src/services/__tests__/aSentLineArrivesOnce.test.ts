@@ -1,8 +1,10 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 /**
  * Plate v301 G5 (the tester's 992): „sent" reached both sides twice — the
  * server's line, then the model's restatement seconds later.
  */
-import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from '../sentLineGuard';
+import { SentSide, withoutSentRestatement } from '../sentLineGuard';
 
 describe('withoutSentRestatement', () => {
   it('drops the restatement and keeps what else the reply says', () => {
@@ -91,20 +93,16 @@ describe('the owner’s own line, echoed after the close', () => {
   });
 });
 
-/** #1783 (tester 41021): new words each run — „დავუდასტურე", „უარი ვაცნობე". */
-describe('closeLineIsTheWholeAnswer', () => {
-  it('silences the go-between run after the close, whatever words it chose', () => {
-    expect(closeLineIsTheWholeAnswer(SentSide.Mediator, 'ჩემი გავლით')).toBe(true);
-    expect(closeLineIsTheWholeAnswer(SentSide.Mediator, 'ვერა, გიორგი ახლა საზღვარგარეთაა')).toBe(
-      true,
-    );
-  });
+/**
+ * #8912 (a real case, tester 82704): the go-between's real reply was dropped for a
+ * fixed close line („close_line_said_it_all"). A chat answer writes no close line now,
+ * and the run's reply stands.
+ */
+describe('the go-between’s reply after answering in chat', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
-  it('lets the run answer a question she asked in the same turn', () => {
-    expect(closeLineIsTheWholeAnswer(SentSide.Mediator, 'კი. ვინ არის ლევანი?')).toBe(false);
-  });
-
-  it('never applies on the asker side', () => {
-    expect(closeLineIsTheWholeAnswer(SentSide.Asker, 'კარგი')).toBe(false);
+  it('is never dropped for a close line', () => {
+    expect(chat).not.toContain("'close_line_said_it_all'");
+    expect(chat).not.toContain('runSentLineOnScreen.set(runId, SentSide.Mediator)');
   });
 });

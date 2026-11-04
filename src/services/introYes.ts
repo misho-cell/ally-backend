@@ -24,6 +24,18 @@ export const INTRO_ACCEPTED_BY_YES =
   'they are connected.';
 
 /**
+ * #8912 (a real case, tester 82704): no fixed line says what was done any more,
+ * so the run is given it — whose number went to whom, and from where.
+ */
+export function introAcceptedByYes(whatWasDone: unknown): string {
+  if (typeof whatWasDone !== 'string' || whatWasDone.trim() === '') return INTRO_ACCEPTED_BY_YES;
+  return (
+    `${INTRO_ACCEPTED_BY_YES} What was done in their name, to say in your own words with every ` +
+    `name exactly as here: ${whatWasDone.trim()}`
+  );
+}
+
+/**
  * Accepts the introduction open in this thread when the line is a plain yes.
  * Returns the note for the run, or null when nothing was accepted.
  */
@@ -35,9 +47,12 @@ export async function acceptIntroOnYes(
   if (!isPlainYes(message)) return null;
   const requestId = await pendingIntroInMediatorThread(userId, threadId);
   if (requestId === null) return null;
-  const outcome = (await respondToIntroduction(userId, requestId, true)) as { success?: unknown };
+  const outcome = (await respondToIntroduction(userId, requestId, true)) as {
+    success?: unknown;
+    what_was_done?: unknown;
+  };
   if (outcome.success !== true) return null;
   // eslint-disable-next-line no-console
   console.log(`[intro] request ${requestId}: accepted on the mediator's yes (D709)`);
-  return INTRO_ACCEPTED_BY_YES;
+  return introAcceptedByYes(outcome.what_was_done);
 }
