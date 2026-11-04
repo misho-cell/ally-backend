@@ -31,15 +31,4 @@ describe('a typed yes to „shall I go ahead?"', () => {
   });
 
   // Misho, 4 Nov (WhatsApp): the plan said „… დაველაპარაკები"; „კარგი დაელაპარაკე" was refused.
-
-  it('does not take „ოკ" for a yes when no plan card is on screen', () => {
-    expect(approvalBelongsToThePlan('ოკ', ['კი, გააგზავნე', 'არა'], ['ოკ'])).toBe(false);
-  });
-
-  it('counts only while a plan card is what is being answered (ticket 19 G2)', () => {
-    const DRAFT_CARD = ['კი, გააგზავნე', 'არა'];
-    expect(approvalBelongsToThePlan('კი, დაუკავშირდი', DRAFT_CARD, ['კი, დაუკავშირდი'])).toBe(
-      false,
-    );
-  });
 });

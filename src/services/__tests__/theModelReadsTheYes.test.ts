@@ -15,9 +15,20 @@ describe('the owner’s yes to a plan on screen', () => {
       expect(approvalBelongsToThePlan(said, PLAN, [said])).toBe(true);
   });
 
-  it('needs a plan card on screen, and something written since it', () => {
-    expect(approvalBelongsToThePlan('კი', ['კი, გააგზავნე', 'არა'], ['კი'])).toBe(false);
+  it('needs something written by the owner', () => {
     expect(approvalBelongsToThePlan(null, PLAN, [])).toBe(false);
+    expect(approvalBelongsToThePlan('   ', null, [])).toBe(false);
+  });
+
+  // #8779 a1 retest (82682): no plan buttons — the plan is asked in words, „ჰო, გაუშვი" answers it.
+  it('is a yes to a plan asked in words, with no card at all', () => {
+    expect(approvalBelongsToThePlan('ჰო, გაუშვი', null, [])).toBe(true);
+  });
+
+  it('is never a press of a draft card’s own button (G2)', () => {
+    expect(
+      approvalBelongsToThePlan('კი, გააგზავნე', ['კი, გააგზავნე', 'არა'], ['კი, გააგზავნე']),
+    ).toBe(false);
   });
 
   it('is not a press of another card’s button (G2)', () => {

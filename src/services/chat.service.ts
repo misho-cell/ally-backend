@@ -7663,19 +7663,25 @@ export function approvalBelongsToThePlan(
    * #8779 (the founder, 4 Nov 19:07; Misho the same day): no fixed word lists.
    * Whether the owner's words say yes is the model's reading — it calls
    * approve_task_plan with confirmed=true only on that yes. What the server
-   * still checks is structure, not words: a plan card is what the owner is
-   * answering, they have written something since it, and that something is
-   * not simply a press of another card's button.
+   * still checks is structure, not words: the owner has written something,
+   * and it is not simply a press of another card's button.
    */
   const canon = (text: string): string => text.trim().toLowerCase();
-  const pressedSomethingElse = new Set(labelsDealtAfterTheCard.map(canon));
+  const planCardOnScreen = (newestOfferedChoices ?? []).some(isApproveChoice);
+  // #8779 a1 retest (the tester's 82682): there are no plan buttons any more —
+  // the plan is asked in words („დათოს ასისტენტს ვკითხო…?") and the owner's
+  // „ჰო, გაუშვი" answers that. The owner's own line is enough; what it may not
+  // be is a press of ANOTHER card's button (G2) — a later card's, or the newest
+  // card's when that card is not a plan's (a draft's „კი, გააგზავნე").
+  const otherButtons = [
+    ...labelsDealtAfterTheCard,
+    ...(planCardOnScreen ? [] : (newestOfferedChoices ?? [])),
+  ];
+  const pressedSomethingElse = new Set(otherButtons.map(canon));
   const lines = (ownerSaidSinceCard.length > 0 ? ownerSaidSinceCard : [lastOwnerMessage ?? ''])
     .map((line) => line.trim())
     .filter((line) => line !== '' && !pressedSomethingElse.has(canon(line)));
-  // A tap on the plan's own approve button is a tap, whether or not its card was recorded.
-  if (lines.some((line) => isApproveChoice(line))) return true;
-  const planCardOnScreen = (newestOfferedChoices ?? []).some(isApproveChoice);
-  return planCardOnScreen && lines.length > 0;
+  return lines.length > 0;
 }
 
 const PLAN_CONSENT_TIMEOUT_MS = 5_000;
@@ -7886,8 +7892,8 @@ export type PlanApprovalRefusal = {
 };
 
 export const PLAN_NOT_ON_SCREEN_NOTE =
-  "Not recorded: no plan is waiting on the owner's screen, or nothing they wrote since it " +
-  "answers it (only another card's button was pressed). Show the plan with its buttons first.";
+  'Not recorded: the owner has written nothing since the plan was put to them, or only ' +
+  "pressed another card's button. Put the plan to them in words and wait for their answer.";
 
 export function planApprovalRefusal(
   confirmed: unknown,
