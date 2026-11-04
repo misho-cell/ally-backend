@@ -16,12 +16,24 @@ export interface RunActs {
   readonly hasChoices: boolean;
 }
 
+/**
+ * #8524 FAIL 2/3 (the tester's 82636, run 79581): „where does X work?" took
+ * 14.5 s — Claude's answer from the lookup ran past 300 characters, so the
+ * writer rewrote it (4.1 s). An answer read from a lookup already made needs
+ * no length cap to keep Claude's words.
+ */
+export const LOOKUP_ANSWER_MAX_CHARS = 1_200;
+
 /** Claude's draft stands without the rewrite: short, and the run neither planned nor sent. */
-export function shortAnswerStands(draft: string, acts: RunActs): boolean {
+export function shortAnswerStands(
+  draft: string,
+  acts: RunActs,
+  maxChars: number = SHORT_ANSWER_MAX_CHARS,
+): boolean {
   const text = draft.trim();
   return (
     text !== '' &&
-    text.length <= SHORT_ANSWER_MAX_CHARS &&
+    text.length <= maxChars &&
     !acts.proposedAPlan &&
     !acts.sentSomething &&
     !acts.hasChoices

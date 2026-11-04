@@ -576,7 +576,12 @@ import {
 import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
-import { SHORT_ANSWER_ON_TEST_SEATS_ONLY, shortAnswerStands } from './shortAnswerStands';
+import {
+  LOOKUP_ANSWER_MAX_CHARS,
+  SHORT_ANSWER_MAX_CHARS,
+  SHORT_ANSWER_ON_TEST_SEATS_ONLY,
+  shortAnswerStands,
+} from './shortAnswerStands';
 import { allAreTestSeats } from './testSeatCreate.service';
 import { assistantTurnForHistory } from './unshownNarration';
 import {
@@ -16096,11 +16101,16 @@ async function runToolLoop(
       !claudeFinalSkipped &&
       earlyFinal === null &&
       writer !== '' &&
-      shortAnswerStands(extractText(response.content), {
-        proposedAPlan: runProposedAPlan.has(runId),
-        sentSomething: runAskSent.has(runId) || runAnswerSent.has(runId) || runIntroSent.has(runId),
-        hasChoices: choices !== undefined && choices.length > 0,
-      }) &&
+      shortAnswerStands(
+        extractText(response.content),
+        {
+          proposedAPlan: runProposedAPlan.has(runId),
+          sentSomething:
+            runAskSent.has(runId) || runAnswerSent.has(runId) || runIntroSent.has(runId),
+          hasChoices: choices !== undefined && choices.length > 0,
+        },
+        jobFound === null ? SHORT_ANSWER_MAX_CHARS : LOOKUP_ANSWER_MAX_CHARS,
+      ) &&
       (!SHORT_ANSWER_ON_TEST_SEATS_ONLY ||
         (await allAreTestSeats([Number(userId)]).catch(() => false)));
     if (keepShort) {
