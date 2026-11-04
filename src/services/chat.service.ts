@@ -9437,6 +9437,24 @@ const runsPastTheirBudget = new Set<string>();
  */
 export const SEARCH_PHASE_CAP_MS = 100_000;
 
+/** The searches a round asked for, answered without running them: the time is the answer's now. */
+export function unrunSearchResults(
+  content: readonly Anthropic.ContentBlock[],
+): Anthropic.ToolResultBlockParam[] {
+  return content.flatMap((block) =>
+    block.type === 'tool_use'
+      ? [
+          {
+            type: 'tool_result' as const,
+            tool_use_id: block.id,
+            content: JSON.stringify({ found: false, error: SEARCH_BUDGET_SPENT }),
+            is_error: true,
+          },
+        ]
+      : [],
+  );
+}
+
 export function searchesPastTheBudget(
   runId: string,
   roundTools: readonly string[],
@@ -15524,6 +15542,8 @@ async function runToolLoop(
   const earlyFinal =
     (smallTalkOnly || weatherAnsweredFromFound) && writer !== '' ? writeWith(writer) : null;
   const firstTurnText = earlyFinal === null ? stream : undefined;
+  // #8681 retest 2: set when the forced final was left to the writer.
+  let claudeFinalSkipped = false;
   // 3106, the speed half again (16 Oct 07:35, 3 runs: 21-42 s against 12). With
   // the weather already found, the first turn only reads it back — the small
   // model's job, as small talk's is. The blank-answer retry below keeps the big one.
@@ -15541,6 +15561,12 @@ async function runToolLoop(
         ? { forceTool: WEB_SEARCH_TOOL }
         : { forceText: true, maxTokens: DISCUSS_MAX_TOKENS })),
   });
+  /** The forced final the writer was trusted with, written after all because the writer failed. */
+  const claudeFinalIfSkipped = async (): Promise<void> => {
+    if (!claudeFinalSkipped) return;
+    claudeFinalSkipped = false;
+    response = await callClaude(messages, systemPrompt, tools, ctx, { forceText: true });
+  };
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words
   // sent again a minute later worked. A blank first answer is asked once more
@@ -15809,13 +15835,13 @@ async function runToolLoop(
       }
 
       scanAssistantBlocks(response.content);
-      const toolResults = await processToolBlocks(
-        userId,
-        threadId,
-        runId,
-        response.content,
-        ownerAbsent,
-      );
+      // #8681 retest 2 (the tester's 82402, run 79070): the loop declined a
+      // search-only round past the search phase, and this guard then ran the
+      // same twelve searches anyway (about 40 s) before the final turn. A round
+      // the loop declined for time is answered unrun.
+      const toolResults = searchesPastTheBudget(runId, roundTools, Date.now() - startedAt)
+        ? unrunSearchResults(response.content)
+        : await processToolBlocks(userId, threadId, runId, response.content, ownerAbsent);
       scanToolResults(toolResults);
       const shownTurn = assistantTurnForHistory(
         response.content,
@@ -15829,10 +15855,18 @@ async function runToolLoop(
       // The capped turn's streamed text was narration too. The forced final
       // always runs on the strong model.
       resetTurnStream();
-      response = await callClaude(messages, systemPrompt, tools, ctx, {
-        forceText: true,
-        onText: stream,
-      });
+      if (writer !== '' && earlyFinal === null) {
+        // #8681 retest 2 (82402, run 79070): this final took 118 s and was then
+        // discarded for the writer's (38 s). With a writer set, it is written
+        // only if the writer fails (claudeFinalIfSkipped below).
+        claudeFinalSkipped = true;
+        response = { ...response, content: [], stop_reason: 'end_turn' };
+      } else {
+        response = await callClaude(messages, systemPrompt, tools, ctx, {
+          forceText: true,
+          onText: stream,
+        });
+      }
       finalFromStrong = true;
     }
 
@@ -15867,6 +15901,7 @@ async function runToolLoop(
     // the screen on every run where this flag is off or the call then fails.
     // #8524: a short answer that planned and sent nothing keeps Claude's words.
     const keepShort =
+      !claudeFinalSkipped &&
       earlyFinal === null &&
       writer !== '' &&
       shortAnswerStands(extractText(response.content), {
@@ -15896,6 +15931,7 @@ async function runToolLoop(
       );
       rewritten = await writeWith(finalAnswerModel());
     }
+    if (rewritten === null) await claudeFinalIfSkipped();
     if (rewritten === null) {
       // Row 155: the deltas were already on the screen before the answer could
       // be judged, so a refusal has to CLEAR them. Without this the person
@@ -15915,6 +15951,7 @@ async function runToolLoop(
       if (finalText.trim() === '') {
         // eslint-disable-next-line no-console
         console.warn(`[final-answer] run ${runId}: the rewrite was empty — Claude's answer stands`);
+        await claudeFinalIfSkipped();
         finalText = scrubFinal(extractText(response.content), runId);
         answeredBy = MODEL;
         finalIsRewrite = false;
