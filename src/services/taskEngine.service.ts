@@ -1,3 +1,4 @@
+import { answersElsewhereNote, answersInSiblingGoals } from './answersElsewhere.service';
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
 import { unheardAnswerOf } from './answerAddition';
 import { randomUUID } from 'crypto';
@@ -899,14 +900,17 @@ interface ScheduledWake {
 }
 
 async function scheduledWake(taskId: number): Promise<ScheduledWake> {
-  const [held, lastReply, joined, expired] = await Promise.all([
+  const [held, lastReply, joined, expired, elsewhere] = await Promise.all([
     heldOutcomes(taskId),
     lastReplyNote(taskId),
     joinedSinceNote(taskId),
     expiredNote(taskId),
+    answeredElsewhereNote(taskId),
   ]);
   const heldText = held.length === 0 ? null : heldAsksSentNote(held);
-  const notes = [heldText, expired, joined, lastReply].filter((n): n is string => n !== null);
+  const notes = [heldText, elsewhere, expired, joined, lastReply].filter(
+    (n): n is string => n !== null,
+  );
   return {
     text: [SCHEDULED_WAKE_TEXT, ...notes].join('\n\n'),
     onlyStillHeld: held.length > 0 && held.every(isStillHeldByTheLimit),
@@ -954,6 +958,22 @@ async function joinedSinceNote(taskId: number): Promise<string | null> {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[task-engine] task ${taskId}: new members not read:`, (err as Error).message);
+    return null;
+  }
+}
+
+/** #8620: answers that came in, in other goals started from this goal's conversation. */
+async function answeredElsewhereNote(taskId: number): Promise<string | null> {
+  try {
+    const task = await getTaskById(taskId);
+    if (!task?.thread_id) return null;
+    return answersElsewhereNote(await answersInSiblingGoals(task.thread_id, taskId));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[task-engine] task ${taskId}: answers elsewhere not read:`,
+      (err as Error).message,
+    );
     return null;
   }
 }
