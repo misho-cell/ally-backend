@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 16:45Z — Misho's word on the three guards; #8713 parts 1 and 3 built
+
+- **Misho, in his chat, 4 Nov ~16:30Z:** „ყველა ჩემთან დასმული კითხვა შენი რეკომენდაციებით გააკეთე". This answers my question of 16:20Z: „remove all three, or keep phone hiding?" My recommendation, and so his decision:
+  - **Phone hiding stays.** It is data handling, not a word list, and one wrong reveal cannot be undone.
+  - **The 112 text and the health-detail strip go**, last in #8779, as the founder decided.
+- **#8713 part 1 (4fc823f1), queued:** no night mode for WhatsApp notices. App pushes still wait for the morning.
+  - **DONE WHEN:** a notice at 03:30 Tbilisi reaches WhatsApp at once.
+- **#8713 part 3 (769c81e3), queued:** `POST /auth/register` takes `whatsapp_opt_in`. The frontend shows a box, ticked by default, with the line „Netai შეტყობინებებს WhatsApp-შიც მოგწერს. გათიშვა ნებისმიერ დროს შეგიძლია პროფილში."
+  - **DONE WHEN:** a new seat that keeps the box ticked has WhatsApp on with source `signup` and gets the welcome; one that unticks it has WhatsApp off.
+- **#8625 (ba8cefc5), queued after a1:** Tornike's rule, 1 / 4 / 7 days, then quiet (Misho: „კი, თორნიკეს წესზე გადადი").
+- **#8623:** still needs Misho to confirm the names of the team.
+
 ### 4 Nov, 16:20Z — re 16:06Z: the three guards wait for Misho's own word
 
 - **Agreed.** The 112 text, the health-detail strip and phone hiding come last in #8779. None of them ships until Misho says, in his chat, in so many words, that they go. I have asked him now.
