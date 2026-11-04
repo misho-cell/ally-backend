@@ -46,29 +46,33 @@ const DAY_ONE_EVENT_BASE: Readonly<Record<RunLanguage, string>> = {
     'სჭირდება და ტექსტების ჩვენება-დადასტურებაც არა: გეგმა დამტკიცებულია და ეს თანხმობაა (D119). ' +
     'გაუშვი ვებ-ძებნა და ქსელის ძებნა გეგმის გზებით, და set_task_wake-ით დანიშნე შემდეგი ' +
     'შემოწმება. ბოლოს ერთი სტრიქონი: ვის ვკითხე და შემდეგ ზუსტად ეს — „როგორც კი ვინმე ' +
-    'გიპასუხებს, მაშინვე გეტყვი." საათები და დღეები არ ახსენო (D563).',
+    'გიპასუხებს, მაშინვე გეტყვი." — მხოლოდ თუ კითხვა მართლა გაიგზავნა; თუ შენახულია და ' +
+    'მოგვიანებით წავა (მაგ. საღამოს ბარათით), ეს თქვი. საათები და დღეები არ ახსენო (D563).',
   en:
     'The plan has just been approved — this is day one. The first rule of the standard: everything ' +
     'today. Write to the people in the plan the wave note names for now — no ' +
     'separate consent is needed, and no showing the texts for confirmation either: the plan is ' +
     'approved and that IS the consent (D119). Run the web search and the network search along the ' +
     'plan’s paths, and set the next check with set_task_wake. End with one line: whom I asked, then ' +
-    'exactly „As soon as anyone answers, I will tell you." Never name hours or days (D563).',
+    'exactly „As soon as anyone answers, I will tell you." — only if a question really went; if it ' +
+    'is held to go later (such as with the evening card), say that. Never name hours or days (D563).',
   ru:
     'План только что утверждён — это первый день. Первое правило стандарта: всё сегодня. ' +
     'Напиши тем из плана, кого сейчас называет заметка о волне — отдельное согласие не нужно, и показывать ' +
     'тексты на подтверждение тоже не нужно: план утверждён, и это и есть согласие (D119). Запусти ' +
     'веб-поиск и поиск по сети путями плана и назначь следующую проверку через set_task_wake. В ' +
-    'конце одна строка: кого спросил, и затем ровно «Как только кто-то ответит, сразу скажу.» ' +
-    'Не называй часы и дни (D563).',
+    'конце одна строка: кого спросил, и затем ровно «Как только кто-то ответит, сразу скажу.» — ' +
+    'только если вопрос действительно ушёл; если он отложен и уйдёт позже (например, с вечерней ' +
+    'карточкой), скажи это. Не называй часы и дни (D563).',
   es:
     'El plan acaba de ser aprobado — es el día uno. La primera regla del estándar: todo hoy. ' +
     'Escribe a las personas del plan que la nota de la ola nombra ahora — no hace ' +
     'falta un consentimiento aparte, ni mostrar los textos para confirmarlos: el plan está ' +
     'aprobado y eso ES el consentimiento (D119). Lanza la búsqueda web y la búsqueda en la red por ' +
     'los caminos del plan, y fija la siguiente revisión con set_task_wake. Termina con una línea: ' +
-    'a quién pregunté y luego exactamente «En cuanto alguien responda, te lo diré.» Nunca ' +
-    'menciones horas ni días (D563).',
+    'a quién pregunté y luego exactamente «En cuanto alguien responda, te lo diré.» — solo si ' +
+    'una pregunta salió de verdad; si queda guardada para salir más tarde (p. ej. con la tarjeta ' +
+    'de la tarde), dilo. Nunca menciones horas ni días (D563).',
 };
 
 /**
