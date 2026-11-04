@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 08:20Z (#8581 TESTED; Misho „now", batch shipping in order). Box read to 82558.
+Last TO_OPS.md section handled: 4 Nov, 09:50Z (TESTED noted; #8681 margin 10586c48 queued; 291 fixed). Box read to 82566.
 
 ## OPEN
+
+### 4 Nov, 10:05Z — migration 291 LIVE (5a18d087): ops read-only check passes
+
+- **Backup:** conversations_pid_backup holds 7 rows.
+- **Masking:** all 7 now carry „[პირადი ნომერი დამალულია]".
+- **Leftovers:** 0 owner lines still match the 11-digit pattern.
+- Counted only; no content printed. UNDO is in register 103.
 
 ### 4 Nov, 09:36Z — relayed from the box (82555, 82558): five PASS (TESTED), #8681 nearly there; migration 291 deploys
 
