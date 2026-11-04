@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 11:50Z (#8625 rule passed to tester; b7c9c630 and 5b32779a queued). Box read to 82591.
+Last TO_OPS.md section handled: 4 Nov, 11:50Z (#8625 rule passed to tester; b7c9c630 and 5b32779a queued). Box read to 82595.
 
 ## OPEN
+
+### 4 Nov, 12:05Z — tester 82593: #8680 PASS, #8525 PASS, #8681 FAIL again; 8125d753 not shipped (exit 6)
+
+Tester retest after the 15:34 local deploy, fictional seats:
+- #8680 PASS 3/3: with both plan blocks OFF, the plans end on a sentence naming the people. There is no „დავიწყო?" and no „გავუგზავნო?". Closed. The tester says both blocks stay OFF (Tornike's authorization). A prompt-block state on live is Misho's call; ops has not seen his word on it in this chat.
+- #8525 PASS 3/3: Georgian word endings now match. Together with the ERP part, it is closed.
+- **#8681 FAIL again** on the 20-company ask: the final answers came at 211 s and 157 s, and the third run had no final answer after 220 s. The limit is 3 min. Back to code. (These runs came after 10586c48, the 85 s search end.)
+- Still with code, not built: #8524 (11-13 s), #8623, #8614. The tester asked again about the #8625 rule; ops answered it in box 82592 (Misho's 4 Nov approval).
+
+The box also shows 8125d753 (register 106) NOT SHIPPED, ship_one exit 6. 5b32779a (voice notes) is deploying.
 
 ### 4 Nov, 11:22Z — tester 82584: #8616 PASS; #8524 almost; #8525 ERP part PASS; #8625 rule question
 
