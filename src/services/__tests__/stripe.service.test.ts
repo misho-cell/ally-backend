@@ -4,6 +4,7 @@ const mockSubscriptionsRetrieve = jest.fn();
 const mockCustomersCreate = jest.fn();
 const mockCheckoutCreate = jest.fn();
 const mockPortalCreate = jest.fn();
+const mockProductsRetrieve = jest.fn();
 
 jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => ({
@@ -11,6 +12,7 @@ jest.mock('stripe', () => {
     customers: { create: mockCustomersCreate },
     checkout: { sessions: { create: mockCheckoutCreate } },
     billingPortal: { sessions: { create: mockPortalCreate } },
+    products: { retrieve: mockProductsRetrieve },
   }));
 });
 
@@ -405,5 +407,56 @@ describe('a cancellation that does not move the status', () => {
       unknown[],
     ];
     expect(update[1][6]).toBe(false);
+  });
+});
+
+/**
+ * Misho, 4 Nov 12:54Z: every checkout failed with „No such price: 'prod_…'" —
+ * STRIPE_PRICE_ID held the product's id. It is read through to the product's
+ * default price, and a subscription to that product counts as ours.
+ */
+describe('STRIPE_PRICE_ID holding a product id', () => {
+  beforeEach(async () => {
+    jest.resetModules();
+    process.env.STRIPE_PRICE_ID = 'prod_netai';
+    stripeService = await import('../stripe.service');
+    mockQuery = (await import('../../db/postgres/client')).query as jest.MockedFunction<
+      typeof QueryFn
+    >;
+    mockQuery.mockResolvedValue(rows([]) as never);
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  it('checks out with the product’s default price, read once', async () => {
+    mockProductsRetrieve.mockResolvedValue({
+      default_price: {
+        id: 'price_default',
+        unit_amount: 1999,
+        currency: 'usd',
+        recurring: { interval: 'month' },
+      },
+    });
+    expect(await stripeService.checkoutPriceId()).toBe('price_default');
+    expect(await stripeService.checkoutPriceId()).toBe('price_default');
+    expect(mockProductsRetrieve).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so plainly when the product has no default price', async () => {
+    mockProductsRetrieve.mockResolvedValue({ default_price: null });
+    await expect(stripeService.checkoutPriceId()).rejects.toThrow('no default price');
+  });
+
+  it('counts a subscription to any price of that product as ours, and no other', () => {
+    const ours = { items: { data: [{ price: { id: 'price_x', product: 'prod_netai' } }] } };
+    const theirs = { items: { data: [{ price: { id: 'price_y', product: 'prod_other' } }] } };
+    expect(stripeService.isOurPrice(ours as never)).toBe(true);
+    expect(stripeService.isOurPrice(theirs as never)).toBe(false);
+  });
+});
+
+describe('STRIPE_PRICE_ID holding a price id', () => {
+  it('is used as it is, with no product read', async () => {
+    expect(await stripeService.checkoutPriceId()).toBe(OUR_PRICE);
+    expect(mockProductsRetrieve).not.toHaveBeenCalled();
   });
 });
