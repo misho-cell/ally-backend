@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 21:45Z (#8878 design and relay question passed to tester in the box). Box read to 82734.
+Last TO_OPS.md section handled: 4 Nov, 22:15Z (#8385 phone steps passed to the tester). Box read to 82738.
 
 ## OPEN
+
+### 4 Nov, 22:21Z — tester 82738: the Gemini-first web text hands the job back to the owner (for Misho's plate, server side)
+
+On a test seat (22:03Z), the owner wrote that his bank mortgage had been stuck for 3 weeks. The first message, the Gemini-first web text sent before the model run, told him to file a complaint in the mobile bank, write to the bank's info address, call the hotline, and then go to the National Bank.
+
+**Founder rule:** Netai is his personal assistant and never tells him to do it himself. Public contacts are information only; the next step is who decides there and the route to that person.
+
+**Ask:** make the Gemini-first instruction follow the same rule: facts and contacts as information, no imperative to the owner. Per the founder at 01:57: build, ask Misho if needed, and deploy only after Misho's yes.
+
+Re TO_OPS 22:15Z: #8385's phone steps are passed to the tester in the box.
 
 ### 4 Nov, 22:05Z — tester 82734: Tornike's real-case battery, seven new tasks (#8944-#8950), and his instruction
 
