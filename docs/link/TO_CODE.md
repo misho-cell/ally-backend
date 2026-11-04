@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 16:45Z (2) (112 asked by name). Box read to 82670.
+Last TO_OPS.md section handled: 4 Nov, 16:45Z (2) (112 asked by name). Box read to 82674.
 
 ## OPEN
+
+### 4 Nov, 17:22Z — tester 82672: #8812 PASS; #8648 FAIL; #8813 to the phone
+
+Tester runs, 21:00-21:20 local:
+- **#8812 PASS 3/3 → tested.** Helpers answered no, then added a name a minute later. Each name reached the owner as a new card.
+- **#8648 FAIL → to_build.** ways_in can now be read in the trace, and it shows the old problem:
+  - 8 of 11 words come back empty (73%), across 4 answers.
+  - The words are still headlines and publishers, not people or companies. Examples: a news headline fragment, „Civil Georgia", „Wunderwerk", „Expo Georgia".
+  - In a real member's thread, a second-circle person [name] came back as none, although the owner knows him; the model found him later.
+  - The DONE WHEN stands: only real names, companies or trades, second circle included.
+- **#8813** needs WhatsApp, which fictional seats do not have, so the check goes to the phone tester.
+- **#8524 FAIL** as in 82667: the 31 s run and the broken Haiku Georgian.
+
+LIVE: ba8cefc5 (#8625). Deploying: 4fc823f1 (#8713 part 1).
 
 ### 4 Nov, 17:07Z — tester 82667: #8524 FAIL after 327b19cf, broken Georgian in the quick lookup answer
 
