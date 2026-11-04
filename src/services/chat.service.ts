@@ -1,3 +1,4 @@
+import { lookupAnswersIt, nameAskedWhereTheyWork, whereTheyWorkSection } from './whereTheyWork';
 import { maskPersonalIds } from './personalIdMask';
 import {
   askedFileFormat,
@@ -6682,6 +6683,20 @@ async function weatherFoundFirst(
     // eslint-disable-next-line no-console
     console.warn(
       '[weather] server search failed, the run searches itself:',
+      (err as Error).message,
+    );
+    return null;
+  }
+}
+/** #8524: the owner's contacts searched for the name before the first turn; null when they do not answer it. */
+async function whereTheyWorkFirst(userId: string, name: string): Promise<string | null> {
+  try {
+    const result = await searchContactByName(userId, name);
+    return lookupAnswersIt(result) ? whereTheyWorkSection(name, result) : null;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[where-they-work] lookup failed, the run searches itself:',
       (err as Error).message,
     );
     return null;
@@ -15487,10 +15502,14 @@ async function runToolLoop(
   const weatherFound = weatherLookUp
     ? await weatherFoundFirst(userId, threadId, runId, lastOwnerText(messages) ?? '')
     : null;
+  // #8524: „where does X work?" is looked up in the owner's contacts before the first turn.
+  const jobName =
+    !ownerAbsent && !weatherLookUp ? nameAskedWhereTheyWork(lastOwnerText(messages) ?? '') : null;
+  const jobFound = jobName === null ? null : await whereTheyWorkFirst(userId, jobName);
   // 0283's regression (the tester's 58065): the weather the server found was in the first
   // turn's prompt only; the final writer and every later round never saw it and wrote
   // „I cannot check live". It is part of the run's prompt from here on, for every call.
-  const systemPrompt = promptBeforeTheRun + (weatherFound ?? '');
+  const systemPrompt = promptBeforeTheRun + (weatherFound ?? '') + (jobFound ?? '');
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   // 2971: every step bubble the owner saw, so a question said only there is not lost.
@@ -15535,7 +15554,7 @@ async function runToolLoop(
   // fallback — one after the other they took 2 s each. Small talk runs no tool, so the
   // writer starts now, beside Claude, from the same conversation; Claude does not stream
   // meanwhile, so the two never mix on the screen.
-  const weatherAnsweredFromFound = weatherLookUp && weatherFound !== null;
+  const weatherAnsweredFromFound = (weatherLookUp && weatherFound !== null) || jobFound !== null;
   // 3106 (the tester's 62615, 0385 FAIL 1/3: 14.0 / 11.1 / 19.8 s): the writer waited
   // for Claude, 4-9 s, then took 4-5 s of its own. The weather it writes from is in
   // its prompt already, so it starts beside Claude, as small talk's does.
@@ -15555,6 +15574,8 @@ async function runToolLoop(
         : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
+    // #8524: with the person already looked up, the first turn is the answer.
+    ...(jobFound !== null && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
     // 3106: with the weather already found, the first turn is the answer.
     ...(weatherLookUp &&
       (weatherFound === null
