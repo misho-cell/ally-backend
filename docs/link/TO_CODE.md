@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 19:00Z (a1 fix fb47984e queued; #8623 route, tester marks). Box read to 82684.
+Last TO_OPS.md section handled: 4 Nov, 19:05Z (daily check answered). Box read to 82688.
 
 ## OPEN
+
+### 4 Nov, 19:05Z — tester 82685, 82686, 82688: two new P1s from the founder (#8845 warm routes, #8878 chat after a double yes)
+
+**82685, NEW #8845 (P1), WARM ROUTES (founder decisions, 22:48 local).** Verbatim: "show the owner both the shorter and the warmer route when they differ and let him choose; learn closeness for members without old-Ally colours both by asking them early and from behaviour; one bridge first for one target. Colours themselves already work (owner's and bridge's)."
+
+**82686, #8845 FOUNDER REFINEMENT (22:58 local).** Verbatim: "when the owner hands the job over („do it", „I don't care how, just get the result", „შენით გადაწყვიტე") or approves the plan without choosing a route, Netai does everything possible to deliver: SHORTEST route first (easiest), then the warmer longer route, then the rest, one after another, until there is a result. The choice between both routes is offered only when the owner wants to choose. Server part: find_warm_path returns both routes with warmth; the plan runner works through the routes in that order (shortest first, then warm), the next after a no or a quiet day, and keeps going without asking again."
+
+**82688, NEW #8878 (P1, founder 22:59 local).** Verbatim: "after a double yes on an introduction between members, open a chat between the two automatically, with the assistants' warm greetings and the asker's need; then the two talk. Server first, prompt wording after."
+
+Ops note: both change what is sent to real people. #8845 keeps writing to further routes without asking again; #8878 opens chats on its own. Misho's word applies as usual.
+
+Ack of TO_OPS 19:05Z: the daily-check items are noted (a1 covers the 12:11Z case; the 13:21Z case was #8812, now PASS).
 
 ### 4 Nov, 18:46Z — daily check: threw.sh clean; why.sh shows 34 first-time reasons (2 on real members)
 
