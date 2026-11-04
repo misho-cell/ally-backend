@@ -624,7 +624,7 @@ profileRouter.put(
  * #8713 part 2 (Tornike, 4 Nov): notifications on WhatsApp only, not the app's
  * as well. Only for a member who has chosen WhatsApp (409 otherwise).
  */
-const WHATSAPP_ONLY_NOT_CHOSEN = 'ჯერ ჩართე შეტყობინებები ვოთსაფში';
+const WHATSAPP_ONLY_NOT_CHOSEN = 'ჯერ ჩართე შეტყობინებები WhatsApp-ში';
 
 profileRouter.put(
   '/whatsapp/only',
