@@ -1,4 +1,3 @@
-import { phoneForWords } from './instructedAsk';
 import { contactInstructionIn } from './instructionUnsent';
 
 /**
@@ -14,37 +13,6 @@ import { contactInstructionIn } from './instructionUnsent';
 const RECOMMENDS_RE =
   /(?<![\p{L}\p{M}])(?:დაუკავშირდი(?:თ)?|მიწერე(?:თ)?|დაურეკე(?:თ)?|მიმართე(?:თ)?|დაგაკავშირებ\p{L}*|დაგაკავშირო|contact (?:her|him|them)|reach out to|get in touch with|talk to|call (?:her|him|them))(?![\p{L}\p{M}])/iu;
 
-/** Words that are never a person's name in such a line. */
-const NOT_A_NAME: ReadonlySet<string> = new Set([
-  'ჩემი',
-  'შენი',
-  'მისი',
-  'სახელით',
-  'შემიძლია',
-  'მაგრამ',
-  'ისიც',
-  'ის',
-  'და',
-  'კი',
-  'არა',
-  'my',
-  'name',
-  'her',
-  'him',
-  'them',
-  'can',
-  'you',
-]);
-/** How many words of the line are tried as the start of a name. */
-const NAME_POSITIONS_TRIED = 8;
-const MIN_NAME_CHARS = 2;
-
-export interface RecommendedContact {
-  readonly phone: string;
-  /** The word the helper typed where the name begins. */
-  readonly typed: string;
-}
-
 /** Does the line recommend getting in touch with somebody? */
 export function recommendsSomebody(line: string): boolean {
   return RECOMMENDS_RE.test(line);
@@ -59,33 +27,4 @@ export function recommendsSomebody(line: string): boolean {
  */
 export function refersSomebody(line: string): boolean {
   return contactInstructionIn(line) !== null || recommendsSomebody(line);
-}
-
-function nameWordsOf(line: string): string[] {
-  return line
-    .split(/[^\p{L}\p{M}]+/u)
-    .filter((w) => w.length >= MIN_NAME_CHARS && !NOT_A_NAME.has(w.toLowerCase()))
-    .filter((w) => !RECOMMENDS_RE.test(w));
-}
-
-/**
- * The one contact of this helper's own that the recommendation names: every
- * word is tried as the start of a name, and the answer stands only when all
- * the names found are one person. Null for none or for two different people.
- */
-export async function recommendedContact(
-  userId: string,
-  line: string,
-): Promise<RecommendedContact | null> {
-  if (!recommendsSomebody(line)) return null;
-  const words = nameWordsOf(line).slice(0, NAME_POSITIONS_TRIED);
-  const found = await Promise.all(
-    words.map(async (typed, at) => ({
-      typed,
-      phone: await phoneForWords(userId, words.slice(at)),
-    })),
-  );
-  const hits = found.filter((f): f is RecommendedContact => f.phone !== null);
-  const phones = new Set(hits.map((h) => h.phone));
-  return phones.size === 1 ? hits[0] : null;
 }

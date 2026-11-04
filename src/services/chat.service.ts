@@ -135,7 +135,7 @@ import {
 import { withQuestionFromSteps } from './questionWithButtons';
 import { withoutInternalText } from './internalText';
 import { withoutStrayGeorgian } from './oneScriptReply';
-import { offerReferral, referralTapOf } from './askReferral.service';
+import { referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { MatchTap, matchTapOf, typedMatchAnswer } from './matchCards';
@@ -326,7 +326,6 @@ import { mutualGroupsFor, plannedGoBetweensLabel } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.service';
 import { askStepNames, askStepsToKeepUnnamed } from './askCaptions';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
-import { refersSomebody } from './referralRecommendation';
 import { REQUEST_THREAD_TYPE, answersTheRequestOnly } from './requestReferral';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { SentSide, withoutSentRestatement } from './sentLineGuard';
@@ -15193,24 +15192,19 @@ async function answerReferral(
 ): Promise<ChatResult | null> {
   try {
     const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    // #8944 (battery 5 Nov; founder: no server rules): a helper's line that names
+    // somebody is an ANSWER, and it goes to the asker first — no server card asks
+    // „shall I ask X?" in its place. A tap on a card offered before still settles.
     const tap = referralTapOf(userMessage);
-    const settled = tap === null ? null : await settleReferralTap(userId, threadId, tap, language);
-    const card = tap === null ? await offerReferral(userId, threadId, userMessage, language) : null;
-    const text = settled ?? card?.text ?? null;
+    const text = tap === null ? null : await settleReferralTap(userId, threadId, tap, language);
     if (text === null) return null;
     if (intent?.alreadyStored !== true) {
       await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
     }
-    const choices = card === null ? null : [...card.choices];
-    await saveMessage(userId, threadId, 'assistant', text, 'message', runId, choices);
+    await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
     // eslint-disable-next-line no-console
-    console.log(`[referral] run ${runId}: ${card === null ? 'tap settled' : 'card shown'}`);
-    return {
-      reply: text,
-      language,
-      requestCreated: false,
-      ...(choices !== null && { choices }),
-    };
+    console.log(`[referral] run ${runId}: tap settled`);
+    return { reply: text, language, requestCreated: false };
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[referral] not handled:', (err as Error).message);
@@ -18753,8 +18747,9 @@ export async function processChat(
   const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);
   // 3730 (2): „ask X too" on a goal that has asked is a follow-up, not a new goal and plan.
   const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
-  // 3731: a reader's line that refers the asker to somebody relays only through the card's tap.
-  const relayHeld = ownerAbsent || thread.type !== 'incoming_ask' || !refersSomebody(userMessage);
+  // #8944: no server card stands between a reader's line and the asker any more, so a
+  // line that refers the asker to somebody keeps relay_ask like any other in an ask chat.
+  const relayHeld = ownerAbsent || thread.type !== 'incoming_ask';
   // #5249 (68815): a mediator's „ask Davit instead" on a pending introduction request answers it.
   const requestAnswerOnly =
     !ownerAbsent &&
