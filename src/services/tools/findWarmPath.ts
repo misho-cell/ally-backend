@@ -23,6 +23,8 @@ import {
   AccountState,
 } from './membership';
 import { excludedHolderPhones } from '../excludedHolders.service';
+import { chainsThroughWarmBridges } from '../warmerRoutes';
+import { inWorkOrder, isWarmRoute, RouteRole } from '../routeWorkOrder';
 
 /**
  * The warm-path walk to an IDENTIFIED target (Ticket 11 Task 10; D132, the
@@ -88,6 +90,10 @@ export interface WarmPath {
   bridges: WarmPathBridge[];
   /** Every bridge is a Netai user, so the assistant-to-assistant relay can carry it end to end. */
   relayable: boolean;
+  /** #8845: the owner is close to the first bridge, or that bridge holds the next person close. */
+  warm?: boolean;
+  /** #8845: set on the shortest and the warmer longer route when both are handed over. */
+  route?: RouteRole;
 }
 
 export type WarmPathOutcome =
@@ -103,6 +109,8 @@ export type WarmPathOutcome =
        * different facts and only one of them is safe to act on.
        */
       ranked_every_route: boolean;
+      /** #8845: paths[1] is longer than paths[0] but warmer — both are offered. */
+      warmer_longer_route: boolean;
       note: string;
     }
   | {
@@ -151,6 +159,18 @@ const MANY_ROUTES_NOTE =
   `This person is reachable by MORE than the ${MAX_PATHS} routes shown — these are the best of ` +
   `the first ${PATHS_TO_CONSIDER} the graph returned, not the best that exist. If none of them ` +
   'suits, say there are other routes rather than telling the user these are all of them.';
+
+/**
+ * #8845 (the founder, 4 Nov): both routes go to the owner only when they want
+ * to choose; otherwise the list is the order the plan works through.
+ */
+const WARMER_ROUTE_NOTE =
+  'paths[0] (route: shortest) is the shortest way; paths[1] (route: warmer_longer) is longer ' +
+  'but goes through somebody close (owner_tie / colour_why say why). If the owner wants to ' +
+  'choose, show both in a few plain words each, with that reason, and let them pick. If they ' +
+  'hand the job over or approve without choosing, do not ask: the routes are worked in this ' +
+  'order — the shortest first, then the warmer one, then the rest — the next after a no or a ' +
+  'quiet day.';
 
 interface PathRow {
   keys: string[];
@@ -411,6 +431,20 @@ export function onePathPerFirstBridge(
   });
 }
 
+/** #8845: each route says whether it is warm; the two offered side by side say which is which. */
+export function withWarmth(
+  path: WarmPath,
+  index: number,
+  warmerAt: number | null,
+  links: ReadonlyMap<string, LinkColours>,
+  targetPhone: string,
+): WarmPath {
+  const warm = isWarmRoute(path, firstLinkColours(path, targetPhone, links));
+  if (warmerAt === null) return { ...path, warm };
+  if (index === 0) return { ...path, warm, route: RouteRole.Shortest };
+  return index === warmerAt ? { ...path, warm, route: RouteRole.WarmerLonger } : { ...path, warm };
+}
+
 function noPathWithin(maxHops: number): WarmPathOutcome {
   return {
     found: false,
@@ -485,9 +519,13 @@ export async function findWarmPath(
   const graphMiddles = rows.map((r) =>
     r.keys.slice(1, -1).map((k) => normalizePhone(primaryPhone(k))),
   );
+  const [memberChains, warmChains] = await Promise.all([
+    memberChainsTo(userId, targetPhone),
+    chainsThroughWarmBridges(userId, userKey, targetKey, maxHops),
+  ]);
   const candidates = withMemberChains(
-    graphMiddles,
-    await memberChainsTo(userId, targetPhone),
+    withMemberChains(graphMiddles, memberChains),
+    warmChains,
   ).filter((bridges) => bridges.every((p) => !blocked.has(p)));
   if (candidates.length === 0) return noPathWithin(maxHops);
 
@@ -525,11 +563,24 @@ export async function findWarmPath(
     coloursOfFirstLinks(userId, reached, targetPhone),
   ]);
   // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
-  const named = await namedAlongTheChain(
-    Number(userId),
-    inColourOrder(bridgeOrdered, targetPhone, links).slice(0, MAX_PATHS),
+  const ordered = inWorkOrder(
+    inColourOrder(bridgeOrdered, targetPhone, links),
+    (path) => firstLinkColours(path, targetPhone, links),
+    MAX_PATHS,
   );
-  const paths = named.map((path) => withColourWhy(path, targetPhone, links));
+  const named = await namedAlongTheChain(Number(userId), ordered.routes);
+  const paths = named.map((path, index) =>
+    withWarmth(
+      withColourWhy(path, targetPhone, links),
+      index,
+      ordered.warmerAt,
+      links,
+      targetPhone,
+    ),
+  );
+  const warmerLonger = ordered.warmerAt !== null;
+  const baseNote =
+    rows.length < PATHS_TO_CONSIDER ? CONSENT_NOTE : `${CONSENT_NOTE} ${MANY_ROUTES_NOTE}`;
 
   return {
     found: true,
@@ -539,6 +590,7 @@ export async function findWarmPath(
     },
     paths,
     ranked_every_route: rows.length < PATHS_TO_CONSIDER,
-    note: rows.length < PATHS_TO_CONSIDER ? CONSENT_NOTE : `${CONSENT_NOTE} ${MANY_ROUTES_NOTE}`,
+    warmer_longer_route: warmerLonger,
+    note: warmerLonger ? `${baseNote} ${WARMER_ROUTE_NOTE}` : baseNote,
   };
 }
