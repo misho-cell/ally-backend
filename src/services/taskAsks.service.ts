@@ -4441,6 +4441,30 @@ export async function openQuestionsToMe(recipientUserId: string): Promise<OpenQu
 const MAX_OPEN_QUESTIONS_READ = 20;
 
 /**
+ * #8812 (Lika, 4 Nov, P1): a minute after answering she remembered an
+ * electrician, and the addition was refused — the question was answered, so
+ * it was no longer open and its asker could not be found by name. The
+ * questions she answered in the last day can take an addition.
+ */
+const ADD_TO_ANSWER_WINDOW_HOURS = 24;
+
+export async function questionsAnsweredLately(
+  recipientUserId: string,
+): Promise<OpenQuestionToMe[]> {
+  const result = await query<{ ask_thread_id: number; asker_name: string | null }>(
+    `SELECT ta.ask_thread_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
+       FROM task_asks ta
+      WHERE ta.to_user_id = $1::int AND ta.status = 'answered' AND ta.ask_thread_id IS NOT NULL
+        AND ta.answered_at > NOW() - make_interval(hours => $3)
+      ORDER BY ta.answered_at DESC
+      LIMIT $2`,
+    [recipientUserId, MAX_OPEN_QUESTIONS_READ, ADD_TO_ANSWER_WINDOW_HOURS],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({ askThreadId: r.ask_thread_id, askerName: r.asker_name ?? '' }));
+}
+
+/**
  * #8746 (Tornike, 4 Nov, P1): „ჩახურე" on old test questions had no way to
  * close them, so the assistant answered each asker — Lika got „it was a test"
  * four times. A question the member closes is taken off their list and

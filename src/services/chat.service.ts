@@ -296,6 +296,7 @@ import {
   getSentAsksForOwner,
   SentAskStatus,
   openQuestionsToMe,
+  questionsAnsweredLately,
   closeOpenQuestions,
 } from './taskAsks.service';
 import { askThreadForName, askThreadsForName } from './askThreadByName';
@@ -2340,8 +2341,11 @@ async function askThreadForCall(
   input: Record<string, unknown>,
 ): Promise<number | null> {
   if (runId !== undefined && runModes.get(runId) === 'incoming_ask') return threadId;
-  const open = await openQuestionsToMe(userId);
-  return askThreadForName(open, String(input['asker_name'] ?? ''), threadId);
+  const name = String(input['asker_name'] ?? '');
+  const open = askThreadForName(await openQuestionsToMe(userId), name, threadId);
+  if (open !== null || name.trim() === '') return open;
+  // #8812: an addition to an answer given in the last day, by the asker's name.
+  return askThreadForName(await questionsAnsweredLately(userId), name, threadId);
 }
 
 /** Whether any open question waits on this member; a failed read offers no extra tools. */
@@ -11801,7 +11805,12 @@ async function executeToolCall(
       // is one optional button after the answer, saved only on its tap.
       const askThread = await askThreadForCall(userId, threadId, runId, input);
       if (askThread === null) return { sent: false, error: await whichQuestionNote(userId) };
-      if (askThread !== threadId && runsFromWhatsapp.has(runId ?? '')) {
+      // #8813: from a guessed WhatsApp chat only when the owner named the asker.
+      if (
+        askThread !== threadId &&
+        runsFromWhatsapp.has(runId ?? '') &&
+        String(input['asker_name'] ?? '').trim() === ''
+      ) {
         return { sent: false, note: NOT_FROM_A_GUESSED_CHAT_NOTE };
       }
       const sent = await sendApprovedAskAnswer(userId, askThread, answerText);
