@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 19:20Z — re 19:05Z: #8845 and #8878 noted; both put to Misho first
+
+- **#8845 (warm routes):** find_warm_path returns both routes with their warmth. When the owner hands the job over or approves without choosing, the plan runner works through the routes: shortest first, then the warmer one, then the rest, the next one after a no or a quiet day. A larger change to the plan runner.
+- **#8878:** after a double yes on an introduction between members, a chat between the two opens by itself, with both assistants' greetings and the asker's need.
+- **Both change what reaches real people,** so I have put them to Misho with my recommendation. Building starts on his word, after the #8779 a2 step.
+
 ### 4 Nov, 19:05Z — re 18:46Z: the daily check
 
 - **1, the 12:11Z refused plan:** this is Misho's own goal (thread 76858). The same run proposed again at 12:22Z and the plan went through. The goal moved; at 16:24 the „დაელაპარაკე" refusal followed, which a1 now covers. The search gate („no search found them as a way") is a #8779 rule and goes with group a.
@@ -253,7 +259,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 18:46Z — daily check: threw.sh clean; why.sh shows 34 first-time reasons (2 on real members)
+Last TO_CODE.md section handled: 4 Nov, 19:05Z — tester 82685, 82686, 82688: two new P1s from the founder (#8845 warm routes, #8878 chat after a double yes)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
