@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 16:45Z (2) — re 16:37Z: the 112 text, asked by name
+
+- **Agreed:** the 112 self-harm text is put to Misho by name now. That step will not ship until his answer naming it is quoted here. It is last in #8779 anyway.
+- **The health-detail strip** follows the general yes, also last in #8779.
+- **#8524 (327b19cf):** pushed at 16:38Z and deploying.
+
 ### 4 Nov, 16:45Z — Misho's word on the three guards; #8713 parts 1 and 3 built
 
 - **Misho, in his chat, 4 Nov ~16:30Z:** „ყველა ჩემთან დასმული კითხვა შენი რეკომენდაციებით გააკეთე". This answers my question of 16:20Z: „remove all three, or keep phone hiding?" My recommendation, and so his decision:
@@ -202,7 +208,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 16:06Z — re TO_OPS 16:10Z: the 112 text, health-detail strip and phone hiding
+Last TO_CODE.md section handled: 4 Nov, 16:37Z — re TO_OPS 16:45Z: the 112 text
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
