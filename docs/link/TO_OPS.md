@@ -2,6 +2,39 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 21:05Z — re 19:52Z: #8912 built (a, b, c), #8911 WhatsApp addition, #8524 and the held-asks line; shipping in this order
+
+**LIVE now:**
+- **b7e33e01 (#8911):** a connector answer leaves a line in the question's chat; a connector ask leaves one in the goal's chat.
+- **a2fc9763 (82699, the held asks):** day one says „როგორც კი ვინმე გიპასუხებს…" only when a question really went. When it is held for the evening card, the run says that.
+- **79ed4237 (#8813), 404610dc (#8845 step 3):** live since 20:15Z. #8813 is moved to built.
+
+**Shipping, one after another:**
+- **80c2f023, #8524:**
+  - Cause: in your 82699 runs, two of the three first answers came back blank. The retry dropped the lookup's text-only, short settings, and one retry ran a whole plan for 60 s.
+  - The retry now keeps those settings. The contacts lookup (about 3 s under load) now starts with the run, not after the 2.3 s prompt build.
+  - DONE WHEN: the three „where does X work" questions answer under 10 s, 3/3.
+- **9f7e8d65, #8911 addition (82705):** every connector line also goes to the owner's WhatsApp, opening its chat.
+  - Two more results get a line: an introduction answered (yes or no, with no words of the owner's), and a question kept for later by the daily limit.
+  - DONE WHEN: the 3 actions on a WhatsApp-enabled seat each produce a WhatsApp line.
+- **45c39be4, #8912 (a) and (c):**
+  - (a) When the go-between answers in chat, no fixed close line is written and the run's reply is no longer dropped (`close_line_said_it_all` is gone).
+    - respond_to_introduction returns `what_was_done`, which the run says in its own words. A plain „კი" gets the same facts.
+    - A button tap, or an answer through the connector, still writes the line.
+    - The line now says the contact came „შენი წიგნაკიდან".
+  - (c) The asker reads „ეს არის Gigi-ის ნომერი, თორნიკის წიგნაკიდან" instead of „ეს არის მისი ნომერი".
+- **f57244f6, #8912 (b), within 5347:** I kept 5347 as it is: a request a go-between passes on stays the asker's request, and Nana reads who passed it on. The fault was on the asker's side: his chat read as if he had sent it himself. It now says „თორნიკემ შენი გაცნობის თხოვნა გიგიზე ნანას გადასცა".
+  - **One question for the tester:** does the founder want something different here, namely a separate ask in the go-between's own name (Tornike asks Nana)? That would reverse 5347, so I have not built it.
+  - The model's „Nata" for Nana was in a reply text. Now that the reply stands, that is a prompt matter: the names come from what_was_done.
+- **DONE WHEN for #8912, on fictional seats:**
+  - the go-between who says yes in chat sees one reply that says the number went from his own phonebook;
+  - the asker sees whose number it is;
+  - a request passed on shows the asker who passed it on, 3/3.
+
+**Also, for Misho (told him):** Gemini web search returns „prepayment credits are depleted" (402). Search falls back to Tavily.
+
+Last TO_CODE.md section handled: 4 Nov, 19:52Z — tester 82704, 82705: NEW #8912 (P1, real case); #8911 addition from the founder
+
 ### 4 Nov, 20:05Z — re 19:37Z: #8845 server part LIVE (routes in order); #8813 real case fixed (shipping); #8524, #8911, held-asks note next
 
 **Misho's word for #8845 and #8878**, quoted as asked: „ახალი დავალებებიც დაგვიმატა ტესტერმა და ყვეკა გააკეთე რა".
