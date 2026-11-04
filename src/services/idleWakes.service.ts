@@ -1,8 +1,7 @@
 import { query } from '../db/postgres/client';
 
 /**
- * #8625 (the tester's DR12; Misho's yes, 4 Nov, on the recommendation „2 days, then 5
- * days, then stop and ask the owner once whether to close"): plans waiting since 30 Oct
+ * #8625 (the tester's DR12): plans waiting since 30 Oct
  * and introductions waiting since 27 Oct were re-raised at every daily wake.
  *
  * Idle is counted from the last time a PERSON wrote in the goal — the owner in its
@@ -11,8 +10,15 @@ import { query } from '../db/postgres/client';
  */
 const QUERY_TIMEOUT_MS = 3_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const FIRST_REMINDER_DAYS = 2;
-export const CLOSE_QUESTION_DAYS = 5;
+/**
+ * #8625, Tornike's rule (4 Nov 18:56, Misho's yes the same day): a waiting
+ * goal is raised once after 1 day, once more after 4, and after a week the
+ * owner is asked once whether to keep going, change it or close it — then it
+ * is quiet. (The morning's 2 / 5 / 30 days is replaced.)
+ */
+export const FIRST_REMINDER_DAYS = 1;
+export const SECOND_REMINDER_DAYS = 4;
+export const CLOSE_QUESTION_DAYS = 7;
 export const QUIET_DAYS = 30;
 
 export enum IdleWake {
@@ -47,9 +53,14 @@ export function idleDecision(state: IdleState, now: Date): IdleDecision {
   const stale = state.remindedAt === null || state.remindedAt < state.lastHumanAt;
   const reminders = stale ? 0 : state.reminders;
   if (reminders === 0) {
-    return { kind: IdleWake.Reminder, at: after(state.lastHumanAt, CLOSE_QUESTION_DAYS) };
+    return { kind: IdleWake.Reminder, at: after(state.lastHumanAt, SECOND_REMINDER_DAYS) };
   }
   if (reminders === 1) {
+    return idleDays < SECOND_REMINDER_DAYS
+      ? { kind: IdleWake.NotYet, at: after(state.lastHumanAt, SECOND_REMINDER_DAYS) }
+      : { kind: IdleWake.Reminder, at: after(state.lastHumanAt, CLOSE_QUESTION_DAYS) };
+  }
+  if (reminders === 2) {
     return idleDays < CLOSE_QUESTION_DAYS
       ? { kind: IdleWake.NotYet, at: after(state.lastHumanAt, CLOSE_QUESTION_DAYS) }
       : { kind: IdleWake.CloseQuestion, at: after(now, QUIET_DAYS) };
@@ -105,5 +116,5 @@ export async function setIdleWake(taskId: number, at: Date): Promise<void> {
 
 /** The line the five-day wake carries: one question, then quiet. */
 export const CLOSE_QUESTION_NOTE =
-  'ამ მიზანში ხუთი დღეა არავის არაფერი დაუწერია. მფლობელს ერთხელ, მოკლედ ჰკითხე, დავხუროთ თუ ' +
-  'არა ეს მიზანი ან რამე შევცვალოთ — და მეტი შეხსენება აღარ გააკეთო, სანამ არ გიპასუხებს.';
+  'ამ მიზანში ერთი კვირაა არავის არაფერი დაუწერია. მფლობელს ერთხელ, მოკლედ ჰკითხე: ' +
+  'გავაგრძელოთ, შევცვალოთ თუ დავხუროთ — და მეტი შეხსენება აღარ გააკეთო, სანამ არ გიპასუხებს.';
