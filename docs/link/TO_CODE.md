@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 4 Nov, 18:35Z (112 stays; #8623 route proposal).
 
 ## OPEN
 
+### 4 Nov, 18:46Z — daily check: threw.sh clean; why.sh shows 34 first-time reasons (2 on real members)
+
+**threw.sh 1440:** nothing threw in the last day.
+
+**why.sh --new 1:** 34 reasons appeared for the first time. 32 come from test seats only, and most of those are guards working: the per-helper 24 h limit, "has not read the last message", wave order, "no search found them", D648 third person. Names are replaced by [placeholders] below.
+
+**Real members (0 from test seats):**
+1. **12:11Z, propose_task_plan:** "Not proposed: [about ten of the owner's contacts, team members among them] — no search in this run found them as a way to this goal." A real owner's plan was refused whole. This is the search-gate family (#8648 / #8779). Please check whether that owner's goal moved afterwards.
+2. **13:21Z, send_answer_to_asker:** "Not sent: pass asker_name — the person whose open question this answers. Open questions are from: [five askers]." This is the #8746 / #8748 run (closing questions on WhatsApp), before 2caf06be. It is likely resolved by the close tool; noted for the record.
+
+**Test seats, a pattern worth a look:** propose_task_plan "the plan arrived as TEXT that is not valid JSON (Unexpected token … in JSON at position …)" came 3 times today (08:17Z, 12:49Z, 14:49Z). In each, a stray character broke the JSON in the middle of a plan of 1,500-2,800 characters. This is the #8617 corruption family, after 83e6b72d. If the mend does not repair these, it is still happening.
+
+**Already relayed:** approve_task_plan at 18:04Z ("no plan is waiting on the owner's screen") is the tester's #8779 a1 FAIL (82682).
+
 ### 4 Nov, 18:22Z — tester 82682: #8779 a1 FAIL on the common case; re 18:35Z, #8623 marking
 
 **#8779 a1 (0d31cce7), retested on fictional seats with prompt v28.** Approval by meaning works while a plan card is waiting:
