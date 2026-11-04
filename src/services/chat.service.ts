@@ -6758,6 +6758,36 @@ export function startsTheWriterEarly(smallTalk: boolean, weatherFound: boolean):
   return smallTalk || weatherFound;
 }
 /** #8524: the owner's contacts searched for the name before the first turn; null when they do not answer it. */
+/**
+ * #8524 (tester 82699: 11.2 / 60.6 / 14.5 s against 10): the contacts lookup
+ * (≈3 s under load) waited until the prompt was built (≈2.3 s). It now starts
+ * the moment the run does, and the first turn takes it when it is ready.
+ */
+interface LookupAhead {
+  readonly name: string;
+  readonly found: Promise<string | null>;
+}
+const runLookupsAhead = new Map<string, LookupAhead>();
+/** A lookup no turn took (the server answered first) is let go after this long. */
+const LOOKUP_AHEAD_KEPT_MS = 120_000;
+
+function startLookupAhead(runId: string, userId: string, ownerLine: string): void {
+  if (asksTheWeather(ownerLine)) return;
+  const name = nameAskedWhereTheyWork(ownerLine);
+  if (name === null) return;
+  runLookupsAhead.set(runId, { name, found: whereTheyWorkFirst(userId, name) });
+  setTimeout(() => runLookupsAhead.delete(runId), LOOKUP_AHEAD_KEPT_MS).unref();
+}
+
+/** The lookup started ahead for this name, or a fresh one. */
+function lookupFor(runId: string, userId: string, name: string): Promise<string | null> {
+  const ahead = runLookupsAhead.get(runId);
+  runLookupsAhead.delete(runId);
+  return ahead !== undefined && ahead.name === name
+    ? ahead.found
+    : whereTheyWorkFirst(userId, name);
+}
+
 async function whereTheyWorkFirst(userId: string, name: string): Promise<string | null> {
   try {
     const result = await searchContactByName(userId, name);
@@ -15612,7 +15642,10 @@ async function runToolLoop(
   // #8524: „where does X work?" is looked up in the owner's contacts before the first turn.
   const jobName =
     !ownerAbsent && !weatherLookUp ? nameAskedWhereTheyWork(lastOwnerText(messages) ?? '') : null;
-  const jobFound = jobName === null ? null : await whereTheyWorkFirst(userId, jobName);
+  const jobFound = jobName === null ? null : await lookupFor(runId, userId, jobName);
+  // #8524 (82699): the lookup answer is text, short — on the blank-answer retry too,
+  // which used to drop both and once ran a whole plan for 60 s instead.
+  const lookupTurn = jobFound === null ? {} : { forceText: true, maxTokens: DISCUSS_MAX_TOKENS };
   // 0283's regression (the tester's 58065): the weather the server found was in the first
   // turn's prompt only; the final writer and every later round never saw it and wrote
   // „I cannot check live". It is part of the run's prompt from here on, for every call.
@@ -15685,7 +15718,7 @@ async function runToolLoop(
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
     // #8524: with the person already looked up, the first turn is the answer.
-    ...(jobFound !== null && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
+    ...lookupTurn,
     // 3106: with the weather already found, the first turn is the answer.
     ...(weatherLookUp &&
       (weatherFound === null
@@ -15710,6 +15743,7 @@ async function runToolLoop(
     response = await callClaude(messages, systemPrompt + BLANK_RETRY_NOTE, tools, ctx, {
       onText: firstTurnText,
       model: TOOL_TURN_MODEL,
+      ...lookupTurn,
     });
   }
   // Tester 1081 (32204, 32206): blank on the re-ask too. Said once here and
@@ -18338,6 +18372,7 @@ export async function processChat(
   // thing: whether the tools that record the owner's own consent exist for
   // this run (ticket 19 item 0).
   const ownerAbsent = userMessage.startsWith(RUN_EVENT_PREFIX);
+  if (!ownerAbsent) startLookupAhead(runId, userId, userMessage);
   /**
    * ROW 238 (D119) — the owner asking for a change stops the NEXT WAVE, and
    * until today it stopped nothing at all.
