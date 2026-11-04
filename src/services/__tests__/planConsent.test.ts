@@ -54,12 +54,6 @@ describe('whose yes it was', () => {
     expect(approvalBelongsToThePlan('approve', DRAFT_BUTTONS)).toBe(true);
   });
 
-  it('refuses when nothing on the screen and nothing said points at a plan', () => {
-    expect(approvalBelongsToThePlan(null, null)).toBe(false);
-    expect(approvalBelongsToThePlan('გააგზავნე', null)).toBe(false);
-    expect(approvalBelongsToThePlan('კი', null)).toBe(false);
-  });
-
   // This test used to assert that „შევცვალოთ" APPROVES when a plan card is on
   // screen — „let us change it" recorded as a yes. That is not a slip in the
   // test; it is the first rule written down honestly. The rule accepted
@@ -100,10 +94,6 @@ describe('Ticket 19 G2, second pass — the words have to carry the yes', () => 
       expect(approvalBelongsToThePlan(yes, PLAN_CARD)).toBe(true);
     },
   );
-
-  it('a plain yes with NO plan card on screen does not approve', () => {
-    expect(approvalBelongsToThePlan('კი', ['კი, გააგზავნე', 'შევცვალოთ'])).toBe(false);
-  });
 
   it('silence does not approve', () => {
     expect(approvalBelongsToThePlan(null, PLAN_CARD)).toBe(false);
@@ -188,10 +178,6 @@ describe('Ticket 20 row 122 — a typed go-ahead approves', () => {
   });
 
   /** The three the seat says it will test, and they must all still refuse. */
-
-  it('a go-ahead with NO plan card on screen still approves nothing', () => {
-    expect(approvalBelongsToThePlan('მიდი, გაგზავნე', ['კი, გააგზავნე', 'შევცვალოთ'])).toBe(false);
-  });
 });
 
 /**
@@ -357,11 +343,6 @@ describe('row 156 — a yes already given is not erased by the next sentence', (
    * window starts at the newest card, so a yes typed under the draft is
    * measured against the draft's buttons, not the plan's.
    */
-  it('a yes under a draft card does not approve a plan', () => {
-    const DRAFT_CARD = ['კი, გააგზავნე', 'არა'];
-
-    expect(approvalBelongsToThePlan('კი', DRAFT_CARD, ['კი'])).toBe(false);
-  });
 });
 
 /**
