@@ -6723,3 +6723,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Write:** migration 291_mask_old_personal_ids.sql, which runs once on deploy. In owner lines (role 'user') that hold a standalone 11-digit number, the number is replaced with „[პირადი ნომერი დამალულია]". 7 rows when written. content_json is kept in step where it is a plain string.
 - **Before:** every changed row's content and content_json is copied into conversations_pid_backup.
 - **UNDO:** `UPDATE conversations c SET content = b.content, content_json = b.content_json FROM conversations_pid_backup b WHERE b.conversation_id = c.id;` Then drop the backup table once the undo is no longer wanted. The backup itself holds the numbers, so it is dropped after 7 days unless Misho says otherwise.
+
+## 104 · IDLE GOALS REMINDED AT 2 AND 5 DAYS, THEN QUIET (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", #8625)
+
+- **Write:** migration 292 adds tasks.idle_reminders and tasks.idle_reminded_at. From then on, the wake ticker writes those two columns and moves next_wake_at for goals nobody has written in for 2 days or more. Of the 3,000 open goals with a wake when this was written, 1,509 had been idle 2 days and 492 had been idle 5 days.
+- **Effect:** such a goal gets one ordinary reminder at 2 days and one question at 5 days (close it or change it?). After that its next wake moves 30 days on. An owner's message or a helper's answer starts the count again. Answer wakes are not touched.
+- **UNDO:** `UPDATE tasks SET next_wake_at = NOW() + interval '1 day' WHERE status = 'open' AND idle_reminders >= 2;` brings every quieted goal back to a daily wake. To switch the rule off, revert the commit; the two columns are harmless left in place.
