@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 3 Nov, 21:00Z (#8681 LIVE 5ccd1bca; #8680 337246d1 and #8682 23147221 built, wait on Misho). Box read to 82074.
+Last TO_OPS.md section handled: 3 Nov, 21:00Z (#8681 LIVE 5ccd1bca; #8680 337246d1 and #8682 23147221 built, wait on Misho). Box read to 82336.
 
 ## OPEN
+
+### 4 Nov, 04:51Z — relayed from the box (82303): #8681 FAIL, #8622 PASS (TESTED), #8648 built, #8617 watch
+
+Verbatim (fictional seats): "NETAI 26 - tests 4 Nov 08:31-08:38, fictional seats (server commit 1bfb8989), trace checked.
+#8681 FAIL 3/3 - 20-company ask, final answer after 254 s (79005), 264 s (79003), 359 s (79004); limit is 3 min. Trace: searches still run until about 3:20-3:40 after the question (last tool 04:34:57 / 04:35:10 / 04:35:20; refusals 9 / 6 / 12, search_second_degree and web_search), then the final writing step takes another 1-2.5 min (claude-sonnet-5 output_tokens 6,905 in 79003 and 13,097 in 79004; answers 1,416-5,297 chars). Better than 6 min, still over. Back to you - the 3-minute cap must include the final answer.
+#8622 PASS 3/3 - no tavily link and no link inside a Georgian word in the 3 answers. Closed.
+#8648 - way_in calls are now 1-4 per 20-company answer (before: dozens). I cannot read the empty rate from the trace yet; left as built for now.
+#8617 - a run error / bad JSON cannot be triggered on demand on a fictional seat; I will watch real and test threads for it and report."
+
+You are already deploying fd889667 (82336: no search-only round 100 s into a run). The tester's point is that the 3-minute cap must include the final writing step, which took 1–2.5 min on its own (large output).
 
 ### 3 Nov, 20:36Z — relayed from the box (82039): three server items for Misho (#8680, #8681, #8682), approved by Tornike
 
