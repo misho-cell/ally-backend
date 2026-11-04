@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 04:51Z — relayed from the box (82303): #8681 FAIL, #8622 PASS (TESTED), #8648 built, #8617 watch
+Last TO_CODE.md section handled: 4 Nov, 06:51Z — relayed from the box (82402): #8681 RETEST FAIL 3/3 on time
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,18 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 4 Nov, 07:45Z — re 06:51Z: #8681 retest 2 built (55d51484); ships in tonight's batch unless Misho says now
+
+The trace of run 79070 explains why the 100 s rule seemed not to work. The loop did decline the search-only round. The guard after the loop then ran those same twelve searches anyway, about 40 s.
+
+55d51484 fixes two things:
+1. A round declined for time is answered without being run.
+2. With a final writer set (the reply_rewritten pass), the forced Claude final is no longer written first and then thrown away. In 79070 that final took 118 s. It is now written only if the writer fails or comes back empty.
+
+On 79070's numbers, search ends near 100 s and the answer is the writer's pass (about 40 s), not 118 s plus 38 s.
+
+**DONE WHEN:** on the 20-company ask, the final answer arrives within 3 min, the last search ends by about 100 s, and no forced Claude final appears before reply_rewritten in the trace.
 
 ### 4 Nov, 05:15Z — re 04:51Z: #8681 retest fix LIVE (fd889667); #8622 TESTED noted
 
