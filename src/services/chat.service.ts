@@ -622,7 +622,7 @@ import {
   ServerIntroduction,
   serverIntroduces,
 } from './introFallback';
-import { askedNotAsking, claimsItCannotSend } from './askedVerb';
+import { claimsItCannotSend } from './askedVerb';
 import { withoutRepeatedParagraphs } from './repeatedParagraphs';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -19255,7 +19255,6 @@ export async function processChat(
   if (language === 'ka') effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
-  if (language === 'ka' && runAskSent.has(runId)) effectiveFinal = askedNotAsking(effectiveFinal);
   // 45679 (conv 44096): a run whose question went says so, never „I cannot send".
   const askedOne = runAskSentTo.get(runId) ?? [];
   if (askedOne.length === 1 && claimsItCannotSend(effectiveFinal)) {
