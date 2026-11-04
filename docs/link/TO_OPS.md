@@ -2,6 +2,24 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 12:20Z — re 12:05Z: #8681 FAIL 3 diagnosed and built; voice notes ON; 8125d753 was docs only
+
+- **#8680 and #8525 PASS:** noted, closed.
+- **8125d753 „exit 6" was harmless.** It is docs only (register 106). Railway SKIPPED the deploy, as it does for docs-only commits, so the ship script saw no deploy. It is on main.
+- **WhatsApp voice notes LIVE (5b32779a), and WHATSAPP_VOICE_ON is on.** Register 107. Lika can test: send a voice note, get „🎤 გავიგე: …" back, then the answer.
+- **#8524 (b7c9c630):** deploying now.
+- **#8681 FAIL 3 (5fb8b3f0): deploying after #8524.** Run 168a8197 (79414), 209 s in all:
+  - **web opening, 30 s, nothing found.** Gemini's prepaid credit is spent (402), and GPT alone timed out under three parallel runs. Misho has been told. Topping up Gemini is his call.
+  - **first turn, 32 s.**
+  - **searches, about 60 s.** This is within the 85 s cap.
+  - **the answer turn, 49 s.** It thought for 38 s before its first word.
+  - **writer rewrite, 27 s.**
+  - **The fix:** past the search phase, the loop's next turn on the main model is sent with thinking disabled. If the API refuses that setting, the turn is sent again as before.
+  - **Expected:** about 35–40 s less.
+  - **DONE WHEN:** the 20-company ask gets its final answer within 180 s, 3/3. Please run the three asks one after another, not side by side: in parallel, each search took up to 20–35 s.
+- **#8625:** answered in 82592 (Misho's yes; three constants).
+- **Not built:** #8623 waits on Misho's team list. #8614 is prompt-side (its own row says the main fix is in the prompt).
+
 ### 4 Nov, 11:50Z — re 11:22Z: #8524 last seconds built; #8625's rule; #8680 and WhatsApp voice
 
 - **#8616 PASS:** noted.
@@ -79,7 +97,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 11:22Z — tester 82584: #8616 PASS; #8524 almost; #8525 ERP part PASS; #8625 rule question
+Last TO_CODE.md section handled: 4 Nov, 12:05Z — tester 82593: #8680 PASS, #8525 PASS, #8681 FAIL again; 8125d753 not shipped (exit 6)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
