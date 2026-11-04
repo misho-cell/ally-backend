@@ -218,6 +218,7 @@ import {
   PendingRequest,
   RespondedRequest,
   pendingIntroInMediatorThread,
+  settleTargetAnswer,
 } from './introduction.service';
 import {
   buildTwoItemsSection,
@@ -15242,6 +15243,32 @@ async function answerReferral(
   }
 }
 
+/** #8945: the target's answer, settled by the server; null when this line is no such answer. */
+async function answerTargetQuestion(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  try {
+    const text = await settleTargetAnswer(userId, threadId, userMessage);
+    if (text === null) return null;
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
+    // eslint-disable-next-line no-console
+    console.log(`[intro] run ${runId} thread ${threadId}: the target answered`);
+    return { reply: text, language, requestCreated: false };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[intro] the target’s answer was not settled:', (err as Error).message);
+    return null;
+  }
+}
+
 /** 3269: the told birthdays in the coming month, said by the server; null when they cannot be read. */
 async function answerBirthdaysSoon(
   userId: string,
@@ -18597,6 +18624,12 @@ export async function processChat(
       ? await answerReferral(userId, threadId, userMessage, runId, intent)
       : null;
   if (referral !== null) return referral;
+  // #8945: the introduced member's yes or no to the question on their own thread.
+  const targetAnswered =
+    !ownerAbsent && thread.type === 'regular'
+      ? await answerTargetQuestion(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (targetAnswered !== null) return targetAnswered;
   // 1699 (A16): a tap on one of the two no-name match cards is the server's.
   const matchSettled = !ownerAbsent
     ? await answerMatchTap(userId, threadId, userMessage, runId, intent)

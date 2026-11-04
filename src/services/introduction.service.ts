@@ -1,3 +1,15 @@
+import {
+  askerWaitsLine,
+  mediatorAskedLine,
+  TARGET_HAS_AGREED_SQL,
+  TargetAnswer,
+  targetAnswerOf,
+  targetAnsweredLine,
+  targetChoices,
+  targetDeclinedEvent,
+  targetQuestion,
+  targetSettledLine,
+} from './targetConsent';
 import { query } from '../db/postgres/client';
 // Type only, on purpose: `taskEngine.events` is imported dynamically below to
 // keep the module cycle broken, and a type import is erased before runtime.
@@ -312,7 +324,7 @@ export async function getIntroStatusForRequester(
             (ir.mediator_user_id IS NULL) AS answered_by_the_person_themselves,
             ir.intro_channel,
             CASE WHEN ir.intro_channel IS NULL THEN NULL
-                 ELSE ir.intro_channel = 'direct' END AS contact_handed_over,
+                 ELSE ir.intro_channel = 'direct' AND ${TARGET_HAS_AGREED_SQL} END AS contact_handed_over,
             /**
              * ROW 251 — THE HANDLE, WITHOUT WHICH THE CHANNEL IS A SENTENCE.
              * (No backticks in this comment: it lives inside a template literal,
@@ -338,8 +350,10 @@ export async function getIntroStatusForRequester(
              * reason.
              */
             CASE WHEN ir.status = 'accepted' AND ir.intro_channel = 'direct'
+                      AND ${TARGET_HAS_AGREED_SQL}
                  THEN ir.target_phone END AS target_phone,
             CASE WHEN ir.status = 'accepted' AND ir.intro_channel = 'direct'
+                      AND ${TARGET_HAS_AGREED_SQL}
                  THEN ir.requester_task_id END AS for_goal_id
      FROM introduction_requests ir
      LEFT JOIN "User" m ON m.id = ir.mediator_user_id
@@ -814,6 +828,16 @@ export async function deliverAcceptOutcome(
   );
   const requester = requesterName.rows[0]?.name?.trim() || 'Netai-ს მომხმარებელი';
 
+  // #8945: a member target is asked first; the number moves only on their yes.
+  const asksTheTargetFirst =
+    targetUserId !== null &&
+    String(targetUserId) !== String(req.requester_user_id) &&
+    channel === 'direct' &&
+    targetPhone !== null;
+  if (asksTheTargetFirst && targetUserId !== null) {
+    const asked = await askTheTargetFirst(req, targetUserId, requester, mediatorName);
+    if (asked) return awaitingTheTarget(req, requester, mediatorName);
+  }
   if (targetUserId !== null && String(targetUserId) !== String(req.requester_user_id)) {
     try {
       // The TARGET's own language. This is the message that tells somebody
@@ -951,6 +975,160 @@ export async function deliverAcceptOutcome(
     contactOutcome:
       targetPhone === null ? 'not_found' : targetWasTold ? 'handed_over' : 'handed_over_off_netai',
   };
+}
+
+/**
+ * #8945 (battery 5 Nov, case 6 ×3): the target's own thread, with the question
+ * and its two buttons, recorded on the request. False when it could not be
+ * written: the old handover then stands, as it did before.
+ */
+async function askTheTargetFirst(
+  req: RequestRow,
+  targetUserId: number,
+  requester: string,
+  mediatorName: string,
+): Promise<boolean> {
+  try {
+    const language = await userLanguage(String(targetUserId)).catch(() => 'ka' as RunLanguage);
+    const [asker, between] = await Promise.all([
+      nameAsReaderSaved(targetUserId, req.requester_user_id, requester),
+      req.mediator_user_id === null
+        ? mediatorName
+        : nameAsReaderSaved(targetUserId, req.mediator_user_id, mediatorName),
+    ]);
+    await learnGeorgianSpellings([asker, between]);
+    const why = req.message?.trim() ? scrubText(req.message.trim()) : null;
+    const relayed = why === null ? null : await relayedForReader(why, language, 'request');
+    const thread = await createThread(
+      String(targetUserId),
+      'regular',
+      introAcceptedTitle(language, asker),
+    );
+    await saveThreadMessage(
+      thread.id,
+      targetUserId,
+      'assistant',
+      targetQuestion(language, between, asker, relayed?.text ?? why),
+      'message',
+      null,
+      targetChoices(language),
+    );
+    await query(
+      `UPDATE introduction_requests SET target_thread_id = $2, target_asked_at = NOW() WHERE id = $1`,
+      [req.id, thread.id],
+    );
+    await sendPushNotification(String(targetUserId), {
+      ...introAcceptedPush(language, between, asker),
+      url: `/chat/${thread.id}`,
+    }).catch(() => undefined);
+    return true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[intro] request ${req.id}: the target could not be asked first:`,
+      (err as Error).message,
+    );
+    return false;
+  }
+}
+
+/** What the asker and the go-between read while the target's answer is awaited. */
+async function awaitingTheTarget(
+  req: RequestRow,
+  requester: string,
+  mediatorName: string,
+): Promise<AcceptOutcome> {
+  const requesterLanguage = await userLanguage(String(req.requester_user_id)).catch(
+    () => 'ka' as RunLanguage,
+  );
+  const mediatorLanguage =
+    req.mediator_user_id === null
+      ? requesterLanguage
+      : await userLanguage(String(req.mediator_user_id)).catch(() => 'ka' as RunLanguage);
+  return {
+    requesterExtra: askerWaitsLine(requesterLanguage, mediatorName, req.target_name),
+    mediatorFollowUp: mediatorAskedLine(mediatorLanguage, requester, req.target_name),
+    contactOutcome: 'awaiting_target',
+  };
+}
+
+const REQUEST_ROW_COLUMNS = `ir.id, ir.request_ref, ir.requester_user_id, ir.mediator_user_id,
+            ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status,
+            ir.requester_task_id, ir.origin_thread_id, ir.mediator_thread_id, ir.created_at`;
+
+/**
+ * #8945: the target's answer to the question put on their own thread. Null when
+ * this line is no answer, or no question waits on this thread for this person.
+ * Closed once: a second tap finds nothing open.
+ */
+export async function settleTargetAnswer(
+  targetUserId: string,
+  threadId: number,
+  line: string,
+): Promise<string | null> {
+  const answer = targetAnswerOf(line);
+  if (answer === null) return null;
+  const closed = await query<RequestRow>(
+    `UPDATE introduction_requests ir
+        SET target_answered_at = NOW(), target_said_yes = $3
+      WHERE ir.target_thread_id = $1 AND ir.target_answered_at IS NULL AND ir.status = 'accepted'
+        AND EXISTS (SELECT 1 FROM threads t WHERE t.id = $1 AND t.user_id = $2::int)
+      RETURNING ${REQUEST_ROW_COLUMNS}`,
+    [threadId, targetUserId, answer === TargetAnswer.Yes],
+  );
+  const req = closed.rows[0];
+  if (req === undefined) return null;
+  await tellWhatTheTargetSaid(req, answer);
+  const language = await userLanguage(targetUserId).catch(() => 'ka' as RunLanguage);
+  const named = await query<{ name: string | null }>(
+    'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
+    [req.requester_user_id],
+  );
+  const requester = named.rows[0]?.name?.trim() || '';
+  const asker = await nameAsReaderSaved(Number(targetUserId), req.requester_user_id, requester);
+  return targetSettledLine(language, answer, asker);
+}
+
+/** The asker (with the number, on a yes) and the go-between hear the target's answer. */
+async function tellWhatTheTargetSaid(req: RequestRow, answer: TargetAnswer): Promise<void> {
+  const yes = answer === TargetAnswer.Yes;
+  const mediatorName = (await answeringMediatorName(req).catch(() => null)) ?? '';
+  const requesterLanguage = await userLanguage(String(req.requester_user_id)).catch(
+    () => 'ka' as RunLanguage,
+  );
+  const toRequester =
+    targetAnsweredLine(requesterLanguage, answer, req.target_name) +
+    (yes
+      ? introRequesterExtra(
+          requesterLanguage,
+          mediatorName,
+          req.target_name,
+          req.target_phone,
+          false,
+          true,
+        )
+      : '');
+  const threads = await getThreadsByIntroRequestId(req.id).catch(() => []);
+  for (const thread of threads) {
+    const own = isMediatorSide(thread)
+      ? targetAnsweredLine(
+          await userLanguage(String(thread.user_id)).catch(() => 'ka' as RunLanguage),
+          answer,
+          req.target_name,
+        )
+      : isRequesterSide(thread)
+        ? toRequester
+        : null;
+    if (own !== null)
+      await saveThreadMessage(thread.id, thread.user_id, 'assistant', own).catch(() => undefined);
+  }
+  if (yes) {
+    await notifyRequester(req, true);
+    await wakeRequestersGoal(req, true, 'handed_over', true, undefined);
+  } else if (req.requester_task_id !== null) {
+    const { startIntroOutcome } = await import('./taskEngine.service');
+    startIntroOutcome(req.requester_task_id, targetDeclinedEvent(req.target_name));
+  }
 }
 
 /**

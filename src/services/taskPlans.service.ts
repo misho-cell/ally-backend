@@ -1,3 +1,4 @@
+import { TARGET_HAS_AGREED_SQL } from './targetConsent';
 import { accountDetailsFor, fetchAccountStates } from './tools/membership';
 import { ServerTextBlock, serverText, serverTextIsOff } from './serverTextBlocks';
 import { notOnNetaiLine } from './mutualGroups';
@@ -939,6 +940,7 @@ export async function acceptedIntroductionPhones(
         WHERE ir.requester_task_id = $1
           AND ir.requester_user_id = $2::int
           AND ir.status = 'accepted'
+          AND ${TARGET_HAS_AGREED_SQL}
           AND COALESCE(ir.target_phone, up.phone) IS NOT NULL
         LIMIT ${MAX_ACCEPTED_INTRODUCTIONS_PER_GOAL}`,
       [taskId, requesterUserId],

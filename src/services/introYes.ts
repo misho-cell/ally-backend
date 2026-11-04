@@ -1,5 +1,8 @@
 import { pendingIntroInMediatorThread } from './introduction.service';
 import { respondToIntroduction } from './tools/respondToIntroduction';
+import { isPlainYes } from './plainYes';
+
+export { isPlainYes };
 
 /**
  * D709, the tester's 44194 (helper conversation 42081): after the helper typed
@@ -9,13 +12,6 @@ import { respondToIntroduction } from './tools/respondToIntroduction';
  * server, the way a tap on a plan's approve button is (row 323); the run is
  * only told it happened.
  */
-const PLAIN_YES_RE =
-  /^\s*(?:კი|დიახ|ხო|yes|yeah|ok|okay|да|sí)(?:[\s,!.]+(?:დააკავშირე|დაგაკავშირებ|გაგაცნობ|connect them|i'?ll connect you|свяжи их|conéctalos))?[\s!.]*$/iu;
-
-export function isPlainYes(message: string): boolean {
-  return PLAIN_YES_RE.test(message);
-}
-
 /** What the run is told once the yes has been recorded. */
 export const INTRO_ACCEPTED_BY_YES =
   'The owner just said yes to the open introduction request, and the server has already ' +
