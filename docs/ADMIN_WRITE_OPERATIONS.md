@@ -6704,3 +6704,34 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who authorises:** Misho's standing rule of 26 Oct (new server text real people read is built and shipped directly). The reason is a real joiner on 2 Nov whose upload loaded in the background with no word from Netai. Misho was told in his chat before it was built.
 - **What:** new server text real people read, and a write to live data. When an upload through the contacts link has saved at least one contact, the member gets ONE line in their main chat: „კონტაქტები მივიღე. ახლა შენს წრეში შემიძლია ძებნა — მითხარი, ვინ ან რა გჭირდება." (en/ru/es the same). It is recorded first in product_events as `contacts_received_line`. A push goes with it only outside Tbilisi quiet hours; in quiet hours the line is written with no push. Chat-attached parts (the connector) do not trigger it.
 - **Undo:** revert the commit. Lines already written stay. They are listed with `SELECT user_id, props->>'thread_id' FROM product_events WHERE event = 'contacts_received_line'`, and each can be deleted from conversations by its thread and text.
+
+## 101 · WHATSAPP CHANNEL ON FOR MISHO'S TEST (Misho, his chat, 3 Nov ~17:05Z: „ჩართე არხი თუ შეგიძლია და გავტესტავ")
+
+- **Write:** `PUT /admin/flags/whatsapp_channel {"enabled": true}`, which sets one row in `app_flags`.
+- **Effect:** Netai's WhatsApp messages go only to people who switched them on in their profile. At this write that was one real account, which opted in on 27 Oct, plus whoever switches them on for the test. Only the approved templates (netai_welcome, netai_notify) are used outside the 24-hour window.
+- **Before:** `enabled` false, and WHATSAPP_CHANNEL_ON not set.
+- **UNDO:** `PUT /admin/flags/whatsapp_channel {"enabled": false}`. Sending stops within the flag's 30-second read cache. Nothing already sent can be recalled.
+
+## 102 · REAL DELETES OF TEST SEATS BY THE TESTER (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", on the recommendation that the tester may really delete fictional-number seats)
+
+- **Write:** `DELETE /admin/test-accounts/<seat>?dry_run=false`, called by the tester.
+- **Scope:** the route refuses (403) anything that is not a test seat on a fictional number before anything runs. The erasure is one transaction (privacyRights.deleteMyAccount), the seat row is released, and its fictional number goes back to the pool.
+- **UNDO:** none for the erased seat's own data. A new seat on the freed number is created with `POST /admin/test-accounts`. Nothing on a real account is touched.
+
+## 103 · OLD PERSONAL ID NUMBERS MASKED IN OWNERS' STORED LINES (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", on the recommendation to clean rows stored before #8618)
+
+- **Write:** migration 291_mask_old_personal_ids.sql, which runs once on deploy. In owner lines (role 'user') that hold a standalone 11-digit number, the number is replaced with „[პირადი ნომერი დამალულია]". 7 rows when written. content_json is kept in step where it is a plain string.
+- **Before:** every changed row's content and content_json is copied into conversations_pid_backup.
+- **UNDO:** `UPDATE conversations c SET content = b.content, content_json = b.content_json FROM conversations_pid_backup b WHERE b.conversation_id = c.id;` Then drop the backup table once the undo is no longer wanted. The backup itself holds the numbers, so it is dropped after 7 days unless Misho says otherwise.
+
+## 104 · IDLE GOALS REMINDED AT 2 AND 5 DAYS, THEN QUIET (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", #8625)
+
+- **Write:** migration 292 adds tasks.idle_reminders and tasks.idle_reminded_at. From then on, the wake ticker writes those two columns and moves next_wake_at for goals nobody has written in for 2 days or more. Of the 3,000 open goals with a wake when this was written, 1,509 had been idle 2 days and 492 had been idle 5 days.
+- **Effect:** such a goal gets one ordinary reminder at 2 days and one question at 5 days (close it or change it?). After that its next wake moves 30 days on. An owner's message or a helper's answer starts the count again. Answer wakes are not touched.
+- **UNDO:** `UPDATE tasks SET next_wake_at = NOW() + interval '1 day' WHERE status = 'open' AND idle_reminders >= 2;` brings every quieted goal back to a daily wake. To switch the rule off, revert the commit; the two columns are harmless left in place.
+
+## 105 · RUN TRACE READER OPEN ON REAL CONVERSATIONS UNTIL 4 DEC (Misho, his chat, 4 Nov ~07:50Z: „ყვეკა შენი რეკომენდაციით გააკეთე", on the recommendation to set the date 30 days out)
+
+- **Write:** Railway variable PILOT_CONVERSATION_READER_UNTIL = 2026-12-04, set with scripts/ops/env.sh at night after the batch. Setting it restarts the service.
+- **Effect:** admins can open the run trace (/admin/threads/:id/trace) for real members' conversations until that date. The route refuses dates more than 45 days out.
+- **UNDO:** `./scripts/ops/env.sh unset PILOT_CONVERSATION_READER_UNTIL`, then a push to main to restart, because unset does not restart by itself.
