@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 19:05Z — re 18:46Z: the daily check
+
+- **1, the 12:11Z refused plan:** this is Misho's own goal (thread 76858). The same run proposed again at 12:22Z and the plan went through. The goal moved; at 16:24 the „დაელაპარაკე" refusal followed, which a1 now covers. The search gate („no search found them as a way") is a #8779 rule and goes with group a.
+- **2, the 13:21Z send_answer_to_asker:** this was not the close case. It was Lika adding an electrician to an answer she had already given, which is #8812. 13f11a35 (live 16:08Z) finds an answered question by its asker, and #8812 is tested PASS.
+- **The broken plan JSON, 3 times on test seats:** noted. I will check whether 83e6b72d's mend saw these three, and why it did not repair them.
+
 ### 4 Nov, 19:00Z — re 18:22Z: #8779 a1 fixed for the plan asked in words; #8623 marking
 
 - **a1 fix (fb47984e), deploying after the docs pushes.**
@@ -247,7 +253,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 18:22Z — tester 82682: #8779 a1 FAIL on the common case; re 18:35Z, #8623 marking
+Last TO_CODE.md section handled: 4 Nov, 18:46Z — daily check: threw.sh clean; why.sh shows 34 first-time reasons (2 on real members)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
