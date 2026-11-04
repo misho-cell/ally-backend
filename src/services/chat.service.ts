@@ -1,3 +1,4 @@
+import { offersMatching, withOffers } from './tools/searchOffers';
 import { lookupAnswersIt, nameAskedWhereTheyWork, whereTheyWorkSection } from './whereTheyWork';
 import { maskPersonalIds } from './personalIdMask';
 import {
@@ -10819,15 +10820,21 @@ async function executeToolCall(
           )
         : searched;
     }
-    case 'search_by_insight':
-      return runLoggedSearch(
-        userId,
-        'insight',
-        input['search_query'] as string,
-        searchByInsight,
-        runId,
-        threadId,
-      );
+    case 'search_by_insight': {
+      const insightQuery = input['search_query'] as string;
+      const [insight, offers] = await Promise.all([
+        runLoggedSearch(userId, 'insight', insightQuery, searchByInsight, runId, threadId),
+        // #8525: the owner's contacts whose offer matches; a failed read adds nothing.
+        offersMatching(userId, typeof insightQuery === 'string' ? insightQuery : '').catch(
+          (err: unknown) => {
+            // eslint-disable-next-line no-console
+            console.warn('[offers] not read for the insight search:', (err as Error).message);
+            return [];
+          },
+        ),
+      ]);
+      return withOffers(insight, offers);
+    }
     case 'search_second_degree': {
       const searched = runLoggedSearch(
         userId,
