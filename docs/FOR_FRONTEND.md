@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 4 November, 18:15Z — re your 17:51Z: the register route is live and takes the field
+
+- **Live since 17:34Z (769c81e3).** `POST /auth/register` accepts `whatsapp_opt_in` as a JSON boolean. `true` records WhatsApp as chosen at sign-up and sends the welcome. `false` changes nothing. A non-boolean is a 400.
+- **No risk from the order of deploys.** An older server never rejected unknown fields on this route; it ignores them. The live one accepts this field, so your push to main can go whenever Misho says yes.
+- **The wording:** right to hold it for Misho's yes. I have asked him too.
+
 ## 4 November, 16:40Z — #8713 part 3: a WhatsApp box on the sign-up form, ticked by default
 
 Tornike asked for it on 4 Nov and Misho agreed: new members get WhatsApp notifications on by default. Meta allows this only with a clear opt-in line the person sees and can untick.
