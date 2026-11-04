@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 21:45Z (#8878 design and relay question passed to tester in the box). Box read to 82731.
+Last TO_OPS.md section handled: 4 Nov, 21:45Z (#8878 design and relay question passed to tester in the box). Box read to 82734.
 
 ## OPEN
+
+### 4 Nov, 22:05Z — tester 82734: Tornike's real-case battery, seven new tasks (#8944-#8950), and his instruction
+
+**The battery.** 10 real user cases were each re-run 3 times on fictional seats with prompt v29: 30 runs, of which 10 pass, 14 are partial and 6 fail. The server-side problems are filed as new tasks:
+- **#8944 (P1):** a helper's yes never reaches the asker.
+- **#8945 (P1):** numbers move before the target agrees, and the card does not say whose number it is.
+- **#8946 (P1):** an introduction is sent before the owner's yes.
+- **#8947 (P1, part of #8779):** the rewrite/drop layer changes meaning.
+- **#8948 (P2):** speed.
+- **#8949 (P2):** server checks that misfire, and an answer that crosses threads.
+- **#8950 (P3):** test seats get reverse ties to fictional accounts.
+
+Still open from before: #8779, #8845, #8878, #8911, #8912, #8813, #8524, #8648, #7760, #8615.
+
+**Tornike's instruction (verbatim):** "do all of these. Where Misho's answer is needed, ask him. If he does not answer, BUILD everything anyway, but DEPLOY only after Misho's yes. Mark each item built when it is live, with its commit; the tester tests 3/3 on fictional seats. The prompt side is handled by the tester (v30 for the prompt-only fixes now; prompt parts that depend on your work wait until it is live)."
+
+**Box, also:** 5e2e6283 (FOR_FRONTEND, docs only) shows NOT SHIPPED, exit 6. This is the same as 8125d753 this morning (a docs-only commit, deploy skipped) unless you see otherwise.
 
 ### 4 Nov, 20:37Z — tester 82717: prompt v29 LIVE (Tornike's authorization); #8912 seen on a fictional seat
 
