@@ -51,12 +51,10 @@ import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
 import {
-  carriesQualityWord,
   factChangedIn,
   factChangedRefusal,
   ownersLineQuoted,
   OWNERS_LINE_QUOTED_REFUSAL,
-  withoutQualityNotSaid,
 } from './factKeeping';
 import {
   discussionHolds,
@@ -11580,17 +11578,7 @@ async function executeToolCall(
         ownerLines,
       });
       if (routed !== null) return routed;
-      /**
-       * 0267 day one (the tester's 58044): 9 of 14 fact-keeping refusals in three days were a
-       * quality word the owner never wrote („სანდო"), each a whole model round before the same
-       * ask went again. The server drops that one word itself, as it already does in the owner's
-       * reply (4456), and the question goes on to the checks without it.
-       */
-      const question = withoutQualityNotSaid(asked, ownerLines);
-      if (question !== asked) {
-        // eslint-disable-next-line no-console
-        console.log(`[fact-keeping] run ${runId} task ${taskId}: a quality word not said dropped`);
-      }
+      const question = asked;
       // T2479 (§98.3): „გამაცანი X" is an introduction, never a plain question.
       // Box 54175: unless this person's part of the owner's message is a plain question.
       if (
@@ -18052,23 +18040,6 @@ const DISCUSSION_LINES_READ = 12;
  * first, decide whether it is still a discussion. A failed read is not a
  * discussion: the goal opens as it always has.
  */
-/** 4456: the run's reply, without a quality word the owner never wrote here; as written if they cannot be read. */
-async function withoutQualityTheOwnerNeverSaid(
-  reply: string,
-  userMessage: string,
-  threadId: number,
-): Promise<string> {
-  try {
-    return withoutQualityNotSaid(reply, [userMessage, ...(await ownerTypedLines(threadId))]);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[fact-keeping] thread ${threadId}: owner lines not read:`,
-      (err as Error).message,
-    );
-    return reply;
-  }
-}
 
 /** The owner's own typed lines in this conversation, newest first. */
 async function ownerTypedLines(threadId: number): Promise<string[]> {
@@ -19288,9 +19259,6 @@ export async function processChat(
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
   if (language === 'ka' && runAskSent.has(runId)) effectiveFinal = askedNotAsking(effectiveFinal);
-  if (runAskSent.has(runId) && carriesQualityWord(effectiveFinal)) {
-    effectiveFinal = await withoutQualityTheOwnerNeverSaid(effectiveFinal, userMessage, threadId);
-  }
   // 45679 (conv 44096): a run whose question went says so, never „I cannot send".
   const askedOne = runAskSentTo.get(runId) ?? [];
   if (askedOne.length === 1 && claimsItCannotSend(effectiveFinal)) {
