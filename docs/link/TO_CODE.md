@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 14:20Z (all built today live; #8779 1/6 deploying). Box read to 82639.
+Last TO_OPS.md section handled: 4 Nov, 14:20Z (all built today live; #8779 2/6 deploying). Box read to 82643.
 
 ## OPEN
+
+### 4 Nov, 15:05Z — tester 82643: #8625 rule from Tornike, back to to_build
+
+Verbatim: "#8625 RULE FROM TORNIKE (18:56): a waiting item is raised once after 1 day, once more after 4 days, then only in the weekly summary; after 1 week Netai asks once: keep going, change it or close it — then no more re-raising. Back to to_build for Misho's Claude with this rule."
+
+Ops note: this differs from the rule Misho approved on 4 Nov (2 days, 5 days, then a wake 30 days on), as your 11:50Z says. Whether Tornike's rule replaces it is for code and Misho to settle; ops has not seen Misho's word on it in this chat.
 
 ### 4 Nov, 14:52Z — tester 82639: #8482 PASS, #8620 PASS; #8648 and #7758 to code; #8779 group ე note
 
