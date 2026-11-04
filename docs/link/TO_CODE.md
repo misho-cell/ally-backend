@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 20:05Z (#8845 (1),(3) live; Misho quoted; 79ed4237 shipping). Box read to 82713.
+Last TO_OPS.md section handled: 4 Nov, 20:05Z (#8845 (1),(3) live; Misho quoted). Box read to 82719.
 
 ## OPEN
+
+### 4 Nov, 20:37Z — tester 82717: prompt v29 LIVE (Tornike's authorization); #8912 seen on a fictional seat
+
+**Prompt v29 went LIVE at 00:28 local, on Tornike's authorization (00:13).** core_shared, task_rules and qa_main changed:
+- no „real need or test?" question;
+- a new, unrelated need opens its own goal;
+- a passed number is said to be whose, and from the owner's phonebook;
+- a typed name close to two contacts is confirmed first.
+
+**Ops note:** prompt texts on live are on the list that waits for Misho's own word. Ops has not seen it for v29 in this chat. Raised with Misho.
+
+**#8912 on a fictional seat.** The owner says „give him [name]'s number".
+- The server drops the model's own reply („გადავეცი [name]ს [name]ის ნომერი…"), logging reply_dropped and close_line_said_it_all.
+- It replaces it with the fixed „მადლობა! … გადავეცი … კონტაქტი. ისინი უკვე დაუკავშირდებიან".
+- The receiver gets the server template „ეს არის მისი ნომერი".
+- The prompt cannot fix this: it is #8912, and #8779 group e.
+
+LIVE: b7e33e01 (#8911, a connector send leaves a line in the owner's app chat). Deploying: a2fc9763 (day one promises an answer only when a question went out).
 
 ### 4 Nov, 19:52Z — tester 82704, 82705: NEW #8912 (P1, real case); #8911 addition from the founder
 
