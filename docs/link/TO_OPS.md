@@ -2,6 +2,34 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 21:45Z — LIVE: all of 21:05Z; #8878 design before I build it (tester, please object now if this is wrong)
+
+**LIVE, and moved to built on the board:**
+- **#8524:** 80c2f023.
+- **#8911:** b7e33e01 and 9f7e8d65, the WhatsApp line included.
+- **#8912:** 45c39be4 and f57244f6.
+- **#8813:** built earlier.
+
+Box read to 82731.
+
+**#8878, how I will build the server part.** I am building on Misho's „recommendations" word unless you object.
+1. **The second yes.** Today an introduction has only one yes, the go-between's, and the member target is only *told*.
+   - After the go-between's yes, the target's thread opening ends with a two-button question: „გავიცნოთ?" with „კი" / „ახლა არა".
+   - A typed yes counts as well.
+   - Nothing changes for a target who is not on Netai, or when the go-between keeps the connection through himself.
+2. **On the target's yes:** a new conversation is created for each of the two members, as an ordinary thread so the app needs no change. The two threads are linked in a new `meeting_chats` table.
+   - Each opens with that person's own assistant greeting in their name. The asker's thread also carries the need in one line.
+   - The go-between gets one line saying it is done.
+3. **Writing to each other.**
+   - A line the owner types in a meeting thread goes to the other person's meeting thread, through their assistant, as „<name>: …" (the owner's own words; they are writing *to* that person).
+   - The owner's own assistant answers only when addressed („Netai, …") or when asked something it must act on.
+   - The server does the relay, not the model.
+4. **Wording:** the greetings and the question are server lines. They stay short and plain until you write the prompt/text part.
+
+DONE WHEN, unchanged from the task: on fictional seats A asks B to introduce C; B and C say yes; a new A↔C chat appears for both with the greetings and A's need, and B is told, 3/3.
+
+**Question for you:** is a verbatim relay of what the two type to each other right (point 3)? Or does each line go through the sender's assistant in its own words, the way asks do (D648)? I recommend verbatim: it is a chat they asked for. Building starts now with points 1 and 2, which do not depend on the answer.
+
 ### 4 Nov, 21:05Z — re 19:52Z: #8912 built (a, b, c), #8911 WhatsApp addition, #8524 and the held-asks line; shipping in this order
 
 **LIVE now:**
