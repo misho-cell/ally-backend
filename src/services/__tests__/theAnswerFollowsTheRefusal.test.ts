@@ -3,7 +3,12 @@ jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { SEARCH_PHASE_CAP_MS, searchesPastTheBudget, searchBudgetSpent } from '../chat.service';
+import {
+  SEARCH_PHASE_CAP_MS,
+  searchesPastTheBudget,
+  searchBudgetSpent,
+  unrunSearchResults,
+} from '../chat.service';
 
 /** #8681: after a search-limit refusal the run kept searching and answered ~6 min late. */
 describe('the answer follows a budget refusal (#8681)', () => {
@@ -34,5 +39,42 @@ describe('searching ends in time for the answer (#8681 retest)', () => {
     expect(searchesPastTheBudget('fresh-run', ['propose_task_plan'], SEARCH_PHASE_CAP_MS + 1)).toBe(
       false,
     );
+  });
+});
+
+/** #8681 retest 2 (82402): the guard after the loop ran the declined searches anyway. */
+describe('a round declined for time is not run', () => {
+  it('answers every asked search without running it', () => {
+    const results = unrunSearchResults([
+      { type: 'text', text: 'ვეძებ', citations: null },
+      { type: 'tool_use', id: 'tu1', name: 'web_search', input: {} },
+      { type: 'tool_use', id: 'tu2', name: 'search_by_tag', input: {} },
+    ] as never);
+    expect(results.map((r) => r.tool_use_id)).toEqual(['tu1', 'tu2']);
+    expect(results.every((r) => r.is_error === true)).toBe(true);
+  });
+
+  it('is what the guard uses when the loop declined the round', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('? unrunSearchResults(response.content)');
+  });
+});
+
+/** #8681 retest 2 (82402): a 118 s final was written and then discarded for the writer's. */
+describe('the final the writer replaces is not written first', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('leaves the forced final to the writer when one is set', () => {
+    expect(chat).toContain("if (writer !== '' && earlyFinal === null) {");
+    expect(chat).toContain('claudeFinalSkipped = true;');
+  });
+
+  it('writes it after all when the writer fails or comes back empty', () => {
+    expect(chat).toContain('if (rewritten === null) await claudeFinalIfSkipped();');
+    expect(chat.match(/await claudeFinalIfSkipped\(\);/g)?.length).toBe(2);
+  });
+
+  it('never takes the skipped, empty final for a short answer that stands', () => {
+    expect(chat).toContain('!claudeFinalSkipped &&\n      earlyFinal === null &&');
   });
 });
