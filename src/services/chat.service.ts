@@ -132,7 +132,6 @@ import {
   SEVERAL_ROUTES_LINE,
 } from './severalRoutes';
 import { withQuestionFromSteps } from './questionWithButtons';
-import { withOwnersNetwork } from './planVoice';
 import { withoutInternalText } from './internalText';
 import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
@@ -9249,13 +9248,11 @@ function withPlanInReply(
   // reply was not asking for it to be approved. Only a reply carrying the
   // approve button is a plan reply.
   if (!replyAsksForApproval(offered)) return written;
-  // P3 (47972): Netai has no network of its own — „ჩემს ნაცნობებში" is the owner's.
-  const reply = withOwnersNetwork(written);
-  if (!replyCarriesPlan(reply, plan)) {
+  if (!replyCarriesPlan(written, plan)) {
     // eslint-disable-next-line no-console
     console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
   }
-  return planReplyText(reply, plan, runLang(runId));
+  return planReplyText(written, plan, runLang(runId));
 }
 
 /**
