@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { lookupAnswersIt, nameAskedWhereTheyWork, whereTheyWorkSection } from '../whereTheyWork';
 
 const FOUND = {
@@ -46,5 +48,20 @@ describe('where does X work (#8524)', () => {
       }),
     ).toBe(false);
     expect(lookupAnswersIt({ found: false })).toBe(false);
+  });
+});
+
+/** #8524 (tester 82699: 11.2 / 60.6 / 14.5 s): where the time went, and the 60 s run. */
+describe('#8524: the lookup starts with the run, and its retry stays a short text', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('starts the lookup the moment an owner’s run starts', () => {
+    expect(chat).toContain('if (!ownerAbsent) startLookupAhead(runId, userId, userMessage);');
+    expect(chat).toContain('await lookupFor(runId, userId, jobName)');
+  });
+
+  it('keeps the blank-answer retry to text, short, on a lookup', () => {
+    const retry = chat.slice(chat.indexOf('first answer was blank'));
+    expect(retry.slice(0, 600)).toContain('...lookupTurn,');
   });
 });
