@@ -128,6 +128,25 @@ describe('every refusal has its own name', () => {
     expect(unsaid).not.toEqual({ ok: false, reason: 'too_long' });
   });
 
+  it('takes a longer clip from a caller that allows one (WhatsApp, 3 min)', async () => {
+    const longer = await transcribe({
+      userId: '1',
+      audio: audio(),
+      mime: 'audio/mp4',
+      durationMs: 90_000,
+      maxMs: 180_000,
+    });
+    expect(longer).not.toEqual({ ok: false, reason: 'too_long' });
+    const tooLong = await transcribe({
+      userId: '1',
+      audio: audio(),
+      mime: 'audio/mp4',
+      durationMs: 200_000,
+      maxMs: 180_000,
+    });
+    expect(tooLong).toEqual({ ok: false, reason: 'too_long' });
+  });
+
   it('unsupported_format names the type it was given', async () => {
     const out = await transcribe({ userId: '1', audio: audio(), mime: 'video/mp4' });
 

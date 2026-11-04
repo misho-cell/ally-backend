@@ -6742,3 +6742,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Effect:** inbound WhatsApp messages reach /webhooks/whatsapp. Misho's test message at 10:53Z came in and was answered.
 - **UNDO:** DELETE on the same path in the Graph API Explorer, with the app's token. Inbound messages then stop arriving. Outbound templates are not affected.
 - Written down after the fact: Misho made this write himself, in his own Meta account. No id is written here.
+
+## 107 · WHATSAPP VOICE NOTES READ (Misho, his chat, 4 Nov ~11:20Z: „კი, გააკეთე შენი რეკომენდაციებით")
+
+- **Write:** Railway variable WHATSAPP_VOICE_ON = true, set with scripts/ops/env.sh after the voice commit is live. Setting it restarts the service.
+- **Effect:** a voice note sent to Netai in WhatsApp is fetched from Meta and transcribed by the recogniser the app already uses (OpenAI; SPEECH_TO_TEXT_ENABLED is already on). The member first gets „🎤 გავიგე: …", then the answer. Limits: 3 minutes per note, and the existing 20 minutes a day per person. Each note is charged in usage_events, kind 'speech'. When written, 6 members had WhatsApp switched on, so the first users are the team.
+- **UNDO:** `printf false | ./scripts/ops/env.sh set WHATSAPP_VOICE_ON`. Voice notes are then answered „ხმოვან შეტყობინებებს ჯერ ვერ ვკითხულობ — დამიწერე".

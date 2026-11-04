@@ -384,6 +384,11 @@ export interface TranscribeInput {
    * implied, because a limit that silently does not apply is worse than none.
    */
   readonly durationMs?: number;
+  /**
+   * The longest clip this caller takes; MAX_AUDIO_MS when not given. WhatsApp
+   * voice notes run longer than the app's press-to-talk (Misho, 4 Nov: 3 min).
+   */
+  readonly maxMs?: number;
 }
 
 /** What the recogniser gives back, narrowed to the two fields this service reads. */
@@ -483,7 +488,7 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
   if (input.audio.byteLength > MAX_AUDIO_BYTES) {
     return { ok: false, reason: 'too_large' };
   }
-  if (input.durationMs !== undefined && input.durationMs > MAX_AUDIO_MS) {
+  if (input.durationMs !== undefined && input.durationMs > (input.maxMs ?? MAX_AUDIO_MS)) {
     return { ok: false, reason: 'too_long' };
   }
   const type = baseType(input.mime);
@@ -496,7 +501,7 @@ export async function transcribe(input: TranscribeInput): Promise<TranscriptionO
    * because a caller that stops sending `duration_ms` must not thereby become
    * free.
    */
-  const seconds = Math.max(1, Math.round((input.durationMs ?? MAX_AUDIO_MS) / 1000));
+  const seconds = Math.max(1, Math.round((input.durationMs ?? input.maxMs ?? MAX_AUDIO_MS) / 1000));
   const alreadyUsed = await secondsUsedToday(input.userId).catch((error: unknown) => {
     // eslint-disable-next-line no-console
     console.error('[speech] could not read today usage:', (error as Error).message);
