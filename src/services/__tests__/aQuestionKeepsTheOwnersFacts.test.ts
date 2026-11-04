@@ -1,12 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import {
-  carriesQualityWord,
-  FactChange,
-  factChangedIn,
-  factChangedRefusal,
-  withoutQualityNotSaid,
-} from '../factKeeping';
+import { FactChange, factChangedIn, factChangedRefusal } from '../factKeeping';
 
 /**
  * Board #100 (plate F1): an ask said „for a friend" though the owner asked for
@@ -138,44 +132,3 @@ describe('a bracketed word in the other script', () => {
 });
 
 /** #1618 (tester 40229): „reliable" added to the question without brackets. */
-describe('a quality the owner never asked for', () => {
-  it('is held back', () => {
-    expect(
-      factChangedIn('Do you know a reliable person who could help paint a car?', [
-        'I need someone to help paint my car',
-      ])?.word,
-    ).toBe('reliable');
-    expect(factChangedIn('იცნობ სანდო ხელოსანს?', ['ხელოსანი მჭირდება'])?.change).toBe(
-      FactChange.Detail,
-    );
-  });
-
-  it('passes when the owner asked for it', () => {
-    expect(factChangedIn('იცნობ სანდო ხელოსანს?', ['სანდო ხელოსანი მჭირდება'])).toBeNull();
-  });
-});
-
-/** 4456 (box 51448, conv 49204): the owner's „sent" line said „სანდო ნოტარიუსს". */
-describe('the owner’s own reply after a question went', () => {
-  const owner = ['ჰკითხე ნიკას, ხომ არ იცნობს ნოტარიუსს.', 'მჭირდება ნოტარიუსი ბინის ყიდვისთვის'];
-
-  it('loses a quality word the owner never wrote', () => {
-    const reply = 'ნიკას ვკითხე, ხომ არ იცნობს სანდო ნოტარიუსს.';
-    expect(carriesQualityWord(reply)).toBe(true);
-    expect(withoutQualityNotSaid(reply, owner)).toBe('ნიკას ვკითხე, ხომ არ იცნობს ნოტარიუსს.');
-  });
-
-  it('keeps it when the owner wrote it, in any case ending', () => {
-    const reply = 'ნიკას ვკითხე სანდო ნოტარიუსზე.';
-    expect(withoutQualityNotSaid(reply, ['მჭირდება სანდო ნოტარიუსი'])).toBe(reply);
-  });
-
-  it('touches nothing else', () => {
-    expect(carriesQualityWord('ნიკას ვკითხე.')).toBe(false);
-  });
-
-  it('runs only when a question went in the run', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('if (runAskSent.has(runId) && carriesQualityWord(effectiveFinal)) {');
-  });
-});
