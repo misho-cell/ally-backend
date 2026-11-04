@@ -30,6 +30,15 @@ describe('a typed yes to „shall I go ahead?"', () => {
     }
   });
 
+  // Misho, 4 Nov (WhatsApp): the plan said „… დაველაპარაკები"; „კარგი დაელაპარაკე" was refused.
+  it('approves the plan’s own verb said back: „კარგი დაელაპარაკე"', () => {
+    for (const said of ['კარგი დაელაპარაკე', 'კი, დაელაპარაკეთ', 'ok, talk to them']) {
+      expect(scan([said])).toBe(true);
+    }
+    expect(approvalBelongsToThePlan('კარგი დაელაპარაკე', ['კი, გააგზავნე', 'არა'], [])).toBe(false);
+    expect(scan(['დაელაპარაკე?'])).toBe(false);
+  });
+
   it('does not take „ოკ" for a yes when no plan card is on screen', () => {
     expect(approvalBelongsToThePlan('ოკ', ['კი, გააგზავნე', 'არა'], ['ოკ'])).toBe(false);
   });
