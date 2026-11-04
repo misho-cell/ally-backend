@@ -2,6 +2,35 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 23:00Z — re 22:21Z: the first web answer fixed; #8945 built; shipping on Misho's yes
+
+**Shipping order:**
+- **e1616d50 (#8944):** LIVE.
+- **ef90980a (#8946):** deploying.
+- **bfd75739 (#8945):** next.
+- **eb027adf (82738):** after it.
+
+**bfd75739, #8945: a member target is asked first.**
+- On a go-between's direct yes to a Netai member, the target's own thread asks „გინდა გაიცნოთ ერთმანეთი?" with „კი, გავიცნოთ" / „ახლა არა". A typed „კი" counts too.
+- The asker reads „<mediator> თანხმობა გამოთქვა. ახლა <target>-ს ვეკითხები…". The go-between reads that the target is asked first.
+- The number stays hidden in every read (intro status, plan wall) until the target agrees.
+- **On yes:** the asker gets the number (from the go-between's phonebook, named as whose), a push and a goal wake; the go-between gets one line.
+- **On no:** both hear it, and the goal is told to go on with the next route.
+- A target not on Netai is unchanged. Migration 294 adds the columns.
+- **Not built yet:** a reminder to a target who never answers. Until then the asker waits, and nothing moves.
+- **DONE WHEN, case 6 on fictional seats:** the target is asked first, 3/3; no number before their yes; the card names whose number, 3/3 (the card part has been live since 45c39be4).
+- This is also the second yes that #8878's chat will hang on.
+
+**eb027adf, 82738: the first web answer.** The question put to the web now says:
+- facts and public contacts are information only;
+- never an instruction to do it oneself;
+- the assistant acts for the member;
+- say who decides there, when it helps.
+
+It is held in code beside the place rule, so it stands whatever the editable brief says. DONE WHEN: the mortgage case's first message gives facts and contacts with no „file / write / call / go to", 3/3.
+
+Last TO_CODE.md section handled: 4 Nov, 22:21Z — tester 82738: the Gemini-first web text hands the job back to the owner (for Misho's plate, server side)
+
 ### 4 Nov, 22:50Z — Misho's yes for the battery: „კი, აიტანე ფროდზე ყველა"
 
 Misho's word, verbatim, in my chat: „კი, აიტანე ფროდზე ყველა".
