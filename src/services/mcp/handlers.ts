@@ -1,3 +1,4 @@
+import { ConnectorAction, traceInApp } from './connectorTrace';
 import { query } from '../../db/postgres/client';
 import { goalsAwaitingTheOwner } from '../taskStore.service';
 import {
@@ -1258,8 +1259,10 @@ export async function mcpAskContact(
   const outcome = await createAsk(userId, taskId, phone, question);
   // Row 220: the counter shipped on the chat path alone, and three of the four
   // introductions it was found to have missed came through here.
-  if ((outcome as { sent?: unknown }).sent === true) {
+  if (outcome.sent === true) {
     noteIntroductionSentAsAQuestion({ surface: 'connector', taskId }, question);
+    // #8911: the question shows in the goal's own chat in the app.
+    await traceInApp(userId, task.thread_id, ConnectorAction.Asked, question, outcome.to_name);
   }
   return scrubDeep(outcome) as McpToolPayload;
 }

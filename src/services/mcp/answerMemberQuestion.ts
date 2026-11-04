@@ -1,5 +1,6 @@
 import { query } from '../../db/postgres/client';
 import { SentAnswer, sendApprovedAskAnswer } from '../taskAsks.service';
+import { ConnectorAction, traceInApp } from './connectorTrace';
 
 /**
  * 1256 (Tornike's customer, 5 Oct; done when the four work on a real account):
@@ -64,7 +65,11 @@ export async function answerMemberQuestion(
   if (askId === null) return { sent: false, error: UNKNOWN_ASK };
   const threadId = await askThreadOfRecipient(userId, askId);
   if (threadId === null) return { sent: false, error: UNKNOWN_ASK };
-  return sendApprovedAskAnswer(userId, threadId, args.answer ?? '');
+  const answer = args.answer ?? '';
+  const outcome = await sendApprovedAskAnswer(userId, threadId, answer);
+  // #8911: the answer shows in the question's own chat in the app.
+  if (outcome.sent) await traceInApp(userId, threadId, ConnectorAction.Answered, answer);
+  return outcome;
 }
 
 /** The connector's payload: the send's outcome, as a plain record. */
