@@ -170,7 +170,7 @@ describe('resolveIntroductionRequest', () => {
       { response: 'დაუკავშირდი', source: 'button' },
     );
 
-    expect(out).toEqual({ ok: true, status: 'accepted' });
+    expect(out).toMatchObject({ ok: true, status: 'accepted' });
     const update = mockQuery.mock.calls.find((c) =>
       (c[0] as string).includes('UPDATE introduction_requests'),
     );
@@ -271,7 +271,7 @@ describe('resolveIntroductionRequest', () => {
       source: 'chat',
     });
 
-    expect(out).toEqual({ ok: true, status: 'accepted' });
+    expect(out).toMatchObject({ ok: true, status: 'accepted' });
     const update = mockQuery.mock.calls.find((c) =>
       (c[0] as string).includes('UPDATE introduction_requests'),
     );

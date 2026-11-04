@@ -854,7 +854,7 @@ describe('mcpRespondToRequest carries no channel', () => {
   it('hands an accept to the resolver with the answer only', async () => {
     mockRespondIntro.mockResolvedValue({ success: true });
     await mcpRespondToRequest(USER, { request_ref: 'req_12', accept: true });
-    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, true, undefined);
+    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, true, undefined, 'connector');
   });
 });
 
@@ -876,7 +876,7 @@ describe('mcpRespondToRequest', () => {
       accept: false,
       response: 'ახლა ვერ',
     });
-    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, false, 'ახლა ვერ');
+    expect(mockRespondIntro).toHaveBeenCalledWith(USER, 12, false, 'ახლა ვერ', 'connector');
     expect(result.success).toBe(true);
   });
 });

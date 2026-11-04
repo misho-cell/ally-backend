@@ -562,7 +562,8 @@ export async function introStillAwaitedOnThread(
 export type IntroChannel = 'direct' | 'via_mediator';
 
 export type IntroductionAction = 'accept' | 'decline' | 'snooze';
-export type ResolveSource = 'chat' | 'button' | 'admin';
+/** #8912: 'connector' — answered through an MCP client; no run in the app says it. */
+export type ResolveSource = 'chat' | 'button' | 'admin' | 'connector';
 
 export interface ResolveOutcome {
   ok: boolean;
@@ -573,6 +574,11 @@ export interface ResolveOutcome {
   snoozedUntil?: string | null;
   code?: 'not_found' | 'conflict';
   error?: string;
+  /**
+   * #8912: what was done in the go-between's name, for the run to say in its
+   * own words — on an answer given in chat no fixed line is written for it.
+   */
+  whatWasDone?: string;
 }
 
 const DEFAULT_SNOOZE_DAYS = 3;
@@ -958,6 +964,8 @@ async function syncRequestThreads(
   action: IntroductionAction,
   response?: string,
   outcome?: AcceptOutcome,
+  /** #8912: the answer was given in chat, and the run says what was done itself. */
+  theRunSaysIt = false,
 ): Promise<boolean> {
   // #1651: whether the outcome line went into a thread the requester's goal
   // shares, so the goal's wake does not tell the owner the same thing again.
@@ -966,7 +974,7 @@ async function syncRequestThreads(
     const threads = await getThreadsByIntroRequestId(req.id);
     for (const thread of threads) {
       if (isMediatorSide(thread)) {
-        await settleMediatorThread(req, thread, action, outcome);
+        await settleMediatorThread(req, thread, action, outcome, theRunSaysIt);
       } else if (isRequesterSide(thread) && action !== 'snooze') {
         await settleRequesterThread(req, thread, action, response, outcome);
         if (isSharedRequestThread(thread)) shownInGoalThread = true;
@@ -1008,25 +1016,36 @@ async function mediatorThreadStatusAfter(
   return { status: 'done' };
 }
 
+/** What the go-between is told was done in their name. */
+function mediatorCloseLine(action: IntroductionAction, outcome?: AcceptOutcome): string {
+  return (
+    outcome?.mediatorFollowUp ?? (action === 'accept' ? ACCEPT_CLOSE_LINE : DECLINE_CLOSE_LINE)
+  );
+}
+
 async function settleMediatorThread(
   req: RequestRow,
   thread: RequestThread,
   action: IntroductionAction,
   outcome?: AcceptOutcome,
+  theRunSaysIt = false,
 ): Promise<void> {
   const owner = String(thread.user_id);
   // Each side's own language — the two readers need not share one, and
   // this caption is on their screen as of 20 September.
   const ownerLanguage = await userLanguage(owner).catch(() => 'ka' as RunLanguage);
-  if (action !== 'snooze') {
-    // The responder sees what happened in their name (task 16) — on
-    // EVERY resolve, not only a mediated accept: request 925's direct
-    // accepter got pure silence, just a thread flipping to done
-    // (ticket 8 task 3). The richer mediated-accept follow-up wins
-    // when it exists; otherwise a plain honest close.
-    const close =
-      outcome?.mediatorFollowUp ?? (action === 'accept' ? ACCEPT_CLOSE_LINE : DECLINE_CLOSE_LINE);
-    await saveThreadMessage(thread.id, thread.user_id, 'assistant', close).catch(() => undefined);
+  // The responder sees what happened in their name (task 16) — on EVERY
+  // resolve. #8912 (a real case, tester 82704; founder 19:07): when they
+  // answered in chat, the run says it in its own words (ResolveOutcome.
+  // whatWasDone) and no fixed line stands in for its reply. A button tap has
+  // no run, so the line is written.
+  if (action !== 'snooze' && !theRunSaysIt) {
+    await saveThreadMessage(
+      thread.id,
+      thread.user_id,
+      'assistant',
+      mediatorCloseLine(action, outcome),
+    ).catch(() => undefined);
   }
   const next = await mediatorThreadStatusAfter(thread, action, ownerLanguage);
   await setThreadStatus(owner, thread.id, next.status, {
@@ -1538,7 +1557,14 @@ export async function resolveIntroductionRequest(
       return undefined;
     });
   }
-  const shownInGoalThread = await syncRequestThreads(req, action, opts.response, outcome);
+  const theRunSaysIt = opts.source === 'chat';
+  const shownInGoalThread = await syncRequestThreads(
+    req,
+    action,
+    opts.response,
+    outcome,
+    theRunSaysIt,
+  );
   // The wake is told what the other two messages were told — see AcceptOutcome.
   /**
    * A decline, or an accept whose outcome delivery failed, has no contact
@@ -1555,7 +1581,11 @@ export async function resolveIntroductionRequest(
   );
   // ...and when there is no goal to wake, the chat it was asked in is told.
   await tellTheChatItWasAskedIn(req, action, opts.response, outcome);
-  return { ok: true, status: newStatus };
+  return {
+    ok: true,
+    status: newStatus,
+    ...(theRunSaysIt && { whatWasDone: mediatorCloseLine(action, outcome) }),
+  };
 }
 
 /**

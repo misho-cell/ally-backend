@@ -587,11 +587,15 @@ export function introAcceptedOffNetai(
 ): string | null {
   if (language !== 'ka') return null;
   const digits = phoneDigits(targetPhone);
+  const mediator = georgianScriptName(mediatorName);
+  const target = georgianScriptName(targetName);
+  // #8912 (a real case, tester 82704): „ეს არის მისი ნომერი" read as the go-between's
+  // own number. It says whose number it is, and from whose phonebook.
   return (
-    `${geoName(georgianScriptName(mediatorName), 'erg')} თანხმობა გამოთქვა ` +
-    `${withName(georgianScriptName(targetName))} გაცნობაზე დახმარებისთვის. ` +
-    'ახლა შეგიძლია მას პირდაპირ დაუკავშირდე. ' +
-    `ეს არის მისი ნომერი: [+${digits}](tel:+${digits}) [WhatsApp](https://wa.me/${digits}).`
+    `${geoName(mediator, 'erg')} თანხმობა გამოთქვა ${withName(target)} გაცნობაზე დახმარებისთვის. ` +
+    `ახლა შეგიძლია ${geoName(target, 'dat')} პირდაპირ დაუკავშირდე. ` +
+    `ეს არის ${geoName(target, 'gen')} ნომერი, ${geoName(mediator, 'gen')} წიგნაკიდან: ` +
+    `[+${digits}](tel:+${digits}) [WhatsApp](https://wa.me/${digits}).`
   );
 }
 
@@ -732,13 +736,13 @@ export function introMediatorFollowUp(
   }
   switch (language) {
     case 'en':
-      return `Thank you! I have given ${requesterName} ${targetName}'s contact${told(` and told ${targetName} as well`)}. They will take it from here.`;
+      return `Thank you! I have given ${requesterName} ${targetName}'s contact from your phonebook${told(` and told ${targetName} as well`)}. They will take it from here.`;
     case 'ru':
-      return `Спасибо! Я передал ${requesterName} контакт ${targetName}${told(` и предупредил ${targetName}`)}. Дальше они свяжутся сами.`;
+      return `Спасибо! Я передал ${requesterName} контакт ${targetName} из твоей записной книжки${told(` и предупредил ${targetName}`)}. Дальше они свяжутся сами.`;
     case 'es':
-      return `¡Gracias! Le he dado a ${requesterName} el contacto de ${targetName}${told(` y también he avisado a ${targetName}`)}. A partir de aquí siguen ellos.`;
+      return `¡Gracias! Le he dado a ${requesterName} el contacto de ${targetName} de tu agenda${told(` y también he avisado a ${targetName}`)}. A partir de aquí siguen ellos.`;
     default:
-      return `მადლობა! ${geoName(requesterName, 'dat')} გადავეცი ${geoName(targetName, 'gen')} კონტაქტი${told(` და ${geoName(targetName, 'dat')}აც ვაცნობე`)}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`;
+      return `მადლობა! ${geoName(requesterName, 'dat')} გადავეცი ${geoName(targetName, 'gen')} კონტაქტი შენი წიგნაკიდან${told(` და ${geoName(targetName, 'dat')}აც ვაცნობე`)}. ისინი უკვე დაუკავშირდებიან ერთმანეთს.`;
   }
 }
 

@@ -85,7 +85,7 @@ describe('the server’s own steps', () => {
       chat.match(
         /await dropQuietRunTrail\(\s*userId,\s*threadId,\s*runId,\s*'[^']+',\s*finalText,?\s*\);/gu,
       ),
-    ).toHaveLength(5);
+    ).toHaveLength(4);
     expect(chat).toContain(
       'void recordReplyRewritten(runId, rewritten.model, extractText(response.content), finalText);',
     );

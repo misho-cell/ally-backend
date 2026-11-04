@@ -232,7 +232,6 @@ import {
   userLanguage,
   touchThread,
   createThread,
-  getThreadsByIntroRequestId,
   threadLanguage,
   saveThreadMessage,
   lastShownAssistantReply,
@@ -330,7 +329,7 @@ import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
 import { REQUEST_THREAD_TYPE, answersTheRequestOnly } from './requestReferral';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
-import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
+import { SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
   planInForce,
@@ -8932,28 +8931,6 @@ async function openIntroHere(userId: string, threadId: number | undefined): Prom
 /** G5: runs whose thread already shows the server's „sent" line, and on which side. */
 const runSentLineOnScreen = new Map<string, SentSide>();
 
-/**
- * G5, the mediator's side: a resolved request writes its close line into the
- * request's own threads. When this run's thread is one of them, the reply must
- * not say it again. A failed lookup marks nothing — a repeat is the smaller harm.
- */
-async function noteMediatorCloseOnScreen(
-  runId: string | undefined,
-  threadId: number | undefined,
-  requestId: unknown,
-  responded: object,
-): Promise<void> {
-  if (!runId || threadId === undefined || typeof requestId !== 'number') return;
-  if ((responded as { success?: unknown }).success !== true) return;
-  try {
-    const threads = await getThreadsByIntroRequestId(requestId);
-    if (threads.some((t) => t.id === threadId)) runSentLineOnScreen.set(runId, SentSide.Mediator);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[sent-line] could not read the request threads:', (err as Error).message);
-  }
-}
-
 function notePlanForReply(runId: string | undefined, plan: PlanForReply): void {
   if (runId) runPlanForReply.set(runId, plan);
 }
@@ -11127,14 +11104,8 @@ async function executeToolCall(
       const asked = input['request_id'] as number;
       const first = await answer(asked);
       const retried = ownRequest !== undefined && ownRequest !== asked && !answered(first);
-      const responded = retried ? await answer(ownRequest) : first;
-      await noteMediatorCloseOnScreen(
-        runId,
-        threadId,
-        retried ? ownRequest : input['request_id'],
-        responded,
-      );
-      return responded;
+      // #8912: the server writes no close line for a chat answer; the reply says what was done.
+      return retried ? await answer(ownRequest) : first;
     }
     case 'get_intro_status': {
       /**
@@ -19325,20 +19296,9 @@ export async function processChat(
     }
   }
   const sentSide = runSentLineOnScreen.get(runId);
-  if (sentSide !== undefined && closeLineIsTheWholeAnswer(sentSide, userMessage)) {
-    effectiveFinal = '';
-  }
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
     const ownLines = [userMessage, ...(await ownersRecentLines(threadId))];
     effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language, ownLines);
-  }
-  // #1750 / #1783 (tester 40921, 41021): on the go-between's side the close is the answer.
-  if (sentSide === SentSide.Mediator && effectiveFinal.trim() === '') {
-    // eslint-disable-next-line no-console
-    console.log(`[chat] run ${runId} thread ${threadId}: the close line said it all — quiet`);
-    await dropQuietRunTrail(userId, threadId, runId, 'close_line_said_it_all', finalText);
-    clearRunState(runId);
-    return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
   // #1189 (Giorgi, 4 and 5 Oct): a wake that only re-set its reminder left a
   // bubble holding „•". A reply with no letter or digit in it says nothing; it is
