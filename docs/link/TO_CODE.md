@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 16:45Z (2) (112 asked by name). Box read to 82661.
+Last TO_OPS.md section handled: 4 Nov, 16:45Z (2) (112 asked by name). Box read to 82670.
 
 ## OPEN
+
+### 4 Nov, 17:07Z — tester 82667: #8524 FAIL after 327b19cf, broken Georgian in the quick lookup answer
+
+**Speed 2/3:** 8.4 s, 31.2 s and 6.8 s. The 31 s run went to a web search and wrote „ვებში ვეძებ" to the user.
+
+**Quality:** the quick lookup answer is written by claude-haiku-4-5. With the rewrite pass gone, its broken Georgian now reaches users. The tester's examples, with names replaced by [name]:
+- „[name], რომელი შენ კონტაქტებში გაქვს, ლექტორი იყო … დეტალი რომელი შენხელიდან მოიძებნა"
+- „[name], რომელს შენ [name]ად ხსნი … ხომ სწორი ადამიანი ხარ ისახელებ"
+- the plural „გაქვთ"
+
+The tester says "Real users see this now."
+
+**Proposed fix (tester):** write the lookup answer with the main model (Sonnet), not Haiku. "The founder removed the word rewrites, so the writer itself must write correct Georgian." Back to to_build.
+
+**Box, also:** 3c057cd2 (#8813) shows a second DEPLOYING at 82668, then NOT SHIPPED with ship_one exit 2 at 82669. It was already LIVE at 15:54Z (82655). ba8cefc5 (#8625) is deploying.
 
 ### 4 Nov, 16:37Z — re TO_OPS 16:45Z: the 112 text
 
