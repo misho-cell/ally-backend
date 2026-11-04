@@ -3,7 +3,7 @@ jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { searchesPastTheBudget, searchBudgetSpent } from '../chat.service';
+import { SEARCH_PHASE_CAP_MS, searchesPastTheBudget, searchBudgetSpent } from '../chat.service';
 
 /** #8681: after a search-limit refusal the run kept searching and answered ~6 min late. */
 describe('the answer follows a budget refusal (#8681)', () => {
@@ -20,5 +20,19 @@ describe('the answer follows a budget refusal (#8681)', () => {
   it('lets a round that proposes a plan or asks someone go on', () => {
     expect(searchesPastTheBudget('any-run', ['propose_task_plan'])).toBe(false);
     expect(searchesPastTheBudget('any-run', [])).toBe(false);
+  });
+});
+
+/** #8681 retest (82303): searching ran 3:20–3:40 into a 3-minute limit. */
+describe('searching ends in time for the answer (#8681 retest)', () => {
+  it('starts no search-only round past the search phase, refusal or not', () => {
+    expect(searchesPastTheBudget('fresh-run', ['web_search'], SEARCH_PHASE_CAP_MS + 1)).toBe(true);
+    expect(searchesPastTheBudget('fresh-run', ['web_search'], SEARCH_PHASE_CAP_MS - 1)).toBe(false);
+  });
+
+  it('still lets a plan or an ask through after it', () => {
+    expect(searchesPastTheBudget('fresh-run', ['propose_task_plan'], SEARCH_PHASE_CAP_MS + 1)).toBe(
+      false,
+    );
   });
 });

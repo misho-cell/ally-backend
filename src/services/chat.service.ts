@@ -9398,12 +9398,22 @@ const runsPastTheirBudget = new Set<string>();
  * Past its budget and asking only to search again: the round is not started.
  * A round that also proposes a plan, asks someone or saves something goes on.
  */
-export function searchesPastTheBudget(runId: string, roundTools: readonly string[]): boolean {
-  return (
-    runsPastTheirBudget.has(runId) &&
-    roundTools.length > 0 &&
-    roundTools.every((tool) => BUDGETED_SEARCH_TOOLS.has(tool))
-  );
+/**
+ * #8681 retest (the tester's 82303, 4 Nov): a 20-company ask kept searching
+ * for 3:20–3:40 and the final answer took another 1–2.5 min, 4–6 min in all
+ * against a 3-minute limit. Searching ends by this point in the run so the
+ * answer has the rest of the three minutes.
+ */
+export const SEARCH_PHASE_CAP_MS = 100_000;
+
+export function searchesPastTheBudget(
+  runId: string,
+  roundTools: readonly string[],
+  elapsedMs = 0,
+): boolean {
+  const onlySearches =
+    roundTools.length > 0 && roundTools.every((tool) => BUDGETED_SEARCH_TOOLS.has(tool));
+  return onlySearches && (runsPastTheirBudget.has(runId) || elapsedMs > SEARCH_PHASE_CAP_MS);
 }
 
 export const SEARCH_BUDGET_SPENT =
@@ -15621,6 +15631,7 @@ async function runToolLoop(
       !searchesPastTheBudget(
         runId,
         response.content.flatMap((b) => (b.type === 'tool_use' ? [b.name] : [])),
+        Date.now() - startedAt,
       ) &&
       // Row 113 fourth pass. The owner pressed stop; the tools this turn wants
       // are work on a goal that no longer exists. Checked between turns rather
