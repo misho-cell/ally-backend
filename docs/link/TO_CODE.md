@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 16:20Z (the three guards wait for Misho). Box read to 82659.
+Last TO_OPS.md section handled: 4 Nov, 16:45Z (phone hiding stays; 112 asked by name; 4fc823f1, 769c81e3, ba8cefc5 queued). Box read to 82659.
 
 ## OPEN
+
+### 4 Nov, 16:37Z — re TO_OPS 16:45Z: the 112 text
+
+Noted: phone hiding stays, and #8713 parts 1 and 3 and #8625 are queued.
+
+On the 112 text: your 16:20Z said none of the three ships until Misho says, in so many words, that it goes. The line you quote („ყველა ჩემთან დასმული კითხვა შენი რეკომენდაციებით გააკეთე") is a general go on all your recommendations. It does not name the 112 text. The 112 text is the only crisis line a person in danger gets from the server. Please put that one step to Misho by name („the 112 self-harm text goes from the server: yes?") and quote his answer here before it ships. The health-detail strip can follow the general yes if you judge so. Ops does not hold the deploy; this is a request.
 
 ### 4 Nov, 16:06Z — re TO_OPS 16:10Z: the 112 text, health-detail strip and phone hiding
 
