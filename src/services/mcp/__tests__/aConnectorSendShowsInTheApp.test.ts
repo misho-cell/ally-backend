@@ -4,6 +4,10 @@ jest.mock('../../threads.service', () => ({
   userLanguage: jest.fn(),
 }));
 jest.mock('../../taskAsks.service', () => ({ __esModule: true, sendApprovedAskAnswer: jest.fn() }));
+jest.mock('../../whatsappMirror.service', () => ({
+  __esModule: true,
+  mirrorToWhatsapp: jest.fn(),
+}));
 jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
 import { readFileSync } from 'fs';
@@ -11,6 +15,7 @@ import { join } from 'path';
 import { query } from '../../../db/postgres/client';
 import { saveThreadMessage, userLanguage } from '../../threads.service';
 import { sendApprovedAskAnswer } from '../../taskAsks.service';
+import { mirrorToWhatsapp } from '../../whatsappMirror.service';
 import { answerMemberQuestion } from '../answerMemberQuestion';
 import { ConnectorAction, quotedForTrace, traceInApp, traceLine } from '../connectorTrace';
 
@@ -18,6 +23,7 @@ const mockSave = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessa
 const mockLanguage = userLanguage as jest.MockedFunction<typeof userLanguage>;
 const mockSend = sendApprovedAskAnswer as jest.MockedFunction<typeof sendApprovedAskAnswer>;
 const mockQuery = query as jest.MockedFunction<typeof query>;
+const mockMirror = mirrorToWhatsapp as jest.MockedFunction<typeof mirrorToWhatsapp>;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -72,13 +78,34 @@ describe('#8911: a send through the connector leaves a line in the app', () => {
     await expect(traceInApp('7', 55, ConnectorAction.Answered, 'კი')).resolves.toBeUndefined();
   });
 
-  it('skips a goal with no chat', async () => {
+  it('tells a goal with no chat in WhatsApp only', async () => {
     await traceInApp('7', null, ConnectorAction.Asked, 'q', 'Nino');
     expect(mockSave).not.toHaveBeenCalled();
+    expect(mockMirror).toHaveBeenCalledWith(7, expect.objectContaining({ title: '' }), false);
   });
 
-  it('is wired into the connector’s ask', () => {
+  it('puts the same line in the owner’s WhatsApp, opening the chat it belongs to (82705)', async () => {
+    await traceInApp('7', 55, ConnectorAction.Answered, 'კი');
+    const line = mockSave.mock.calls[0][3];
+    expect(mockMirror).toHaveBeenCalledWith(7, { title: '', body: line, url: '/chat/55' }, false);
+  });
+
+  it('says a question kept for later is kept', () => {
+    expect(traceLine(ConnectorAction.AskHeld, 'en', 'Know a plumber?')).toContain(
+      'is kept and will go later: «Know a plumber?»',
+    );
+  });
+
+  it('says an introduction answer without any words of the owner’s', async () => {
+    await traceInApp('7', null, ConnectorAction.IntroDeclined, '');
+    expect(mockMirror.mock.calls[0][1].body).toBe(
+      'კონექტორიდან (მაგ. ChatGPT ან Claude) გაცნობის თხოვნაზე უარი თქვი.',
+    );
+  });
+
+  it('is wired into the connector’s ask and its introduction answer', () => {
     const handlers = readFileSync(join(__dirname, '..', 'handlers.ts'), 'utf8');
+    expect(handlers).toContain("await traceInApp(userId, null, action, '');");
     expect(handlers).toMatch(
       /traceInApp\(userId, task\.thread_id, ConnectorAction\.Asked, question, outcome\.to_name\)/,
     );

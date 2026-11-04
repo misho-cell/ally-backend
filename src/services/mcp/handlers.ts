@@ -606,6 +606,11 @@ export async function mcpRespondToRequest(
   }
   // D709: a yes connects them; the server picks how.
   const raw = await respondToIntroduction(userId, requestId, args.accept, args.response);
+  // #8911 (82705): the answer reaches the owner's WhatsApp too; the app's threads settle themselves.
+  if ((raw as { success?: unknown }).success === true) {
+    const action = args.accept ? ConnectorAction.IntroAccepted : ConnectorAction.IntroDeclined;
+    await traceInApp(userId, null, action, '');
+  }
   return scrubDeep(raw) as McpToolPayload;
 }
 
@@ -1263,6 +1268,9 @@ export async function mcpAskContact(
     noteIntroductionSentAsAQuestion({ surface: 'connector', taskId }, question);
     // #8911: the question shows in the goal's own chat in the app.
     await traceInApp(userId, task.thread_id, ConnectorAction.Asked, question, outcome.to_name);
+  } else if (outcome.reopens_at !== undefined) {
+    // #8911 (82705): a question kept for later is a result the owner sees too.
+    await traceInApp(userId, task.thread_id, ConnectorAction.AskHeld, question);
   }
   return scrubDeep(outcome) as McpToolPayload;
 }
