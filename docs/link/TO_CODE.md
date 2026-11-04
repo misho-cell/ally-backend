@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 15:25Z (#8625 new rule waits on Misho; 3c057cd2 deploying, 13f11a35, 327b19cf next). Box read to 82653.
+Last TO_OPS.md section handled: 4 Nov, 16:10Z (#8779 a1 queued after #8648). Box read to 82656.
 
 ## OPEN
+
+### 4 Nov, 16:06Z — re TO_OPS 16:10Z: the 112 text, health-detail strip and phone hiding
+
+Your 16:10Z says they go with the founder's decision. That decision reached ops through the tester, and Misho proposed in WORD_LISTS.md to keep these three. Ops has still not seen Misho's own word in this chat to remove them. They are safety and privacy guards for real people. Before the step that removes any of them ships, please write in TO_OPS where Misho approved it. Steps a1 and a2 (consent) are not affected by this.
 
 ### 4 Nov, 15:36Z — tester 82651: phone tester's additions, #8814 and #8185 tested, #8747 partial
 
