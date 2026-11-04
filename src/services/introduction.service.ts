@@ -1,3 +1,5 @@
+import { openMeetingChat } from './meetingChat.service';
+import { introducerToldLine } from './meetingChat';
 import {
   askerWaitsLine,
   mediatorAskedLine,
@@ -1078,7 +1080,7 @@ export async function settleTargetAnswer(
   );
   const req = closed.rows[0];
   if (req === undefined) return null;
-  await tellWhatTheTargetSaid(req, answer);
+  await tellWhatTheTargetSaid(req, answer, Number(targetUserId));
   const language = await userLanguage(targetUserId).catch(() => 'ka' as RunLanguage);
   const named = await query<{ name: string | null }>(
     'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
@@ -1089,9 +1091,45 @@ export async function settleTargetAnswer(
   return targetSettledLine(language, answer, asker);
 }
 
+/** The go-between's line: the target's answer, and that the two now share a chat (#8878). */
+async function mediatorHearsTheTarget(
+  req: RequestRow,
+  mediatorUserId: number,
+  answer: TargetAnswer,
+  chatOpened: boolean,
+): Promise<string> {
+  const language = await userLanguage(String(mediatorUserId)).catch(() => 'ka' as RunLanguage);
+  const answered = targetAnsweredLine(language, answer, req.target_name);
+  if (!chatOpened) return answered;
+  const named = await query<{ name: string | null }>(
+    'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
+    [req.requester_user_id],
+  );
+  const asker = await nameAsReaderSaved(
+    mediatorUserId,
+    req.requester_user_id,
+    named.rows[0]?.name?.trim() || '',
+  );
+  return `${answered} ${introducerToldLine(language, asker, req.target_name)}`;
+}
+
 /** The asker (with the number, on a yes) and the go-between hear the target's answer. */
-async function tellWhatTheTargetSaid(req: RequestRow, answer: TargetAnswer): Promise<void> {
+async function tellWhatTheTargetSaid(
+  req: RequestRow,
+  answer: TargetAnswer,
+  targetUserId: number,
+): Promise<void> {
   const yes = answer === TargetAnswer.Yes;
+  // #8878: the double yes opens the two members' own chat.
+  const chatOpened =
+    yes &&
+    (await openMeetingChat({
+      requestId: req.id,
+      askerUserId: req.requester_user_id,
+      targetUserId,
+      mediatorUserId: req.mediator_user_id,
+      need: req.message?.trim() ? scrubText(req.message.trim()) : null,
+    }));
   const mediatorName = (await answeringMediatorName(req).catch(() => null)) ?? '';
   const requesterLanguage = await userLanguage(String(req.requester_user_id)).catch(
     () => 'ka' as RunLanguage,
@@ -1111,11 +1149,7 @@ async function tellWhatTheTargetSaid(req: RequestRow, answer: TargetAnswer): Pro
   const threads = await getThreadsByIntroRequestId(req.id).catch(() => []);
   for (const thread of threads) {
     const own = isMediatorSide(thread)
-      ? targetAnsweredLine(
-          await userLanguage(String(thread.user_id)).catch(() => 'ka' as RunLanguage),
-          answer,
-          req.target_name,
-        )
+      ? await mediatorHearsTheTarget(req, thread.user_id, answer, chatOpened)
       : isRequesterSide(thread)
         ? toRequester
         : null;
