@@ -1,3 +1,4 @@
+import { WHATSAPP_DEVICE } from '../../services/whatsappChannel.service';
 import { runLatencyLine } from '../../services/runLatency';
 import { CaseCloseOutcome, closeCaseInsteadOfDeleting } from '../../services/caseClose.service';
 import { describeIfMissing } from '../../services/caseDescriptionWriter.service';
@@ -1792,6 +1793,7 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
             ...(storedOnArrival && { alreadyStored: true }),
             chosenLanguage,
             ...(inReplyToMessageId !== undefined && { inReplyToMessageId }),
+            ...(askedFrom === WHATSAPP_DEVICE && { fromWhatsapp: true }),
           }),
       hardTimeout,
     ])
