@@ -6691,6 +6691,16 @@ async function weatherFoundFirst(
     return null;
   }
 }
+/**
+ * Whether the final writer starts beside Claude's first turn (#958, 3106). Not
+ * for „where does X work?" (#8524, the tester's 82584: 11–13 s against 10): its
+ * answer is one short line, and a short answer keeps Claude's words (Misho's
+ * yes, 2 Nov) — so the writer started beside it was only waited for, ≈6 s, and
+ * its words used instead.
+ */
+export function startsTheWriterEarly(smallTalk: boolean, weatherFound: boolean): boolean {
+  return smallTalk || weatherFound;
+}
 /** #8524: the owner's contacts searched for the name before the first turn; null when they do not answer it. */
 async function whereTheyWorkFirst(userId: string, name: string): Promise<string | null> {
   try {
@@ -15607,7 +15617,9 @@ async function runToolLoop(
   // for Claude, 4-9 s, then took 4-5 s of its own. The weather it writes from is in
   // its prompt already, so it starts beside Claude, as small talk's does.
   const earlyFinal =
-    (smallTalkOnly || weatherAnsweredFromFound) && writer !== '' ? writeWith(writer) : null;
+    startsTheWriterEarly(smallTalkOnly, weatherLookUp && weatherFound !== null) && writer !== ''
+      ? writeWith(writer)
+      : null;
   const firstTurnText = earlyFinal === null ? stream : undefined;
   // #8681 retest 2: set when the forced final was left to the writer.
   let claudeFinalSkipped = false;
