@@ -1,3 +1,4 @@
+import { relayInMeetingChat } from './meetingChat.service';
 import { INTRODUCTION_WAITS_FOR_THE_YES, introductionMayGo } from './introYesGate';
 import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
 import { offersMatching, withOffers } from './tools/searchOffers';
@@ -15243,6 +15244,30 @@ async function answerReferral(
   }
 }
 
+/** #8878: the owner's line carried to the other side of their meeting chat; null elsewhere. */
+async function relayMeetingLine(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  try {
+    if (!(await relayInMeetingChat(userId, threadId, userMessage))) return null;
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    // eslint-disable-next-line no-console
+    console.log(`[meeting] run ${runId} thread ${threadId}: line carried across`);
+    return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[meeting] the line was not carried:', (err as Error).message);
+    return null;
+  }
+}
+
 /** #8945: the target's answer, settled by the server; null when this line is no such answer. */
 async function answerTargetQuestion(
   userId: string,
@@ -18624,6 +18649,12 @@ export async function processChat(
       ? await answerReferral(userId, threadId, userMessage, runId, intent)
       : null;
   if (referral !== null) return referral;
+  // #8878: a line in a meeting chat goes to the other member, by the server.
+  const relayed =
+    !ownerAbsent && thread.type === 'regular'
+      ? await relayMeetingLine(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (relayed !== null) return relayed;
   // #8945: the introduced member's yes or no to the question on their own thread.
   const targetAnswered =
     !ownerAbsent && thread.type === 'regular'
