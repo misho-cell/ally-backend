@@ -18,6 +18,7 @@ import {
   forgetOwedWhatsappReply,
   oweWhatsappReply,
 } from './whatsappReplies.service';
+import { heardLine, voiceNoteText } from './whatsappVoice.service';
 
 /**
  * Misho, 25 Oct: a person who chose WhatsApp can talk to Netai there as in the
@@ -54,6 +55,8 @@ export interface InboundMessage {
   readonly wamid: string;
   readonly text: string;
   readonly replyTo: string | null;
+  /** A voice note's media id at Meta; null for a typed message. */
+  readonly voiceId: string | null;
 }
 
 interface RawMessage {
@@ -67,6 +70,7 @@ interface RawMessage {
     readonly list_reply?: { readonly title?: string };
   };
   readonly context?: { readonly id?: string };
+  readonly audio?: { readonly id?: string };
 }
 
 function textOf(message: RawMessage): string {
@@ -94,8 +98,9 @@ export function inboundMessagesOf(payload: unknown): InboundMessage[] {
       wamid: m.id ?? '',
       text: textOf(m),
       replyTo: m.context?.id ?? null,
+      voiceId: m.type === 'audio' && typeof m.audio?.id === 'string' ? m.audio.id : null,
     }))
-    .filter((m) => m.from !== '' && m.wamid !== '' && m.text !== '');
+    .filter((m) => m.from !== '' && m.wamid !== '' && (m.text !== '' || m.voiceId !== null));
 }
 
 async function userOfPhone(digits: string): Promise<number | null> {
@@ -139,6 +144,25 @@ async function postAsTheOwner(userId: number, threadId: number, text: string): P
   return response.status === 202 || response.status === 200;
 }
 
+/**
+ * The member's words: typed, or heard in their voice note and read back to them
+ * first. Null when a voice note could not be read; they were told why.
+ */
+async function typedOrHeard(
+  userId: number,
+  message: InboundMessage,
+  threadId: number,
+): Promise<string | null> {
+  if (message.voiceId === null) return message.text;
+  const heard = await voiceNoteText(userId, message.voiceId);
+  if ('refusal' in heard) {
+    await replyInWhatsapp(userId, message.from, heard.refusal, threadId);
+    return null;
+  }
+  await replyInWhatsapp(userId, message.from, heardLine(heard.text), threadId);
+  return heard.text;
+}
+
 export async function handleInboundMessage(message: InboundMessage): Promise<void> {
   const userId = await userOfPhone(message.from);
   if (userId === null) {
@@ -164,8 +188,10 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
     return;
   }
   const threadId = await conversationFor(userId, message.replyTo);
+  const typed = await typedOrHeard(userId, message, threadId);
+  if (typed === null) return;
   oweWhatsappReply(userId, threadId, message.from);
-  const text = choiceByNumber(userId, message.text);
+  const text = choiceByNumber(userId, typed);
   if (!(await postAsTheOwner(userId, threadId, text))) {
     forgetOwedWhatsappReply(userId, threadId);
     await replyInWhatsapp(userId, message.from, LINES.failed, threadId);
@@ -182,7 +208,7 @@ export const UNKNOWN_SENDER_NOTE =
   '[whatsapp] inbound message from a number no member has; not answered';
 
 export function deliveryNote(channelOn: boolean, messageCount: number): string {
-  return `[whatsapp] delivery received: ${messageCount} text message(s)${
+  return `[whatsapp] delivery received: ${messageCount} message(s)${
     channelOn ? '' : ', channel is off, not answered'
   }`;
 }

@@ -51,7 +51,7 @@ describe('a WhatsApp delivery', () => {
       inboundMessagesOf(
         delivery({ from: PHONE, id: 'w1', type: 'text', text: { body: ' გამარჯობა ' } }),
       ),
-    ).toEqual([{ from: PHONE, wamid: 'w1', text: 'გამარჯობა', replyTo: null }]);
+    ).toEqual([{ from: PHONE, wamid: 'w1', text: 'გამარჯობა', replyTo: null, voiceId: null }]);
     expect(
       inboundMessagesOf(
         delivery({
@@ -62,7 +62,7 @@ describe('a WhatsApp delivery', () => {
           context: { id: 'ours' },
         }),
       ),
-    ).toEqual([{ from: PHONE, wamid: 'w2', text: 'კი', replyTo: 'ours' }]);
+    ).toEqual([{ from: PHONE, wamid: 'w2', text: 'კი', replyTo: 'ours', voiceId: null }]);
   });
 
   it('leaves out statuses, pictures without text and nonsense', () => {
