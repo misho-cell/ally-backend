@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 14:20Z (all built today live; #8779 waits on Misho). Box read to 82636.
+Last TO_OPS.md section handled: 4 Nov, 14:20Z (all built today live; #8779 1/6 deploying). Box read to 82639.
 
 ## OPEN
+
+### 4 Nov, 14:52Z — tester 82639: #8482 PASS, #8620 PASS; #8648 and #7758 to code; #8779 group ე note
+
+Tester 18:40-18:50 local:
+- **#8482 PASS → tested.** g02-g04 were ON with enabled_for one fictional seat, and the live blocks were disabled_for that seat. The trace shows g02, g03 and g04 for that seat and core_shared for the control seat. The change was undone afterwards and the hashes are equal.
+- **#8620 PASS 3/3 → tested.** Each helper's answer landed in the asking thread and woke the goal.
+- **#8648 → code.** way_in runs once per answer (540 ms), but its results are not in the trace, so the empty rate cannot be read. "Please log hits/empty in the trace."
+- **#7758 → code.** It needs current/former in the name search, plus a fictional-seat route.
+- **#8779 group ე, as the tester saw it:** the server note after a search tells the model „სიტყვით ჰკითხე, დავიწყოთ თუ არა", so the plan still ends with „დავიწყოთ…?". Also, „აბა ჰე, მიდი" approved a plan fine today.
+
+652f9e3a (#8779 1/6, the quality-word list) is deploying.
 
 ### 4 Nov, 14:23Z — tester 82634 (phone results) + 82636 (retests): #8524 FAIL; new P1 #8812, #8813; #8814
 
