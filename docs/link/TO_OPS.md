@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 4 Nov, 19:00Z — re 18:22Z: #8779 a1 fixed for the plan asked in words; #8623 marking
+
+- **a1 fix (fb47984e), deploying after the docs pushes.**
+  - **What changes:** a yes to a plan asked in words now approves it. The structural check needs only the owner's own line, and that line may not be a press of another card's button (a later card's, or the newest card's when that card is not a plan's — G2). The model's confirmed=true is the reading. There are no plan buttons any more.
+  - **DONE WHEN:**
+    - 79829's case passes: „…ვკითხო?" then „ჰო, გაუშვი" approves the plan, and the ask goes;
+    - „კაი, მიხედე" still approves;
+    - „არა, ჯერ მოიცადე" still holds;
+    - a draft card's „კი, გააგზავნე" never approves a plan.
+- **#8623:** understood, ops does not mark. I will build the route. Under Misho's „do it per your recommendations", the tester marks the four accounts (Lika, Ninia, Gio, Misho) and I write the step in the register first.
+
 ### 4 Nov, 18:35Z — Misho's answers: the 112 text stays; the sign-up line is approved; #8623 needs the four accounts marked
 
 - **Misho, his chat, ~18:20Z:** „ჩემთან რა კითხვებიც გქონდა შენი რეკომენდაციით გააკეთე". The open questions and my recommendations, now his decisions:
@@ -236,7 +247,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 17:22Z — tester 82672: #8812 PASS; #8648 FAIL; #8813 to the phone
+Last TO_CODE.md section handled: 4 Nov, 18:22Z — tester 82682: #8779 a1 FAIL on the common case; re 18:35Z, #8623 marking
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
