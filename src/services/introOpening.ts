@@ -232,13 +232,54 @@ export function outgoingRequestTitle(
   }
 }
 
+/**
+ * #8912 (a real case, tester 82704): a go-between passed the asker's request on
+ * to somebody in his own phonebook, and the asker's chat read as if the asker
+ * had sent it. It says who passed it on.
+ */
+function passedOnOpening(
+  language: RunLanguage,
+  forwarderName: string,
+  mediatorName: string,
+  targetName: string,
+): string {
+  switch (language) {
+    case 'en':
+      return (
+        `**${forwarderName}** passed your request to be introduced to **${targetName}** on to ` +
+        `**${mediatorName}**.\n\n**${mediatorName}** will see it next time they open Netai and reply. 😊`
+      );
+    case 'ru':
+      return (
+        `**${forwarderName}** передал твой запрос на знакомство с **${targetName}** — ` +
+        `**${mediatorName}**.\n\n**${mediatorName}** увидит его при следующем входе в Netai и ответит. 😊`
+      );
+    case 'es':
+      return (
+        `**${forwarderName}** ha pasado tu solicitud para conocer a **${targetName}** a ` +
+        `**${mediatorName}**.\n\n**${mediatorName}** la verá la próxima vez que abra Netai y responderá. 😊`
+      );
+    default:
+      return (
+        `**${geoName(forwarderName, 'erg')}** შენი გაცნობის თხოვნა **${geoName(targetName, 'on')}** ` +
+        `**${geoName(mediatorName, 'dat')}** გადასცა.\n\n` +
+        `**${mediatorName}** Netai-ს შემდეგ გახსნისას ნახავს და გიპასუხებს. 😊`
+      );
+  }
+}
+
 /** What the requester reads while they wait. */
 export function outgoingRequestOpening(
   language: RunLanguage,
   mediatorName: string,
   targetName: string,
   direct: boolean,
+  /** #8912: the go-between who passed the request on, as the requester saved them. */
+  forwarderName: string | null = null,
 ): string {
+  if (forwarderName !== null && !direct) {
+    return passedOnOpening(language, forwarderName, mediatorName, targetName);
+  }
   switch (language) {
     case 'en':
       return direct

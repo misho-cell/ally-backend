@@ -211,3 +211,21 @@ describe('the go-between is told the target knows too', () => {
     expect(line).not.toContain('-აც');
   });
 });
+
+/** #8912 (a real case, tester 82704): the asker read a passed-on request as his own send. */
+describe('a request a go-between passed on, as the asker reads it', () => {
+  it('names who passed it on, in each language', () => {
+    expect(outgoingRequestOpening('ka', 'ნანა', 'გიგი', false, 'თორნიკე')).toContain('თორნიკემ');
+    expect(outgoingRequestOpening('en', 'Nana', 'Gigi', false, 'Tornike')).toContain(
+      '**Tornike** passed your request to be introduced to **Gigi** on to **Nana**.',
+    );
+    expect(outgoingRequestOpening('ru', 'Nana', 'Gigi', false, 'Tornike')).toContain('Tornike');
+    expect(outgoingRequestOpening('es', 'Nana', 'Gigi', false, 'Tornike')).toContain('Tornike');
+  });
+
+  it('reads as before when nobody passed it on', () => {
+    expect(outgoingRequestOpening('en', 'Nana', 'Gigi', false, null)).toBe(
+      outgoingRequestOpening('en', 'Nana', 'Gigi', false),
+    );
+  });
+});
