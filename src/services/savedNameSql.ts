@@ -21,10 +21,17 @@
  * when there is nothing else.
  */
 const MAX_NAME_WORDS = 4;
+/**
+ * #8749 (Tornike, 4 Nov): Lika's chats named him „tornike abuladze Whatsapp" —
+ * her phonebook label carries the app she saved him for. Such a label is passed
+ * over like an import note, for a clean one or the registered name.
+ */
+export const CHANNEL_WORD_SQL_RE = '(whats ?app|viber|telegram|ვოთსაპ|ვოცაპ|ვაცაპ|ვაიბერ|ტელეგრამ)';
 
 function labelOf(viewerIdSql: string, memberIdSql: string, cleanOnly: boolean): string {
   const clean = cleanOnly
     ? `AND sv_ua.alias NOT LIKE '%.%'
+        AND sv_ua.alias !~* '${CHANNEL_WORD_SQL_RE}'
         AND array_length(regexp_split_to_array(TRIM(sv_ua.alias), '\\s+'), 1) <= ${MAX_NAME_WORDS}`
     : '';
   return `(SELECT NULLIF(TRIM(sv_ua.alias), '')
