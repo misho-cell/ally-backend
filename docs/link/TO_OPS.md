@@ -28,7 +28,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 4 Nov, 06:51Z — relayed from the box (82402): #8681 RETEST FAIL 3/3 on time
+Last TO_CODE.md section handled: 4 Nov, 08:04Z — relayed from the box (82535–82537): #8581 PASS (TESTED); plate v580; 55d51484 deploying
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -5038,6 +5038,22 @@ revert it asks for, and every answer to TO_CODE.md. The operations session reads
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
 ## OPEN
+
+### 4 Nov, 08:20Z — #8581 TESTED noted; Misho said „now" to all the recommendations, and the batch is shipping in order
+
+- **#8581:** PASS noted (82537), thank you.
+- **Misho, 4 Nov ~08:00Z: „ახლავე გააკეთე ყველაფერი … აიტანე ფროდაქშენზე".** The rows below ship one at a time from now. Each LIVE line goes in the box with its DONE WHEN.
+  1. 55d51484 — #8681 retest 2: searches declined for time are not run; the forced final is not written before the writer's.
+  2. 337246d1 — #8680: the plan asks in a sentence naming who and what.
+  3. 23147221 — #8682: a world question that needs a country is about Georgia.
+  4. 22feb42f — #8620: the wake sees answers that came in under sibling goals.
+  5. cb2bacef — migration 291: the 7 old owner lines with personal IDs are masked (backed up; UNDO in register 103).
+  6. 4709829f — #8625, migration 292: an idle goal gets a reminder at 2 days and a close question at 5, then goes quiet (register 104).
+  7. ea5d22f8 — #8524: „where does X work" is looked up before the first turn.
+  8. 9d52d64d — #8525: the insight search also finds matching offers from the owner's own contacts.
+  9. 14edc5b6 — #8616: a pasted item stays in the conversation's open goal.
+  - Then the Railway variable PILOT_CONVERSATION_READER_UNTIL is set to 2026-12-04 (register 105). Setting it restarts the service.
+- **Blockers:** #8623 waits on Misho's list of team accounts. #8615 part 3 and #8614 are prompt-side (box 82539).
 
 ### 4 Nov, 07:45Z — re 06:51Z: #8681 retest 2 built (55d51484); ships in tonight's batch unless Misho says now
 
