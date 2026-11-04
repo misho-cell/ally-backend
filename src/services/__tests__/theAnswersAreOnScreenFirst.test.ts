@@ -191,7 +191,7 @@ describe('the reply that follows the card', () => {
   it('carries no quote guarantee when the card is on screen', () => {
     const deliver = engine.slice(engine.indexOf('async function deliverOwedAnswers'));
     expect(deliver.slice(0, 1400)).toContain(
-      'await wakeTask(taskId, buildShownAnswersWakeEvent(arrived))',
+      'buildShownAnswersWakeEvent(arrived),\n        undefined,',
     );
   });
 

@@ -34,6 +34,7 @@ import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './brid
 import { recommendedByLine, recommenderFor } from './recommendedBy';
 import { query } from '../db/postgres/client';
 import { getTaskById, wakeTaskNoLaterThan } from './taskStore.service';
+import { WakeOrigin } from './quietWakeGuard';
 import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
@@ -3029,7 +3030,8 @@ async function deliverCapturedAnswer(
      */
     void (async () => {
       try {
-        const { wakeTask, deliverAnswersWhenFree } = await import('./taskEngine.service');
+        const { wakeTask, deliverAnswersWhenFree, ANSWER_IS_NEWS } =
+          await import('./taskEngine.service');
         /**
          * ⚠️ ROW 322, THIRD PASS — A LINE IN THE EVENT DID NOT BIND THE MODEL.
          *
@@ -3057,6 +3059,9 @@ async function deliverCapturedAnswer(
           ? await wakeTask(
               captured.taskId,
               buildShownRelayAnswerWakeEvent(captured.fromName, relay.bridgeName),
+              undefined,
+              WakeOrigin.Netai,
+              ANSWER_IS_NEWS,
             )
           : await wakeTask(
               captured.taskId,

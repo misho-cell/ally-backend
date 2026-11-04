@@ -25,7 +25,9 @@ describe('which wake is worth a push', () => {
 
   it('is asked by the wake before it pushes', () => {
     const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
-    const gate = engine.indexOf('if (!wakeIsNews(status, ensureQuoted !== undefined))');
+    const gate = engine.indexOf(
+      'if (!wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer))',
+    );
     const push = engine.slice(gate).search(/void sendPushNotification\(\s*ownerId/u);
     expect(gate).toBeGreaterThan(-1);
     expect(push).toBeGreaterThan(0);
