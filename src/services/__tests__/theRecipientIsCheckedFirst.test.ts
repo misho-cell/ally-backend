@@ -123,6 +123,6 @@ describe('the waves follow the words', () => {
       'prematch, prematch_source, prematch_at, a2a_rounds, field, prepared_answer,',
     );
     const waves = readFileSync(join(__dirname, '..', 'askWaves.service.ts'), 'utf8');
-    expect(waves).toContain('remaining: await inWaveOrder(');
+    expect(waves).toContain('await inWaveOrder(notYetAsked(plan.people_to_involve, asked)');
   });
 });
