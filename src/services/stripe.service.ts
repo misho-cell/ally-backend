@@ -59,7 +59,43 @@ export function isStripeConfigured(): boolean {
  * potentially acting on — other people's billing.
  */
 export function isOurPrice(subscription: Stripe.Subscription): boolean {
-  return subscription.items.data.some((item) => item.price.id === PRICE_ID);
+  return subscription.items.data.some(
+    (item) => item.price.id === PRICE_ID || productIdOf(item.price) === PRICE_ID,
+  );
+}
+
+/**
+ * Misho, 4 Nov 12:54Z: „გადახდის გვერდი ვერ გაიხსნა" — every checkout failed
+ * with Stripe's „No such price: 'prod_…'". STRIPE_PRICE_ID held the product's
+ * id, not its price's. A product id is now read through to the product's
+ * default price (once per process, logged with its amount), and a
+ * subscription to any price of that product counts as ours.
+ */
+const PRODUCT_ID_PREFIX = 'prod_';
+let priceOfTheProduct: string | null = null;
+
+function productIdOf(price: Stripe.Price): string {
+  const product: unknown = price.product;
+  if (typeof product === 'string') return product;
+  return (product as { id?: string } | null | undefined)?.id ?? '';
+}
+
+export async function checkoutPriceId(): Promise<string> {
+  if (!PRICE_ID.startsWith(PRODUCT_ID_PREFIX)) return PRICE_ID;
+  if (priceOfTheProduct !== null) return priceOfTheProduct;
+  const product = await stripeClient().products.retrieve(PRICE_ID, {
+    expand: ['default_price'],
+  });
+  const price = product.default_price;
+  if (price === null || price === undefined || typeof price === 'string') {
+    throw new Error('STRIPE_PRICE_ID names a product with no default price');
+  }
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[stripe] STRIPE_PRICE_ID is a product id; using its default price (${price.unit_amount ?? '?'} ${price.currency}/${price.recurring?.interval ?? 'once'})`,
+  );
+  priceOfTheProduct = price.id;
+  return price.id;
 }
 
 /**
@@ -168,7 +204,7 @@ export async function createCheckoutSession(userId: string): Promise<CheckoutRes
   const session = await stripeClient().checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
-    line_items: [{ price: PRICE_ID, quantity: 1 }],
+    line_items: [{ price: await checkoutPriceId(), quantity: 1 }],
     subscription_data: {
       ...(trialDays > 0 && { trial_period_days: trialDays }),
       metadata: { user_id: String(userId) },
