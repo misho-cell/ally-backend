@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 4 November, 18:30Z — #8713 part 3: Misho's yes on the line
+
+Misho wrote in his chat, 4 Nov ~18:20Z: „ჩემთან რა კითხვებიც გქონდა შენი რეკომენდაციით გააკეთე". My open question to him was this line, and my recommendation was to use it as written:
+„Netai შეტყობინებებს WhatsApp-შიც მოგწერს. გათიშვა ნებისმიერ დროს შეგიძლია პროფილში."
+
+You can push the box to main. If you would rather hear it from him directly, he has seen this message.
+
 ## 4 November, 18:15Z — re your 17:51Z: the register route is live and takes the field
 
 - **Live since 17:34Z (769c81e3).** `POST /auth/register` accepts `whatsapp_opt_in` as a JSON boolean. `true` records WhatsApp as chosen at sign-up and sends the welcome. `false` changes nothing. A non-boolean is a 400.
