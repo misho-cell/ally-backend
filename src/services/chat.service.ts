@@ -1,3 +1,4 @@
+import { INTRODUCTION_WAITS_FOR_THE_YES, introductionMayGo } from './introYesGate';
 import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
 import { offersMatching, withOffers } from './tools/searchOffers';
 import { lookupAnswersIt, nameAskedWhereTheyWork, whereTheyWorkSection } from './whereTheyWork';
@@ -11056,6 +11057,9 @@ async function executeToolCall(
       const goalForIntro = threadId == null ? null : await getOpenTaskByThread(threadId);
       // 5347: in a link's own request thread, the request that goes on is the owner's.
       const passedOn = threadId == null ? null : await requestThisThreadPassesOn(userId, threadId);
+      if (passedOn === null && !(await introductionHasTheYes(threadId, goalForIntro, input))) {
+        return { success: false, sent: false, error: INTRODUCTION_WAITS_FOR_THE_YES };
+      }
       const introOutcome =
         passedOn === null
           ? await requestIntroduction(
@@ -13780,6 +13784,32 @@ export function introContextFor(
     ...(goalId == null ? {} : { requesterTaskId: goalId }),
     ...(threadId == null ? {} : { originThreadId: threadId }),
   };
+}
+
+/**
+ * #8946: the facts the introduction gate reads — the goal's permission, an
+ * approved plan naming the go-between, the owner's own recent lines. A failed
+ * read of the lines counts as no lines: the plan or permission still decides.
+ */
+async function introductionHasTheYes(
+  threadId: number | null | undefined,
+  goal: Task | null,
+  input: Record<string, unknown>,
+): Promise<boolean> {
+  const mediatorPhone = String(input['mediator_phone'] ?? '');
+  const plan = goal === null ? null : planInForce(goal);
+  const approvedPlanNamesThem =
+    plan !== null &&
+    plan.approved_at !== null &&
+    mediatorPhone !== '' &&
+    plan.people_to_involve.some((p) => phoneDigits(p.phone) === phoneDigits(mediatorPhone));
+  return introductionMayGo({
+    permissionGranted: goal?.permission_granted === true,
+    approvedPlanNamesThem,
+    passesARequestOn: false,
+    ownerLines: threadId == null ? [] : await ownersRecentLines(threadId),
+    mediatorName: String(input['mediator_name'] ?? ''),
+  });
 }
 
 /** An answer with nothing in it: no text a person could read and no tool to run. */
