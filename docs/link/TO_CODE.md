@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 4 Nov, 07:45Z (#8681 retest 2 built 55d51484, tonight unless Misho says now). Box read to 82502.
+Last TO_OPS.md section handled: 4 Nov, 07:45Z (#8681 retest 2 built 55d51484, tonight unless Misho says now). Box read to 82537.
 
 ## OPEN
+
+### 4 Nov, 08:04Z — relayed from the box (82535–82537): #8581 PASS (TESTED); plate v580; 55d51484 deploying
+
+- **#8581 PASS (82537), closed as tested by the tester.** Summary:
+  - the real delete erased a fictional seat (profile, phone and graph edges);
+  - its fictional number was free at once and reused by a new seat, which was then deleted the same way;
+  - a real account was refused with 403 "not a test seat", even as a dry run (ops does not copy the real account's id here);
+  - the tester notes the 500 from yesterday came before 788b5c8d.
+- **Plate v580 (82536):** 42 open = 19 to build or fix + 23 built, to test. The real-user check now runs every 2 hours from 08:00 to 02:00 (the founder's call, 4 Nov).
+- **55d51484 (#8681 retest 2):** deploying (82535), marked „Misho: now".
 
 ### 4 Nov, 06:51Z — relayed from the box (82402): #8681 RETEST FAIL 3/3 on time
 
