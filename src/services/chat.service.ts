@@ -495,7 +495,6 @@ import {
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
   asksTheOwnerForADetail,
-  wantsSomethingDone,
   ASK_THE_DETAIL_FIRST,
   bookingWithoutAWhen,
   farFindUnplannedNudge,
@@ -646,12 +645,9 @@ import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
 import { AUTOMATIC_ANSWER_NOTE, asksForAnAutomaticAnswer } from './automaticAnswerRequest';
 import {
+  A_NEED_OPENS_A_GOAL,
   asksForAPreview,
-  looksLikeGoalRequest,
-  seeksAPerson,
-  statesANeed,
   goalTitleFrom,
-  isQuestionNotGoal,
   instructionNames,
   instructionSentence,
   looksLikeContactInstruction,
@@ -1636,7 +1632,9 @@ const CREATE_TASK_TOOL: AnthropicTool = {
   name: 'create_task',
   description:
     'Save a goal the user wants worked on as a standing task that survives after this chat closes ("find a startup lawyer", "get introduced to X"). task_type is "solve" (find several helpers) or "reach" (a path to one target). Use when the user states something to achieve through their network, not a one-off lookup. Returns task_id. Starts no outreach by itself.' +
-    ' WHEN: to save a goal so it outlives this conversation.',
+    ' WHEN: to save a goal so it outlives this conversation.' +
+    // #8779 group 4: the need words that opened a goal before the run are gone.
+    A_NEED_OPENS_A_GOAL,
   input_schema: {
     type: 'object',
     properties: {
@@ -16282,8 +16280,9 @@ async function runToolLoop(
   const farFindGoal =
     foundFurtherOut.length > 0 ? await getGoalOnThread(threadId).catch(() => null) : null;
   const farFindHasNoGoal = farFindGoal === null;
-  // With no goal, only a line that asks for something: a need or an introduction.
-  const farFindAsked = !farFindHasNoGoal || wantsSomethingDone(runOwnerLine.get(runId) ?? '');
+  // #8779 group 4: with no goal, no word list decides the line asked for something — the
+  // nudge goes only where a goal exists; with none, the model opens one itself.
+  const farFindAsked = !farFindHasNoGoal;
   const farFindUnplanned =
     !ownerAbsent &&
     !promoted &&
@@ -16334,7 +16333,7 @@ async function runToolLoop(
                           ? PROMISED_ACTION_NO_GOAL_NUDGE
                           : PROMISED_ACTION_NUDGE
                         : farFindUnplanned
-                          ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
+                          ? farFindUnplannedNudge(foundFurtherOut)
                           : rowsMissing.length > 0
                             ? listRowsNudge(rowsMissing)
                             : foreignWord !== null
@@ -17925,24 +17924,19 @@ async function ensureGoalForRequest(
     console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
     return NO_GOAL_FOR_REQUEST;
   }
-  // Row 103: the app flag may turn a statement into a goal; it may not turn a
-  // question into one. Named in the log rather than dropped silently — a goal
-  // that quietly does not appear is the mirror image of the bug being fixed.
-  if (isQuestionNotGoal(userMessage)) {
-    if (intent?.asGoal === true)
-      // eslint-disable-next-line no-console
-      console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is a question`);
-    return NO_GOAL_FOR_REQUEST;
-  }
+  // #8779 group 4 (the founder, 4 Nov): no need words open a goal before the run. Only the
+  // app's own new-goal button does; otherwise the model opens one with create_task when it
+  // reads a need (Ticket 16 Task 90's need words, row 103's question words and D617's
+  // „must still state a need" are gone with the lists).
+  if (intent?.asGoal !== true) return NO_GOAL_FOR_REQUEST;
   // Row 103/104: the flag may turn a statement into a goal; it may not turn an
   // INSTRUCTION TO A NAMED PERSON into one. Lika typed „ask Tornike Abuladze
   // if he knows a good philosopher", it became a goal, and a new goal has its
   // plan proposed — so she was asked to approve her own sentence, twice.
   //
   // The cheap half runs first and keeps the phonebook query off every message
-  // that cannot need it. Only the flag path is guarded, because
-  // looksLikeGoalRequest already says false for all six of these.
-  if (intent?.asGoal === true && looksLikeContactInstruction(userMessage)) {
+  // that cannot need it.
+  if (looksLikeContactInstruction(userMessage)) {
     if (await messageNamesOwnContact(userId, userMessage)) {
       // eslint-disable-next-line no-console
       console.log(
@@ -17950,22 +17944,6 @@ async function ensureGoalForRequest(
       );
       return NO_GOAL_FOR_REQUEST;
     }
-  }
-  /*
-   * The tester's 1114 (seat 16, the founder's D617): the small-talk list held for
-   * its own lines and missed the next wording — „გამარჯობა, როგორ ხარ?", „დილა
-   * მშვიდობისა", a sum, a joke — each a goal with a full goal turn after the
-   * new-goal button. The flag no longer decides alone: it lifts the length floor,
-   * and the message must still state a need. Anything else is answered as a
-   * question, and the model can still open a goal itself when it sees one.
-   */
-  const flaggedNeed =
-    intent?.asGoal === true && (statesANeed(userMessage) || seeksAPerson(userMessage));
-  if (!flaggedNeed && !looksLikeGoalRequest(userMessage)) {
-    if (intent?.asGoal === true)
-      // eslint-disable-next-line no-console
-      console.log(`[goal-intent] thread ${threadId}: app flag ignored, no need stated`);
-    return NO_GOAL_FOR_REQUEST;
   }
   try {
     if ((await getOpenTaskByThread(threadId)) !== null) return NO_GOAL_FOR_REQUEST;
