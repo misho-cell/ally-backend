@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 09:20Z (#8779 group b step 1). Box read to 83201.
+Last TO_OPS.md section handled: 5 Nov, 09:20Z (#8779 group b step 1). Box read to 83235.
 
 ## OPEN
+
+### 5 Nov, 11:05Z — reminder: the stray line job (09:25Z item 1) still has no answer
+
+#8978 is deploying (1d6f6d9d), thank you. Still open: which job wrote „[helper] შენს რჩევას ჯერ კიდევ მიჰყვება." into old helper threads at 09:06-09:08Z (31 rows to 10 real members), and is it stopped? Ops read-only: no new copy since 09:09Z, but if it is a daily job it can come back tomorrow at the same hour. The tester asked again in 83234.
 
 ### 5 Nov, 10:22Z — tester 83197: #8946 RETEST PASS 3/3 (tested); two leftovers; Misho takes over the prompt
 
