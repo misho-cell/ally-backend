@@ -717,10 +717,9 @@ import {
   introductionsWithdrawnLine,
   alreadyStoppedLine,
 } from './goalStop.service';
-import { asksToEndSomething, looksLikeStopRequest } from './stopIntent';
+import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
-import { withPlanDecisionAgain } from './planDecisionReoffer';
 import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
 import { ANSWER_SENT_FORMS, ANSWER_SENT_LINE, withAnswerSentLineOnce } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutCardRepeat, withoutEarlySolvedCard } from './answerCardGuard';
@@ -19562,15 +19561,11 @@ export async function processChat(
   // this check. Its reply was one short text-only turn to a line from a fixed
   // handful of words, so it skips the check like the greeting.
   /**
-   * 3106 (speed): two reads that do not depend on the reply check start before
-   * it, beside its model call, and are awaited where they were awaited before.
-   * The goal is read only when the plan-again check could need it; the no-op
-   * catches only stop a failure counting as unhandled while the check runs —
-   * each is still handled where it is awaited, exactly as before.
+   * 3106 (speed): a read that does not depend on the reply check starts before
+   * it, beside its model call, and is awaited where it was awaited before. The
+   * no-op catch only stops a failure counting as unhandled while the check runs —
+   * it is still handled where it is awaited, exactly as before.
    */
-  const openTaskForPlanAgain =
-    !ownerAbsent && !runPlanForReply.has(runId) ? getOpenTaskByThread(threadId) : null;
-  openTaskForPlanAgain?.catch(() => undefined);
   const requestsEarly = requestsToDeliver(userId, agentPrompt.deliverRequestsSeparately, () =>
     getPendingRequestsForMediator(userId),
   );
@@ -19629,29 +19624,7 @@ export async function processChat(
       cleanedFinal = unrepeated;
     }
   }
-  // 56697: a reply that leaves a waiting plan with no question and no buttons asks again.
-  const planAgain =
-    !ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)
-      ? // A blocked reply's plan text clears the run's plan, so the goal may not have been read early.
-        await (openTaskForPlanAgain ?? getOpenTaskByThread(threadId))
-          .then((task) =>
-            withPlanDecisionAgain(
-              cleanedFinal,
-              choices,
-              task,
-              language,
-              asksToEndSomething(userMessage),
-            ),
-          )
-          .catch((err: unknown) => {
-            // eslint-disable-next-line no-console
-            console.error('[plan-again] goal not read:', (err as Error).message);
-            return null;
-          })
-      : null;
-  if (planAgain !== null) cleanedFinal = planAgain.text;
-  const offeredChoices =
-    earlySolved !== null ? earlySolved.choices : (planAgain?.choices ?? choices);
+  const offeredChoices = earlySolved !== null ? earlySolved.choices : choices;
   // Question A (tester 947): a web-found person's page link, by their name.
   if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);
   const reply = wrapAllowedNumbers(

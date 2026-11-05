@@ -3,25 +3,23 @@ import { join } from 'path';
 
 const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
-/** 3106 (speed): the reply check's model call no longer waits in line with two database reads. */
-describe('the reply check runs beside the two reads that do not need it', () => {
-  it('starts the waiting-requests read and the goal read before the check', () => {
+/**
+ * 3106 (speed): the reply check's model call no longer waits in line with a
+ * database read. (The goal read beside it went with the plan re-offer, #8779 c.)
+ */
+describe('the reply check runs beside the read that does not need it', () => {
+  it('starts the waiting-requests read before the check, and awaits it after', () => {
     const early = chat.indexOf('const requestsEarly = requestsToDeliver(');
-    const goal = chat.indexOf('const openTaskForPlanAgain =');
     const check = chat.indexOf(
       ': await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));',
     );
     expect(early).toBeGreaterThan(-1);
-    expect(goal).toBeGreaterThan(-1);
     expect(early).toBeLessThan(check);
-    expect(goal).toBeLessThan(check);
+    expect(chat).toContain('notePendingItems(runId, await requestsEarly);');
   });
 
-  it('keeps the plan-again condition as it was, and reads the goal late when it was not read early', () => {
-    expect(chat).toContain(
-      '!ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)',
-    );
-    expect(chat).toContain('await (openTaskForPlanAgain ?? getOpenTaskByThread(threadId))');
-    expect(chat).toContain('notePendingItems(runId, await requestsEarly);');
+  it('no longer appends the plan question to a reply (#8779 c)', () => {
+    expect(chat).not.toContain('withPlanDecisionAgain');
+    expect(chat).not.toContain('openTaskForPlanAgain');
   });
 });

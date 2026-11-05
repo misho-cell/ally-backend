@@ -2,7 +2,6 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 
 import { query } from '../../db/postgres/client';
 import { planReplyText, withClosingQuestion } from '../chat.service';
-import { withPlanDecisionAgain } from '../planDecisionReoffer';
 import { forgetServerTexts, loadServerTexts } from '../serverTextBlocks';
 
 /**
@@ -44,18 +43,6 @@ describe('a plan whose blocks the team switched off', () => {
     const text = planReplyText('ვეცდები დაგეხმარო.', PLAN, 'ka');
     expect(text).toContain(PLAN.text);
     expect(text).not.toContain('დავიწყო?');
-  });
-
-  it('asks again with the buttons only, no fixed question', async () => {
-    await blocks(false);
-    const again = withPlanDecisionAgain(
-      'რატომ ნიკა — ბანკში მუშაობს.',
-      undefined,
-      { plan_proposed: {}, plan_approved_at: null, plan_change_requested_at: null } as never,
-      'ka',
-    );
-    expect(again?.text).toBe('რატომ ნიკა — ბანკში მუშაობს.');
-    expect(again?.choices.length).toBe(2);
   });
 });
 
