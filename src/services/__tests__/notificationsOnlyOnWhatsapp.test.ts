@@ -41,17 +41,14 @@ describe('notifications on WhatsApp only', () => {
 });
 
 describe('the WhatsApp copy', () => {
-  it('is not held back by a Netai screen left open, when WhatsApp is the only channel', () => {
-    expect(whatsappCopyHeldBack(true, undefined, true, false)).toBe(false);
-  });
-
-  it('is held back by an open screen when the app notifies too', () => {
-    expect(whatsappCopyHeldBack(false, undefined, true, false)).toBe(true);
+  /** #8978: a tab open on Tornike's computer kept Lika's questions off his phone. */
+  it('is not held back by a Netai screen open elsewhere, whatever channels are on', () => {
+    expect(whatsappCopyHeldBack(undefined, false)).toBe(false);
   });
 
   it('is never sent for an answer asked from WhatsApp, or while the asking device is in use', () => {
-    expect(whatsappCopyHeldBack(true, WHATSAPP_DEVICE, false, false)).toBe(true);
-    expect(whatsappCopyHeldBack(true, 'web-1', false, true)).toBe(true);
+    expect(whatsappCopyHeldBack(WHATSAPP_DEVICE, false)).toBe(true);
+    expect(whatsappCopyHeldBack('web-1', true)).toBe(true);
   });
 
   it('is offered through PUT /profile/whatsapp/only, with 409 when WhatsApp is not chosen', () => {

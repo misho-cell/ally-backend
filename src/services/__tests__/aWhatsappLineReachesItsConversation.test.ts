@@ -117,6 +117,6 @@ describe('the answer owed in WhatsApp', () => {
     const sse = readFileSync(join(__dirname, '..', 'sse.service.ts'), 'utf8');
     const notify = readFileSync(join(__dirname, '..', 'notification.service.ts'), 'utf8');
     expect(sse).toContain('void deliverOwedWhatsappReply(Number(userId), threadId, safe.reply');
-    expect(notify).toContain('if (askedFrom === WHATSAPP_DEVICE || askerReading) return true;');
+    expect(notify).toContain('return askedFrom === WHATSAPP_DEVICE || askerReading;');
   });
 });

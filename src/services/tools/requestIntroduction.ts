@@ -688,17 +688,22 @@ async function requestIntroductionInner(
       : await deliverIntoTheConversation(stored, conversation);
 
   if (hasPush) {
-    await sendPushNotification(String(mediatorUserId), {
-      title: 'Netai — გაცნობის მოთხოვნა',
-      body: isDirect
-        ? `${geoName(stored.requesterName, 'gen')} ასისტენტი გწერს: ${geoName(stored.requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
-        : forwarderName !== null
-          ? forwardedRequestPush(forwarderName, stored.requesterName, stored.mediatorTargetName)
-          : // #1420: the request is the assistant's, so the push says whose assistant asks.
-            // 3895: the push is the mediator's too, so it names the target as he saved him.
-            `${geoName(stored.requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
-      url: pushUrl,
-    });
+    await sendPushNotification(
+      String(mediatorUserId),
+      {
+        title: 'Netai — გაცნობის მოთხოვნა',
+        body: isDirect
+          ? `${geoName(stored.requesterName, 'gen')} ასისტენტი გწერს: ${geoName(stored.requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
+          : forwarderName !== null
+            ? forwardedRequestPush(forwarderName, stored.requesterName, stored.mediatorTargetName)
+            : // #1420: the request is the assistant's, so the push says whose assistant asks.
+              // 3895: the push is the mediator's too, so it names the target as he saved him.
+              `${geoName(stored.requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
+        url: pushUrl,
+      },
+      // #8978: a request waiting on this person is worth a WhatsApp template, like a question.
+      { highValue: true },
+    );
   }
 
   return {
