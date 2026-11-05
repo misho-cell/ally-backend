@@ -742,8 +742,7 @@ import {
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { withPlainDigits } from './noScores';
-import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
-import type { UpcomingBirthday } from './birthdayLens.service';
+import { GET_UPCOMING_BIRTHDAYS_TOOL, upcomingBirthdays } from './birthdaysAsked';
 import { preparedAnswerOn } from './preparedAnswer.service';
 import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
@@ -10921,6 +10920,8 @@ async function executeToolCall(
       // field was a TypeError, where the honest answer `unknown_country` was
       // already one line away.
       return searchContactsByCountry(userId, String(input['country'] ?? ''));
+    case 'get_upcoming_birthdays':
+      return { birthdays: await upcomingBirthdays(userId, input['days']) };
     case 'get_contact_count':
       return getContactCount(userId);
     case 'work_the_list': {
@@ -15384,38 +15385,6 @@ async function answerTargetQuestion(
   }
 }
 
-/** 3269: the told birthdays in the coming month, said by the server; null when they cannot be read. */
-async function answerBirthdaysSoon(
-  userId: string,
-  threadId: number,
-  userMessage: string,
-  runId: string,
-  intent: RunIntent | undefined,
-): Promise<ChatResult | null> {
-  let rows: UpcomingBirthday[];
-  try {
-    rows = await birthdaysSoon(userId);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[birthdays] not read:', (err as Error).message);
-    return null;
-  }
-  if (intent?.alreadyStored !== true) {
-    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
-  }
-  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
-  const language = languageOfConversation(
-    userMessage,
-    spokenBefore,
-    detectRunLanguage(userMessage),
-  );
-  const text = birthdaysAnswer(rows, language);
-  await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
-  // eslint-disable-next-line no-console
-  console.log(`[birthdays] run ${runId}: answered by the server (${rows.length})`);
-  return { reply: text, language, requestCreated: false };
-}
-
 /** 1690: the owner's tap on a fact-confirm card, settled by the server; null when it is not one. */
 async function answerFactConfirm(
   userId: string,
@@ -17485,6 +17454,8 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_INTRO_STATUS_TOOL,
   GET_THREAD_CONTEXT_TOOL,
   SET_TASK_RESULT_TOOL,
+  // #8779 group 4: the birthdays question is the model's to read (birthdaysAsked.ts).
+  GET_UPCOMING_BIRTHDAYS_TOOL,
   CREATE_TASK_TOOL,
   GET_MY_TASKS_TOOL,
   UPDATE_TASK_TOOL,
@@ -18578,12 +18549,6 @@ export async function processChat(
       ? await answerNotTagged(userId, threadId, userMessage, runId, intent)
       : null;
   if (notTagged !== null) return notTagged;
-  // 3269: „who has a birthday soon?" is answered from the told birthdays, by the server.
-  const birthdays =
-    !ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)
-      ? await answerBirthdaysSoon(userId, threadId, userMessage, runId, intent)
-      : null;
-  if (birthdays !== null) return birthdays;
   // 1690 (A7): a tap on the fact-confirm card (or the answer to its „where now?") is the server's.
   const confirmed =
     !ownerAbsent && thread.type === 'regular'
