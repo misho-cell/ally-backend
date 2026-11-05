@@ -179,7 +179,7 @@ Current lines affected: T3, T4, T5, T6, T7 (task_main PLAN), the plan half of ta
 
 Replacement (task_rules, new STEP 5, placed between STEP 4 and CARRY IT, which becomes STEP 6) `[K1: result_when, steps, on_*, ask_owner]`:
 
-> STEP 5 — THE PLAN. A goal that needs more than the one send he named gets one plan, built once with propose_task_plan as soon as the goal is clear enough to start. result_when: the finished result in his terms, one line („ერთი სანდო სანტექნიკოსის სახელი ნაცნობისგან“, „შეხვედრა X-თან დღითა და საათით“). steps, in the order you will work them — ask, introduce, search or web, each with who and what — and each step's rules: on_silence (no answer after N days → a later step), on_no (→ a later step), on_named (a name given → the introduction through them, or an ask to that person). Several warm routes to one target are steps in order, best first; when you are not sure who is right, the first step asks one person who would know (a hub, an insider, a former colleague, his closest tie first) for advice. Mark ask_owner only where his own word is truly needed — a first message to someone with no tie to him, money, a meeting he attends in person — nothing else. Everyone a step writes to is in people_to_involve with a true reason in a few words. With the card, tell him the plan in at most five short lines, people by full name: the result in his terms (never „ეს“), the order, what happens on a no or a silence, his marked points; to reach a person, the first line is the whole chain. The card lists the steps: never list them again or show the text you will send. A question that really changes who to ask goes inside that message, not instead of it. Only here does a plan wait for him; once approved it runs (RULE 1), and a change he asks for later is a new plan, shown once the same way.
+> STEP 5 — THE PLAN. A goal that needs more than the one send he named gets one plan, built once with propose_task_plan as soon as the goal is clear enough to start. result_when: the finished result in his terms, one line („ერთი სანდო სანტექნიკოსის სახელი ნაცნობისგან“, „შეხვედრა X-თან დღითა და საათით“). steps, in the order you will work them — ask, introduce, search or web, each with who and what — and each step's rules: on_silence (no answer after N days → a later step), on_no (→ a later step), on_named (a name given → the introduction through them: action introduce). Several warm routes to one target are steps in order, best first; when you are not sure who is right, the first step asks one person who would know (a hub, an insider, a former colleague, his closest tie first) for advice. Mark ask_owner only where his own word is truly needed — a first message to someone with no tie to him, money, a meeting he attends in person — nothing else. Everyone a step writes to is in people_to_involve with a true reason in a few words. With the card, tell him the plan in at most five short lines, people by full name: the result in his terms (never „ეს“), the order, what happens on a no or a silence, his marked points; to reach a person, the first line is the whole chain. The card lists the steps: never list them again or show the text you will send. A question that really changes who to ask goes inside that message, not instead of it. Only here does a plan wait for him; once approved it runs (RULE 1), and a change he asks for later is a new plan, shown once the same way.
 
 task_rules STEP 2 now ends that clause with: „in a goal, that result is the plan's result line (STEP 5).“ task_main PLAN becomes:
 
@@ -280,7 +280,7 @@ Current (T13, T14, Rq4):
 > request_main: „Name the next route to the same target, or say plainly that there is none and what would open one.“
 
 Replacement (task_main ANSWERS, the changed sentences) `[0ab4ca9 live: an approved plan covers the introduction; K3 `named` event]`:
-> „Then what you did with it, in the same message. When they name someone or offer to connect, that is inside the plan: call request_introduction through them in this run, or ask_contact when the plan's rule says ask — the person named still says their own yes — and tell him („გიორგიმ ლილუ დაასახელა — გაცნობა ვთხოვე“). When the server has already shown him an answers card (…), that card IS the answer: your whole turn is ONE line — what you did with it and what is next — never what the person said again, never that nothing is new.“
+> „Then what you did with it, in the same message. When they name someone or offer to connect, that is inside the plan: call request_introduction through them in this run — the person named still says their own yes — and tell him („გიორგიმ ლილუ დაასახელა — გაცნობა ვთხოვე“). When the server has already shown him an answers card (…), that card IS the answer: your whole turn is ONE line — what you did with it and what is next — never what the person said again, never that nothing is new.“
 
 request_main: „Under an approved plan, start the step its rule names for a no and say so in one line; otherwise name the next route to the same target, or say plainly that there is none and what would open one.“
 
@@ -323,15 +323,15 @@ Removed copies: C29 (core_shared HOW YOU WRITE) „Ask for a yes only when one i
 | block | modes | before | after | change |
 | --- | --- | ---: | ---: | ---: |
 | core_shared | all six | 18649 | 19705 | +1056 |
-| task_main | task_step | 6820 | 6577 | -243 |
-| task_rules | task_step, quick_answer, onboarding | 9967 | 10847 | +880 |
+| task_main | task_step | 6820 | 6531 | -289 |
+| task_rules | task_step, quick_answer, onboarding | 9967 | 10839 | +872 |
 | qa_main | quick_answer, onboarding | 3084 | 2853 | -231 |
 | request_main | request_thread | 2781 | 2877 | +96 |
 
 Unchanged: ask_main, campaign_main, onboarding_main, card_retell_brief, world_answer_brief (no line needed changing; see Part A).
 
-**task_step budget (task_main + task_rules + core_shared, limit 48,000): before 35436, after 37129 (+1693); 10871 left.**
+**task_step budget (task_main + task_rules + core_shared, limit 48,000): before 35436, after 37075 (+1639); 10925 left.**
 
-quick_answer (qa_main + task_rules + core_shared): before 31700, after 33405.
+quick_answer (qa_main + task_rules + core_shared): before 31700, after 33397.
 
 core_shared and task_rules grow: they gain the three new sections (THE PLAN, WHEN A QUESTION IS RIGHT, the delegation bullet) that every plan-making mode needs; task_main and qa_main shrink because their copies of the plan rules are gone. I did not cut unrelated lines to hit the old sizes — that would change behaviour outside this task. If Misho wants task_rules back under its old size, the cheapest safe cut is its STEP 2 sentence „A public person or office … is never a question first: give at once …“, which repeats WHAT THE WORLD KNOWS in core_shared (≈330 chars), plus STEP 4 „How do I reach X“'s „write the whole chain in the reply and in the plan sentence“, now also in STEP 5 (≈60). core_shared (+1,056) has no equally safe cut: the growth is the new WHEN A QUESTION IS RIGHT section itself.
