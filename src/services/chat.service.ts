@@ -350,6 +350,7 @@ import {
   peopleToWake,
   TaskPlan,
 } from './taskPlans.service';
+import { PLAN_STEPS_SCHEMA_PROPERTIES } from './planStepsSchema';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath, type WarmPathOutcome } from './tools/findWarmPath';
@@ -3843,8 +3844,10 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
               'true when this is real work — a job, a hire, hours of somebody’s time — rather ' +
               'than a small favour: five people are asked per wave instead of three.',
           },
+          // Autonomy stage 2, K1: result_when + steps (planStepsSchema.ts).
+          ...PLAN_STEPS_SCHEMA_PROPERTIES,
         },
-        required: ['solved_when', 'routes'],
+        required: ['routes'],
         description:
           '{ solved_when: string, routes: [{name, status: running|waiting|done|dropped}], ' +
           'people_to_involve: [{name, phone, route}], never_contact: [{name, phone?}] }. ' +

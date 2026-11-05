@@ -131,7 +131,7 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 |---|---|---|---|
 | K11 | done (lead) | 0ab4ca9 | approved plan covers introductions |
 | design | done | (this commit) | |
-| K1 | todo | | |
+| K1 | done | (see log) | `planSteps.ts` (parse/structure), `planStepsText.ts` (card line), `planStepsSchema.ts` (tool schema); `parsePlan` reads `result_when`/`steps`; card + engine prompt show the steps line. Test: `planSteps.test.ts` |
 | K2 | todo | | |
 | K3 | todo | | |
 | K4 | todo | | |
@@ -139,6 +139,14 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 | K7 | todo | | |
 | K10 | todo | | |
 | K12 | todo | | |
+
+## How to test (fictional seats)
+
+- K1: on a test seat, give a goal; the run's propose_task_plan may now carry `steps`.
+  DONE WHEN the plan text in the reply ends with „ნაბიჯები: 1. ვკითხავ — … ; 2. …" and a
+  step marked `ask_owner` reads „(აქ შენს სიტყვას დაველოდები)"; an old-shape plan reads
+  exactly as before; a step naming somebody not in people_to_involve is refused with the
+  fix named (`step s2: … is not in people_to_involve — add them there too`).
 
 ## Questions for Misho
 
