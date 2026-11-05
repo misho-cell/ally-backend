@@ -2139,45 +2139,11 @@ const SOLVED_BUTTON_STEMS: readonly string[] = [
  */
 const NEGATES_SOLVED = /(?:^|[^\p{L}])(?:not|no|не|нет)(?=[^\p{L}]|$)/iu;
 
-/**
- * The tester's 64517 (56218): „No need, it is solved. Levan helped me find him."
- * read as a „no" and the goal stayed open. „No need", „no problem", „no thanks",
- * „not needed" refuse help, not the close.
- */
-const POLITE_NO =
-  /(?:^|[^\p{L}])(?:no\s+(?:need|problem|worries|thanks)|not\s+needed)(?=[^\p{L}]|$)/giu;
-
-function withoutPolitePhrases(said: string): string {
-  return said.replace(POLITE_NO, ' ');
-}
-
 function isSolvedButton(label: string): boolean {
   return (
     !NEGATES_SOLVED.test(label) &&
     wordsOf(label).some((w) => SOLVED_BUTTON_STEMS.some((stem) => w.startsWith(stem)))
   );
-}
-
-function tappedASolvedButton(said: string, offered: readonly string[] | null): boolean {
-  const tapped = (offered ?? []).find((label) => label.trim() === said);
-  return tapped !== undefined && isSolvedButton(tapped);
-}
-
-export function ownerSaysSolved(
-  lastOwnerMessage: string | null,
-  newestOfferedChoices: readonly string[] | null,
-): boolean {
-  const said = (lastOwnerMessage ?? '').trim();
-  if (said === '') return false;
-  if (TAKES_IT_BACK.test(said) || NEGATES_SOLVED.test(withoutPolitePhrases(said))) return false;
-  // The button itself, whatever else the sentence carries, in any of the
-  // languages the product offers it in.
-  if (isSolvedLabel(said)) return true;
-  if (tappedASolvedButton(said, newestOfferedChoices)) return true;
-  // A bare yes counts only while a finish card is the newest thing on screen —
-  // the same condition a plan's bare yes has to meet, and now recognised
-  // whatever language the card was drawn in.
-  return offersTheFinishCard(newestOfferedChoices) && PLAN_YES.test(said);
 }
 
 /** Do these buttons include a „solved" one — is this a finish card? */
@@ -2202,7 +2168,17 @@ async function ownerHasSaidSolved(
     return null;
   });
   if (screen === null) return null;
-  return ownerSaysSolved(screen.lastOwnerMessage, screen.newestOfferedChoices);
+  return ownerAnswered(screen.lastOwnerMessage);
+}
+
+/**
+ * #8779 group b, rule 33 (the founder, 4 Nov 19:07): no fixed word lists. Whether
+ * the owner's words say the goal is solved is the model's reading — it calls
+ * finish_task with confirmed: true on that yes. The server checks structure
+ * only: the owner has written something to answer.
+ */
+export function ownerAnswered(lastOwnerMessage: string | null): boolean {
+  return (lastOwnerMessage ?? '').trim() !== '';
 }
 
 /**
@@ -11969,20 +11945,21 @@ async function executeToolCall(
       // Tester 944 (D532): the owner's first „solved" counts. Read once, here:
       // when it is already on screen the goal closes now, whatever the model
       // passed — no „who solved it?", no „confirm once more" before the close.
+      // #8779 (rule 33): the close goes on the model's confirmed yes, never on a word match.
       const ownerSaid = threadId === undefined ? null : await ownerHasSaidSolved(threadId, runId);
-      if (ownerSaid !== true && thankedThisRun(runId)) {
+      if (!isConfirmed(input['confirmed']) && thankedThisRun(runId)) {
         return { closed: false, error: THANKED_NOT_ASKED };
       }
-      if (!isConfirmed(input['confirmed']) && ownerSaid !== true) {
+      if (!isConfirmed(input['confirmed'])) {
         return {
           closed: false,
           asked: true,
           error:
-            'Not closed, and the goal stays open — that is correct, not a failure. Ask the ' +
-            'owner in one sentence, in words (no buttons), whether it is solved, not yet, or ' +
-            `should stop. Call this again with confirmed: true only after they say „${SOLVED_LABEL}" ` +
-            `or the same in their words. „${STOP_LABEL}" is update_task(closed) instead, and ` +
-            `„${NOT_YET_LABEL}" means carry on working.`,
+            'Not closed, and the goal stays open. If the owner has already said it is solved, ' +
+            'in any words, call this again now with confirmed: true — do not ask them again ' +
+            '(D532). Otherwise ask in one sentence, in words (no buttons), whether it is ' +
+            `solved, not yet, or should stop. „${STOP_LABEL}" is update_task(closed) instead, ` +
+            `and „${NOT_YET_LABEL}" means carry on working.`,
         };
       }
       /**
@@ -11995,17 +11972,16 @@ async function executeToolCall(
       if (ownerSaid === false) {
         // eslint-disable-next-line no-console
         console.warn(
-          `[finish-consent] run ${runId ?? '-'} thread ${threadId}: close refused — the owner has not called it solved`,
+          `[finish-consent] run ${runId ?? '-'} thread ${threadId}: close refused — the owner has not answered`,
         );
         return {
           closed: false,
           asked: true,
           error:
-            'NOT CLOSED — and do not tell them it is. The goal is still open. Their last ' +
-            'message was about something else, so nobody has said this is solved. Show what ' +
-            `was achieved and offer „${SOLVED_LABEL}" / „${NOT_YET_LABEL}" / „${STOP_LABEL}" ` +
-            '(in their language), and call this only after they answer THAT. Saying „closed" ' +
-            'now would be telling them something that did not happen.',
+            'NOT CLOSED — and do not tell them it is. The goal is still open: the owner has ' +
+            'not answered yet. Ask them in one sentence, in their words, whether it is solved, ' +
+            'not yet, or should stop, and call this only after their answer says it is solved. ' +
+            'Saying „closed" now would be telling them something that did not happen.',
         };
       }
       // Row 147, first half: this is the one route that means the work is DONE.

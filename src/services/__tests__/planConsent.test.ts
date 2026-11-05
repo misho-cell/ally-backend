@@ -14,7 +14,7 @@
  * whether the user had said yes — and he had, to a draft. A flag cannot tell
  * those apart because it is the same flag either way.
  */
-import { approvalBelongsToThePlan, ownerSaysSolved } from '../chat.service';
+import { approvalBelongsToThePlan } from '../chat.service';
 
 const PLAN_BUTTONS = ['დამტკიცებულია', 'შევცვალოთ'];
 const DRAFT_BUTTONS = ['კი, გააგზავნე', 'შევცვალოთ'];
@@ -255,66 +255,6 @@ describe('row 131 second half — „Go. No." is not a yes', () => {
 });
 
 /**
- * Ticket 20 row 147, second half — who is allowed to say a goal is solved.
- *
- * Tornike's vision of 7 September, which the seat pointed me back to: a goal
- * closes only on the OWNER's „resolved" or „stop". finish_task used to close
- * outright on the model's own judgement, which is how four of his goals came
- * to read „solved" tonight when nothing had been solved.
- *
- * The guard is deliberately the same shape as the plan's, because ticket 19 G2
- * already proved the alternative: a `confirmed` flag the model sets itself
- * cannot tell „they said yes to THIS" from „they said yes to something".
- */
-describe('row 147 — only the owner calls a goal solved', () => {
-  const FINISH_CARD = ['გადაწყდა', 'ჯერ არა', 'შევაჩეროთ'];
-
-  it('the solved button closes it — that is what a tap sends', () => {
-    expect(ownerSaysSolved('გადაწყდა', FINISH_CARD)).toBe(true);
-  });
-
-  it('a bare yes under the finish card counts, as it does for a plan', () => {
-    expect(ownerSaysSolved('კი', FINISH_CARD)).toBe(true);
-    expect(ownerSaysSolved('დიახ', FINISH_CARD)).toBe(true);
-  });
-
-  /** The other two buttons on the SAME card. Neither is a yes. */
-  it.each([
-    ['ჯერ არა', 'not yet — the goal carries on'],
-    ['შევაჩეროთ', 'stop — that is update_task, and it is not solved'],
-  ])('„%s" does not close it (%s)', (said) => {
-    expect(ownerSaysSolved(said, FINISH_CARD)).toBe(false);
-  });
-
-  it('a yes with no finish card on screen closes nothing', () => {
-    // The same rule the plan needed: a yes belongs to what was on the screen.
-    expect(ownerSaysSolved('კი', ['დამტკიცებულია', 'შევცვალოთ'])).toBe(false);
-    expect(ownerSaysSolved('კი', null)).toBe(false);
-  });
-
-  it('an answer to some other question is not an approval of the finish', () => {
-    // G2's original case, in its new home: a one-word answer typed under a
-    // card is an answer, not a yes.
-    expect(ownerSaysSolved('სააგენტო', FINISH_CARD)).toBe(false);
-    expect(ownerSaysSolved('ხვალ დილით', FINISH_CARD)).toBe(false);
-  });
-
-  it('a solved that takes itself back does not close it', () => {
-    expect(ownerSaysSolved('გადაწყდა, მაგრამ ჯერ ნინიას დაელოდე', FINISH_CARD)).toBe(false);
-  });
-
-  it('silence closes nothing', () => {
-    expect(ownerSaysSolved(null, FINISH_CARD)).toBe(false);
-    expect(ownerSaysSolved('   ', FINISH_CARD)).toBe(false);
-  });
-
-  /** Row 131's lesson, carried into the new rule rather than relearned. */
-  it('a word that merely CONTAINS the button is not the button', () => {
-    expect(ownerSaysSolved('გადაწყდარა რამე', FINISH_CARD)).toBe(false);
-  });
-});
-
-/**
  * Ticket 20 row 156 — an approval is not undone by agreeing with it.
  *
  * Goal 4100, Ninia's account, 17 September: at 09:58:38 the owner pressed the
@@ -343,60 +283,4 @@ describe('row 156 — a yes already given is not erased by the next sentence', (
    * window starts at the newest card, so a yes typed under the draft is
    * measured against the draft's buttons, not the plan's.
    */
-});
-
-/**
- * Row 207 — the guard knew ONE word, and the product speaks four languages.
- *
- * `SOLVED_LABEL` is Georgian. The assistant is told everywhere to speak the
- * owner's language, so on an English thread it offers „Solved", the owner taps
- * the button the product just drew for them, and the server does not recognise
- * it.
- *
- * The seat separated this from my own wrong reading on 21 September. I had
- * told them a goal whose plan was never approved „cannot be closed at all";
- * the control was confounded — the approved goal had been closed with
- * „გადაწყდა" and the unapproved ones with „Solved":
- *
- *   English „Solved"     refused  8 of 8   (7096 x3, 7063 x2, 7261 x2, 7294)
- *   Georgian „გადაწყდა"  closed   4 of 4   (6667, 7261, 7294, 7096)
- *
- * Two approved and two not among the four that closed. The plan state had
- * nothing to do with it.
- */
-describe('the finish card closes in the language it was offered in', () => {
-  const EN_CARD = ['Solved', 'Not yet', "Let's pause it"];
-  const RU_CARD = ['Решено', 'Ещё нет', 'Приостановим'];
-
-  it.each([
-    ['Solved', EN_CARD],
-    ['solved', EN_CARD],
-    ['Решено', RU_CARD],
-  ])('„%s" closes it', (said, card) => {
-    expect(ownerSaysSolved(said, card)).toBe(true);
-  });
-
-  /**
-   * The half that is easy to miss: the „is a finish card on screen" test
-   * compared the offered labels against the same single Georgian string, so on
-   * an English thread even a plain „yes" could not be read as one.
-   */
-  it('lets a bare yes through under an ENGLISH finish card', () => {
-    expect(ownerSaysSolved('yes', EN_CARD)).toBe(true);
-    expect(ownerSaysSolved('ok', EN_CARD)).toBe(true);
-  });
-
-  /** Still narrow: the other two buttons on the same card are not a yes. */
-  it.each([
-    ['Not yet', EN_CARD],
-    ["Let's pause it", EN_CARD],
-    ['Ещё нет', RU_CARD],
-  ])('„%s" does not close it', (said, card) => {
-    expect(ownerSaysSolved(said, card)).toBe(false);
-  });
-
-  /** And a bare yes with no finish card on screen is still not one. */
-  it('a bare yes under something else is still refused', () => {
-    expect(ownerSaysSolved('yes', ['Approve', 'Change it'])).toBe(false);
-  });
 });

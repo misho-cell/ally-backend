@@ -3,74 +3,40 @@ jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ownerSaysSolved } from '../chat.service';
+import { ownerAnswered } from '../chat.service';
 
 /**
- * Row 310. Giorgi on 29 Sep, and Test 47 on 30 Sep 20:48: the owner tapped
- * „მოგვარებულია" on a card the model drew itself, and finish_task refused —
- * „their last message was about something else" — until a second card was
- * shown and „გადაწყდა" was tapped. The first „solved", tap or words, closes it.
+ * #8779 group b, rule 33 (the founder, 4 Nov 19:07): no fixed word lists. A goal
+ * closed only when the owner's words matched a list of solved words — Row 310's
+ * „მოგვარებულია", row 313's malformed label and 64517's „No need, it is solved"
+ * were each a word the list had to learn. Whether the owner's words say solved is
+ * the model's reading now; the server checks only that the owner has answered.
  */
-describe("the owner's first solved closes the goal, whatever the model called the button", () => {
-  const MODELS_OWN_CARD = ['მოგვარებულია', 'ჯერ არა'];
-
-  it("closes on a tap of the model-written label (the seat's exact case)", () => {
-    expect(ownerSaysSolved('მოგვარებულია', MODELS_OWN_CARD)).toBe(true);
-  });
-
-  it('closes on the malformed label row 313 caught', () => {
-    expect(ownerSaysSolved('მოგვარდებულია', ['მოგვარდებულია', 'ჯერ არა'])).toBe(true);
-  });
-
-  it('closes on other labels the model writes, by the card they came from', () => {
-    expect(ownerSaysSolved('✅ საკითხი მოგვარდა', ['✅ საკითხი მოგვარდა', 'ჯერ არა'])).toBe(true);
-    expect(ownerSaysSolved('Yes, all resolved', ['Yes, all resolved', 'Not yet'])).toBe(true);
-    expect(ownerSaysSolved('Решена', ['Решена', 'Ещё нет'])).toBe(true);
-  });
-
-  it("lets a bare yes through under the model's own solved card", () => {
-    expect(ownerSaysSolved('კი', MODELS_OWN_CARD)).toBe(true);
-  });
-
-  it('still refuses the other buttons on that card', () => {
-    expect(ownerSaysSolved('ჯერ არა', MODELS_OWN_CARD)).toBe(false);
-    expect(ownerSaysSolved('Not yet', ['Yes, all resolved', 'Not yet'])).toBe(false);
-  });
-
-  /** Stems are read on a TAPPED label only — typed text keeps the exact-word rule. */
-  it('does not read a stem into free typing', () => {
-    expect(ownerSaysSolved('ხვალ მოგვარდება', MODELS_OWN_CARD)).toBe(false);
-    expect(ownerSaysSolved('შენ გადაწყვიტე', ['შენ გადაწყვიტე', 'მე ავირჩევ'])).toBe(false);
-  });
-
-  it('treats a negated solved as not solved, in English and Russian too', () => {
-    expect(ownerSaysSolved('Not solved yet', ['Solved', 'Not yet'])).toBe(false);
-    expect(ownerSaysSolved('Не решено', ['Решено', 'Ещё нет'])).toBe(false);
-    expect(ownerSaysSolved('Not solved', ['Not solved', 'Solved'])).toBe(false);
-  });
-});
-
-/**
- * Tester 944 (D532): after „მოგვარებულია" the model asked „who solved it?" and
- * then „confirm once more" before the close. The first „solved" counts: when
- * the owner already said it, finish_task closes whatever flag the model sent.
- */
-describe('the first „solved" is enough', () => {
+describe('#8779 (rule 33): a goal closes on the owner’s yes as the model reads it', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
   const handler = chat.slice(chat.indexOf("case 'finish_task': {"));
   const body = handler.slice(0, handler.indexOf("case 'get_my_tasks':"));
 
-  it('reads the thread before asking for a confirmation', () => {
-    expect(body.indexOf('await ownerHasSaidSolved(threadId, runId)')).toBeLessThan(
-      body.indexOf("!isConfirmed(input['confirmed']) && ownerSaid !== true"),
-    );
+  it('reads only whether the owner has answered — any words', () => {
+    expect(ownerAnswered('No need, it is solved. Levan helped me find him.')).toBe(true);
+    expect(ownerAnswered('კარგი, დავხუროთ')).toBe(true);
+    expect(ownerAnswered('   ')).toBe(false);
+    expect(ownerAnswered(null)).toBe(false);
   });
 
-  it('still refuses when the owner said something else', () => {
+  it('closes only on the model’s confirmed yes — no word match closes it alone', () => {
+    expect(body).toContain("if (!isConfirmed(input['confirmed'])) {");
+    expect(body).not.toContain('ownerSaid !== true');
+    expect(chat).not.toContain('export function ownerSaysSolved(');
+  });
+
+  it('still refuses when the owner has not answered at all', () => {
     expect(body).toContain('if (ownerSaid === false) {');
   });
 
-  it('tells the model not to ask again', () => {
+  /** Tester 944 (D532): after the owner's „solved" the model asked to confirm once more. */
+  it('tells the model not to ask again when the owner already said it', () => {
+    expect(body).toContain('call this again now with confirmed: true — do not ask them again');
     expect(chat).toContain(
       "do not ask who ' +\n    'solved it and do not ask them to confirm again",
     );
