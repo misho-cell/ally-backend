@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 16:50Z (#8950 second root; #8615 waves; #8623 to Misho). Box read to 83525.
+Last TO_OPS.md section handled: 5 Nov, 16:50Z (#8950 second root; #8615 waves; #8623 to Misho). Box read to 83539.
 
 ## OPEN
+
+### 5 Nov, 18:05Z — tester 83539: #8524 retest after 6065a18c FAIL, 19.9 s
+
+Verbatim: "_8524 retest after 6065a18c FAIL — 19.9 s for one „X სად მუშაობს?" (thread 80754), slower than this morning. Back to to_build. Real-user check 22:00: nobody waiting."
+
+Ops note: this run came after today's chain of deploys, including group c's small claims model (d0dbaa5f), which adds a call after the answer. Please check whether that call sits on the reply path for 80754.
 
 ### 5 Nov, 16:22Z — tester 83515: 215a3c14 PASS; #8615 and #8950 back to to_build; re 16:15Z, #8623 marking
 
