@@ -9,7 +9,6 @@ import {
   relayedQuestion,
 } from './askReferral.service';
 import { recommendedRelayLine } from './recommendedRelay';
-import { recommendsSomebody } from './referralRecommendation';
 import { RunLanguage } from './runLanguage';
 import {
   ASKED_AS_THE_ASKER_SAVED_THEM,
@@ -115,15 +114,16 @@ async function tellTheAsker(offer: OfferedReferral, mayName: boolean): Promise<v
 }
 
 /**
- * 3731: what the referred person reads when the reader RECOMMENDED her to help
- * (not an order to ask her); null keeps the 1696 line. OFF until BN.
+ * 3731: what the referred person reads — „you were recommended as someone who
+ * may help". #8779 group 4: no word list tells a recommendation from an order to
+ * ask her any more; a referral the reader made is a recommendation either way.
+ * Null (switched off, or not Georgian) keeps the 1696 line.
  */
 function referralReads(
   offer: OfferedReferral,
   tap: ReferralTap,
   language: RunLanguage,
 ): string | null {
-  if (!recommendsSomebody(offer.offer_line ?? '')) return null;
   return recommendedRelayLine(language, {
     helper: tap === ReferralTap.Named ? offer.helper_as_referral_knows : null,
     asker: offer.asker_as_referral_knows ?? '',

@@ -30,9 +30,10 @@ describe('recommendedRelayLine', () => {
     expect(recommendedRelayLine('ka', RELAY, false)).toBeNull();
   });
 
-  it('is used only for a recommendation, with the names the referred person knows', () => {
+  // #8779 group 4: every referral reads it — no word list decides „recommended" vs „ask her".
+  it('is used for every referral, with the names the referred person knows', () => {
     const settle = readFileSync(join(__dirname, '..', 'askReferralSettle.service.ts'), 'utf8');
-    expect(settle).toContain("if (!recommendsSomebody(offer.offer_line ?? '')) return null;");
+    expect(settle).not.toContain('recommendsSomebody');
     expect(settle).toContain(
       'helper: tap === ReferralTap.Named ? offer.helper_as_referral_knows : null,',
     );
