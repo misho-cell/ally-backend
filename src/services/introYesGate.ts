@@ -1,3 +1,4 @@
+import { georgianScriptName } from './georgianScriptName';
 import { ownerNamedAGoBetween } from './severalRoutes';
 
 /**
@@ -31,9 +32,12 @@ export interface IntroGateFacts {
   readonly targetName: string;
 }
 
+/** A name saved in Latin letters („Ana Lomidze") is matched in Georgian lines too. */
 function namedIn(lines: readonly string[], name: string): boolean {
   const trimmed = name.trim();
-  return trimmed !== '' && lines.some((line) => ownerNamedAGoBetween(line, [trimmed]));
+  if (trimmed === '') return false;
+  const spellings = [trimmed, georgianScriptName(trimmed)];
+  return lines.some((line) => ownerNamedAGoBetween(line, spellings));
 }
 
 export function introductionMayGo(facts: IntroGateFacts): boolean {
