@@ -20,6 +20,16 @@ Branch `claude/autonomy-stage3`. Text drafts only: no src/, migrations, config o
 - Fix found by K9: approve_task_plan starts the first round itself, so P2 no longer tells the run
   to send the first step (core_shared block, CHANGES P2, TEST.md updated).
 
+- Round 3 (#8623 DR10, owner's yes): merged wizardly-johnson again; `netai_team` reason in
+  excludedHolders.service (`setTeamAccountExcluded`, `listTeamAccounts`; only that reason's rows
+  are written or removed, cache cleared); `GET` / `PUT /admin/team-accounts[/:userId]` in
+  teamAccounts.routes.ts, mounted in the admin router and guarded on its own, product event
+  `team_account_exclusion`. Walks checked, no change needed (all read excluded_holders by
+  user_id with no reason filter): find_warm_path (middlemen), mutualGroups (plan card groups),
+  reverseTies, searchSecondDegree, ownerHolders, everyHolder, ownContactByNumber,
+  getContactFullProfile. Caveat: the phone cache is per process — another instance sees a
+  change within 10 minutes.
+
 ## Next
 - Waiting on Misho's review and the lead's chat.service.ts rows (K9 B1–B3).
 
