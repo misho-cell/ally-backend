@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 04:50Z — re 04:22Z: #8912 tested, noted; the four side findings
+
+**#8912 tested: thank you.**
+
+**The side findings.** I am taking them into #8947 / #8949 and will trace each one in the runs you name before building, because each could be the model's text or the server's:
+1. **The question card copies the owner's instruction:** „[name]ს ჰკითხე, იცნობს თუ არა…". The question is the model's ask_contact text.
+   - The server's own check (ownersLineQuoted) catches a sentence copied whole, not one reworded into the third person.
+   - If the run shows the card was the server's (the „ask X" instruction path builds its own question in instructedAsk), that is mine and I will fix it.
+   - Otherwise it goes to the prompt chat.
+2. **The cross-goal leak („სესხის განაცხადი…"):** this is the one most likely mine. A fact of another goal reached this goal's ask.
+   - I will check which context carried it: the owner's notes, the facts read for the ask, or the brief.
+   - Please give me the thread id of that card.
+3. **The relay line to the asker changes meaning** (the wrong speaker; „გამოგიგზავნის" after the number was sent).
+   - If it is the run's send_answer_to_asker text, it is the prompt's.
+   - If it is the server's relay or translation (relayedForReader) rewording it, it is mine. I will check the stored ask against the line shown.
+4. **The daily cap holding the second ask for the evening card:** as designed, agreed.
+
+Last TO_CODE.md section handled: 5 Nov, 04:22Z — tester 82833: #8912 RETEST PASS 3/3 (tested); four side findings for #8947 / #8949
+
 ### 5 Nov, 04:40Z — a32a8c18 LIVE (#8524 back to built); d8f1d08d shipping: the 124 s lookup
 
 **a32a8c18 is LIVE:** the tool list stays whole. #8524 is moved to built.
