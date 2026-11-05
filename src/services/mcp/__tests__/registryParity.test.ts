@@ -24,6 +24,8 @@ import * as path from 'path';
 // neither set fails the build — this still catches the exact
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
+  postpone_answer:
+    '#8779 b (5 Nov): the in-app „later" for a question asked of the user, read in words',
   answer_open_asks_card:
     '#8779 b (5 Nov): answers the in-app close-or-keep card in words; the card lives in the app',
   thank_helper:

@@ -302,7 +302,7 @@ import {
   closeOpenQuestions,
 } from './taskAsks.service';
 import { askThreadForName, askThreadsForName } from './askThreadByName';
-import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
+import { laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
@@ -9556,6 +9556,33 @@ const ANSWER_OPEN_ASKS_CARD_TOOL: AnthropicTool = {
 const NO_OPEN_ASKS_CARD =
   'Nothing changed: no close-or-keep question about open questions waits in this chat.';
 
+/**
+ * #1686 (A3) / #8779 b (rule 39): a helper who says in their own words that they
+ * will answer later — the model reads it and calls this; the latest open question
+ * on this chat comes back on that day, and the asker is told the day.
+ */
+const DEFAULT_LATER_DAYS = 3;
+const MAX_LATER_DAYS = 14;
+const runPostponedAnAnswer = new Set<string>();
+
+const POSTPONE_ANSWER_TOOL: AnthropicTool = {
+  name: 'postpone_answer',
+  description:
+    'In a chat where someone asked the user a question: when the user says they will answer ' +
+    'later (busy now, will check, in a few days), call this. The question comes back to them ' +
+    'on that day and the asker is told when. days: how many days from now (default 3).' +
+    ' WHEN: the user, asked a question, says they will answer later.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      days: { type: 'number', description: 'Days until the question comes back, 1 to 14.' },
+    },
+    required: [],
+  },
+};
+
+const NOTHING_TO_POSTPONE = 'Nothing changed: no open question waits for the user in this chat.';
+
 const THANKS_NOT_SENT =
   'Not sent: no single helper who answered the owner and was not thanked yet matches that ' +
   'name. Ask the owner whom they mean, in one line.';
@@ -10529,6 +10556,7 @@ function clearRunState(runId: string): void {
   runHeldTools.delete(runId);
   runGrantedTheGoal.delete(runId);
   runThankedAHelper.delete(runId);
+  runPostponedAnAnswer.delete(runId);
 }
 
 /**
@@ -12999,6 +13027,18 @@ async function executeToolCall(
       return getTopConnectors(userId, input['limit'] as number | undefined);
     case 'get_curiosity_queue':
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
+    case 'postpone_answer': {
+      if (ownerAbsent || threadId === undefined)
+        return { postponed: false, error: NOTHING_TO_POSTPONE };
+      const asked = Number(input['days']);
+      const days = Number.isFinite(asked)
+        ? Math.min(MAX_LATER_DAYS, Math.max(1, Math.round(asked)))
+        : DEFAULT_LATER_DAYS;
+      const until = await setLaterDays(threadId, days);
+      if (until === null) return { postponed: false, error: NOTHING_TO_POSTPONE };
+      if (runId !== undefined) runPostponedAnAnswer.add(runId);
+      return { postponed: true, until: until.toISOString() };
+    }
     case 'answer_open_asks_card': {
       if (ownerAbsent || threadId === undefined)
         return { settled: false, error: NO_OPEN_ASKS_CARD };
@@ -17515,6 +17555,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
   THANK_HELPER_TOOL,
   ANSWER_OPEN_ASKS_CARD_TOOL,
+  POSTPONE_ANSWER_TOOL,
   STOP_CONTACTING_TOOL,
   RESUME_CONTACT_TOOL,
   EXCLUDE_CONTACT_TOOL,
@@ -19211,7 +19252,7 @@ export async function processChat(
   // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
   const laterTapped =
     thread.type === 'incoming_ask' &&
-    (askTapOf(userMessage) === AskTap.Later || isTypedLater(userMessage));
+    (askTapOf(userMessage) === AskTap.Later || runPostponedAnAnswer.has(runId));
   const choices = laterTapped
     ? [...laterDayChoices(language)]
     : planToNobody === null
