@@ -13,7 +13,8 @@ import { query, withTransaction } from '../../db/postgres/client';
 import {
   MAX_STEP_EVENTS_READ,
   StepEventKind,
-  currentStepId,
+  planPosition,
+  setPlanDelegated,
   moveToStep,
   recentStepEvents,
   recordStepEvent,
@@ -70,12 +71,20 @@ describe('writing progress', () => {
 });
 
 describe('reading progress', () => {
-  it('reads the current step, null when none', async () => {
-    mockQuery.mockResolvedValueOnce(rows([{ plan_step: 's2' }]));
-    await expect(currentStepId(7001)).resolves.toBe('s2');
+  it('reads the current step and the delegation, null and false when none', async () => {
+    mockQuery.mockResolvedValueOnce(rows([{ plan_step: 's2', plan_delegated: true }]));
+    await expect(planPosition(7001)).resolves.toEqual({ currentStepId: 's2', delegated: true });
     mockQuery.mockResolvedValueOnce(rows([]));
-    await expect(currentStepId(7001)).resolves.toBeNull();
+    await expect(planPosition(7001)).resolves.toEqual({ currentStepId: null, delegated: false });
     expect(mockQuery.mock.calls[0][0]).toContain('LIMIT 1');
+  });
+
+  it('stores a delegation only on the owner’s approved goal', async () => {
+    mockQuery.mockResolvedValueOnce(rows([]));
+    await setPlanDelegated(7001, '501', true);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('plan_approved_at IS NOT NULL');
+    expect(params).toEqual([7001, '501', true]);
   });
 
   it('reads the latest events, capped', async () => {

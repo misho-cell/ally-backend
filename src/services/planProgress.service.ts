@@ -55,13 +55,38 @@ export async function moveToStep(taskId: number, stepId: string): Promise<void> 
   });
 }
 
-export async function currentStepId(taskId: number): Promise<string | null> {
-  const result = await query<{ plan_step: string | null }>(
-    `SELECT plan_step FROM tasks WHERE id = $1 LIMIT 1`,
+export interface PlanPosition {
+  readonly currentStepId: string | null;
+  /** K5: the owner's approval handed the decisions over. */
+  readonly delegated: boolean;
+}
+
+/** The current step and whether the approval was a delegation, in one read. */
+export async function planPosition(taskId: number): Promise<PlanPosition> {
+  const result = await query<{ plan_step: string | null; plan_delegated: boolean | null }>(
+    `SELECT plan_step, plan_delegated FROM tasks WHERE id = $1 LIMIT 1`,
     [taskId],
     PROGRESS_QUERY_TIMEOUT_MS,
   );
-  return result.rows[0]?.plan_step ?? null;
+  const row = result.rows[0];
+  return { currentStepId: row?.plan_step ?? null, delegated: row?.plan_delegated === true };
+}
+
+/**
+ * K5: store whether this approval was a delegation. Written on EVERY approval,
+ * so a later plan approved without one does not inherit the earlier yes.
+ */
+export async function setPlanDelegated(
+  taskId: number,
+  userId: string,
+  delegated: boolean,
+): Promise<void> {
+  await query(
+    `UPDATE tasks SET plan_delegated = $3
+      WHERE id = $1 AND user_id = $2 AND plan_approved_at IS NOT NULL`,
+    [taskId, userId, delegated],
+    PROGRESS_QUERY_TIMEOUT_MS,
+  );
 }
 
 /** The goal's latest step events, newest first. */

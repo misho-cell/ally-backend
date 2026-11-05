@@ -773,6 +773,8 @@ export async function approveTaskPlan(
          -- for. Cleared in the same statement that records the approval, so
          -- there is no instant where a goal is approved and still held.
          plan_change_requested_at = NULL,
+         -- K5: a new approval is not a delegation until the run says it is (setPlanDelegated).
+         plan_delegated = FALSE,
          updated_at = NOW(),
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open' AND plan_proposed IS NOT NULL

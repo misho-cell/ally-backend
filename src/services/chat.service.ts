@@ -352,6 +352,7 @@ import {
 } from './taskPlans.service';
 import { PLAN_STEPS_SCHEMA_PROPERTIES } from './planStepsSchema';
 import { whereWeAreSection } from './whereWeAre.service';
+import { DELEGATED_FIELD_SCHEMA, recordDelegation } from './planDelegation';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath, type WarmPathOutcome } from './tools/findWarmPath';
@@ -3895,6 +3896,8 @@ const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
     properties: {
       task_id: { type: 'number', description: 'The open goal.' },
       confirmed: { type: 'boolean', description: 'true only after the user said yes.' },
+      // Autonomy stage 2, K5 (planDelegation.ts).
+      delegated: DELEGATED_FIELD_SCHEMA,
     },
     required: ['task_id', 'confirmed'],
   },
@@ -12497,6 +12500,7 @@ async function executeToolCall(
         runLang(runId),
       );
       if (!outcome.ok) return { approved: false, error: outcome.error };
+      await recordDelegation(userId, Number(input['task_id']), input['delegated']);
       if (runId) runPlanApprovedInRun.add(runId);
       // Dynamic import — the engine imports this module, so a static one would
       // be a cycle. One import, both things taken from it.

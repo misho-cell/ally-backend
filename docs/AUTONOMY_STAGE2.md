@@ -134,8 +134,8 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 | K1 | done | 7525b4cb | `planSteps.ts` (parse/structure), `planStepsText.ts` (card line), `planStepsSchema.ts` (tool schema); `parsePlan` reads `result_when`/`steps`; card + engine prompt show the steps line. Test: `planSteps.test.ts` |
 | K2 | done | 356d1deb | migration `296_plan_step_events.sql` (table + `tasks.plan_step`); `planProgress.service.ts` (record / move-in-a-transaction / read, LIMITed). `Task` row type not widened. Test: `planProgress.service.test.ts` |
 | K3 | done | 93a153be | pure rules + texts `planAdvance.ts`; DB hooks `planAdvance.service.ts`: `notePlanAskSent` (taskAsks, after the INSERT, owner's own asks only), `notePlanNamed` (requestIntroduction, after the INSERT, not direct / not forwarded), `planStepNoteForAnswers` (answer wake, note under the event), `sweepSilentSteps` (engine tick, ≤50 goals). Idempotent on retried wakes. Tests: `planAdvance.test.ts`, `planAdvance.service.test.ts` |
-| K4 | done | (see log) | `whereWeAre.ts` (render), `whereWeAre.service.ts` (read; empty on failure); 4 lines in `chat.service.ts`: the read starts beside the prompt's `Promise.all` and is placed right before `buildTaskEngineSection`. Test: `whereWeAre.test.ts` |
-| K5 | todo | | |
+| K4 | done | 3f65fcf3 | `whereWeAre.ts` (render), `whereWeAre.service.ts` (read; empty on failure); 4 lines in `chat.service.ts`: the read starts beside the prompt's `Promise.all` and is placed right before `buildTaskEngineSection`. Test: `whereWeAre.test.ts` |
+| K5 | done | (see log) | migration `297_plan_delegated.sql`; `approve_task_plan` takes `delegated` (schema in `planDelegation.ts`); every approval resets it to false in the same UPDATE, the chat handler stores true after a successful approval; K4's block says so. Connector approvals stay non-delegated. Test: `planDelegation.test.ts` |
 | K7 | todo | | |
 | K10 | todo | | |
 | K12 | todo | | |
@@ -168,6 +168,10 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
   current step, the last event with its UTC time, the next step, and the steps that need
   no owner question; a goal without an approved plan has no such block.
 
+- K5: on a fictional seat, approve a plan with „კი, შენ გადაწყვიტე" → the tool call carries
+  `delegated: true`, `tasks.plan_delegated` is true, and the next goal run's „სად ვართ"
+  ends with „მფლობელმა გადაგაბარა …". Approve a later version with a plain „კი" → false.
+
 ## Notes for the lead session
 
 - Migration number 296 was the next free one on this branch's base. If main took 296
@@ -183,4 +187,19 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 
 ## Questions for Misho
 
-(none yet)
+1. **What does a plain (not delegated) approval NOT cover?** Today an approved plan already
+   covers asking its people and (0ab4ca9) the introductions they lead to. Built now:
+   `delegated` is stored and the run is told „do not ask about small things inside the
+   plan"; the server walls are the same either way. *Recommendation:* keep it that way —
+   a plain yes covers the plan's steps as written; a delegation additionally lets the run
+   fill in what the plan left open (the order among the plan's own people, an `on_named`
+   person being asked when the step said only „introduce") without a new plan version.
+   The second part needs a consent-wall change in `planAllows` and is NOT built — it is
+   the lead session's area (stage 1 walls). Continuing with the recommendation.
+2. **Should the server enforce `ask_owner` steps, or only tell the run?** Built now: the
+   step event and „სად ვართ" say the step needs the owner's word; an ask to that step's
+   person is still allowed by the plan wall, because the person is in people_to_involve.
+   *Recommendation:* enforce it — refuse an ask/introduction whose only step is an
+   `ask_owner` step until the owner has written since that step started (structure, no
+   words read). It is a consent-wall change in `chat.service.ts`, so I left it for the
+   lead session to place beside the stage-1 walls rather than edit the same lines.
