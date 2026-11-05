@@ -608,7 +608,6 @@ import {
   asksAQuestion,
 } from './dailyContactQuestion';
 import { noContactsYetSection } from './noContactsYet';
-import { withoutNoteTalk } from './noteTalk';
 import {
   askIsTheIntroduction,
   asksLeaveToSend,
@@ -768,7 +767,6 @@ import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
 import { withAssistantsSentLine, withoutOfferToSendAgain } from './assistantsSentLine';
 import { georgianNamesFor, georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
-import { asksWhyAboutNamed, isShortWhy, whyAnswer } from './whyThisPersonCut';
 
 const HISTORY_LIMIT = 50;
 // Engine-initiated turns are addressed to the MODEL, not the user: they carry
@@ -8819,30 +8817,6 @@ export function bothAskTheClosingQuestion(
   return step.includes(question) && final.includes(question);
 }
 
-/**
- * #4886 (option A, box 67090): „why him?" about someone the last reply named is
- * answered in its first sentence. A reply that offers buttons is left whole.
- */
-async function withWhyInOneSentence(
-  reply: string,
-  ownerLine: string,
-  threadId: number,
-  choices: readonly string[] | undefined,
-): Promise<string> {
-  if (choices !== undefined || !isShortWhy(ownerLine)) return reply;
-  const earlier = await lastShownAssistantReply(threadId).catch((err: unknown) => {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[why-cut] thread ${threadId}: the earlier reply could not be read:`,
-      (err as Error).message,
-    );
-    return null;
-  });
-  return earlier !== null && asksWhyAboutNamed(ownerLine, earlier)
-    ? whyAnswer(reply, ownerLine, earlier)
-    : reply;
-}
-
 /** A question of the model's own needs at least this many words to name who and what. */
 const MIN_OWN_QUESTION_WORDS = 3;
 
@@ -10486,9 +10460,7 @@ export function scrubFinal(text: string, runId: string | undefined): string {
   const withoutNote = withoutOurSideApology(
     withoutStrayGeorgianCapitals(
       withoutLeadingInterjection(
-        withoutAlreadyShownNote(
-          withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
-        ),
+        withoutAlreadyShownNote(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
         runLang(runId),
       ),
     ),
@@ -19219,7 +19191,6 @@ export async function processChat(
     );
   }
   effectiveFinal = withFileLine(effectiveFinal, userMessage, language);
-  effectiveFinal = await withWhyInOneSentence(effectiveFinal, userMessage, threadId, choices);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
     effectiveFinal = withoutClosingApprovalAsk(
