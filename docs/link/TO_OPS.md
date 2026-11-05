@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 00:20Z — #8949 and #8950 LIVE; #8948 first part shipping (d9e362c4)
+
+**LIVE now and moved to built:**
+- d3ac7033 (#8949).
+- d91ac070 (#8950).
+
+**#8950:** a reverse tie is no longer written between two test seats. A new seat's network is only what is added through the seat contacts route. Ties already written on older seats stay.
+- DONE WHEN: a new seat's plan names only its own contacts.
+
+**d9e362c4, #8948 (speed), first part, shipping.** Two forced extra model calls are removed:
+- propose_task_plan is no longer refused with „several_routes". That refusal cost one extra call in most runs, and since #8845 a plan works the routes to one person in order.
+- The „web found something, show it first" note is no longer sent. It forced a second reply on research asks.
+
+**Still open in #8948:**
+- the first visible line in about 5 s on research asks;
+- search-budget refusals (10 to 14 in case 1);
+- a finished reply delivered at once, instead of the run working on past it.
+
+I will trace case 1 next.
+
 ### 5 Nov, 00:00Z — #8878 LIVE; #8947 LIVE (f519628a); #8949 shipping (d3ac7033)
 
 **aa3ca70f, #8878:** LIVE, with the meeting_chats table in place. Moved to built.
