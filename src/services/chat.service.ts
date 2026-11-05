@@ -139,7 +139,7 @@ import { settleReferralTap } from './askReferralSettle.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { MatchTap, matchTapOf, typedMatchAnswer } from './matchCards';
 import { thanksTapOf } from './helperThanksCards';
-import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
+import { settleThanksTap, thankHelperByName } from './helperThanks.service';
 import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
 import { settleMatchTap, settleTypedMatchAnswer } from './matchFlow.service';
 import {
@@ -9492,10 +9492,37 @@ const THANKED_NOT_ASKED =
   'solved and show no buttons. Say in one short line that you thanked them; the goal stays ' +
   'open until the owner says it is done.';
 
+/** #8779 b (rule 34): the runs that sent a helper's thank-you through thank_helper. */
+const runThankedAHelper = new Set<string>();
+
 function thankedThisRun(runId: string | undefined): boolean {
-  if (runId === undefined) return false;
-  return saysAHelperHelped(runOwnerLine.get(runId) ?? '');
+  return runId !== undefined && runThankedAHelper.has(runId);
 }
+
+/**
+ * D756 (the tester's 48874): „<helper>-ის პასუხი დამეხმარა" thanks that helper at
+ * once — no card, no question. #8779 b (rule 34): the model reads that the owner
+ * means it; the server no longer matches „helped" words.
+ */
+const THANK_HELPER_TOOL: AnthropicTool = {
+  name: 'thank_helper',
+  description:
+    "When the owner says a helper's answer helped them, send that helper the thank-you at " +
+    'once: pass the name the owner used. No question and no card after it — the goal stays ' +
+    'open until the owner says it is done. Only the owner can ask for it, in their own words.' +
+    ' WHEN: the owner says that a person who answered them helped.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      helper_name: { type: 'string', description: 'The helper, as the owner named them' },
+    },
+    required: ['helper_name'],
+  },
+};
+
+const THANKS_NOT_SENT =
+  'Not sent: no single helper who answered the owner and was not thanked yet matches that ' +
+  'name. Ask the owner whom they mean, in one line.';
 
 /** The owner's line is an order to ask people it names (3928). */
 function ownerLineNamesPeopleToAsk(ownerLine: string): boolean {
@@ -10448,6 +10475,7 @@ function clearRunState(runId: string): void {
   runsThatProposedAPlan.delete(runId);
   runHeldTools.delete(runId);
   runGrantedTheGoal.delete(runId);
+  runThankedAHelper.delete(runId);
 }
 
 /**
@@ -12909,6 +12937,13 @@ async function executeToolCall(
       return getTopConnectors(userId, input['limit'] as number | undefined);
     case 'get_curiosity_queue':
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
+    case 'thank_helper': {
+      if (ownerAbsent) return { thanked: false, error: THANKS_NOT_SENT };
+      const thanked = await thankHelperByName(userId, String(input['helper_name'] ?? ''));
+      if (!thanked) return { thanked: false, error: THANKS_NOT_SENT };
+      if (runId !== undefined) runThankedAHelper.add(runId);
+      return { thanked: true };
+    }
     case 'respond_to_thanks_loop_offer':
       return respondToThanksLoopOffer(userId, input['consented'] === true);
     case 'correct_contact_fact': {
@@ -17407,6 +17442,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   RESPOND_TO_INVITE_CAMPAIGN_TOOL,
   GET_CURIOSITY_QUEUE_TOOL,
   RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
+  THANK_HELPER_TOOL,
   STOP_CONTACTING_TOOL,
   RESUME_CONTACT_TOOL,
   EXCLUDE_CONTACT_TOOL,
@@ -18586,13 +18622,6 @@ export async function processChat(
       console.warn(`[pasted-list] run ${runId}: not kept:`, (err as Error).message);
       return null;
     });
-  }
-  // D756: „<helper>-ის პასუხი დამეხმარა" thanks that helper at once — no card, no question.
-  if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
-    void thankHelperNamedIn(userId, userMessage).catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.warn(`[helper-thanks] run ${runId}: not thanked:`, (err as Error).message),
-    );
   }
   // Ticket 12 Task 46 (D151): what the user typed is evidence the reply may
   // name; tool results join it as they arrive, web-search snippets excepted.

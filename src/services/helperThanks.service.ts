@@ -112,21 +112,15 @@ export async function thankForSolvedGoal(askerUserId: string, taskId: number): P
 
 /**
  * D756's third path: „ნატოს პასუხი დამეხმარა" typed in the owner's own chat,
- * the goal still open (the tester's 48874). The line must say „helped", not
- * deny it, and name exactly one helper who answered the owner and has not
- * been thanked — by the first word of the name the owner saved them under.
+ * the goal still open (the tester's 48874). #8779 b (rule 34, the founder 4 Nov
+ * 19:07): no „helped" word list — the model reads that the owner means it and
+ * calls thank_helper with the helper's name. The name must match exactly one
+ * helper who answered the owner and has not been thanked — by the first word of
+ * the name the owner saved them under.
  */
-const HELPED_RE =
-  /(დამეხმარა|დაგვეხმარა|გამომადგა|გამოგვადგა|helped\s+(?:me|us)|was\s+(?:very\s+)?helpful|помог|me\s+ayudó)/iu;
-const NOT_HELPED_RE =
-  /(არ\s+(?:დამეხმარა|დაგვეხმარა|გამომადგა|გამოგვადგა)|didn['’]?t\s+help|did\s+not\s+help|не\s+помог|no\s+me\s+ayudó)/iu;
 const HELPED_LOOKBACK_DAYS = 30;
 const HELPED_CANDIDATES = 20;
 const MIN_NAME_CHARS = 3;
-
-export function saysAHelperHelped(line: string): boolean {
-  return HELPED_RE.test(line) && !NOT_HELPED_RE.test(line);
-}
 
 interface AnsweredBy {
   readonly ask_id: number;
@@ -143,8 +137,8 @@ function lineNames(line: string, name: string | null): boolean {
     .some((word) => word.startsWith(first));
 }
 
-export async function thankHelperNamedIn(askerUserId: string, line: string): Promise<boolean> {
-  if (!saysAHelperHelped(line)) return false;
+export async function thankHelperByName(askerUserId: string, name: string): Promise<boolean> {
+  if (name.trim() === '') return false;
   const answered = await query<AnsweredBy>(
     `SELECT DISTINCT ON (ta.to_user_id) ta.id AS ask_id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name
        FROM task_asks ta
@@ -157,7 +151,7 @@ export async function thankHelperNamedIn(askerUserId: string, line: string): Pro
     [askerUserId, HELPED_LOOKBACK_DAYS, HELPED_CANDIDATES],
     QUERY_TIMEOUT_MS,
   );
-  const named = answered.rows.filter((row) => lineNames(line, row.helper_name));
+  const named = answered.rows.filter((row) => lineNames(name, row.helper_name));
   return named.length === 1 ? sendHelperThanks(askerUserId, named[0].ask_id) : false;
 }
 

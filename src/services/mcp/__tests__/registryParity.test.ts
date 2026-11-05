@@ -24,6 +24,8 @@ import * as path from 'path';
 // neither set fails the build — this still catches the exact
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
+  thank_helper:
+    '#8779 b (5 Nov): replaces the in-app „helped" word trigger; in-app first, like send_answer_to_asker',
   close_open_question:
     '#8746 (4 Nov): closes a question asked of the owner; in-app and WhatsApp first, like send_answer_to_asker',
   save_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
