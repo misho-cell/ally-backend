@@ -4,7 +4,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone, phoneDigits } from '../phone';
-import { OwnerTie, OwnerTieReason, ownerTiesTo, tieToShow } from '../ownerTies';
+import { learnedClose, OwnerTie, OwnerTieReason, ownerTiesTo, tieToShow } from '../ownerTies';
 import { labelAtChainEnd, labelsAlongChain } from '../chainLabels';
 import { memberMiddles } from '../memberPaths.service';
 import {
@@ -438,8 +438,9 @@ export function withWarmth(
   warmerAt: number | null,
   links: ReadonlyMap<string, LinkColours>,
   targetPhone: string,
+  learned = false,
 ): WarmPath {
-  const warm = isWarmRoute(path, firstLinkColours(path, targetPhone, links));
+  const warm = isWarmRoute(path, firstLinkColours(path, targetPhone, links), learned);
   if (warmerAt === null) return { ...path, warm };
   if (index === 0) return { ...path, warm, route: RouteRole.Shortest };
   return index === warmerAt ? { ...path, warm, route: RouteRole.WarmerLonger } : { ...path, warm };
@@ -563,10 +564,14 @@ export async function findWarmPath(
     coloursOfFirstLinks(userId, reached, targetPhone),
   ]);
   // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
+  // #8845 (2b): a first bridge who has helped the owner often is warm for the order, unshown.
+  const learnedOf = (path: WarmPath): boolean =>
+    learnedClose(ties.get(phoneDigits(path.bridges[0]?.phone ?? '')));
   const ordered = inWorkOrder(
     inColourOrder(bridgeOrdered, targetPhone, links),
     (path) => firstLinkColours(path, targetPhone, links),
     MAX_PATHS,
+    learnedOf,
   );
   const named = await namedAlongTheChain(Number(userId), ordered.routes);
   const paths = named.map((path, index) =>
@@ -576,6 +581,7 @@ export async function findWarmPath(
       ordered.warmerAt,
       links,
       targetPhone,
+      learnedOf(path),
     ),
   );
   const warmerLonger = ordered.warmerAt !== null;

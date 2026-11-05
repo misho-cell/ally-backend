@@ -31,17 +31,32 @@ function isClose(colour: AllyColour | null): boolean {
   return colour !== null && CLOSE_COLOURS.includes(colour);
 }
 
-/** Warm: the owner is close to the first bridge, or that bridge holds the next person close. */
-export function isWarmRoute(route: OrderableRoute, link: LinkColours | undefined): boolean {
-  const ownTie = isWarmTie(route.bridges[0]?.owner_tie);
+/**
+ * Warm: the owner is close to the first bridge — said, stored, or learned from
+ * their help (#8845 2b, `learned`) — or that bridge holds the next person close.
+ */
+export function isWarmRoute(
+  route: OrderableRoute,
+  link: LinkColours | undefined,
+  learned = false,
+): boolean {
+  const ownTie = learned || isWarmTie(route.bridges[0]?.owner_tie);
   return ownTie || (link !== undefined && (isClose(link.ownerColour) || link.bridgeHoldsClose));
 }
 
 /** How warm, for ordering only — never shown. */
-export function routeWarmth(route: OrderableRoute, link: LinkColours | undefined): number {
-  const tie = isWarmTie(route.bridges[0]?.owner_tie) ? WARM_TIE_WEIGHT : 0;
+export function routeWarmth(
+  route: OrderableRoute,
+  link: LinkColours | undefined,
+  learned = false,
+): number {
+  const tie = learned || isWarmTie(route.bridges[0]?.owner_tie) ? WARM_TIE_WEIGHT : 0;
   return (link?.weight ?? 0) + tie;
 }
+
+/** Whether the owner's tie to a route's first bridge was learned from behaviour. */
+type LearnedOf<T> = (route: T) => boolean;
+const NOTHING_LEARNED = (): boolean => false;
 
 export interface RoutesInWorkOrder<T> {
   readonly routes: T[];
@@ -56,19 +71,18 @@ export interface RoutesInWorkOrder<T> {
 function warmerLonger<T extends OrderableRoute>(
   ranked: readonly T[],
   linkOf: (route: T) => LinkColours | undefined,
+  learnedOf: LearnedOf<T>,
 ): T | null {
   const [shortest] = ranked;
   if (shortest === undefined) return null;
-  const floor = routeWarmth(shortest, linkOf(shortest));
+  const warmthOf = (route: T): number => routeWarmth(route, linkOf(route), learnedOf(route));
+  const floor = warmthOf(shortest);
   let best: T | null = null;
   for (const route of ranked) {
-    const warmth = routeWarmth(route, linkOf(route));
-    const qualifies = route.hops > shortest.hops && isWarmRoute(route, linkOf(route));
-    if (
-      qualifies &&
-      warmth > floor &&
-      (best === null || warmth > routeWarmth(best, linkOf(best)))
-    ) {
+    const warmth = warmthOf(route);
+    const qualifies =
+      route.hops > shortest.hops && isWarmRoute(route, linkOf(route), learnedOf(route));
+    if (qualifies && warmth > floor && (best === null || warmth > warmthOf(best))) {
       best = route;
     }
   }
@@ -84,8 +98,9 @@ export function inWorkOrder<T extends OrderableRoute>(
   ranked: readonly T[],
   linkOf: (route: T) => LinkColours | undefined,
   max: number,
+  learnedOf: LearnedOf<T> = NOTHING_LEARNED,
 ): RoutesInWorkOrder<T> {
-  const warmer = warmerLonger(ranked, linkOf);
+  const warmer = warmerLonger(ranked, linkOf, learnedOf);
   if (warmer === null || max < 2) return { routes: ranked.slice(0, max), warmerAt: null };
   const [shortest, ...rest] = ranked;
   const routes = [shortest, warmer, ...rest.filter((route) => route !== warmer)].slice(0, max);
