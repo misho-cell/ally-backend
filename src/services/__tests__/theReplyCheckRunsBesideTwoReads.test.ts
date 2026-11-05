@@ -8,7 +8,9 @@ describe('the reply check runs beside the two reads that do not need it', () => 
   it('starts the waiting-requests read and the goal read before the check', () => {
     const early = chat.indexOf('const requestsEarly = requestsToDeliver(');
     const goal = chat.indexOf('const openTaskForPlanAgain =');
-    const check = chat.indexOf(': await moderateReply(cleanedFinal, userId);');
+    const check = chat.indexOf(
+      ': await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));',
+    );
     expect(early).toBeGreaterThan(-1);
     expect(goal).toBeGreaterThan(-1);
     expect(early).toBeLessThan(check);

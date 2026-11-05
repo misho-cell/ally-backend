@@ -440,6 +440,7 @@ import {
 } from './block.service';
 import { normalizePhone } from './phone';
 import { moderateReply } from './moderation.service';
+import { EarlyVerdict, startEarlyModeration, verdictForShown } from './earlyModeration';
 import {
   applyOfficeholderGate,
   clearRunEvidence,
@@ -18655,6 +18656,8 @@ export async function processChat(
       ? await answerNonMemberNamed(userId, threadId, userMessage, runId, intent)
       : null;
   if (nonMember !== null) return nonMember;
+  // #8524: the goal step's 1.0-1.4 s split, so a retest shows which part costs it.
+  steps.mark('before_checks');
   // 3170: „who of mine is NOT a <word>" names a few who are not, from the server.
   const notTagged =
     !ownerAbsent && thread.type === 'regular'
@@ -18713,6 +18716,7 @@ export async function processChat(
     ? await answerThanksTap(userId, threadId, userMessage, runId, intent)
     : null;
   if (thanksSettled !== null) return thanksSettled;
+  steps.mark('checks');
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
@@ -19291,6 +19295,15 @@ export async function processChat(
   // events and the cliffhanger nudge — persist as kind 'event' so they never
   // render as words the user wrote (ticket 5 item B1: the nudge appeared in the
   // DOM as the user's own message and the assistant answered IT).
+  const moderationSkipped =
+    !ownerAbsent && !runIsOwnersFirstLine.has(runId) && isToolFreeSmallTalk(userMessage);
+  // Only where the owner waits for the reply: a system run often ends quietly, unchecked.
+  const earlyVerdict: EarlyVerdict | null =
+    moderationSkipped || ownerAbsent
+      ? null
+      : startEarlyModeration(withoutInvisibleCharacters(finalText), (text) =>
+          moderateReply(text, userId),
+        );
   await saveRunTrail(userId, threadId, pending);
   lap(postRun, 'trail');
 
@@ -19589,10 +19602,9 @@ export async function processChat(
     getPendingRequestsForMediator(userId),
   );
   requestsEarly.catch(() => undefined);
-  const verdict =
-    !ownerAbsent && !runIsOwnersFirstLine.has(runId) && isToolFreeSmallTalk(userMessage)
-      ? { safe: true }
-      : await moderateReply(cleanedFinal, userId);
+  const verdict = moderationSkipped
+    ? { safe: true }
+    : await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));
   lap(postRun, 'moderation');
   let replySafe = verdict.safe;
   if (!replySafe) {
