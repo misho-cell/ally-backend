@@ -1595,13 +1595,17 @@ export async function mcpGetPendingUpdates(
    * breakdown and the rule that goes with it, in the tool's own description.
    * Best-effort: a breakdown that cannot be read leaves the count alone.
    */
-  const heldByKind =
+  /**
+   * #8748 („7 waiting, only 4 in the categories"): the total counted rows put off
+   * to a later day and the breakdown did not. As in the app, the total now comes
+   * off the same rows as the breakdown; only a read that failed or overflowed
+   * keeps the separate count.
+   */
+  const heldWhole =
     morePending > 0
       ? await heldUpdatesWaiting(userId)
           .then((rows) =>
-            rows.length > HELD_ROWS_READ_LIMIT
-              ? null
-              : breakdownExcluding(rows, NOTHING_NAMED).by_kind,
+            rows.length > HELD_ROWS_READ_LIMIT ? null : breakdownExcluding(rows, NOTHING_NAMED),
           )
           .catch((error: unknown) => {
             // eslint-disable-next-line no-console
@@ -1644,8 +1648,8 @@ export async function mcpGetPendingUpdates(
   ];
   return {
     updates: items,
-    more_pending: morePending,
-    ...(heldByKind !== null && { more_pending_by_kind: heldByKind }),
+    more_pending: heldWhole === null ? morePending : heldWhole.count,
+    ...(heldWhole !== null && { more_pending_by_kind: heldWhole.by_kind }),
     ...(alreadyShown !== null && { already_shown: alreadyShown }),
   };
 }
