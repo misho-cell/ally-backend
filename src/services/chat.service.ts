@@ -108,7 +108,6 @@ import { AskChoice, choicesProblem, parseAskChoices, withoutLaterButton } from '
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
-import { asksToReopen } from './reopenIntent';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
 import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
@@ -10365,6 +10364,11 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
 const runLastCaption = new Map<string, string>();
 /** The owner's own line this run answers; absent on a run the system started. */
 const runOwnerLine = new Map<string, string>();
+
+/** #8779 (rules 31, 32): the run answers a line the owner typed — not a wake, not a system run. */
+function ownersOwnTurn(runId: string): boolean {
+  return (runOwnerLine.get(runId) ?? '').trim() !== '';
+}
 /**
  * #8813 (Lika, 4 Nov): a WhatsApp line with no quoted message goes to the
  * conversation we last wrote to her about — her goal's new plan. There her
@@ -12128,12 +12132,9 @@ async function executeToolCall(
         return { updated: false, error: GOAL_CLOSE_NOT_ASKED };
       }
       // RW-012 B (goal 20759): a goal the owner closed was reopened a minute later by the
-      // run's own follow-up, and woke a day after to write to him. Only his own word reopens it.
-      if (
-        status === 'open' &&
-        runId !== undefined &&
-        !asksToReopen(runOwnerLine.get(runId) ?? '')
-      ) {
+      // run's own follow-up, and woke a day after to write to him. Only his own turn reopens it.
+      // #8779 b (rule 32): no reopen words — in the owner's turn the model reads his meaning.
+      if (status === 'open' && runId !== undefined && !ownersOwnTurn(runId)) {
         const current = await getTaskById(taskIdToUpdate).catch(() => null);
         if (current?.status === 'closed') {
           // eslint-disable-next-line no-console
