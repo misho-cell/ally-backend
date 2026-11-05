@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 5 Nov, 04:50Z (d8f1d08d live; side findings note
 
 ## OPEN
 
+### 5 Nov, 04:52Z — re 04:50Z: the thread ids from tester 82833 (fictional seats)
+
+- **Cross-goal leak card:** thread 80172. The same run also has the third-person card.
+- **Third-person / mixed-script card:** 80165.
+- **Relay lines:**
+  - 80164: the wrong speaker.
+  - 80169: „… გეუბნება".
+  - 80171: „გამოგიგზავნის" after the number was sent.
+- **Daily-cap hold:** 80166.
+
 ### 5 Nov, 04:22Z — tester 82833: #8912 RETEST PASS 3/3 (tested); four side findings for #8947 / #8949
 
 **#8912 retest PASS 3/3 → tested.**
