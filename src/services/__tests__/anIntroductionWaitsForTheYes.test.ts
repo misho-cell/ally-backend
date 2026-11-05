@@ -24,7 +24,11 @@ describe('#8946: an introduction goes only on the owner’s word', () => {
       ownerLines: ['ლიკა ოსეფაშვილს ჰკითხე, იცნობს თუ არა ელექტრიკოსს'],
     };
     expect(introductionMayGo(askedOnly)).toBe(false);
-    expect(introductionMayGo({ ...askedOnly, approvedPlanNamesTheGoBetween: true })).toBe(false);
+  });
+
+  /** Misho, 5 Nov: an approved plan is the delegation, and it covers the introduction. */
+  it('goes through a go-between an approved plan asks, without asking again', () => {
+    expect(introductionMayGo({ ...none, approvedPlanNamesTheGoBetween: true })).toBe(true);
   });
 
   it('goes when the owner answered after the answer and named the go-between', () => {
