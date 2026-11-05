@@ -74,3 +74,12 @@ describe('B7–B9: introduction refusals under an approved plan', () => {
     );
   });
 });
+
+describe('B4, structural: a person named on an on_named: ask step', () => {
+  it('passes the outside_plan wall through the step’s own rule', () => {
+    const asks = source('taskAsks.service.ts');
+    const at = asks.indexOf("reason: 'outside_plan',");
+    const wall = asks.slice(asks.lastIndexOf('if (', at), at);
+    expect(wall).toContain('!(await namedOnAnAskStep(taskId, toName))');
+  });
+});

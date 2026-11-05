@@ -1,4 +1,5 @@
 import { notePlanAskSent } from './planAdvance.service';
+import { namedOnAnAskStep } from './planAdvance.service';
 import { netaiMember } from './netaiMembership';
 import {
   PACE_UNTIL_SEEN_ON,
@@ -1918,7 +1919,9 @@ async function createAskNow(
   if (
     !verdict.allowed &&
     parentAskId === undefined &&
-    !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone))
+    !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone)) &&
+    // K9 B4 (stage 2's helper): a person an answer named on an on_named: ask step is in the plan.
+    !(await namedOnAnAskStep(taskId, toName))
   ) {
     return {
       sent: false,
