@@ -5,9 +5,49 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 09:20Z (#8779 group b step 1 tonight). Box read to 83029.
+Last TO_OPS.md section handled: 5 Nov, 09:20Z (#8779 group b step 1 tonight). Box read to 83097.
 
 ## OPEN
+
+### 5 Nov, 09:25Z — URGENT: tester 83063-83097. A stray server line went to 10 real members; #8978 (asks not reaching WhatsApp); the card is still rewritten; #8977 parked
+
+**1. URGENT (83097): a fixed server line was written into old helper threads at 09:06-09:08Z.**
+- The line reads „[helper] შენს რჩევას ჯერ კიდევ მიჰყვება." It came with no model run (only a text step) and no deploy at that hour, so it looks like a scheduled job: a wake, a re-raise or a thanks loop.
+- The founder got it on his phone in four old helper threads from 27 Oct. It did not show on his PC.
+- **Ops read-only check:** the line appears 83 times today, all between 09:06:18Z and 09:08:32Z, in 80 threads of 58 users. Of those, **31 rows went to 10 real members, in 28 threads**; the other 52 rows were on test seats.
+- In the same window there are 21 more assistant rows with no run_id and different text. These may be the same job.
+- **The tester asks:**
+  1. Which job wrote it? Stop it until it is fixed.
+  2. Did other real members get it? Yes: 10 (above).
+  3. Per the founder's rule, a helper hears back only on real news. „He is still following your advice" is not news, and the Georgian is unclear.
+- Also: the app on PC did not show the new line, while the phone did.
+
+**2. URGENT (83064), #8978: incoming asks and intro cards do not reach WhatsApp.**
+- The founder's WhatsApp is on: he switched it off, then on, and his own answers do come on WhatsApp.
+- But none of the phone tester's asks to him today came to WhatsApp: three asks (07:48Z, 08:52Z, 08:58Z) and one intro request, whose card shows as „pending". She sees the same on her side.
+- The tester's suspicion: incoming asks and intro cards are not pushed to WhatsApp at all, or the off→on switch leaves them off. They ask you to check the outbound WhatsApp log for the founder's account since 07:00Z.
+- **Also in those cards:**
+  - „იცნობ თუ არა [name, Latin and Georgian mixed]-ს", broken;
+  - „მოთხოვნა შენს პასუხს ცალკე საუბარში ელოდება", which is thread talk (#8977).
+
+**3. (83063) NEW #8978, from the phone tester's WhatsApp test:**
+- Other members' questions never reach her WhatsApp, so the helper and mediator cases could not run.
+- A voice note was misheard.
+- „შენით გადაწყვიტე" sent nothing.
+
+**Correction:** in the founder's 19:52Z case (#8912), the ask DID reach the third person, who gave him the number. The fault there was only the wording and the fixed close line.
+
+**4. (83063, 83095) #8977 ORCHESTRATOR: the founder says PARK it; do not build it now.**
+- His wider idea for later: one main chat with Netai, where the orchestrator opens, follows and closes the goal threads itself. That would also solve WhatsApp and MCP.
+- First the core Netai functions must work end to end.
+- #8978 stays urgent.
+- Prompt v31 went live at 13:14 local on the founder's word.
+
+**5. (83096) The question card IS rewritten on the server, also after v31.**
+- The model's ask_contact question (trace 80366) was clean: „იცნობ კარგ ფოტოგრაფს, ვისაც შემიძლია მივმართო?"
+- What the helper received (80369): „დამიკავშირდა V31L Owner-ის ასისტენტი: [helper] სჭირდება კარგი ფოტოგრაფი, იცნობ ვინმეს?" This names the reader as the one in need.
+- 80368 carried the owner's own instruction, while 80367 came through clean. 80293 had the same problem.
+- „Some layer between ask_contact and the card builds the text from the owner's line." Your 215a3c14 (tonight) should cover this. Please confirm it covers the „სჭირდება" form too.
 
 ### 5 Nov, 08:08Z — tester 82997, 82998: plate v587; a new card problem after 0259286c; a prompt-blocks budget question
 
