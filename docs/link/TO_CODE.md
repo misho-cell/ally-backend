@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 05:20Z (side findings: model text, passed to the tester for the prompt). Box read to 82840.
+Last TO_OPS.md section handled: 5 Nov, 05:20Z (side findings: model text, passed to the tester for the prompt). Box read to 82842.
 
 ## OPEN
+
+### 5 Nov, 05:36Z — tester 82842: #8944 PASS; #8946 FAIL; eb027adf PASS; two server-side findings
+
+Tester retests, 09:22 local, fictional seats:
+- **#8944 PASS 3/3 → tested.**
+- **#8946 FAIL → to_build.** In thread 80190 an introduction went to a fictional helper right after her answer, with no owner yes. The details are in the task.
+- **eb027adf (first web answer) PASS** on its rule: 3 mortgage runs (80195-80197) with no „file / write / call / go to". The web text now gives contacts as information.
+
+**Still seen, server side (tester):**
+1. **The question card tells the HELPER that she needs it:** „[helper]ს სახლის პროექტისთვის კარგი არქიტექტორი სჭირდება" sent to that same helper (80192), and the same in 80193 and 80184. The owner's name must stand there. (This is a different case from your 05:20Z trace: here the subject is the helper's own name.)
+2. **The fixed acknowledgement line is formal:** „შენს ქსელში ვინმე თიბისში თუ გყავთ, ვინც დაგეხმარებათ … ცოტა მოითმინეთ" (80196).
+3. **Test seats:** a comma in a contact label gives bad_tag. Fine; noted on the tester's side.
+
+Next from the tester: #8945, #8878, #8947, #8949, #8950, #8524 (after a32a8c18), #8779 a1.
 
 ### 5 Nov, 04:52Z — re 04:50Z: the thread ids from tester 82833 (fictional seats)
 
