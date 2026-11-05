@@ -136,8 +136,8 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 | K3 | done | 93a153be | pure rules + texts `planAdvance.ts`; DB hooks `planAdvance.service.ts`: `notePlanAskSent` (taskAsks, after the INSERT, owner's own asks only), `notePlanNamed` (requestIntroduction, after the INSERT, not direct / not forwarded), `planStepNoteForAnswers` (answer wake, note under the event), `sweepSilentSteps` (engine tick, ≤50 goals). Idempotent on retried wakes. Tests: `planAdvance.test.ts`, `planAdvance.service.test.ts` |
 | K4 | done | 3f65fcf3 | `whereWeAre.ts` (render), `whereWeAre.service.ts` (read; empty on failure); 4 lines in `chat.service.ts`: the read starts beside the prompt's `Promise.all` and is placed right before `buildTaskEngineSection`. Test: `whereWeAre.test.ts` |
 | K5 | done | fe13ba12 | migration `297_plan_delegated.sql`; `approve_task_plan` takes `delegated` (schema in `planDelegation.ts`); every approval resets it to false in the same UPDATE, the chat handler stores true after a successful approval; K4's block says so. Connector approvals stay non-delegated. Test: `planDelegation.test.ts` |
-| K7 | done | (see log) | an engine run that calls `set_task_result` is news: the push (high value → WhatsApp template) goes even while the goal is `waiting` on others; the card goes as before (`run_complete.result`). The K3 answer note tells the run to call it when the plan's result is met. Test: `aPlanResultRingsTheOwner.test.ts` |
-| K10 | todo | | |
+| K7 | done | 21a1ba4a | an engine run that calls `set_task_result` is news: the push (high value → WhatsApp template) goes even while the goal is `waiting` on others; the card goes as before (`run_complete.result`). The K3 answer note tells the run to call it when the plan's result is met. Test: `aPlanResultRingsTheOwner.test.ts` |
+| K10 | done | (see log) | with steps, `readWave` is null (no wave note, no wave move, no wave number) and `waveRoomFor` asks `planStepRoom`: the current step's person and earlier ones; the next person step once the current one is heard from or has nobody to ask; anyone further waits, with a line naming the current step. D625 (the owner named them) still passes; a failed progress read fails open to the plan wall. Plans without steps: waves exactly as before. Test: `aPlanWithStepsIsWorkedByItsSteps.test.ts` |
 | K12 | todo | | |
 
 ## How to test (fictional seats)
@@ -176,6 +176,11 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
   while the second is still out. DONE WHEN the run calls set_task_result, the result card
   shows in the goal's thread, and the owner's device gets the push (the log line
   „[push] goal N: a step" does NOT appear for that run).
+
+- K10: fictional seat, plan of steps s1 ask A, s2 ask B, s3 ask C, approved. DONE WHEN day
+  one asks only A (an ask to C is refused with „ეს ადამიანი გეგმის შემდეგ ნაბიჯზეა. ახლა
+  ნაბიჯი 1: …"), the prompt has no „## ტალღა" block, and after A's answer the run may ask B
+  (but not yet C) without the owner.
 
 ## Notes for the lead session
 

@@ -5,6 +5,9 @@ import { routeIntroductions } from './planClosedRoute';
 import { inWaveOrder, ownerGoalWords } from './waveOrder';
 import { planInForce, type PlanPerson, type StoredPlan } from './taskPlans.service';
 import type { Task } from './taskStore.service';
+import { planHasSteps } from './planSteps';
+import { notThisStepYetLine } from './planAdvance';
+import { planStepRoom } from './planAdvance.service';
 
 /**
  * #1685 (A2, D679/D680) — an approved plan asks its people in waves.
@@ -166,6 +169,8 @@ export async function readWave(
 ): Promise<WaveSnapshot | null> {
   const plan = planInForce(task);
   if (plan === null || plan.approved_at === null) return null;
+  // Autonomy stage 2, K10: a plan with steps is worked by its steps, not in waves.
+  if (planHasSteps(plan)) return null;
   const { wave, next_wave_at } = await readWaveNumber(task.id);
   const [asks, asked, ownerWords] = await Promise.all([
     readWaveAsks(task.id, wave),
@@ -275,6 +280,7 @@ export async function waveRoomFor(
   if (!plan.people_to_involve.some((p) => phoneDigits(p.phone) === digits)) {
     return { allowed: true, wave: null };
   }
+  if (planHasSteps(plan)) return stepRoomAsWaveRoom(task.id, plan, contactPhone, ownerNamedThem);
   const snapshot = await readWave(task);
   if (snapshot === null) return { allowed: true, wave: null };
   if (!snapshot.remaining.some((p) => phoneDigits(p.phone) === digits)) {
@@ -300,6 +306,21 @@ export async function waveRoomFor(
       'როცა ეს კითხვები დაიხურება, ან ჩუმი დღის გაღვიძებისას — სერვერი თვითონ გეტყვის. ' +
       'ახლა მეტს ნუ მისწერ; მფლობელს უთხარი, ვის ელოდები.',
   };
+}
+
+/**
+ * K10: the steps' gate in the waves' shape. Asks under steps carry no wave
+ * number; the person the owner named himself is never held back (D625).
+ */
+async function stepRoomAsWaveRoom(
+  taskId: number,
+  plan: StoredPlan,
+  contactPhone: string,
+  ownerNamedThem: () => Promise<boolean>,
+): Promise<WaveRoom> {
+  const room = await planStepRoom(taskId, plan, contactPhone);
+  if (room.allowed || (await ownerNamedThem())) return { allowed: true, wave: null };
+  return { allowed: false, error: notThisStepYetLine(plan, room.now) };
 }
 
 /** After an ask goes in a wave, the silent-day wake that would widen it moves a day on. */

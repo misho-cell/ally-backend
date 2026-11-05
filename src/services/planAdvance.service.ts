@@ -5,13 +5,16 @@ import {
   StepEnd,
   isForward,
   stepAfter,
+  StepRoom,
   stepAnsweredNote,
   stepForRecipient,
+  stepRoom,
   stepStartedEvent,
 } from './planAdvance';
 import {
   StepEventKind,
   moveToStep,
+  planPosition,
   recordStepEvent,
   recordStepEventOnce,
   stepOfAsk,
@@ -249,4 +252,36 @@ export async function sweepSilentSteps(wake: StepWaker, now: Date = new Date()):
     }
   }
   return moved;
+}
+
+/** Has the current step been heard from — an answer, a no, or its silence? */
+async function currentStepHeard(taskId: number, stepId: string | null): Promise<boolean> {
+  if (stepId === null) return false;
+  const result = await query<{ one: number }>(
+    `SELECT 1 AS one FROM plan_step_events
+      WHERE task_id = $1 AND step_id = $2 AND kind = ANY($3::text[])
+      LIMIT 1`,
+    [taskId, stepId, [StepEventKind.Answered, StepEventKind.Declined, StepEventKind.Silent]],
+    ADVANCE_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
+}
+
+/**
+ * K10: may this person be asked now, by the plan's steps? Fails OPEN to the
+ * plan wall that already admitted them: a progress read that fails must not
+ * stop an approved plan's ask (the person is in the plan the owner approved).
+ */
+export async function planStepRoom(
+  taskId: number,
+  plan: PlanWithSteps,
+  phone: string,
+): Promise<StepRoom> {
+  try {
+    const { currentStepId } = await planPosition(taskId);
+    return stepRoom(plan, currentStepId, await currentStepHeard(taskId, currentStepId), phone);
+  } catch (err) {
+    logFailure('step room', taskId, err);
+    return { allowed: true };
+  }
 }

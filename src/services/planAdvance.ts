@@ -253,3 +253,49 @@ export function withStepNote(
   }
   return out;
 }
+
+const PERSON_ACTIONS: ReadonlySet<StepAction> = new Set([StepAction.Ask, StepAction.Introduce]);
+
+export type StepRoom =
+  | { readonly allowed: true }
+  | { readonly allowed: false; readonly now: PlanStep | null };
+
+/** The last step index a send may reach now: the current one, or the next person step once it is done. */
+function reachableUpTo(steps: readonly PlanStep[], at: number, currentDone: boolean): number {
+  if (at >= 0 && !currentDone) return at;
+  const next = steps.findIndex((s, i) => i > at && PERSON_ACTIONS.has(s.action));
+  return next === -1 ? steps.length - 1 : next;
+}
+
+/**
+ * K10: with steps, the plan's order replaces the waves' own limits. A person
+ * may be asked when their step is the current one or an earlier one, or the
+ * next step with a person once the current step is done — heard from (an
+ * answer, a no, silence) or a step with nobody to ask. Anyone further on waits
+ * for the server to reach their step. Structure only: no words are read.
+ */
+export function stepRoom(
+  plan: PlanWithSteps,
+  currentId: string | null,
+  currentHeard: boolean,
+  phone: string,
+): StepRoom {
+  const steps = stepsOf(plan);
+  const at = steps.findIndex((s) => s.id === currentId);
+  const current = at >= 0 ? steps[at] : null;
+  const done = currentHeard || (current !== null && !PERSON_ACTIONS.has(current.action));
+  const upTo = reachableUpTo(steps, at, done);
+  if (steps.some((s, i) => i <= upTo && stepAsksPhone(s, phone))) return { allowed: true };
+  return { allowed: false, now: steps[Math.max(0, at)] ?? null };
+}
+
+/** The refusal the run reads when it reaches past the plan's current step. */
+export function notThisStepYetLine(plan: PlanWithSteps, now: PlanStep | null): string {
+  const words = ADVANCE_WORDS.ka;
+  const current =
+    now === null ? '' : ` ახლა ნაბიჯი ${stepNumber(plan, now.id)}: ${stepBody(now, words)}.`;
+  return (
+    `ეს ადამიანი გეგმის შემდეგ ნაბიჯზეა.${current} მის ნაბიჯზე სერვერი თვითონ გადაგიყვანს — ` +
+    'უარზე, სიჩუმეზე ან პასუხის შემდეგ, გეგმის წესით. მფლობელს ამაზე არაფერს ეკითხები.'
+  );
+}
