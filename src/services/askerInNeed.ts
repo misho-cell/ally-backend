@@ -73,3 +73,28 @@ export function withAskerAsTheOneInNeed(
   const re = new RegExp(`\\b${escapeRe(base)}${ENGLISH_NEEDS_RE}`, 'iu');
   return question.replace(re, (_whole, verb: string) => `${asker} ${verb}`);
 }
+
+/**
+ * Tester 82998 (thread 80293, after 0259286c): the model asked „იცნობ კარგ
+ * ელექტრიკოსს, ვისი რეკომენდაციაც შეგიძლია?" and the editor sent the reader
+ * „ლაშა დოლიძეს იცნობ კარგ ელექტრიკოსს?" — the owner's „ask Lasha" glued in
+ * front of Lasha's own question. Whether the reader's own name stands in a text,
+ * in either alphabet.
+ */
+export function namesTheReader(text: string, readerName: string | null): boolean {
+  const name = readerName?.trim() ?? '';
+  if (name === '') return false;
+  const georgian = georgianReaderPattern(name);
+  if (georgian !== null && new RegExp(georgian, 'u').test(text)) return true;
+  const base = nameBase(name);
+  return base.length >= MIN_STEM && new RegExp(`\\b${escapeRe(base)}\\b`, 'iu').test(text);
+}
+
+/** The editor may not write the reader's name into their question when the draft had none. */
+export function editAddsTheReader(
+  draft: string,
+  edited: string,
+  readerName: string | null,
+): boolean {
+  return namesTheReader(edited, readerName) && !namesTheReader(draft, readerName);
+}
