@@ -13,11 +13,10 @@ import { query as _query } from '../../db/postgres/client';
 import { saveThreadMessage as _save } from '../threads.service';
 import { sendPushNotification as _push } from '../notification.service';
 import {
-  saysAHelperHelped,
   sendHelperThanks,
   settleThanksTap,
   thankForSolvedGoal,
-  thankHelperNamedIn,
+  thankHelperByName,
 } from '../helperThanks.service';
 import { againChoices, thankChoices, thanksTapOf, ThanksTap } from '../helperThanksCards';
 
@@ -214,15 +213,13 @@ describe('a goal closed as solved (§113.1, D756)', () => {
 });
 
 /** D756's third path (the tester's 48874): „ნატოს პასუხი დამეხმარა", the goal still open. */
+/**
+ * D756 (48874): „ნატოს პასუხი დამეხმარა" thanks that helper at once. #8779 b
+ * (rule 34): the model reads that the owner means it and calls thank_helper with
+ * the name; the server no longer matches „helped" words.
+ */
 describe('the owner says in chat that a helper helped', () => {
-  it('reads „helped" and never „did not help"', () => {
-    expect(saysAHelperHelped('ნატოს პასუხი დამეხმარა — ზაზამ ონკანი შეაკეთა')).toBe(true);
-    expect(saysAHelperHelped('Nato’s answer helped me a lot')).toBe(true);
-    expect(saysAHelperHelped('ნატოს პასუხი არ დამეხმარა')).toBe(false);
-    expect(saysAHelperHelped('ნატომ მიპასუხა')).toBe(false);
-  });
-
-  it('thanks the one answered helper the line names', async () => {
+  it('thanks the one answered helper the name matches', async () => {
     routeSend(true);
     mockQuery.mockImplementationOnce(() =>
       Promise.resolve(
@@ -232,7 +229,7 @@ describe('the owner says in chat that a helper helped', () => {
         ]),
       ),
     );
-    expect(await thankHelperNamedIn('42', 'ნატოს პასუხი დამეხმარა')).toBe(true);
+    expect(await thankHelperByName('42', 'ნატოს')).toBe(true);
     expect(mockSave).toHaveBeenCalledWith(
       900,
       77,
@@ -241,17 +238,21 @@ describe('the owner says in chat that a helper helped', () => {
     );
   });
 
-  it('thanks nobody when the line names no answered helper, or says nothing helped', async () => {
+  it('thanks nobody when the name matches no answered helper, or is empty', async () => {
     mockQuery.mockResolvedValueOnce(rows([{ ask_id: 17002, helper_name: 'ლევან ხელოსანაძე' }]));
-    expect(await thankHelperNamedIn('42', 'ნატოს პასუხი დამეხმარა')).toBe(false);
-    expect(await thankHelperNamedIn('42', 'გამარჯობა')).toBe(false);
+    expect(await thankHelperByName('42', 'ნატო')).toBe(false);
+    expect(await thankHelperByName('42', '  ')).toBe(false);
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  it('runs on the owner’s own line, never on an event', () => {
+  it('is the model’s thank_helper tool, in the owner’s own turn only', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain("if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {");
-    expect(chat).toContain('void thankHelperNamedIn(userId, userMessage).catch(');
+    expect(chat).toContain("name: 'thank_helper',");
+    const handler = chat.slice(chat.indexOf("case 'thank_helper': {"));
+    expect(handler.slice(0, 400)).toContain(
+      'if (ownerAbsent) return { thanked: false, error: THANKS_NOT_SENT };',
+    );
+    expect(chat).not.toContain('thankHelperNamedIn');
   });
 });
 
@@ -270,9 +271,9 @@ describe('a run that thanked a helper asks nothing more', () => {
     );
   });
 
-  it('knows such a run by the owner’s own line', () => {
+  it('knows such a run by the tool it called, not by the owner’s words', () => {
     const fn = chat.slice(chat.indexOf('function thankedThisRun('));
-    expect(fn.slice(0, 300)).toContain("saysAHelperHelped(runOwnerLine.get(runId) ?? '')");
+    expect(fn.slice(0, 300)).toContain('runThankedAHelper.has(runId)');
   });
 });
 
