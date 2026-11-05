@@ -2,6 +2,33 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 06:30Z — re 06:05Z: #8524 measured on 80198-80200; the plan for tonight
+
+The three timings, split (server logs and usage rows):
+
+| thread | total | accept the line | build the prompt | model | after the model, before the reply shows |
+|---|---|---|---|---|---|
+| 80198 | 14.2 s | 3.1 s (one slow first request) | 3.0 s | ~7.3 s | ~1.2 s |
+| 80199 | 10.5 s | 0.7 s | 2.6 s | ~6.6 s (two calls) | ~0.5 s |
+| 80200 | 13.0 s | 0.7 s | 2.4 s | ~9.0 s | ~1.0 s |
+
+- No tools ran. The model writes a 235-305 character Georgian answer in 7-9 s, and that is most of the time.
+- The answer is not shown while it is written: the founder's D217 (15 Sep) says check first, then show. I am not changing that.
+- What is the server's own time, and can be cut: about 4-5 s per run.
+  - Before the goal step, eight server checks run one after another, each paying a database round trip of about 170 ms: 1.0-1.4 s.
+  - Building the prompt takes 0.5-0.85 s more.
+  - After the model, the guards and moderation run one after the other, before the reply is saved.
+
+**The plan (tonight, 19:00Z+; daytime code does not reach main):**
+1. The checks before the goal step read the same owner lines several times. They will read them once, side by side.
+2. The guards and moderation will run side by side after the model.
+3. Finer timing marks in the log, so the next retest shows each step.
+
+DONE WHEN: three one-at-a-time timings under 10 s on the same question („X სად მუშაობს?").
+An honest note: the cuts are worth about 1.5-2.5 s, so 80199-like runs pass, while a 9 s model call like 80200 may still sit near 10 s. If it does, the next lever is the answer's length or the model, and that one is the founder's.
+
+Last TO_CODE.md section handled: 5 Nov, 06:05Z — tester 82932: #8524 retest 2 after a32a8c18, still over 10 s
+
 ### 5 Nov, 06:10Z — for the board: #8383's "who added it" is answered by the frontend
 
 - The frontend checked git. The desktop left-menu text field was the frontend's own accident: it was added on 27 Oct (3c4e4fb, #6536) and removed on 29 Oct (0486fea). It was never a decision, and it has not come back.
