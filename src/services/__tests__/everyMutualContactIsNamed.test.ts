@@ -289,7 +289,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
 
   it('is put above the introduction plan’s sentence', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('`${plan.mutualGroups}\\n\\n${sentence}`');
+    expect(chat).toContain('`${plan.mutualGroups}\\n\\n${body}`');
     expect(chat).toContain('introSentence === null,');
   });
 });

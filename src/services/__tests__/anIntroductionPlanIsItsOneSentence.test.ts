@@ -13,9 +13,12 @@ describe('an introduction plan is its one sentence and one question', () => {
   it.each([
     'დამელოდე, სანამ დაადასტურებ.',
     'დაელოდე ჩემს კითხვას და დამიდასტურე, როცა მზად იქნები.',
-  ])('a reply without the plan („%s") gives way to the server’s sentence', (reply) => {
-    expect(planReplyText(reply, INTRODUCTION, 'ka')).toBe(`${SERVER}\n\nდავიწყო?`);
-  });
+  ])(
+    'a reply that names nobody („%s") keeps its words; the server’s sentence follows (#8779 c)',
+    (reply) => {
+      expect(planReplyText(reply, INTRODUCTION, 'ka')).toBe(`${reply}\n\n${SERVER}\n\nდავიწყო?`);
+    },
+  );
 
   it('keeps run 1’s own clean sentence, which names whom it introduces', () => {
     const own =
@@ -23,13 +26,13 @@ describe('an introduction plan is its one sentence and one question', () => {
     expect(planReplyText(`${own}\n\nდავიწყო?`, INTRODUCTION, 'ka')).toBe(`${own}\n\nდავიწყო?`);
   });
 
-  it('leaves a plan without the plan sentence as before: the news leads (the tester’s 1110)', () => {
+  it('a plan that writes to nobody adds no sentence under the news (#8779 c)', () => {
     const other = {
       text: 'ჯერ ვეძებ, ვინ შეძლებს ამაში დახმარებას, და ჯერ არავის ვწერ.',
       names: [],
     };
     expect(planReplyText('სამი ნოტარიუსი ვიპოვე.', other, 'ka')).toBe(
-      `სამი ნოტარიუსი ვიპოვე.\n\n${other.text}\n\nდავიწყო?`,
+      'სამი ნოტარიუსი ვიპოვე.\n\nდავიწყო?',
     );
   });
 });

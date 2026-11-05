@@ -1,5 +1,4 @@
 import { planInSentences, TaskPlan } from '../taskPlans.service';
-import { introPlanOnly } from '../planJustification';
 import { OwnerTieReason } from '../ownerTies';
 import { introTargetSentence } from '../introTargetSentence';
 
@@ -33,21 +32,6 @@ describe('a plan with a close bridge', () => {
     expect(text).toContain('Not on Netai — if you like, I will write the invitation for you: Nika');
     expect(text).not.toContain('I will talk to');
     expect(text).not.toContain('(your family)');
-  });
-
-  it('is said in the server’s sentence, not the model’s own without the note', () => {
-    const server = planInSentences(
-      plan([{ name: 'ნიკა', tie: OwnerTieReason.SaidClose, reach: 'ok' }]),
-      'ka',
-    );
-    const reply = 'ნიკას ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?';
-    expect(introPlanOnly(reply, { text: server, names: ['ნიკა'] })).toBe(`${server} დავიწყო?`);
-  });
-
-  it('leaves the model’s own sentence when the server has nothing more to say', () => {
-    const server = planInSentences(plan([{ name: 'ნიკა', reach: 'ok' }]), 'ka');
-    const reply = 'ნიკას ასისტენტს დაველაპარაკები და შევეცდები, მოვაგვარო. დავიწყო?';
-    expect(introPlanOnly(reply, { text: server, names: ['ნიკა'] })).toBe(reply);
   });
 });
 
