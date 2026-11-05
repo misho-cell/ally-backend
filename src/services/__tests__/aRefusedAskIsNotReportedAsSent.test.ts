@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ASK_REFUSED_THIS_RUN_NUDGE, claimsAnAskWasSent } from '../replyGuards';
+import { ASK_REFUSED_THIS_RUN_NUDGE } from '../replyGuards';
 
 /**
  * #7229 (the tester's audit: 63406, 63823, 63413): every ask a run tried was
@@ -23,7 +23,7 @@ describe('a send claimed after every ask in the run was refused', () => {
     const body = guard.slice(0, guard.indexOf(';'));
     expect(body).toContain('runAskRefused.has(runId)');
     expect(body).toContain('!runAskSent.has(runId)');
-    expect(body).toContain('claimsAnAskWasSent(finalText)');
+    expect(body).toContain('claimsAnAskWasSent(claims)');
     expect(body).toContain("runModes.get(runId) !== 'incoming_ask'");
   });
 
@@ -31,10 +31,5 @@ describe('a send claimed after every ask in the run was refused', () => {
     expect(chat).toContain('? ASK_REFUSED_THIS_RUN_NUDGE');
     expect(chat).toContain('      claimedARefusedAsk ||');
     expect(ASK_REFUSED_THIS_RUN_NUDGE).toContain('ამ ნაბიჯში ყველა გაგზავნა უარყოფილი იყო');
-  });
-
-  it('reads „I wrote" as a claim and „I could not send" as none', () => {
-    expect(claimsAnAskWasSent('ომიკოს ასისტენტს მივწერე.')).toBe(true);
-    expect(claimsAnAskWasSent('ომიკოს ასისტენტთან ვერ გავგზავნე.')).toBe(false);
   });
 });

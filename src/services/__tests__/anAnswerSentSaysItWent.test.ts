@@ -60,7 +60,7 @@ describe('the reply after the send says the answer went', () => {
     expect(chat).toContain('effectiveFinal = withAnswerSentLineOnce(');
     expect(chat).toContain('await answerSentAlreadySaid(threadId),');
     const clear = chat.slice(chat.indexOf('function clearRunState'));
-    expect(clear.slice(0, 1400)).toContain('runAnswerSent.delete(runId)');
+    expect(clear.slice(0, clear.indexOf('\n}\n'))).toContain('runAnswerSent.delete(runId)');
   });
 });
 

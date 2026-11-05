@@ -1,71 +1,34 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { offerClaimWithoutTool, offerNotSavedLine } from '../offerClaim';
+import { ClaimKind, OwnerAsk } from '../replyClaims.service';
+import { claimsRead } from './helpers/replyClaims';
 
-/** 3796 (box 48569): „დავიმახსოვრე შენი შეთავაზება" with no save_offer call. */
+/**
+ * 3796 (box 48569): „დავიმახსოვრე შენი შეთავაზება" with no save_offer call.
+ * #8779 c: the readings are the small model's; the tool is the server's check.
+ */
 describe('a reply that says an offer was saved', () => {
-  const owner =
-    'ჩემი შეთავაზება სხვა წევრებისთვის: სტუმარმასპინძლობა აჭარაში. დაიმახსოვრე როგორც შეთავაზება.';
   const claim = 'დავიმახსოვრე შენი შეთავაზება: სტუმარმასპინძლობა აჭარაში.';
+  const offered = claimsRead({ [ClaimKind.OfferSaved]: [claim] }, [OwnerAsk.OffersOwnService]);
 
   it('is caught when save_offer did not run', () => {
-    expect(offerClaimWithoutTool(claim, ['search_by_tag'], owner)).toBe(true);
+    expect(offerClaimWithoutTool(offered, ['search_by_tag'])).toBe(true);
   });
 
   it('stands when save_offer ran', () => {
-    expect(offerClaimWithoutTool(claim, ['save_offer'], owner)).toBe(false);
+    expect(offerClaimWithoutTool(offered, ['save_offer'])).toBe(false);
   });
 
-  it('leaves a saved profile line alone — no offer word on either side', () => {
-    expect(
-      offerClaimWithoutTool('დავიმახსოვრე, რომ ბუღალტერი ხარ.', [], 'ბუღალტერი ვარ, დაიმახსოვრე'),
-    ).toBe(false);
+  it('is left alone when the owner offered nothing of their own (#8218)', () => {
+    expect(offerClaimWithoutTool(claimsRead({ [ClaimKind.OfferSaved]: [claim] }), [])).toBe(false);
   });
 
-  it('leaves a read-back question alone — it says nothing was saved', () => {
-    expect(
-      offerClaimWithoutTool('ასე ჩავწერო შენი შეთავაზება: „სტუმარმასპინძლობა აჭარაში"?', [], owner),
-    ).toBe(false);
-  });
-
-  it('is caught when the reply uses the verb (box 48874, onboarding run)', () => {
-    const verb = 'დავიმახსოვრე: შენ სხვა წევრებს სთავაზობ იურიდიულ კონსულტაციას თბილისში.';
-    expect(offerClaimWithoutTool(verb, [], owner)).toBe(true);
-  });
-
-  it('is caught when the reply names only the service (box 48975, onboarding run)', () => {
-    const bare = 'დავიმახსოვრე: იურიდიული კონსულტაცია უძრავი ქონების გარიგებებზე თბილისში.';
-    expect(offerClaimWithoutTool(bare, [], owner)).toBe(true);
-  });
-
-  it('leaves a reply alone when the owner named an offer but asked for nothing to be kept', () => {
-    expect(
-      offerClaimWithoutTool('დავიმახსოვრე, რომ ბუღალტერი ხარ.', [], 'რა შეთავაზებები მაქვს?'),
-    ).toBe(false);
-  });
-
-  it('leaves „polite" alone — it shares the root, not the meaning', () => {
-    expect(
-      offerClaimWithoutTool('დავიმახსოვრე, თავაზიანად ვუპასუხებ.', [], 'რა შეთავაზებები მაქვს?'),
-    ).toBe(false);
-  });
-
-  it('leaves a helper’s „offer them to him" alone (#8218, tester 77127)', () => {
-    const helper = 'ჯერ არავინ ვიცი, დაიმახსოვრე და თუ ვინმე გამოჩნდა, შესთავაზე';
-    expect(
-      offerClaimWithoutTool('დავიმახსოვრე, თუ ვინმე გამოჩნდა, გეტყვი.', ['save_user_note'], helper),
-    ).toBe(false);
-  });
-
-  it('still catches the owner offering in the first person', () => {
-    const own = 'შემიძლია შევთავაზო იურიდიული კონსულტაცია, დაიმახსოვრე';
-    expect(offerClaimWithoutTool('დავიმახსოვრე: იურიდიული კონსულტაცია.', [], own)).toBe(true);
-  });
-
-  it('is caught in English too', () => {
-    expect(
-      offerClaimWithoutTool('I saved your offer.', [], 'Save this as my offer: logistics in Poti'),
-    ).toBe(true);
+  it('is left alone when the reply claims no offer saved', () => {
+    const profile = claimsRead({ [ClaimKind.Saved]: ['დავიმახსოვრე.'] }, [
+      OwnerAsk.OffersOwnService,
+    ]);
+    expect(offerClaimWithoutTool(profile, [])).toBe(false);
   });
 
   it('gives the owner the truth and one confirm button', () => {
@@ -86,7 +49,7 @@ describe('a reply that says an offer was saved', () => {
 
   it('runs in the owner’s turn, before the buttons pass the editor', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const guard = chat.indexOf('offerClaimWithoutTool(finalText, toolNamesUsed');
+    const guard = chat.indexOf('offerClaimWithoutTool(claimsNow, toolNamesUsed)');
     const editor = chat.indexOf('choices = await checkedOwnerButtons(finalText, choices');
     expect(guard).toBeGreaterThan(0);
     expect(guard).toBeLessThan(editor);

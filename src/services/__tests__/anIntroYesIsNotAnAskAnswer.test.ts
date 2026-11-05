@@ -4,7 +4,6 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { pendingIntroInMediatorThread } from '../introduction.service';
-import { claimsToHavePassedItOn } from '../replyGuards';
 
 /**
  * #1783 (tester 41317, conv 40658): her „yes, only Saturday morning" was sent
@@ -40,12 +39,5 @@ describe('the answer tool while a request is open', () => {
     expect(body.indexOf('openIntroHere')).toBeLessThan(body.indexOf("input['confirmed']"));
     expect(chat).toContain('Call respond_to_introduction with it — a yes ');
     expect(chat).toContain('connects them (D709: never ask how)');
-  });
-});
-
-describe('the sent-claim guard', () => {
-  it('catches „პასუხი გაიგზავნა" in a run that sent nothing', () => {
-    expect(claimsToHavePassedItOn('პასუხი გაიგზავნა.')).toBe(true);
-    expect(claimsToHavePassedItOn('ჯერ არაფერი გაიგზავნა.')).toBe(false);
   });
 });

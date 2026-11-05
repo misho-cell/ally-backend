@@ -1,77 +1,25 @@
 import { RunLanguage } from './runLanguage';
 import { NotDeletedLine } from './deletionClaim';
+import { ClaimKind, makesClaim, OwnerAsk, ReplyClaims } from './replyClaims.service';
 
 /**
- * 3796 (box 48569, 1 of 3 since 86e7e26): „ჩემი შეთავაზება … დაიმახსოვრე
- * როგორც შეთავაზება" was answered „დავიმახსოვრე შენი შეთავაზება…" with no
- * tool called, and the offers list stayed empty. Like 3302's „deleted": a reply
- * may say an offer was saved only when save_offer ran in that run. Otherwise
- * the owner reads the truth, with a button to confirm, and the next run saves
- * it the ordinary way. Both halves read the offer word, so a saved profile
- * line („დავიმახსოვრე, რომ ბუღალტერი ხარ") is never touched.
+ * 3796 (box 48569): „ჩემი შეთავაზება … დაიმახსოვრე როგორც შეთავაზება" was
+ * answered „დავიმახსოვრე შენი შეთავაზება…" with no tool called, and the offers
+ * list stayed empty. A reply may say an offer was saved only when save_offer ran
+ * in that run; otherwise the owner reads the truth, with a button to confirm.
+ * #8218: only when the owner offers something of their own — a helper's „offer
+ * them to him" is not. #8779 c: both readings are the small model's
+ * (replyClaims.service); whether save_offer ran is the server's check.
  */
-/**
- * The verb's root, not only the noun's: box 48874's reply was „დავიმახსოვრე:
- * შენ სხვა წევრებს სთავაზობ…" — „სთავაზობ" carries no „შეთავაზ" and the guard
- * let it through. „თავაზიანი" (polite) shares the root and is left out.
- */
-const OFFER_WORD_RE = /(თავაზ(?!იან)|\boffer|предлож|предлага|\boferta|\bofrec)/iu;
-
-/**
- * #8218 (tester 77127, prompt v13, 17 of 17 runs): a helper's „ჯერ არავინ ვიცი,
- * დაიმახსოვრე და თუ ვინმე გამოჩნდა, შესთავაზე" — „offer them to him" — was
- * taken for the owner offering a service, and the note Netai really saved was
- * replaced by „not saved". The OWNER's line counts only when it offers
- * something of their own: the noun („შეთავაზება") or a first-person verb
- * („ვთავაზობ", „შევთავაზო"). The imperative to Netai („შესთავაზე", „სთავაზე")
- * carries neither.
- */
-const OWNER_OFFERS_RE = /(შეთავაზებ|ვთავაზ|\boffer|предлож|предлага|\boferta|\bofrec)/iu;
-
-const SAVED_WORDS: readonly string[] = [
-  'დავიმახსოვრე',
-  'შევინახე',
-  'შენახულია',
-  'ჩავიწერე',
-  'saved',
-  'noted',
-  'remembered',
-  'сохранил[аи]?',
-  'запомнил[аи]?',
-  'guardé',
-  'guardad[oa]',
-];
-
-const CLAIMS_SAVED_RE = new RegExp(
-  `(?<![\\p{L}\\p{M}])(?:${SAVED_WORDS.join('|')})(?![\\p{L}\\p{M}])`,
-  'iu',
-);
-
-/**
- * Box 48975 (fresh seat, onboarding run): „…დაიმახსოვრე როგორც შეთავაზება."
- * was answered „დავიმახსოვრე: იურიდიული კონსულტაცია…" — the reply named the
- * service, not an offer, so a guard that waited for the offer word in the
- * reply never fired. When the owner's own line names an offer AND asks for it
- * to be kept, any „saved" without save_offer is the false claim.
- */
-const ASKS_TO_SAVE_RE =
-  /(დაიმახსოვრე|შეინახე|ჩაიწერე|დაამატე|\bsave\b|\bremember\b|\bkeep\b|\badd\b|запомни|сохрани|добавь|guarda|recuerda|añade)/iu;
-
 const SAVE_OFFER_TOOL_NAME = 'save_offer';
 
-function replySpeaksOfTheOffer(reply: string, ownerLine: string): boolean {
-  return OFFER_WORD_RE.test(reply) || ASKS_TO_SAVE_RE.test(ownerLine);
-}
-
 export function offerClaimWithoutTool(
-  reply: string,
+  claims: ReplyClaims,
   toolNamesUsed: readonly string[],
-  ownerLine: string,
 ): boolean {
   return (
-    OWNER_OFFERS_RE.test(ownerLine) &&
-    replySpeaksOfTheOffer(reply, ownerLine) &&
-    CLAIMS_SAVED_RE.test(reply) &&
+    claims.ownerAsks.has(OwnerAsk.OffersOwnService) &&
+    makesClaim(claims, ClaimKind.OfferSaved) &&
     !toolNamesUsed.includes(SAVE_OFFER_TOOL_NAME)
   );
 }
