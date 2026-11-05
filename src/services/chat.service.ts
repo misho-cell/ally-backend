@@ -162,7 +162,6 @@ const OFFER_TOOLS_ON = true;
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
 import { isWarmTie } from './ownerTies';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
-import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
   isReminderRequestOnly,
@@ -15265,38 +15264,6 @@ async function answerGreeting(
 }
 
 /**
- * 3203: the line asks whether one saved contact knows someone, and that contact
- * is not on Netai. The server says so with the two ways left, and no model runs.
- * Null when the line is anything else.
- */
-async function answerNonMemberNamed(
-  userId: string,
-  threadId: number,
-  userMessage: string,
-  runId: string,
-  intent: RunIntent | undefined,
-): Promise<ChatResult | null> {
-  const asked = namedKnower(userMessage);
-  if (asked === null) return null;
-  const saved = await savedNonMember(userId, asked);
-  if (saved === null) return null;
-  if (intent?.alreadyStored !== true) {
-    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
-  }
-  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
-  const language = languageOfConversation(
-    userMessage,
-    spokenBefore,
-    detectRunLanguage(userMessage),
-  );
-  const answer = nonMemberAnswer(saved, language);
-  await saveMessage(userId, threadId, 'assistant', answer.text, 'message', runId, answer.choices);
-  // eslint-disable-next-line no-console
-  console.log(`[non-member] run ${runId}: answered by the server`);
-  return { reply: answer.text, language, choices: [...answer.choices], requestCreated: false };
-}
-
-/**
  * 3170: „who of mine is NOT a <word>" is answered by the server — the owner's
  * tagged contacts the ordinary search does not find for the word, a few by name
  * with their tags. Null when the line is not such a question, or nobody fits.
@@ -18603,12 +18570,6 @@ export async function processChat(
   if (approvedLine !== null) return approvedLine;
   // 2810: „that is what I needed" right after a search is that search's outcome.
   if (!ownerAbsent) void noteSearchVerdict(userId, userMessage);
-  // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.
-  const nonMember =
-    !ownerAbsent && thread.type === 'regular'
-      ? await answerNonMemberNamed(userId, threadId, userMessage, runId, intent)
-      : null;
-  if (nonMember !== null) return nonMember;
   // #8524: the goal step's 1.0-1.4 s split, so a retest shows which part costs it.
   steps.mark('before_checks');
   // 3170: „who of mine is NOT a <word>" names a few who are not, from the server.
