@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { RunLanguage } from './runLanguage';
-import { PlanWithSteps, planHasSteps, stepById } from './planSteps';
+import { PlanWithSteps, planHasSteps, stepById, stepsOf } from './planSteps';
 import {
   StepEnd,
   isForward,
@@ -283,5 +283,24 @@ export async function planStepRoom(
   } catch (err) {
     logFailure('step room', taskId, err);
     return { allowed: true };
+  }
+}
+
+/**
+ * K12: day one of a plan with steps is step one. The plan is moved to its first
+ * step (once — a retried wake finds it there) and the event names it. Null for
+ * a plan without steps, whose day one reads as before.
+ */
+export async function planDayOneEvent(taskId: number): Promise<StepEventText | null> {
+  try {
+    const state = await approvedPlanState(taskId);
+    if (state === null || !planHasSteps(state.plan)) return null;
+    const first = stepsOf(state.plan)[0];
+    if (state.current === null) await moveToStep(taskId, first.id);
+    const current = stepById(state.plan, state.current) ?? first;
+    return stepStartedEvent(state.plan, current);
+  } catch (err) {
+    logFailure('day one', taskId, err);
+    return null;
   }
 }

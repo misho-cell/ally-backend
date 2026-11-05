@@ -8,7 +8,7 @@ import {
   noteIdleReminder,
   setIdleWake,
 } from './idleWakes.service';
-import { planStepNoteForAnswers, sweepSilentSteps } from './planAdvance.service';
+import { planDayOneEvent, planStepNoteForAnswers, sweepSilentSteps } from './planAdvance.service';
 import { withStepNote } from './planAdvance';
 import { answersElsewhereNote, answersInSiblingGoals } from './answersElsewhere.service';
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
@@ -96,6 +96,8 @@ import {
 import { nextRenewalDay } from './renewalDay';
 import {
   DAY_ONE_EVENT,
+  DAY_ONE_FIRST_PASS,
+  DAY_ONE_FIRST_PASS_ON,
   DAY_ONE_FIRST_PEOPLE,
   DAY_ONE_NOT_SENT_EVENT,
   DAY_ONE_NOTHING_SENT_LINE,
@@ -1304,7 +1306,8 @@ export async function ownerSpokeRecently(
  */
 function wakeWhenFree(
   taskId: number,
-  eventText: EventText,
+  // K12: or read at wake time, when the event depends on what the goal holds then.
+  eventText: EventText | (() => Promise<EventText>),
   stillWanted: () => Promise<boolean>,
   onWoken: () => Promise<void>,
   delayMs: number,
@@ -1336,7 +1339,8 @@ function wakeWhenFree(
           console.log(`[task-engine] task ${taskId}: wake no longer wanted (attempt ${attempt})`);
           return;
         }
-        const woken = await wakeTask(taskId, eventText);
+        const text = typeof eventText === 'function' ? await eventText() : eventText;
+        const woken = await wakeTask(taskId, text);
         if (woken === 'woken') {
           // eslint-disable-next-line no-console
           console.log(`[task-engine] task ${taskId}: woken (attempt ${attempt})`);
@@ -1413,7 +1417,7 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
   void recordWake(taskId, DAY_ONE_WAKE, delayMs);
   wakeWhenFree(
     taskId,
-    DAY_ONE_EVENT,
+    () => dayOneEventFor(taskId),
     async () => {
       // Asked before the goal's own state, because a wake already run is not
       // owed however open the goal is. This is the sweeper standing down when
@@ -1471,6 +1475,21 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
     1,
     () => finishWake(taskId, DAY_ONE_WAKE),
   );
+}
+
+/**
+ * K12 (autonomy stage 2): a plan with steps starts as „ნაბიჯი 1 დაიწყო: …"
+ * instead of „the plan was just approved"; 3070's first-pass sentences stay.
+ */
+async function dayOneEventFor(taskId: number): Promise<EventText> {
+  const step = await planDayOneEvent(taskId);
+  if (step === null) return DAY_ONE_EVENT;
+  if (!DAY_ONE_FIRST_PASS_ON) return step;
+  const out = { ...step };
+  for (const language of Object.keys(out) as RunLanguage[]) {
+    out[language] = `${step[language]} ${DAY_ONE_FIRST_PASS[language]}`;
+  }
+  return out;
 }
 
 /**
