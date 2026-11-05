@@ -18,7 +18,9 @@ describe('a wake that brings an answer', () => {
   });
 
   it('counts as carrying an answer when the answer was shown first', () => {
-    expect(engine).toContain('wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer)');
+    expect(engine).toContain(
+      'wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer || carriesResult)',
+    );
     const shown = engine.slice(engine.indexOf('buildShownAnswersWakeEvent(arrived),'));
     expect(shown.slice(0, 160)).toContain('ANSWER_IS_NEWS');
     const relay = asks.slice(asks.indexOf('buildShownRelayAnswerWakeEvent(captured.fromName'));

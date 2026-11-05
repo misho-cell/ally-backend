@@ -600,7 +600,9 @@ export async function wakeTask(
       // Board #386: a quiet run wrote nothing, so there is no news to ring for.
       if (result.quiet === true) return 'woken';
       // #1255: a step of the work is not news; its line stays in the chat.
-      if (!wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer)) {
+      // Autonomy stage 2, K7: a result (set_task_result) is news even while others are awaited.
+      const carriesResult = result.taskResult !== undefined;
+      if (!wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer || carriesResult)) {
         // The tester's 39207: a seat has no push subscription, so a skipped push
         // left no trace anywhere. This line is the trace.
         // eslint-disable-next-line no-console

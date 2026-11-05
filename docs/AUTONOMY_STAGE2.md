@@ -135,8 +135,8 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 | K2 | done | 356d1deb | migration `296_plan_step_events.sql` (table + `tasks.plan_step`); `planProgress.service.ts` (record / move-in-a-transaction / read, LIMITed). `Task` row type not widened. Test: `planProgress.service.test.ts` |
 | K3 | done | 93a153be | pure rules + texts `planAdvance.ts`; DB hooks `planAdvance.service.ts`: `notePlanAskSent` (taskAsks, after the INSERT, owner's own asks only), `notePlanNamed` (requestIntroduction, after the INSERT, not direct / not forwarded), `planStepNoteForAnswers` (answer wake, note under the event), `sweepSilentSteps` (engine tick, ≤50 goals). Idempotent on retried wakes. Tests: `planAdvance.test.ts`, `planAdvance.service.test.ts` |
 | K4 | done | 3f65fcf3 | `whereWeAre.ts` (render), `whereWeAre.service.ts` (read; empty on failure); 4 lines in `chat.service.ts`: the read starts beside the prompt's `Promise.all` and is placed right before `buildTaskEngineSection`. Test: `whereWeAre.test.ts` |
-| K5 | done | (see log) | migration `297_plan_delegated.sql`; `approve_task_plan` takes `delegated` (schema in `planDelegation.ts`); every approval resets it to false in the same UPDATE, the chat handler stores true after a successful approval; K4's block says so. Connector approvals stay non-delegated. Test: `planDelegation.test.ts` |
-| K7 | todo | | |
+| K5 | done | fe13ba12 | migration `297_plan_delegated.sql`; `approve_task_plan` takes `delegated` (schema in `planDelegation.ts`); every approval resets it to false in the same UPDATE, the chat handler stores true after a successful approval; K4's block says so. Connector approvals stay non-delegated. Test: `planDelegation.test.ts` |
+| K7 | done | (see log) | an engine run that calls `set_task_result` is news: the push (high value → WhatsApp template) goes even while the goal is `waiting` on others; the card goes as before (`run_complete.result`). The K3 answer note tells the run to call it when the plan's result is met. Test: `aPlanResultRingsTheOwner.test.ts` |
 | K10 | todo | | |
 | K12 | todo | | |
 
@@ -172,6 +172,11 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
   `delegated: true`, `tasks.plan_delegated` is true, and the next goal run's „სად ვართ"
   ends with „მფლობელმა გადაგაბარა …". Approve a later version with a plain „კი" → false.
 
+- K7: fictional seat, a plan of two asks; the first helper's answer meets the result
+  while the second is still out. DONE WHEN the run calls set_task_result, the result card
+  shows in the goal's thread, and the owner's device gets the push (the log line
+  „[push] goal N: a step" does NOT appear for that run).
+
 ## Notes for the lead session
 
 - Migration number 296 was the next free one on this branch's base. If main took 296
@@ -182,6 +187,9 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
   (after the introduction INSERT), `taskEngine.service.ts` (`deliverOwedAnswers` event and
   `tick`). The source-text test `theAnswersAreOnScreenFirst.test.ts` was updated to the
   wrapped event call.
+- K7: the result card is still only the live `run_complete` event (as before this branch);
+  a card the owner was not looking at survives as the reply text plus the push. Storing the
+  card itself would be a client change, so it is not in this branch.
 - A step event whose wake falls in quiet hours is held like any other wake; the step has
   already moved, so the next run reads it in the „where we are" block (K4).
 
