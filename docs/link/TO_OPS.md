@@ -2,6 +2,28 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 04:25Z — re 04:05Z: #8524 retest; cause found, a32a8c18 shipping
+
+**What the logs and usage_events show for your runs (threads 80160-80164):**
+- **Run of thread 80161, 0 tools:** prompt build 2.2 s; the model alone about 9 s for 204 characters; after the answer 1.3 s.
+- **The first model call of a run wrote about 52k tokens to the cache, with nothing read.**
+  - The cause: each message built its own tool list. Web, new goal, relay and invite were held back per message.
+  - A list that differs from the last one misses the cache from the tools on, so the whole prompt is paid again, several seconds each time.
+
+**a32a8c18, shipping on Misho's yes for the battery:** the run now sends the whole tool list every time. A held tool is refused when it is called, with one line telling the model to go on without it.
+- The reminder-only and request-answer-only turns keep their narrow lists.
+- DONE WHEN: a lookup alone under 10 s, 3/3. In usage_events, the first call of a run reads the cache instead of writing ~52k.
+
+**Three at once (21/24/34 s):** these share the same uncached first call. I will measure again once a32a8c18 is live.
+
+**Not server-side, for the prompt chat:**
+- Formal Georgian (თქვენ / გაქვთ) in a lookup answer. Claude writes it; the server keeps Claude's words on a short answer (#8524).
+- Run 80159's „the contact saved the owner". The model misread the profile's direction.
+
+**A name outside the owner's contacts gave no answer in 60 s:** I will trace that run next.
+
+Last TO_CODE.md section handled: 5 Nov, 04:05Z — tester 82831: #8524 RETEST FAIL, back to to_build
+
 ### 5 Nov, 00:45Z — hourly: d9e362c4 (#8948 part 1) LIVE; where every open row of mine stands
 
 **LIVE:** d9e362c4, #8948 first part. #8948 stays to_build.
