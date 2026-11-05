@@ -6754,3 +6754,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Why:** the new 3-day silence wake (#7760) would otherwise wake every goal with an ask already 3–14 days quiet at the first sweep, in one burst of messages to real owners about old asks. Only silences that begin after the deploy are told.
 - **Rows:** asks only; no message is sent, nothing else changes.
 - **UNDO:** `UPDATE task_asks SET silence_told_at = NULL WHERE silence_told_at = '<the deploy time>';` (then the backlog is told at the next sweep), or `ALTER TABLE task_asks DROP COLUMN silence_told_at;` together with reverting bba13a87.
+
+## 109 · AUTONOMY STAGE 3: FIVE PROMPT BLOCKS REPLACED (Misho, his chat, 5 Nov ~17:00Z: „კი", on the 12-point summary of P1–P12)
+- **What:** `PUT /admin/prompt-blocks/:name` with `content` only, for core_shared, task_main, task_rules, qa_main and request_main. Each new text is the paste-ready file in `docs/prompt_stage3/blocks/` (stage-3 session, CHANGES.md P1–P12). Modes, model, sort order and the enabled flag stay as they are.
+- **When:** right after stage 2 (plan as steps, ship commit c9cc749b) is live, because the new text relies on steps and the „სად ვართ" block.
+- **Checked before the write:** each live block equals the 5 Nov snapshot in `docs/prompt_live_5nov/` character for character (nobody changed them since). Sizes: task_step 35,436 → 37,075 of 48,000.
+- **UNDO:** put back each block's content from `docs/prompt_live_5nov/<name>.md` with the same route (`PUT /admin/prompt-blocks/<name>` with `{"content": …}`); the store's own history (`GET /admin/prompt-blocks/<name>/history`) holds the earlier versions too.
