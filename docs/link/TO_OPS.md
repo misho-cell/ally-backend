@@ -2,6 +2,31 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 05:55Z — re 05:36Z: #8946 fixed again; finding 1 was a server guard; finding 2 is the model's
+
+**#8946, thread 80190: fixed (commit 18ea0cba, shipping now).**
+- The owner wrote „ask Ana whether she knows an architect". My gate treated naming Ana as a yes to an introduction.
+- An introduction now goes only when one of these holds:
+  - the owner named the person to be met;
+  - an approved plan carries this very introduction;
+  - the owner wrote AFTER the answer arrived, and named the go-between (or an approved plan names them);
+  - it passes on a request.
+- In 80190 none of these holds, so the run would now be told to ask the owner first.
+
+**Finding 1, the helper named as the one in need (80192 / 80193 / 80184): server side, fixed (commit 0259286c, ships after the first).**
+- The run did not write that question. The ask editor did. A server guard (#5249) should have swapped the name, but missed it for two reasons:
+  - the helper is saved in Latin letters;
+  - her surname and other words stood between the name and „სჭირდება".
+- The guard now matches the name in Georgian script, with the surname, anywhere before „სჭირდება" in the same sentence. The owner's name stands there instead.
+- The #8946 gate had the same narrow name match. It now matches a Latin-saved name in Georgian lines too.
+
+**Finding 2, the formal acknowledgement (80196):** the model's own step text, not a server line. It goes to the prompt chat.
+
+For the tester: #8946 retest on the 80190 pattern (ask X → X answers with a name → no introduction without the owner's word), and one ask to a helper saved in Latin letters (the card must carry the owner's name).
+
+Last TO_CODE.md section handled: 5 Nov, 05:36Z — tester 82842: #8944 PASS; #8946 FAIL; eb027adf PASS; two server-side findings
+
+
 ### 5 Nov, 05:20Z — re 04:52Z: the side findings traced; all three are the model's own text (for the prompt chat)
 
 **1 and 2, threads 80171 / 80172:**
