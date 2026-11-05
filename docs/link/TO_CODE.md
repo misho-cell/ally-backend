@@ -5,9 +5,39 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 19:35Z (daily-check items 2 and 3 fixed, 75ae265b live). Box read to 83549.
+Last TO_OPS.md section handled: 5 Nov, 19:35Z (daily-check items 2 and 3 fixed, 75ae265b live). Box read to 83557.
 
 ## OPEN
+
+### 5 Nov, 19:52Z — tester 83557: FROM TORNIKE, prompt and server conflicts to resolve before the 8-case test run
+
+The full list with sentence numbers is in the tester file NETAI_PROMPT_MISHO_CONFLICTS_2026-11-05 (Tornike sends it). Below is the short version, close to verbatim; names in probe quotes are replaced by [name].
+
+**A. Inside the prompt (Misho's side):**
+1. **Intro without a plan.** task_main says „when a helper names someone, that is inside the plan: call request_introduction in this run". But a direct ask („ჰკითხე [name]ს…") has no plan, and core says a person outside the plan needs his word. Your 18ea0cba gate refuses it, so there may be a loop. Limit it to an approved plan with an on_named rule; without a plan, ask once.
+2. **Choice vs order.** Core still says „when there are options, name them (… ვკითხო თუ …?)" and gives the approved form „ვის დავუკავშირდე პირველად?". The plan model, though, says Netai orders the steps and the owner approves once.
+3. **Route order.** Tornike's rule (#8845) is SHORTEST route first, then the warmer longer one, then the rest. The prompt says „prefer people the owner holds close… best first".
+4. **Parallel or one by one.** „one answer does not close the other routes" vs steps one after another; the Vision allows several routes at once.
+5. **A goal request ran in quick_answer mode** (probe 80785), so task_main (EVERY RUN, სად ვართ, UPDATES) was not in that run at all.
+
+**B. Prompt vs server (code's side):**
+1. **Does the server store and run the plan the prompt writes?** That plan has result_when, ordered steps with on_silence/on_no/on_named, ask_owner and „სად ვართ". The connector's propose_task_plan still takes only solved_when, routes, people_to_involve and never_contact. If the internal tool is the same, the step rules have nothing behind them, and a goal sits after a no or a silence. Please confirm or build.
+2. **„დავიწყო ასე?" was still produced** (80785). The create_task result still says „end with one question in words", and an older note says „სიტყვით ჰკითხე, დავიწყოთ თუ არა".
+3. **An answer with a number** gets the server note „მფლობელს ის უკვე აქვს და თავად დაუკავშირდება, გაცნობა აღარ შესთავაზო". The prompt says: finish the job, arrange the meeting, never leave a task for him.
+4. **The note „none of the member contacts was named" misfired** in 80785, although [name] was named. That caused an extra call and a second message.
+5. **A curiosity line was glued after the plan:** „სხვათა შორის, [name] სად მუშაობს? თუ არ იცი, არა უშავს."
+6. **Two working lines:** the server's „ვმუშაობ… / ჯერ კიდევ ვეძებ…" lines plus the prompt's own first line.
+7. **Two weekly senders:** the prompt sends one line a week, and the server re-raise job (#8625) sends too.
+
+**C. Duplicates:** „when a question is right" appears in 5 places, approval in 3, and „never tell him to do it himself" in 3. Please keep one home for each.
+
+**D. Vision:**
+- several routes at once;
+- by default, widen after 1 day and change method after 3 days;
+- a weekly summary with costs and auto-answers;
+- ask_main says „never offer to answer similar questions automatically", while the Vision says „automatic replies approved once".
+
+**Ask:** post on the board when fixed. The tester then runs the 8 real cases: TBC mortgage, 20 companies, Daily insurance, ARCi director, Erekle→Gigi, electrician no-then-name, shrimp, and lookup/status/close. Ask Misho where needed; deploy on his yes.
 
 ### 5 Nov, 18:45Z — daily check: threw.sh clean; why.sh shows 38 first-time reasons, 7 on real members
 
