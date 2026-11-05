@@ -7,7 +7,8 @@ import {
   isClosingQuestionVariant,
   planInYourReplyNote,
   replyAsksForApproval,
-  replyCarriesPlan,
+  replyNamesEveryone,
+  planReplyText,
   withClosingQuestion,
 } from '../chat.service';
 
@@ -64,31 +65,24 @@ describe('the plan in plain sentences', () => {
   });
 });
 
-describe('does the reply carry the plan', () => {
-  const plan = { text: 'x', names: ['Netai Test 50', 'Netai Test 54'] };
+/** #8779 c: the one structural check — everyone the plan writes to is named. */
+describe('does the reply name everyone the plan writes to', () => {
+  const plan = { text: 'x', names: ['Lika Pirveli', 'Nika Meore'] };
 
-  it('yes, when it names everyone and says more than a line', () => {
-    const reply =
-      'I will look among your own contacts first and then the second circle. I would ask ' +
-      'Netai Test 50 directly, and Netai Test 54 once they join. Shall I go ahead?';
-    expect(replyCarriesPlan(reply, plan)).toBe(true);
+  it('yes, when it names everyone', () => {
+    expect(replyNamesEveryone('I would ask Lika directly, and Nika after her.', plan)).toBe(true);
+  });
+
+  it('yes, with the names in Georgian script and a case ending (the tester’s 963)', () => {
+    expect(replyNamesEveryone('ჯერ ლიკას ვკითხავ, მერე ნიკას.', plan)).toBe(true);
   });
 
   it('no, when it only asks for the yes', () => {
-    expect(replyCarriesPlan('Shall I go ahead with this plan?', plan)).toBe(false);
-  });
-
-  /** The tester's 963: the names in another script, the plan said, and the question at its end. */
-  it('yes, when it ends the plan on the agreed question, whatever script the names are in', () => {
-    const reply =
-      'გეგმა ასეთია: მოგვარებულად ჩავთვლი, როცა გეყოლება სანდო იურისტი. ამისთვის ვკითხავ ' +
-      'ნეტაი ტესტ 50-ს და ნეტაი ტესტ 54-ს.\n\nდავიწყო?';
-    expect(replyCarriesPlan(reply, plan)).toBe(true);
+    expect(replyNamesEveryone('Shall I go ahead with this plan?', plan)).toBe(false);
   });
 
   it('no, when someone the plan will ask is missing', () => {
-    const reply = `${'I will look among your contacts first, then the second circle. '.repeat(2)}Netai Test 50 first.`;
-    expect(replyCarriesPlan(reply, plan)).toBe(false);
+    expect(replyNamesEveryone('I would ask Lika first.', plan)).toBe(false);
   });
 });
 
@@ -235,19 +229,22 @@ describe('a closing question in other words', () => {
 
 /** The tester's 1110 (33975): the server's plan line went before the findings. */
 describe('the plan the server adds', () => {
-  it('follows the findings and ends with the question', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      "reply.trim() === '' ? plan.text : `${reply.trimEnd()}\\n\\n${plan.text}`,",
+  const plan = { text: 'ლიკას ასისტენტს დაველაპარაკები.', names: ['Lika Pirveli'] };
+
+  it('goes under the model’s words when they leave someone out, ending on the question', () => {
+    expect(planReplyText('სამი ნოტარიუსი ვიპოვე.', plan, 'ka')).toBe(
+      `სამი ნოტარიუსი ვიპოვე.\n\n${plan.text}\n\nდავიწყო?`,
     );
   });
 
-  // 2909 (conv 44115): the reply was a dropped stage direction; the plan alone
-  // under its buttons still ends on „დავიწყო?".
-  it('ends on the question when the plan stands alone', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).not.toContain('? plan.text\n    : withClosingQuestion(');
-    expect(chat).toMatch(/return withClosingQuestion\(\s+reply\.trim\(\) === '' \? plan\.text/u);
+  it('stands alone, on the question, when the reply is empty (2909)', () => {
+    expect(planReplyText('', plan, 'ka')).toBe(`${plan.text}\n\nდავიწყო?`);
+  });
+
+  it('is not added when the model’s words name everyone (#8779 c)', () => {
+    expect(planReplyText('ლიკას ვკითხავ, იცნობს თუ არა ნოტარიუსს.', plan, 'ka')).toBe(
+      'ლიკას ვკითხავ, იცნობს თუ არა ნოტარიუსს.\n\nდავიწყო?',
+    );
   });
 });
 

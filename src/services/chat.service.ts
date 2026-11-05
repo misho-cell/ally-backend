@@ -111,13 +111,7 @@ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
 import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
-import {
-  carriesPlanSentence,
-  introPlanOnly,
-  withoutMatchJustification,
-  withPlanSentence,
-  withOnePlanSentence,
-} from './planJustification';
+import { namesTheReader } from './askerInNeed';
 import {
   FoundThroughBridge,
   foundThroughBridges,
@@ -342,7 +336,6 @@ import {
   planInSentences,
   withAskablePeopleOnly,
   PLAN_CLOSING_QUESTION,
-  planAskSentenceOff,
   planClosingQuestionOff,
   EARLIER_PLAN_CLOSING_QUESTIONS,
   nobodyCanBeWrittenTo,
@@ -5256,48 +5249,6 @@ async function dropStepsTheReplyRepeats(
   }
 }
 
-/** A run writes a handful of steps; this many is more than any run has. */
-const MAX_RUN_STEPS_READ = 30;
-
-/**
- * 48247 (thread 46960): the plan went out twice, 11 s apart — the model's
- * in-between text after propose_task_plan, saved as a step („…ასისტენტებს
- * დაველაპარაკები … დავიწყო?"), and then the final reply, which told the plan
- * again in other words („კიდევ ერთი ადამიანი" where the step named Davit), so
- * the word-for-word tidy-up above could not see it. When the reply carries
- * the plan sentence, a step of the same run that carries it too is the same
- * plan said early, and it goes. Best-effort, like the tidy-up above.
- */
-async function dropPlanStepsTheReplyCarries(
-  threadId: number,
-  runId: string | null,
-  reply: string,
-): Promise<void> {
-  if (!runId || !carriesPlanSentence(reply)) return;
-  try {
-    const steps = await query<{ id: string; content: string }>(
-      `SELECT id, content FROM conversations
-        WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
-        ORDER BY id LIMIT $3`,
-      [threadId, runId, MAX_RUN_STEPS_READ],
-      STEP_TIDY_TIMEOUT_MS,
-    );
-    const ids = steps.rows.filter((s) => carriesPlanSentence(s.content)).map((s) => s.id);
-    if (ids.length === 0) return;
-    // conversations.id is a uuid: as int[] this failed on every call since 9 Oct (ops, 11 Oct).
-    await query(
-      `DELETE FROM conversations WHERE id = ANY($1::uuid[])`,
-      [ids],
-      STEP_TIDY_TIMEOUT_MS,
-    );
-    // eslint-disable-next-line no-console
-    console.log(`[chat] run ${runId}: dropped ${ids.length} plan step(s) the reply tells again`);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('[chat] could not drop plan steps:', (error as Error).message);
-  }
-}
-
 /**
  * The user's OWN direct contact's number, on explicit request only. Guards:
  * the phone must be in THEIR phonebook (UserAlias under their contactId) and
@@ -8960,76 +8911,34 @@ export function replyAsksForApproval(offered: readonly string[] | null | undefin
   return (offered ?? []).some((label) => isApproveChoice(label));
 }
 
-/** Below this a reply is an announcement around a plan, not a plan. */
-const PLAN_REPLY_MIN_CHARS = 120;
-
 /**
- * Does the reply say the plan? Every person the plan will ask must be named,
- * and there must be more than a line. A reply that only asks „approve?" fails
- * both, and that is the case row 101 was about.
+ * #8779 c (the founder, 4 Nov 19:07): the server no longer rewrites the plan
+ * reply by word lists (match justifications, stage directions, a second plan
+ * sentence). It checks one thing, structurally: that the reply names everyone
+ * the plan will write to — in either alphabet, in any case ending — so the
+ * owner never approves without seeing who is written to.
  */
-export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
-  if (reply.trim().length < PLAN_REPLY_MIN_CHARS) return false;
-  // The tester's 963 (Ninia, thread 28910): the reply said the whole plan and
-  // ended on the agreed question, but wrote „ქეთევანს" and „გიორგი
-  // აბრამიშვილს" for the plan's „❤️ Ketevan" and „Giorgi Abramishvili" — so
-  // the server put its own paragraph in front and the plan was said twice.
-  // The model is told to END the plan on that question; a reply that does has
-  // written it.
-  if (Object.values(PLAN_CLOSING_QUESTION).some((question) => reply.includes(question))) {
-    return true;
-  }
-  return plan.names.every((name) => reply.includes(name));
-}
+const NOT_A_NAME_LETTER_RE = /[^\p{L}\s]/gu;
 
-/**
- * #8680 (Tornike, 4 Nov, the tester's 82572): with the plan-sentence block
- * switched off, the assistant's own sentence is the plan — the server adds
- * none. Only when that sentence names everyone the plan will ask; otherwise the
- * owner would approve without seeing who is written to, and the server's
- * sentence stays.
- */
-function ownSentenceStands(reply: string, plan: PlanForReply, language: RunLanguage): boolean {
-  if (!planAskSentenceOff(language) || reply.trim() === '') return false;
-  return plan.names.length > 0 && plan.names.every((name) => reply.includes(name));
+export function replyNamesEveryone(reply: string, plan: PlanForReply): boolean {
+  return plan.names.every((name) => namesTheReader(reply, name.replace(NOT_A_NAME_LETTER_RE, ' ')));
 }
-
 /**
- * The plan reply's text: the model's reply with the plan in it, said once and
- * ended on the agreed question.
+ * The plan reply's text: the model's reply as written; the server's plan
+ * sentence under it only when the reply leaves someone out (or is empty); the
+ * agreed question at the end when its block is on and the model asked nothing.
  */
 export function planReplyText(reply: string, plan: PlanForReply, language: RunLanguage): string {
-  // D739: an introduction plan is its one sentence and one question, on every
-  // path. 1454: nothing the model wrote before it is kept (box 53296), and a
-  // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
-  // 50065) — gives way to the server's sentence instead of standing before it.
-  if (ownSentenceStands(reply, plan, language)) {
-    const own = withOnePlanSentence(withoutMatchJustification(reply));
-    return withClosingQuestion(
-      plan.mutualGroups === undefined ? own : `${plan.mutualGroups}\n\n${own}`,
-      language,
-    );
-  }
-  if (carriesPlanSentence(plan.text)) {
-    const serverSentence = plan.introSentence ?? plan.text;
-    const sentence = withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence }));
-    return withClosingQuestion(
-      plan.mutualGroups === undefined ? sentence : `${plan.mutualGroups}\n\n${sentence}`,
-      language,
-    );
-  }
-  if (replyCarriesPlan(reply, plan)) {
-    return withClosingQuestion(
-      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
-      language,
-    );
-  }
-  // The tester's 1110 (33975): the plan line went first and the findings came
-  // after it. The news leads; the plan follows it, and the question ends it.
-  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
-  // stood alone under its buttons without „დავიწყო?". It ends on it too.
+  const own = reply.trim();
+  const serverSentence = plan.introSentence ?? plan.text;
+  const body =
+    own === ''
+      ? serverSentence
+      : replyNamesEveryone(own, plan)
+        ? own
+        : `${own}\n\n${serverSentence}`;
   return withClosingQuestion(
-    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
+    plan.mutualGroups === undefined ? body : `${plan.mutualGroups}\n\n${body}`,
     language,
   );
 }
@@ -9050,9 +8959,9 @@ function withPlanInReply(
   // reply was not asking for it to be approved. Only a reply carrying the
   // approve button is a plan reply.
   if (!replyAsksForApproval(offered)) return written;
-  if (!replyCarriesPlan(written, plan)) {
+  if (!replyNamesEveryone(written, plan)) {
     // eslint-disable-next-line no-console
-    console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+    console.warn(`[plan] run ${runId}: the reply left someone out — the server added the plan`);
   }
   return planReplyText(written, plan, runLang(runId));
 }
@@ -19793,7 +19702,6 @@ export async function processChat(
   lap(postRun, 'reply');
   // The same answer must not be on the screen twice (item H).
   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
-  await dropPlanStepsTheReplyCarries(threadId, runId, storedReply);
   lap(postRun, 'steps');
   // D348: the free answer says it was free, immediately after it and before
   // anything else the run has to deliver.
