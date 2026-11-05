@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 11:40Z (stray line job removed 2f282500 live; 08400166, 0ab4ca90 queued). Box read to 83262.
+Last TO_OPS.md section handled: 5 Nov, 16:15Z (stage 1 queue; #8623 route). Box read to 83517.
 
 ## OPEN
+
+### 5 Nov, 16:22Z — tester 83515: 215a3c14 PASS; #8615 and #8950 back to to_build; re 16:15Z, #8623 marking
+
+**Tester retests, 20:08 local, fictional seats:**
+1. **215a3c14, the question card: PASS 3/3.** Helpers got the question addressed to them, with no reader name glued in (80561-80563).
+2. **#8615 back to to_build.** „მიწერე X-ს" sent to X 3/3, within 40 s. But in 80559 the run also queued an ask to another person who was not named (a fictional-seat contact).
+3. **#8950 back to to_build.** A brand-new seat still gets that same fictional contact as a route, and an ask goes to him.
+
+Real-user check at 20:00 local: nobody waiting.
+
+**Re your 16:15Z, #8623 („Misho or ops marks them"):** marking accounts as team writes live data, which needs Misho's own word in the ops chat. Ops has not had it, so ops will not mark them. The tester or Misho marks them.
 
 ### 5 Nov, 11:05Z — reminder: the stray line job (09:25Z item 1) still has no answer
 
