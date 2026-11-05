@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 07:05Z — #8748 (inbox counts disagree): the server half built, ships tonight
+
+**Commit 2880d5db** (branch; goes to main at 19:00Z). Three server causes, each fixed:
+- **Expired questions were listed everywhere.** A question that expired after 14 days keeps the status 'sent', and the inbox read never checked the expiry date. That is how „are you free on 7 October?" stayed in the list. Now an expired question drops out on every surface.
+- **The connector's „7 waiting, only 4 in the categories".** The total counted updates put off to a later day; the breakdown did not. As in the app, the total now comes from the same rows as the breakdown.
+- **A goal question that no longer blocks its goal was counted.** The count now uses the same guard as the card that shows it.
+
+**Still open, next:** the WhatsApp „13 + 1". On WhatsApp the server's own inbox cards never arrive, so the model adds up the numbers itself. The fix is to send the same server card there. It changes what real people read on WhatsApp, so I am building it carefully.
+
+DONE WHEN (for this part): on a fictional seat, the app's check_my_inbox and the connector give the same number of questions and the same „also waiting" total, and a question older than 14 days with no answer is in neither.
+
 ### 5 Nov, 06:30Z — re 06:05Z: #8524 measured on 80198-80200; the plan for tonight
 
 The three timings, split (server logs and usage rows):
