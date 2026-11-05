@@ -1353,6 +1353,8 @@ async function createAskNow(
   anonymous?: boolean,
   /** #7628: sent in the owner's own turn, on his word — the per-person daily limit gives way. */
   ownerAskedNow?: boolean,
+  /** #8615: the owner granted this goal in this very run, on their own words. */
+  grantedInThisRun?: boolean,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1631,7 +1633,20 @@ async function createAskNow(
         `[ask] task ${taskId}: unapproved plan bypassed — the owner named this person (row 251)`,
       );
     }
-    if (!introAccepted && !ownerNamedThem && draftIsWaiting) {
+    /**
+     * #8615 (76858): the grant the plan wall itself sends the run to. Given in
+     * THIS run, on the owner's own words, it is their yes over the draft; a grant
+     * from an earlier day stays behind the draft (Task 99).
+     */
+    const grantedNow =
+      draftIsWaiting && !introAccepted && !ownerNamedThem && grantedInThisRun === true;
+    if (grantedNow) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[ask] task ${taskId}: unapproved plan passed — the owner granted it this run (#8615)`,
+      );
+    }
+    if (!introAccepted && !ownerNamedThem && !grantedNow && draftIsWaiting) {
       return {
         sent: false,
         reason: 'consent_pending',
