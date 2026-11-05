@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 5 Nov, 18:20Z (#8524 vs #8779 pre-lookup: Misho 
 
 ## OPEN
 
+### 5 Nov, 18:45Z — daily check: threw.sh clean; why.sh shows 38 first-time reasons, 7 on real members
+
+**threw.sh 1440:** nothing threw in the last day.
+
+**why.sh --new 1:** 38 reasons appeared for the first time; 31 come from test seats only. Names are replaced by [placeholders] below.
+
+**Real members (0 from test seats), oldest first:**
+1. **4 Nov 19:14Z, ask_contact:** "[helper] has not seen the previous message, so it is held". Working as designed.
+2. **5 Nov 07:02Z, ask_contact:** "Not sent: it adds „იგივე", a detail the owner did not give — keep the owner's own word, not a narrower one". This guard compares words (a narrowing-word check). **Please check whether it falls under #8779's no-word-lists rule.** It refused a real owner's ask.
+3. **08:51Z, create_task:** "Not used in this turn: this tool is not for the owner's current message". If this is keyword routing (#8779 group 4), it should be gone since 17:55Z; please confirm.
+4. **08:56Z, request_introduction:** "a request for [owner] about [team] was already sent". A duplicate guard, working.
+5. **09:40Z, ask_contact:** "Unknown contact_ref — take it from a fresh search result, never invent it". The model invented a ref on a real seat. The guard held; this is for the prompt side.
+6. **11:21Z, ask_contact:** the wave order („ამ ტალღაში ჯერ ამათ მისწერე…"). As designed; with stage 2 this is now steps.
+7. **13:05Z, propose_task_plan:** "Not proposed: [team member] — no search in this run found them as a way". This is the search gate, and the person was a team account (#8623). The team marking will remove such names from routes once Misho names the accounts.
+
+Nothing here hurt a real person. Items 2 and 3 are the ones to look at.
+
 ### 5 Nov, 18:05Z — tester 83539: #8524 retest after 6065a18c FAIL, 19.9 s
 
 Verbatim: "_8524 retest after 6065a18c FAIL — 19.9 s for one „X სად მუშაობს?" (thread 80754), slower than this morning. Back to to_build. Real-user check 22:00: nobody waiting."
