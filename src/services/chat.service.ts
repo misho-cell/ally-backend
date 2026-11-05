@@ -351,6 +351,7 @@ import {
   TaskPlan,
 } from './taskPlans.service';
 import { PLAN_STEPS_SCHEMA_PROPERTIES } from './planStepsSchema';
+import { whereWeAreSection } from './whereWeAre.service';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath, type WarmPathOutcome } from './tools/findWarmPath';
@@ -6228,6 +6229,8 @@ async function buildAgentSystemPrompt(
   // change: global, then per-account, then per-goal, then the clock.
   // 958: these six reads do not depend on each other, so they run together; one
   // after another they were the slowest part of building the prompt.
+  // Autonomy stage 2, K4: where the plan stands — read alongside, placed before the goal.
+  const whereWeAre = boundTask ? whereWeAreSection(boundTask) : Promise.resolve('');
   const [heldNote, askStates, waveNote, firstAsk, contactQuestion, noContacts] = await Promise.all([
     boundTask ? heldAsksNoteOrNothing(boundTask.id, userId) : Promise.resolve(''),
     boundTask ? askStatusSectionOrNothing(boundTask, boundAsks) : Promise.resolve(''),
@@ -6256,6 +6259,7 @@ async function buildAgentSystemPrompt(
       buildPrivateContextSection(privateContext) +
       buildInsightFieldsSection(fieldsResult.rows) +
       // Per-situation — changes when the work does.
+      (await whereWeAre) +
       (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
       heldNote +
       askStates +

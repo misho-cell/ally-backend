@@ -133,8 +133,8 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 | design | done | 52e1c4d6 | |
 | K1 | done | 7525b4cb | `planSteps.ts` (parse/structure), `planStepsText.ts` (card line), `planStepsSchema.ts` (tool schema); `parsePlan` reads `result_when`/`steps`; card + engine prompt show the steps line. Test: `planSteps.test.ts` |
 | K2 | done | 356d1deb | migration `296_plan_step_events.sql` (table + `tasks.plan_step`); `planProgress.service.ts` (record / move-in-a-transaction / read, LIMITed). `Task` row type not widened. Test: `planProgress.service.test.ts` |
-| K3 | done | (see log) | pure rules + texts `planAdvance.ts`; DB hooks `planAdvance.service.ts`: `notePlanAskSent` (taskAsks, after the INSERT, owner's own asks only), `notePlanNamed` (requestIntroduction, after the INSERT, not direct / not forwarded), `planStepNoteForAnswers` (answer wake, note under the event), `sweepSilentSteps` (engine tick, ≤50 goals). Idempotent on retried wakes. Tests: `planAdvance.test.ts`, `planAdvance.service.test.ts` |
-| K4 | todo | | |
+| K3 | done | 93a153be | pure rules + texts `planAdvance.ts`; DB hooks `planAdvance.service.ts`: `notePlanAskSent` (taskAsks, after the INSERT, owner's own asks only), `notePlanNamed` (requestIntroduction, after the INSERT, not direct / not forwarded), `planStepNoteForAnswers` (answer wake, note under the event), `sweepSilentSteps` (engine tick, ≤50 goals). Idempotent on retried wakes. Tests: `planAdvance.test.ts`, `planAdvance.service.test.ts` |
+| K4 | done | (see log) | `whereWeAre.ts` (render), `whereWeAre.service.ts` (read; empty on failure); 4 lines in `chat.service.ts`: the read starts beside the prompt's `Promise.all` and is placed right before `buildTaskEngineSection`. Test: `whereWeAre.test.ts` |
 | K5 | todo | | |
 | K7 | todo | | |
 | K10 | todo | | |
@@ -162,6 +162,11 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
   - an answer that is not a no → `answered`, the wake event names the result check,
     the step's on_named rule and the next step; the plan does not move by itself.
   - an old plan (no steps): events are recorded, wake texts are unchanged.
+
+- K4, any goal with an approved plan: DONE WHEN the run's system prompt (admin prompt
+  view / log) carries „## სად ვართ" above „## აქტიური დავალება", with the result, the
+  current step, the last event with its UTC time, the next step, and the steps that need
+  no owner question; a goal without an approved plan has no such block.
 
 ## Notes for the lead session
 
