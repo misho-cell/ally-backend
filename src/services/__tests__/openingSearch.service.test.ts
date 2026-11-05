@@ -1,3 +1,16 @@
+// #8648: the small model's name reading is its own test (wayInLooksUpOnlyRealNames);
+// here it stands in as the titles' names, so the lookup logic is what is tested.
+jest.mock('../wayInNames.service', () => ({
+  __esModule: true,
+  wayInNamesFrom: async (raw: unknown, limit: number): Promise<string[]> =>
+    (
+      jest.requireActual('../openingSearch.service') as {
+        webResultNames: (r: unknown) => string[];
+      }
+    )
+      .webResultNames(raw)
+      .slice(0, limit),
+}));
 jest.mock('../tools/webSearch', () => ({ __esModule: true, webSearch: jest.fn() }));
 jest.mock('../tools/searchSecondDegree', () => ({
   __esModule: true,
