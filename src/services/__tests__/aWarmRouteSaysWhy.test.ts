@@ -33,7 +33,7 @@ describe('the owner’s tie to a go-between', () => {
           { contact_phone: '+995500000004', total: '0.2', events: '1', kinds: ['ask_answered'] },
         ]),
       )
-      .mockResolvedValueOnce({ rows: [{ phone: '+995500000004' }] });
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000004', times: '1' }] });
     const ties = await ownerTiesTo('501', [
       '+995500000001',
       '+995500000002',
@@ -41,11 +41,16 @@ describe('the owner’s tie to a go-between', () => {
       '+995500000004',
       '+995500000005',
     ]);
-    expect(ties.get('995500000001')).toEqual({ closeness: 0.9, reason: OwnerTieReason.SaidClose });
+    expect(ties.get('995500000001')).toEqual({
+      closeness: 0.9,
+      reason: OwnerTieReason.SaidClose,
+      timesHelped: 0,
+    });
     expect(ties.get('995500000002')?.reason).toBe(OwnerTieReason.Family);
     expect(ties.get('995500000003')?.reason).toBe(OwnerTieReason.Close);
     expect(ties.get('995500000004')?.reason).toBe(OwnerTieReason.DealtWith);
-    expect(ties.get('995500000005')).toEqual({ closeness: 0.4, reason: null });
+    expect(ties.get('995500000004')?.timesHelped).toBe(1);
+    expect(ties.get('995500000005')).toEqual({ closeness: 0.4, reason: null, timesHelped: 0 });
   });
 
   it('puts the closest go-between first, keeping the order of equals', () => {

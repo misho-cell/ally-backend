@@ -79,6 +79,8 @@ export function isWarmTie(reason: unknown): boolean {
 export interface OwnerTie {
   readonly closeness: number;
   readonly reason: OwnerTieReason | null;
+  /** Distinct times they answered the owner's question or took the owner's introduction. */
+  readonly timesHelped: number;
 }
 
 /** Both spellings of each number, as the tables hold them. */
@@ -113,9 +115,12 @@ async function storedTies(userId: string, forms: readonly string[]): Promise<Sto
  * whether it was help is not. It was help to the owner only when the person
  * answered the owner's own question, or accepted the owner's own introduction.
  */
-async function helpedTheOwner(userId: string, forms: readonly string[]): Promise<Set<string>> {
-  const result = await query<{ phone: string }>(
-    `SELECT DISTINCT w.contact_phone AS phone
+async function helpedTheOwner(
+  userId: string,
+  forms: readonly string[],
+): Promise<Map<string, number>> {
+  const result = await query<{ phone: string; times: string }>(
+    `SELECT w.contact_phone AS phone, COUNT(DISTINCT w.ref) AS times
        FROM warmth_events w
       WHERE w.user_id = $1::int
         AND w.contact_phone = ANY($2::text[])
@@ -125,11 +130,30 @@ async function helpedTheOwner(userId: string, forms: readonly string[]): Promise
           OR EXISTS (SELECT 1 FROM introduction_requests ir
                       WHERE w.kind = 'intro_accepted' AND w.ref = 'intro_' || ir.id
                         AND ir.requester_user_id = $1::int))
+      GROUP BY w.contact_phone
       LIMIT $3`,
     [userId, forms, forms.length],
     QUERY_TIMEOUT_MS,
   );
-  return new Set(result.rows.map((row) => phoneDigits(row.phone)));
+  const times = new Map<string, number>();
+  for (const row of result.rows) {
+    const digits = phoneDigits(row.phone);
+    times.set(digits, (times.get(digits) ?? 0) + Number(row.times));
+  }
+  return times;
+}
+
+/**
+ * #8845 (2b), the founder 4 Nov 22:48: closeness is learned from behaviour too,
+ * for members who never had old-Ally colours. Somebody who answered the owner's
+ * own questions or took the owner's introductions this many times is a warm
+ * first bridge when routes are ordered. It stays inside: never shown, never a
+ * reason given to the model (Giorgi, G-104 — tieToShow).
+ */
+export const HELPS_THAT_MAKE_A_TIE = 2;
+
+export function learnedClose(tie: OwnerTie | undefined): boolean {
+  return tie !== undefined && tie.timesHelped >= HELPS_THAT_MAKE_A_TIE;
 }
 
 function reasonOf(
@@ -162,13 +186,14 @@ export async function ownerTiesTo(
     .filter(([, w]) => w.kinds.some((k) => DEALT_WITH_KINDS.includes(k)))
     .map(([phone]) => phone);
   const helped =
-    dealtWith.length === 0 ? new Set<string>() : await helpedTheOwner(userId, dealtWith);
+    dealtWith.length === 0 ? new Map<string, number>() : await helpedTheOwner(userId, dealtWith);
   for (const d of new Set([...storedBy.keys(), ...warmthBy.keys()])) {
     const s = storedBy.get(d);
     const w = warmthBy.get(d);
     out.set(d, {
       closeness: Number(s?.strength ?? UNKNOWN_TIE) + (w?.score ?? 0),
       reason: reasonOf(s, w?.kinds ?? [], helped.has(d)),
+      timesHelped: helped.get(d) ?? 0,
     });
   }
   return out;
