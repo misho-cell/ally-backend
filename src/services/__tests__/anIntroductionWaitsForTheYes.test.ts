@@ -51,6 +51,17 @@ describe('#8946: an introduction goes only on the owner’s word', () => {
     expect(introductionMayGo({ ...none, ownerLines: ['გიორგი ბერიძეს გამაცანი'] })).toBe(true);
   });
 
+  it('matches a go-between saved in Latin letters against the owner’s Georgian line', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        mediatorName: 'Lika Osepashvili',
+        ownerSpokeSinceTheAnswer: true,
+        ownerLines: ['კი, ლიკას სთხოვე'],
+      }),
+    ).toBe(true);
+  });
+
   it('goes when an approved plan carries this introduction', () => {
     expect(introductionMayGo({ ...none, approvedPlanIntroducesThem: true })).toBe(true);
   });

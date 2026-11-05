@@ -35,6 +35,20 @@ describe('#5249: the reader of a question is never the one in need', () => {
     expect(withAskerAsTheOneInNeed(SENT, null, 'გიორგი', 'ka')).toBe(SENT);
   });
 
+  it('reads a reader saved in Latin letters, with the surname and words before the verb', () => {
+    // Tester 82842, thread 80192, as the fictional helper received it.
+    const sent = 'ანა ლომიძეს სახლის პროექტისთვის კარგი არქიტექტორი სჭირდება, იცნობ ვინმეს?';
+    const out = withAskerAsTheOneInNeed(sent, 'Ana Lomidze', 'ნინო', 'ka');
+    expect(out).toBe('ნინოს სახლის პროექტისთვის კარგი არქიტექტორი სჭირდება, იცნობ ვინმეს?');
+  });
+
+  it('does not take a longer word that starts like the name, or a name in another sentence', () => {
+    const longer = 'ანალიზს დრო სჭირდება, იცნობ ვინმეს?';
+    expect(withAskerAsTheOneInNeed(longer, 'Ana Lomidze', 'ნინო', 'ka')).toBe(longer);
+    const apart = 'ანას მივწერე. ნინოს არქიტექტორი სჭირდება.';
+    expect(withAskerAsTheOneInNeed(apart, 'Ana Lomidze', 'ნინო', 'ka')).toBe(apart);
+  });
+
   it('is wired after the editor, on every outgoing question', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain('question: withAskerAsTheOneInNeed(');
