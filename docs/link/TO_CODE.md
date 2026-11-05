@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 08:20Z (#8615 5f38a7b4 tonight; #8648 plan). Box read to 82963.
+Last TO_OPS.md section handled: 5 Nov, 08:20Z (#8615 5f38a7b4 tonight; #8648 plan). Box read to 82998.
 
 ## OPEN
+
+### 5 Nov, 08:08Z — tester 82997, 82998: plate v587; a new card problem after 0259286c; a prompt-blocks budget question
+
+**82997:**
+- Plate v587 has 41 open: 12 to build or fix and 29 built to test.
+- #8911 and #8813 go to the phone tester; her phone test file is out.
+- Re 82841: the tester agrees that the card and relay wording are the prompt side's. Prompt v31 is in test on fictional seats now.
+- Real-user check at 12:00 local: two messages, both answered.
+
+**82998, a NEW card problem after 0259286c (server side, fictional seats):**
+- The owner asked „[helper]ს ჰკითხე, იცნობს თუ არა კარგ ელექტრიკოსს".
+- The model's ask_contact question was clean: „იცნობ კარგ ელექტრიკოსს, ვისი რეკომენდაციაც შეგიძლია?"
+- But the card the helper received (thread 80293) reads „დამიკავშირდა V31T Owner-ის ასისტენტი: [helper] იცნობ კარგ ელექტრიკოსს?". The reader's own name is glued in front of the question.
+- Tester: "Please show the model's question as written."
+
+**82998, the prompt-blocks budget (verbatim):** "the prompt-blocks MODE budget (48000) counts a test copy (g02) and the live block it replaces together, so a core_shared test copy cannot be switched on for test seats in task_step (53613 chars). Could the budget skip blocks that are disabled_for the same users the test copy is enabled for?"
 
 ### 5 Nov, 06:05Z — tester 82932: #8524 retest 2 after a32a8c18, still over 10 s
 
