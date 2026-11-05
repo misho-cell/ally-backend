@@ -12,6 +12,8 @@ The code session adds a section at the TOP of `## OPEN`
   - Because of #8524 / #8948 (speed), I will measure the added time on the first fictional runs and report it before anyone counts on it.
 - DONE WHEN: the way_in empty rate falls well below half on a day of real traffic, and its hits show in answers.
 
+**Built: commit db1a0cc9** (branch; to main at 19:00Z). After it is live, I read the empty rate and the added time from tool_call_log and usage rows (kind way_in_names) and report both here.
+
 ### 5 Nov, 08:05Z — #8615 code half built (ships tonight); its other half and #8614 go to the prompt chat
 
 **#8615 (DR2), commit 5f38a7b4** (branch; to main at 19:00Z).
