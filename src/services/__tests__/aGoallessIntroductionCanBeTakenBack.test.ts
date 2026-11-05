@@ -20,8 +20,6 @@ jest.mock('../threads.service', () => ({
 jest.mock('../debrief.service', () => ({ __esModule: true, armIntroDebrief: jest.fn() }));
 jest.mock('../taskEngine.service', () => ({ __esModule: true, startIntroOutcome: jest.fn() }));
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { getThreadsByIntroRequestId } from '../threads.service';
 import { cancelGoallessIntroductionsFromThread } from '../introduction.service';
@@ -65,13 +63,6 @@ describe('withdrawing goal-less introductions from a conversation', () => {
     expect(warn).toHaveBeenCalledWith(
       '[intro] could not withdraw requests for conversation 44221:',
       'timeout',
-    );
-  });
-
-  it('is offered by the typed stop when the conversation holds no goal', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      '? ((await introductionsWithdrawnLine(userId, threadId, stopLang)) ??\n            NOTHING_TO_STOP_LINE[stopLang])',
     );
   });
 });

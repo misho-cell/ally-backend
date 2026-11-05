@@ -708,16 +708,9 @@ async function resolveRunMode(
 import { debitRun } from './tokenWallet.service';
 import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
-import { markThreadStopped, noteRunStart, runWasStopped } from './stoppedRuns';
-import { endsWithQuestion, setThreadStatus } from './threadStatus.service';
-import {
-  stopGoal,
-  stoppedLine,
-  NOTHING_TO_STOP_LINE,
-  introductionsWithdrawnLine,
-  alreadyStoppedLine,
-} from './goalStop.service';
-import { looksLikeStopRequest } from './stopIntent';
+import { noteRunStart, runWasStopped } from './stoppedRuns';
+import { endsWithQuestion } from './threadStatus.service';
+import { stopGoal } from './goalStop.service';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
@@ -18472,138 +18465,9 @@ export async function processChat(
   // Ticket 16 Task 90: a stated need becomes a goal BEFORE the assistant
   // answers, so the run is a goal run (plan, one yes, day one) by construction
   // and not by the model's mood — five requests in two days never became one.
-  /**
-   * Ticket 20 row 113, eighth pass — the owner's stop takes effect NOW, not
-   * when the model gets round to it.
-   *
-   * The seat's reading of goal 4724: the stop was typed one second into the
-   * gpt write stage, and the model's update_task did not run until eleven
-   * seconds later — five seconds after the reply had already been stored.
-   * Every guard I built works from the moment the thread is marked; the mark
-   * was the late part.
-   *
-   * Read here, before anything else this run does, and only when the thread
-   * actually has an open goal to stop. stopGoal then closes it, cancels the
-   * asks, writes „შევაჩერე: <title>" and marks the thread — which withholds
-   * THIS run's own reply, and that is intended: the owner asked for it to
-   * stop, and the stop line is the answer.
-   */
-  if (!ownerAbsent && looksLikeStopRequest(userMessage)) {
-    // Whatever its STATUS. A paused goal's chat shows no stop button, so the
-    // typed line is the only way back — and asking the open-only question here
-    // is what left thread 16842 with nothing to answer, after which the model
-    // went looking for a goal of its own choosing and closed two real ones.
-    const running = await getGoalOnThread(threadId).catch((err: unknown) => {
-      // eslint-disable-next-line no-console
-      console.error('[stop-intent] could not read the thread’s goal:', (err as Error).message);
-      return null;
-    });
-    /**
-     * Three answers, and the SERVER gives all three — 18:51, the third strike.
-     *
-     * Leaving the other two to the model is what did the damage twice tonight.
-     * A stop in a chat with no live goal reached the founder's real goals and
-     * REASONED about it on the way: „this probably means the volleyball coach
-     * search, which looks like a test record. I am closing it." A model must
-     * never be choosing which goal a stop meant.
-     *
-     * So every case ends here, the run's reply is withheld either way, and the
-     * owner gets one true line instead of a guess.
-     */
-    /**
-     * The seat's #4061 (h): the server's own lines were Georgian in an English
-     * thread. The run's language is not settled until the history loads, forty
-     * lines below, and the stop answers before any of that — so this reads the
-     * owner's own sentence, which is the same rule languageOfConversation
-     * applies and the only evidence available this early.
-     */
-    // #2344 (Lika and Ninia, point 29): the Stop button's own short word says no
-    // language, and the reply came in English to a Georgian conversation. A line
-    // that carries none is answered in the conversation's language.
-    const stopLang = carriesLanguage(userMessage)
-      ? detectRunLanguage(userMessage)
-      : await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
-    /**
-     * The owner's own line is stored HERE, and it has to be.
-     *
-     * The ordinary path persists the user's message further down, after the
-     * prompt is built — and this block returns before reaching it. So the stop
-     * that the seat typed was never written: on reload the thread held the
-     * server's answer with nothing above it, and „there is no goal to stop in
-     * this conversation" sat there with no visible cause. Their #4260 (B),
-     * and it is a regression from the early return I added five hours ago.
-     *
-     * Before the answer, not after, so the two rows order the way they
-     * happened.
-     *
-     * Row 209: unless the route already stored it. A typed stop skips the
-     * thread queue precisely so it never waits, so the two should not be able
-     * to meet — but „they cannot meet" is a claim about two files, and the
-     * cost of it being wrong is the owner's stop appearing twice.
-     */
-    if (intent?.alreadyStored !== true) {
-      await saveMessage(userId, threadId, 'user', userMessage).catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[stop-intent] could not store the owner’s line:', (err as Error).message);
-      });
-    }
-    let said: string;
-    if (running !== null && running.status !== 'closed') {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[stop-intent] run ${runId} thread ${threadId}: the owner said stop — goal ${running.id} closed before the run`,
-      );
-      const outcome = await stopGoal(userId, running, stopLang);
-      said = outcome.said ?? stoppedLine(running.title, 0, stopLang);
-    } else {
-      said =
-        running === null
-          ? ((await introductionsWithdrawnLine(userId, threadId, stopLang)) ??
-            NOTHING_TO_STOP_LINE[stopLang])
-          : alreadyStoppedLine(running.title, stopLang);
-      // eslint-disable-next-line no-console
-      console.log(
-        `[stop-intent] run ${runId} thread ${threadId}: nothing to stop (${running === null ? 'no goal on this chat' : 'already closed'})`,
-      );
-      await saveMessage(userId, threadId, 'assistant', said).catch(() => undefined);
-      // Marked so a run already working on this thread is withheld too: the one
-      // line above is the whole answer, and a model improvising after it is
-      // exactly what closed two real goals tonight.
-      markThreadStopped(threadId);
-      /**
-       * And settle the thread, because THIS run ends here and the route's own
-       * settling is below the drop.
-       *
-       * Every message sets the thread to „working" on the way in. The goal
-       * branch above settles it through stopGoal; this branch had nothing, so
-       * a stop typed in a goal-less chat left the row reading „ვმუშაობ…" for
-       * ever. That is one of the four threads the seat found sitting under
-       * „ongoing" with no open goal on them.
-       */
-      void setThreadStatus(userId, threadId, 'done', { statusLine: null });
-    }
-    /**
-     * Row 113, ninth pass — the run ENDS here, and the line is its answer.
-     *
-     * Thread 16840, 19:49:39: the seat typed a stop in a chat that never had a
-     * goal. Everything stored was right — the server's line at 19:49:44, no
-     * second sentence, no tool call, neither of the founder's goals touched —
-     * and the open page sat on „working…" for more than two minutes. A reload
-     * showed the line at once.
-     *
-     * Two faults in that, and they are the same fault. This run went on to do
-     * a full model turn after the server had already answered, and its reply
-     * was then thrown away by the mark, which is a model call bought to be
-     * discarded. And a discarded run emits no run_complete, so the client was
-     * never told the run had ended and kept its spinner.
-     *
-     * Returning here fixes both: no model call, and the line travels as the
-     * run's own reply, which is what it is. `stopped` stays true so the route
-     * drops the push, the title generator and the fact sweep — see the route,
-     * which now delivers `stoppedLine` and nothing else.
-     */
-    return { reply: said, stopped: true, stoppedLine: said, language: stopLang };
-  }
+  // #8779 b (rule 30, the founder 4 Nov 19:07): a typed stop is no longer read by stop
+  // words before the run. The Stop button has its own route (POST /threads/:id/stop); a
+  // typed stop goes to the model, whose update_task can only touch this chat's own goal.
   // The tester's 1114 and 1116 (D617): a hello gets a hello at once, from the
   // server, in a goal's conversation too. D622 (1120): before the prompt is built.
   // #8519 RETEST (the tester's 80967): a new member's first hello was answered here, by the

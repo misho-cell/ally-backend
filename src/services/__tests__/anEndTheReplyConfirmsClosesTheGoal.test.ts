@@ -13,28 +13,3 @@ describe('#8779 (rule 31): no close from stop words in the reply', () => {
     expect(chat).not.toContain('replySaysItStopped');
   });
 });
-
-describe('#7236 second retest (73791): a whole-goal end is the server’s stop', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { looksLikeStopRequest, looksLikeWholeGoalEnd } = require('../stopIntent');
-
-  it.each([
-    'მოვრჩეთ ეს ამბავი',
-    'არა არ მინდა მოვრჩეთ ეს ამბავი',
-    'დავასრულოთ',
-    'აღარ მინდა ეს საქმე',
-    'კარგი, დავხუროთ',
-  ])('is answered by the server: %s', (line: string) => {
-    expect(looksLikeWholeGoalEnd(line)).toBe(true);
-    expect(looksLikeStopRequest(line)).toBe(true);
-  });
-
-  it.each([
-    'ლიკას აღარ მინდა მისწერო',
-    'მოვრჩეთ ლიკასთან და ნინოს მიწერე',
-    'აღარ მინდა თბილისში',
-    'სახლში კარგი ელექტრიკოსი მჭირდება',
-  ])('is not: %s', (line: string) => {
-    expect(looksLikeWholeGoalEnd(line)).toBe(false);
-  });
-});
