@@ -6748,3 +6748,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Write:** Railway variable WHATSAPP_VOICE_ON = true, set with scripts/ops/env.sh after the voice commit is live. Setting it restarts the service.
 - **Effect:** a voice note sent to Netai in WhatsApp is fetched from Meta and transcribed by the recogniser the app already uses (OpenAI; SPEECH_TO_TEXT_ENABLED is already on). The member first gets „🎤 გავიგე: …", then the answer. Limits: 3 minutes per note, and the existing 20 minutes a day per person. Each note is charged in usage_events, kind 'speech'. When written, 6 members had WhatsApp switched on, so the first users are the team.
 - **UNDO:** `printf false | ./scripts/ops/env.sh set WHATSAPP_VOICE_ON`. Voice notes are then answered „ხმოვან შეტყობინებებს ჯერ ვერ ვკითხულობ — დამიწერე".
+
+## 108 · MIGRATION 300: EXISTING QUIET ASKS MARKED AS ALREADY TOLD (lead session, 5 Nov ~14:55Z; board #7760, under Misho's „ship everything now")
+- **What:** migration 300 adds `task_asks.silence_told_at` and sets it to NOW() on every ask still `sent`, not expired and not yet told.
+- **Why:** the new 3-day silence wake (#7760) would otherwise wake every goal with an ask already 3–14 days quiet at the first sweep, in one burst of messages to real owners about old asks. Only silences that begin after the deploy are told.
+- **Rows:** asks only; no message is sent, nothing else changes.
+- **UNDO:** `UPDATE task_asks SET silence_told_at = NULL WHERE silence_told_at = '<the deploy time>';` (then the backlog is told at the next sweep), or `ALTER TABLE task_asks DROP COLUMN silence_told_at;` together with reverting bba13a87.

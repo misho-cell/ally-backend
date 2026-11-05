@@ -40,52 +40,14 @@ export function finalAnswerModel(): string {
 }
 
 /**
- * D627: the final writer for a listed small-talk turn — a smaller, faster
- * model. An OpenAI id like the one above, so it is a variable too; unset, the
- * small-talk turn keeps the ordinary final writer.
- */
-const SMALL_TALK_FINAL_MODEL = process.env.CHAT_SMALL_TALK_FINAL_MODEL?.trim() ?? '';
-
-export function smallTalkFinalModel(): string {
-  return FINAL_ANSWER_MODEL === '' ? '' : SMALL_TALK_FINAL_MODEL || FINAL_ANSWER_MODEL;
-}
-
-/**
- * 958 (Misho's yes, 9 Oct, §110): small talk should answer in seconds, and the
- * writer spends ~3 s reasoning first. CHAT_SMALL_TALK_REASONING_EFFORT sets the
- * small-talk writer's effort; unset, or not one of these, it is not sent and
- * nothing changes. Only when small talk has its own model, so the ordinary
- * writer is never touched.
- */
-const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'] as const;
-type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
-
-export function smallTalkReasoningEffort(
-  raw: string | undefined = process.env.CHAT_SMALL_TALK_REASONING_EFFORT,
-): ReasoningEffort | null {
-  const value = raw?.trim().toLowerCase() ?? '';
-  return (REASONING_EFFORTS as readonly string[]).includes(value)
-    ? (value as ReasoningEffort)
-    : null;
-}
-
-function effortFor(model: string): { reasoning_effort?: ReasoningEffort } {
-  const effort = smallTalkReasoningEffort();
-  return SMALL_TALK_FINAL_MODEL !== '' && model === SMALL_TALK_FINAL_MODEL && effort !== null
-    ? { reasoning_effort: effort }
-    : {};
-}
-
-/**
  * Misho's N, 6 October: a run nobody started — a scheduled check, an engine
  * wake — is not rewritten by GPT at all. 18 of 69 such rewrites came back
  * empty and Claude's text stood every time; the owner never saw the
  * difference, the call only cost. '' means no rewrite, the same answer the
  * flag being off already gives, so every caller knows what to do with it.
  */
-export function finalWriterForRun(ownerAbsent: boolean, smallTalkOnly: boolean): string {
-  if (ownerAbsent) return '';
-  return smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel();
+export function finalWriterForRun(ownerAbsent: boolean): string {
+  return ownerAbsent ? '' : finalAnswerModel();
 }
 
 const MAX_TOKENS = 8192;
@@ -419,7 +381,6 @@ export async function writeFinalAnswer(
       {
         model,
         max_completion_tokens: MAX_TOKENS,
-        ...effortFor(model),
         messages: sent,
         stream: true,
         stream_options: { include_usage: true },

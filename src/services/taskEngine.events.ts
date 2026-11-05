@@ -272,30 +272,61 @@ function mediatorAnswered(
  * DECLINED. A no that points to somebody else is a suggestion, and the next
  * move is the owner's.
  */
-function mediatorSuggestedSomeoneElse(
-  mediatorName: string,
-  targetName: string,
-): Readonly<Record<RunLanguage, string>> {
+/**
+ * #8779 (group 4, the founder 4 Nov): whether a decline names somebody else is
+ * the model's reading of the answer, not RECOMMENDS_RE's. A decline that came
+ * with words carries this conditional, and the run decides which it is.
+ */
+/**
+ * K9 audit B6 (session 3): the mediator is a person the approved plan asks, so
+ * acting on their suggestion is inside the owner's delegation — it goes, and
+ * the owner is told in a line. Without a plan the suggestion waits for the
+ * owner's yes (IF_THEY_SUGGESTED_SOMEONE).
+ */
+function ifTheySuggestedInPlan(mediatorName: string): Readonly<Record<RunLanguage, string>> {
   return {
     ka:
-      `შუამავალმა ${mediatorName} ${targetName}-თან ვერ დაგაკავშირა, მაგრამ თავის პასუხში სხვა ` +
-      'ადამიანი ურჩია. ეს რჩევაა და არა უარი: მფლობელს უთხარი, ვინ ურჩია და რატომ, და ჰკითხე, ' +
-      'მივყვეთ თუ არა — მის „კი"-მდე ამ რჩევით არაფერი გააკეთო. ',
+      'თუ მის პასუხში სხვა ადამიანია ნარჩევი, ეს რჩევაა და არა უარი, და გეგმის ფარგლებშია: ' +
+      `ითხოვე გაცნობა ${mediatorName}-ის გავლით, ან, თუ ის არ სთავაზობს, შემდეგი ნაბიჯი ` +
+      'გააგრძელე. მფლობელს ერთი ხაზით უთხარი, ვინ ურჩია და რა გააკეთე. ',
     en:
-      `The mediator, ${mediatorName}, could not make the introduction to ${targetName}, but ` +
-      'suggested someone else in their answer. This is a suggestion, not a refusal: tell the ' +
-      'owner who was suggested and why, and ask whether to follow it — do nothing on it before ' +
-      'the owner says yes. ',
+      'If their answer suggests someone else, that is a suggestion, not a refusal, and it is ' +
+      `inside the plan: ask for the introduction through ${mediatorName}, or, if they do not ` +
+      'offer it, carry on with the next step. Tell the owner in one line who was suggested and ' +
+      'what you did. ',
     ru:
-      `Посредник ${mediatorName} не смог познакомить с ${targetName}, но в ответе предложил ` +
-      'другого человека. Это совет, а не отказ: скажи владельцу, кого предложили и почему, и ' +
-      'спроси, идти ли по нему — ничего не делай до его «да». ',
+      'Если в ответе предложен другой человек, это совет, а не отказ, и он в рамках плана: ' +
+      `попроси знакомство через ${mediatorName}, а если он его не предлагает, продолжай ` +
+      'следующий шаг. Скажи владельцу одной строкой, кого предложили и что ты сделал. ',
     es:
-      `El intermediario, ${mediatorName}, no pudo hacer la presentación a ${targetName}, pero ` +
-      'sugirió a otra persona en su respuesta. Es una sugerencia, no un rechazo: di al dueño a ' +
-      'quién sugirió y por qué, y pregúntale si seguirla; no hagas nada antes de su sí. ',
+      'Si su respuesta sugiere a otra persona, es una sugerencia, no un rechazo, y está dentro ' +
+      `del plan: pide la presentación a través de ${mediatorName}, o, si no la ofrece, sigue ` +
+      'con el siguiente paso. Di al dueño en una línea a quién sugirió y qué hiciste. ',
   };
 }
+
+function joined(
+  a: Readonly<Record<RunLanguage, string>>,
+  b: Readonly<Record<RunLanguage, string>>,
+): Readonly<Record<RunLanguage, string>> {
+  return { ka: a.ka + b.ka, en: a.en + b.en, ru: a.ru + b.ru, es: a.es + b.es };
+}
+
+const IF_THEY_SUGGESTED_SOMEONE: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    'თუ მის პასუხში სხვა ადამიანია ნარჩევი, ეს რჩევაა და არა უარი: მფლობელს უთხარი, ვინ ' +
+    'ურჩია და რატომ, და ჰკითხე, მივყვეთ თუ არა — მის „კი"-მდე ამ რჩევით არაფერი გააკეთო. ',
+  en:
+    'If their answer suggests someone else, that is a suggestion, not a refusal: tell the ' +
+    'owner who was suggested and why, and ask whether to follow it — do nothing on it before ' +
+    'the owner says yes. ',
+  ru:
+    'Если в ответе предложен другой человек, это совет, а не отказ: скажи владельцу, кого ' +
+    'предложили и почему, и спроси, идти ли по нему — ничего не делай до его «да». ',
+  es:
+    'Si su respuesta sugiere a otra persona, es una sugerencia, no un rechazo: di al dueño a ' +
+    'quién sugirió y por qué, y pregúntale si seguirla; no hagas nada antes de su sí. ',
+};
 
 /** The outcome event, opened with who answered when a mediator did (F2). */
 /**
@@ -337,23 +368,27 @@ export function introOutcomeEvent(
   contact: IntroContactOutcome = 'kept_by_mediator',
   mediatorName: string | null = null,
   shownInGoalThread = false,
-  said: { readonly answer: string | null; readonly suggestsSomeoneElse?: boolean } = {
-    answer: null,
-  },
+  said: {
+    readonly answer: string | null;
+    /** K9 audit B6: the goal's approved plan asks this mediator. */
+    readonly mediatorInPlan?: boolean;
+  } = { answer: null },
   targetOffNetai = false,
 ): Readonly<Record<RunLanguage, string>> {
-  const suggestion = !accepted && mediatorName !== null && said.suggestsSomeoneElse === true;
-  const body = suggestion
-    ? NOTHING_BY_LANGUAGE
-    : accepted && targetOffNetai
+  const declinedInWords = !accepted && mediatorName !== null && said.answer !== null;
+  const body =
+    accepted && targetOffNetai
       ? offNetaiBody(targetName)
       : introOutcomeBody(targetName, accepted, contact);
-  const who =
+  const answered =
     mediatorName === null
       ? NOTHING_BY_LANGUAGE
-      : suggestion
-        ? mediatorSuggestedSomeoneElse(mediatorName, targetName)
-        : mediatorAnswered(mediatorName, targetName, accepted);
+      : mediatorAnswered(mediatorName, targetName, accepted);
+  const suggestion =
+    said.mediatorInPlan === true && mediatorName !== null
+      ? ifTheySuggestedInPlan(mediatorName)
+      : IF_THEY_SUGGESTED_SOMEONE;
+  const who = declinedInWords ? joined(answered, suggestion) : answered;
   const shown = !shownInGoalThread
     ? NOTHING_BY_LANGUAGE
     : said.answer === null

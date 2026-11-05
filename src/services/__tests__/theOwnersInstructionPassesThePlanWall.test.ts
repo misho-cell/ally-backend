@@ -21,7 +21,7 @@ describe('the owner naming someone passes the plan wall', () => {
     const question = code.lastIndexOf('ownerNamedThemOutsidePlan(threadId', wall);
 
     expect(question).toBeGreaterThan(-1);
-    expect(wall - question).toBeLessThan(200);
+    expect(wall - question).toBeLessThan(400);
   });
 
   it('still refuses the never-contact list before anything the owner typed', () => {

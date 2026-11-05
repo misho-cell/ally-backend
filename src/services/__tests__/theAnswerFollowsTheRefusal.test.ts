@@ -65,7 +65,7 @@ describe('the final the writer replaces is not written first', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
   it('leaves the forced final to the writer when one is set', () => {
-    expect(chat).toContain("if (writer !== '' && earlyFinal === null) {");
+    expect(chat).toContain("if (writer !== '') {");
     expect(chat).toContain('claudeFinalSkipped = true;');
   });
 
@@ -75,6 +75,6 @@ describe('the final the writer replaces is not written first', () => {
   });
 
   it('never takes the skipped, empty final for a short answer that stands', () => {
-    expect(chat).toContain('!claudeFinalSkipped &&\n      earlyFinal === null &&');
+    expect(chat).toContain("!claudeFinalSkipped &&\n      writer !== '' &&");
   });
 });

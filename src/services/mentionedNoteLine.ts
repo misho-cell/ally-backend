@@ -1,4 +1,5 @@
 import { RunLanguage } from './runLanguage';
+import { ClaimKind, claimsOfKind, ReplyClaims } from './replyClaims.service';
 
 /**
  * 4555 (tester box 51778, 0 of 2 after 0119): after „ინტერნეტში წერია, რომ
@@ -21,10 +22,6 @@ const MENTIONED_LINE: Readonly<Record<RunLanguage, (value: string) => string>> =
   es: (value) => `Lo anoté como algo mencionado: «${value}». Lo que tú me dijiste sigue igual.`,
 };
 
-const SAID_SAVED_RE =
-  /(?<![\p{L}\p{M}])(?:შევინახე|დავიმახსოვრე|ჩავიწერე|saved|noted|сохранил[аи]?|запомнил[аи]?|guardé)(?![\p{L}\p{M}])/iu;
-/** A sentence ends at . ! ? or a line break; the mark stays with its sentence. */
-const SENTENCE_RE = /[^.!?\n]+[.!?]*\s*|\n+/gu;
 const VALUE_STEM_CHARS = 5;
 
 function speaksOfValue(sentence: string, value: string): boolean {
@@ -35,24 +32,22 @@ function speaksOfValue(sentence: string, value: string): boolean {
 /**
  * The reply with each sentence that claims the mentioned value was saved
  * replaced by the server's line, said once. Untouched when nothing claims it.
+ * #8779 c: the sentences that claim a save are the small model's reading.
  */
 export function withMentionedNoteLine(
   reply: string,
   mentionedValue: string,
   language: RunLanguage,
+  claims: ReplyClaims,
   on: boolean = MENTIONED_NOTE_LINE_ON,
 ): string {
   if (!on || mentionedValue.trim() === '') return reply;
+  const claiming = claimsOfKind(claims, ClaimKind.Saved).filter((sentence) =>
+    speaksOfValue(sentence, mentionedValue),
+  );
+  const [first, ...rest] = claiming;
+  if (first === undefined) return reply;
   const line = (MENTIONED_LINE[language] ?? MENTIONED_LINE.ka)(mentionedValue.trim());
-  let said = false;
-  const sentences = (reply.match(SENTENCE_RE) ?? []).flatMap((sentence) => {
-    if (!SAID_SAVED_RE.test(sentence) || !speaksOfValue(sentence, mentionedValue)) {
-      return [sentence];
-    }
-    if (said) return [];
-    said = true;
-    const trailing = /\s*$/u.exec(sentence)?.[0] ?? '';
-    return [`${line}${trailing === '' ? ' ' : trailing}`];
-  });
-  return said ? sentences.join('').trim() : reply;
+  const withLine = reply.replace(first, line);
+  return rest.reduce((text, sentence) => text.split(sentence).join(''), withLine).trim();
 }

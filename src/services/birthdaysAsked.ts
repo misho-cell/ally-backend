@@ -1,52 +1,57 @@
-import { birthdayFromNote, getUpcomingBirthdays, UpcomingBirthday } from './birthdayLens.service';
-import { RunLanguage } from './runLanguage';
+import { birthdayFromNote, getUpcomingBirthdays } from './birthdayLens.service';
 
 /**
- * 3269 (SE-039, ME-040; seats 180112, 180122, 180113, 179995): the owner told
- * two birthdays, then asked „ვის აქვს მალე დაბადების დღე?" in a new
- * conversation; the app's run has no birthday tool, and it said none were
- * saved, 4 of 4. The server answers it from the told birthdays, soonest first,
- * nobody else. No model runs.
+ * 3269 (SE-039, ME-040): the owner told two birthdays, then asked „ვის აქვს
+ * მალე დაბადების დღე?" in a new conversation; the app's run had no birthday
+ * tool and said none were saved, 4 of 4. The server then answered such lines
+ * itself, picked out by a word list.
+ *
+ * #8779 group 4 (the founder, 4 Nov): no fixed word lists. The app's run now
+ * has the connector's own tool, and the model reads when the owner is asking.
  */
 const SOON_DAYS = 30;
 const MAX_SHOWN = 10;
 
-const ASKS_FOR_BIRTHDAYS_RE =
-  /(?:(?:ვის|ვისი)[\s\S]{0,40}დაბადების\s+დღე|დაბადების\s+დღე(?:ები)?[\s\S]{0,30}(?:მალე|ახლო|მოახლოებულ|ამ\s+თვეში)|(?:upcoming|soon|next)[\s\S]{0,30}birthdays?|birthdays?[\s\S]{0,30}(?:soon|coming\s+up|this\s+month)|у\s+кого[\s\S]{0,30}день\s+рождения|cumpleaños[\s\S]{0,30}(?:pronto|próximos))/iu;
-
-export function asksForBirthdays(line: string): boolean {
-  return ASKS_FOR_BIRTHDAYS_RE.test(line);
-}
-
-/** The told birthdays in the coming month, soonest first. */
-export async function birthdaysSoon(userId: string): Promise<UpcomingBirthday[]> {
-  const rows = await getUpcomingBirthdays(userId, SOON_DAYS);
-  return [...rows].sort((a, b) => a.days_until - b.days_until).slice(0, MAX_SHOWN);
-}
-
-const TEXTS: Readonly<
-  Record<'ka' | 'en', { lead: string; none: string; when: (days: number) => string }>
-> = {
-  ka: {
-    lead: 'მალე დაბადების დღე აქვთ:',
-    none: 'მომდევნო 30 დღეში შენახული დაბადების დღე არავისი მაქვს.',
-    when: (days) => (days === 0 ? 'დღეს' : days === 1 ? 'ხვალ' : `${days} დღეში`),
-  },
-  en: {
-    lead: 'Birthdays coming up:',
-    none: 'No saved birthday falls in the next 30 days.',
-    when: (days) => (days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`),
+export const GET_UPCOMING_BIRTHDAYS_TOOL = {
+  name: 'get_upcoming_birthdays',
+  description:
+    'Birthdays the user has SAVED about their own contacts, soonest first, with how many ' +
+    'days away each is. A warm, playful surface only — a reason to send a word on the day. ' +
+    'NEVER use a birthday in matching, ranking, targeting or as an argument for an ' +
+    'introduction. Returns only dates the user recorded themselves; it never reads another ' +
+    "member's profile.",
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      days: { type: 'number', description: `How many days ahead to look (default ${SOON_DAYS}).` },
+    },
+    required: [] as string[],
   },
 };
 
-/** The server's answer: each person as saved, the date as told, and how soon. */
-export function birthdaysAnswer(rows: readonly UpcomingBirthday[], language: RunLanguage): string {
-  const t = language === 'ka' ? TEXTS.ka : TEXTS.en;
-  const named = rows.filter((r) => (r.name ?? '').trim() !== '');
-  if (named.length === 0) return t.none;
-  const lines = named.map(
-    (r) =>
-      `• ${(r.name ?? '').trim()} — ${birthdayFromNote('note', r.saved_as) ?? r.saved_as.trim()} (${t.when(r.days_until)})`,
-  );
-  return [t.lead, ...lines].join('\n');
+export interface UpcomingBirthdayRow {
+  readonly name: string;
+  readonly birthday: string;
+  readonly days_until: number;
+}
+
+function windowDays(raw: unknown): number {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw > 0 ? raw : SOON_DAYS;
+}
+
+/** The told birthdays ahead, soonest first, named people only. */
+export async function upcomingBirthdays(
+  userId: string,
+  days: unknown,
+): Promise<UpcomingBirthdayRow[]> {
+  const rows = await getUpcomingBirthdays(userId, windowDays(days));
+  return [...rows]
+    .filter((r) => (r.name ?? '').trim() !== '')
+    .sort((a, b) => a.days_until - b.days_until)
+    .slice(0, MAX_SHOWN)
+    .map((r) => ({
+      name: (r.name ?? '').trim(),
+      birthday: birthdayFromNote('note', r.saved_as) ?? r.saved_as.trim(),
+      days_until: r.days_until,
+    }));
 }

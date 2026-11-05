@@ -62,7 +62,7 @@ describe('an ask the owner wanted unnamed', () => {
   it('is stored, inherited by a follow-up, and reaches every place a name stood', () => {
     const asks = source('taskAsks.service.ts');
     expect(asks).toContain('const unnamed = anonymous ?? live.rows[0]?.anonymous === true;');
-    expect(asks).toContain('prepared_answer,\n                            anonymous)');
+    expect(asks).toContain('prepared_answer,\n                            anonymous, ask_kind)');
     expect(asks).toContain('askerName: shownName');
     expect(asks).toContain('anonymousPushTitle(language)');
     expect(asks).toContain('withoutAskerNames(edited.question, askerNames, language)');

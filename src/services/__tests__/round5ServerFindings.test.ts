@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { claimsToHavePassedItOn, PASSED_ON_NUDGE } from '../replyGuards';
+import { ClaimKind } from '../replyClaims.service';
+import { claimsRead } from './helpers/replyClaims';
 import { relatedProfessionWords } from '../professionFamilies';
 import { whoseAsksWereThey } from '../taskAsks.service';
 
@@ -42,29 +44,11 @@ describe('2 — a plan reply carries the plan’s own buttons', () => {
 describe('4 — a helper’s assistant that claims a send that did not happen', () => {
   const guards = { claimsToHavePassedItOn, PASSED_ON_NUDGE };
 
-  it('recognises the claim in Georgian and English', () => {
-    expect(guards.claimsToHavePassedItOn('გადავეცი, პასუხი აქ მოვა.')).toBe(true);
-    expect(guards.claimsToHavePassedItOn("I've passed it to her, the answer will come here.")).toBe(
-      true,
-    );
-    expect(guards.claimsToHavePassedItOn('კარგი, რას ეტყვი მას?')).toBe(false);
-    // The tester's 1105 (33298): the answer labelled, never sent.
-    expect(guards.claimsToHavePassedItOn('გადასაცემი პასუხი: ჯემალ ფირცხალავა.')).toBe(true);
-    expect(guards.claimsToHavePassedItOn('Answer to pass on: Jemal Pirtskhalava.')).toBe(true);
-    expect(guards.claimsToHavePassedItOn('ვის ეძებ, ჯემალს თუ სხვას?')).toBe(false);
-    // The tester's 1102 (i, 33119): the question written as an instruction, never sent.
-    expect(
-      guards.claimsToHavePassedItOn(
-        'ქეთევანს ჰკითხე: რატომ სჭირდება მაკლერი და რაზე მუშაობს ახლა?',
-      ),
-    ).toBe(true);
-    expect(guards.claimsToHavePassedItOn('Ask Ketevan: why does she need a broker?')).toBe(true);
-    expect(guards.claimsToHavePassedItOn('რა გინდა, რომ ვკითხო?')).toBe(false);
-    // The tester's 1145 (37854): the promise in the future tense.
-    expect(guards.claimsToHavePassedItOn('ნოდარს გადავცემ: „ნანა სტომატოლოგი"')).toBe(true);
-    expect(guards.claimsToHavePassedItOn("I'll pass it on to Nodar.")).toBe(true);
-    expect(guards.claimsToHavePassedItOn('ამას არ გადავცემ, სანამ არ მეტყვი.')).toBe(false);
-    expect(guards.claimsToHavePassedItOn('ნოდარს გადავუგზავნო?')).toBe(false);
+  it('is the model’s reading of a passed-on or sent answer (#8779 c)', () => {
+    const said = 'გადავეცი, პასუხი აქ მოვა.';
+    expect(guards.claimsToHavePassedItOn(claimsRead({ [ClaimKind.PassedOn]: [said] }))).toBe(true);
+    expect(guards.claimsToHavePassedItOn(claimsRead({ [ClaimKind.Sent]: [said] }))).toBe(true);
+    expect(guards.claimsToHavePassedItOn(claimsRead({}))).toBe(false);
   });
 
   it('asks once more with the tool named, and never relays the line itself', () => {

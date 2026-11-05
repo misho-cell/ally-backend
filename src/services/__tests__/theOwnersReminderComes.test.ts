@@ -15,7 +15,7 @@ import {
   claimDueReminders,
   clampReminderMinutes,
   deliverReminder,
-  isReminderRequestOnly,
+  REMINDER_ALONE_NOTE,
   MAX_REMINDER_CHARS,
   MAX_REMINDER_MINUTES,
   reminderLine,
@@ -154,18 +154,16 @@ describe('the run holds the tool', () => {
   });
 });
 
+/** #502 (46334, b); #8779 group 4: the model reads the line — no word list holds the tools. */
 describe('a message that is only a reminder request starts nothing else (46334, b)', () => {
-  it('knows a reminder request in the three languages, and only a short one', () => {
-    expect(isReminderRequestOnly('შემახსენე 2 წუთში, რომ წამალი დავლიო.')).toBe(true);
-    expect(isReminderRequestOnly('Remind me in 15 minutes')).toBe(true);
-    expect(isReminderRequestOnly('Напомни через час')).toBe(true);
-    expect(isReminderRequestOnly('მჭირდება ბუღალტერი, შემახსენე ხვალ')).toBe(false);
-    expect(isReminderRequestOnly(`შემახსენე ${'x'.repeat(200)}`)).toBe(false);
+  it('is said in set_reminder’s own description', () => {
+    expect(REMINDER_ALONE_NOTE).toContain('set it and do nothing else');
+    const tool = chat.slice(chat.indexOf("name: 'set_reminder',"));
+    expect(tool.slice(0, 1500)).toContain('REMINDER_ALONE_NOTE,');
   });
 
-  it('that run holds set_reminder alone', () => {
-    expect(chat).toContain('!ownerAbsent && isReminderRequestOnly(userMessage)');
-    expect(chat).toContain('? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)');
+  it('no word list narrows the run’s tools', () => {
+    expect(chat).not.toContain('isReminderRequestOnly');
     const loop = chat.slice(chat.indexOf('} = await runToolLoop('));
     expect(loop.slice(0, 200)).toContain('runTools,');
   });

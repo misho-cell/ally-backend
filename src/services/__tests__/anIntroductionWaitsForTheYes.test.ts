@@ -77,7 +77,7 @@ describe('#8946: an introduction goes only on the owner’s word', () => {
   it('is wired before the send, and a request passed on skips it', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toMatch(
-      /if \(passedOn === null && !\(await introductionHasTheYes\(threadId, goalForIntro, input\)\)\) \{\s+return \{ success: false, sent: false, error: INTRODUCTION_WAITS_FOR_THE_YES \};/,
+      /if \(passedOn === null && !\(await introductionHasTheYes\(threadId, goalForIntro, input\)\)\) \{\s+return \{\s+success: false,\s+sent: false,\s+error: introductionWaitsLine\(/,
     );
   });
 });

@@ -1,59 +1,25 @@
-import { asksForAPersonByName } from '../personByName';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { withMemberChains } from '../tools/findWarmPath';
-import {
-  peopleFoundIn,
-  walksToTheNamedPerson,
-  walkTargetPhone,
-  WARM_PATH_TOOL,
-} from '../warmPathAfterSearch';
+import { WALK_AFTER_FINDING_THEM, peopleFoundIn, walkTargetPhone } from '../warmPathAfterSearch';
 
-/** 3732 (box 52742): the tester's own line, on both fictional chains. */
-const TESTER_LINE = 'მინდა ნინო გამოგონილს დავუკავშირდე. ვისი გავლით შემიძლია?';
+/**
+ * 3732 (box 52742): a person asked for by name is walked to after the search
+ * finds them. #8779 group 4: no word list forces the walk any more — the rule
+ * is find_warm_path's own description, and the model reads the owner's line.
+ */
+describe('3732: the walk after a search found the person', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
-function round(overrides: Partial<Parameters<typeof walksToTheNamedPerson>[0]> = {}): boolean {
-  return walksToTheNamedPerson({
-    ownerLine: TESTER_LINE,
-    toolsUsed: ['search_contact_by_name', 'search_second_degree'],
-    roundTools: ['search_second_degree'],
-    walkOffered: true,
-    roundFoundSomeone: true,
-    ...overrides,
-  });
-}
-
-describe('3732: a person asked for by name is walked to after the search finds them', () => {
-  it('reads „დავუკავშირდე … ვისი გავლით" as asking for a person by name', () => {
-    expect(asksForAPersonByName(TESTER_LINE)).toBe(true);
-    expect(asksForAPersonByName('Through whom can I reach Nino Gamogonili?')).toBe(true);
+  it('is said in find_warm_path’s description', () => {
+    expect(WALK_AFTER_FINDING_THEM).toContain('call this next');
+    const tool = chat.slice(chat.indexOf("name: 'find_warm_path',"));
+    expect(tool.slice(0, 1500)).toContain('WALK_AFTER_FINDING_THEM,');
   });
 
-  it('still reads a trade as a trade, so the web stays on for it', () => {
-    expect(asksForAPersonByName('მინდა ბუღალტერს დავუკავშირდე')).toBe(false);
-  });
-
-  it('walks next, once a search round has run', () => {
-    expect(round()).toBe(true);
-  });
-
-  it('does not walk before any search has found the person', () => {
-    expect(round({ roundTools: ['get_my_tasks'], toolsUsed: ['get_my_tasks'] })).toBe(false);
-  });
-
-  // Box 52781: forced after a name search that found nobody, the walk got the name and no phone.
-  it('does not walk after a search round that found nobody', () => {
-    expect(round({ roundTools: ['search_contact_by_name'], roundFoundSomeone: false })).toBe(false);
-  });
-
-  it('walks once only', () => {
-    expect(round({ toolsUsed: ['search_second_degree', WARM_PATH_TOOL] })).toBe(false);
-  });
-
-  it('never forces a tool the run does not hold', () => {
-    expect(round({ walkOffered: false })).toBe(false);
-  });
-
-  it('leaves a line that asks for no person alone', () => {
-    expect(round({ ownerLine: 'ვინ არის ჩემს კონტაქტებში იურისტი?' })).toBe(false);
+  it('is never forced by a word match', () => {
+    expect(chat).not.toContain('walksToTheNamedPerson');
+    expect(chat).not.toContain('forceTool: WARM_PATH_TOOL');
   });
 });
 

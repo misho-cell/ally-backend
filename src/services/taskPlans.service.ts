@@ -16,6 +16,8 @@ import { RunLanguage } from './runLanguage';
 import { withoutAskBoundaries } from './askBoundary.service';
 import { ruledOutOnSubject } from './ruledOutBridges';
 import { fetchFactsForPhones, nameAsSpelled } from './tools/factEnrichment';
+import { PlanStep, parseSteps } from './planSteps';
+import { planStepsLine } from './planStepsText';
 
 /**
  * The plan a goal runs inside (Ticket 10 Task 21; D118, D119).
@@ -100,6 +102,10 @@ export interface TaskPlan {
    * the rest. Set by the server from the run's own routes, never by the model.
    */
   route_order?: string[];
+  /** Autonomy stage 2, K1: what counts as the result — the same field as solved_when. */
+  result_when?: string;
+  /** K1: the steps in the order they are worked; absent on old plans (planSteps.stepsOf). */
+  steps?: PlanStep[];
 }
 
 /** The minimum a route order needs to mean anything: two routes to one person. */
@@ -228,7 +234,8 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
     return { ok: false, error: complaint ?? 'plan must be an object' };
   }
   const input = raw as Record<string, unknown>;
-  const solved = cleanText(input.solved_when, 'solved_when');
+  // K1: result_when is the v2 name of solved_when; either is accepted.
+  const solved = cleanText(input.solved_when ?? input.result_when, 'solved_when');
   if (!solved.ok) return solved;
 
   const routesRaw = Array.isArray(input.routes) ? input.routes : [];
@@ -418,6 +425,8 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
     never.push(phone === undefined ? { name: name.value } : { name: name.value, phone });
   }
 
+  const steps = parseSteps(input.steps, { peoplePhones: people.map((p) => p.phone) });
+  if (!steps.ok) return steps;
   return {
     ok: true,
     value: {
@@ -426,6 +435,8 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
       people_to_involve: people,
       never_contact: never,
       ...(input.real_work === true && { real_work: true }),
+      ...(typeof input.result_when === 'string' && { result_when: solved.value }),
+      ...(steps.value.length > 0 && { steps: steps.value }),
     },
   };
 }
@@ -762,6 +773,8 @@ export async function approveTaskPlan(
          -- for. Cleared in the same statement that records the approval, so
          -- there is no instant where a goal is approved and still held.
          plan_change_requested_at = NULL,
+         -- K5: a new approval is not a delegation until the run says it is (setPlanDelegated).
+         plan_delegated = FALSE,
          updated_at = NOW(),
          last_activity_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'open' AND plan_proposed IS NOT NULL
@@ -1382,6 +1395,9 @@ export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): s
   const lines: string[] =
     people.length > 0 ? [words.ask(people)] : outside === null ? [words.askNobody] : [];
   if (outside !== null) lines.push(lines.length > 0 ? `\n${outside}` : outside);
+  // K1: a plan with steps shows them briefly, on their own line.
+  const steps = planStepsLine(plan, language);
+  if (steps !== null) lines.push(`\n${steps}`);
   if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);
   // The tester's 957: the closing question is NOT part of the plan text. A
   // model pasted these lines into a reply whose ask had already gone out, so
@@ -1464,6 +1480,8 @@ export function renderPlan(
     `${words.routes}:\n${routes}`,
     `${words.whoIAsk}:\n${people}`,
   ];
+  const steps = planStepsLine(plan, language);
+  if (steps !== null) lines.push(steps);
   // Row 146: the loudest case gets its own line. A plan naming three people
   // none of whom can be written to is not a plan, and the owner has to know
   // that before the yes, not 47 seconds after it.

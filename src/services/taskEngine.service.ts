@@ -1,5 +1,5 @@
 import {
-  CLOSE_QUESTION_NOTE,
+  closeQuestionNote,
   IdleDecision,
   IdleState,
   IdleWake,
@@ -8,6 +8,10 @@ import {
   noteIdleReminder,
   setIdleWake,
 } from './idleWakes.service';
+import { planDayOneEvent, planStepNoteForAnswers, sweepSilentSteps } from './planAdvance.service';
+import { withStepNote } from './planAdvance';
+import { nightlyReviewEvent, silentDayEvent } from './planNightly';
+import { planHasSteps } from './planSteps';
 import { answersElsewhereNote, answersInSiblingGoals } from './answersElsewhere.service';
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
 import { unheardAnswerOf } from './answerAddition';
@@ -33,6 +37,11 @@ import {
   SWEEP_WEEKLY_SUMMARY,
 } from './sweepClaim';
 import { claimExpiredAsksToTell, expireSilentAsks, expiredAsksNote } from './askExpiry.service';
+import {
+  claimSilentAsksToTell,
+  silentAsksNote,
+  wakeGoalsWithSilentAsks,
+} from './askSilence.service';
 import { widenWaveOnSilence } from './askWaves.service';
 import {
   DAY_ONE_WAKE,
@@ -94,6 +103,8 @@ import {
 import { nextRenewalDay } from './renewalDay';
 import {
   DAY_ONE_EVENT,
+  DAY_ONE_FIRST_PASS,
+  DAY_ONE_FIRST_PASS_ON,
   DAY_ONE_FIRST_PEOPLE,
   DAY_ONE_NOT_SENT_EVENT,
   DAY_ONE_NOTHING_SENT_LINE,
@@ -598,7 +609,9 @@ export async function wakeTask(
       // Board #386: a quiet run wrote nothing, so there is no news to ring for.
       if (result.quiet === true) return 'woken';
       // #1255: a step of the work is not news; its line stays in the chat.
-      if (!wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer)) {
+      // Autonomy stage 2, K7: a result (set_task_result) is news even while others are awaited.
+      const carriesResult = result.taskResult !== undefined;
+      if (!wakeIsNews(status, ensureQuoted !== undefined || carriesAnswer || carriesResult)) {
         // The tester's 39207: a seat has no push subscription, so a skipped push
         // left no trace anywhere. This line is the trace.
         // eslint-disable-next-line no-console
@@ -742,17 +755,22 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
     clearQuietAfterDecline(threadId);
   }
   const wakeBeforeRun = await nextWakeText(taskId);
+  // Autonomy stage 2, K3: the plan step's own rule rides under the answers.
+  const stepNote = await planStepNoteForAnswers(
+    taskId,
+    owed.map((a) => ({ id: a.id, declined: a.declined === true })),
+  );
   const woken = onScreen
     ? await wakeTask(
         taskId,
-        buildShownAnswersWakeEvent(arrived),
+        withStepNote(buildShownAnswersWakeEvent(arrived), stepNote),
         undefined,
         WakeOrigin.Netai,
         ANSWER_IS_NEWS,
       )
     : await wakeTask(
         taskId,
-        buildAnswersWakeEvent(arrived),
+        withStepNote(buildAnswersWakeEvent(arrived), stepNote),
         arrived.map((a) => ({ text: a.answer, who: a.fromName, verbatim: a.verbatim })),
       );
   if (woken !== 'woken') return 0;
@@ -929,15 +947,17 @@ interface ScheduledWake {
 }
 
 async function scheduledWake(taskId: number): Promise<ScheduledWake> {
-  const [held, lastReply, joined, expired, elsewhere] = await Promise.all([
+  const [held, lastReply, joined, expired, elsewhere, silent] = await Promise.all([
     heldOutcomes(taskId),
     lastReplyNote(taskId),
     joinedSinceNote(taskId),
     expiredNote(taskId),
     answeredElsewhereNote(taskId),
+    // Board #7760: who has not answered for a few days, told once.
+    silentNote(taskId),
   ]);
   const heldText = held.length === 0 ? null : heldAsksSentNote(held);
-  const notes = [heldText, elsewhere, expired, joined, lastReply].filter(
+  const notes = [heldText, elsewhere, expired, silent, joined, lastReply].filter(
     (n): n is string => n !== null,
   );
   return {
@@ -968,6 +988,17 @@ async function expiredNote(taskId: number): Promise<string | null> {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[task-engine] task ${taskId}: expired asks not read:`, (err as Error).message);
+    return null;
+  }
+}
+
+/** Board #7760: the asks a few days silent, claimed for this wake; null when none (or unread). */
+async function silentNote(taskId: number): Promise<string | null> {
+  try {
+    return silentAsksNote(await claimSilentAsksToTell(taskId));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] task ${taskId}: silent asks not read:`, (err as Error).message);
     return null;
   }
 }
@@ -1072,6 +1103,11 @@ async function tick(): Promise<void> {
     // eslint-disable-next-line no-console
     console.error('[task-engine] hour update sweep failed:', (err as Error).message),
   );
+  // Autonomy stage 2, K3: a plan step whose silence ran out moves on by its rule.
+  await sweepSilentSteps(wakeForPlanStep).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[task-engine] plan-step silence sweep failed:', (err as Error).message),
+  );
   const due = await getDueTasks(MAX_WAKES_PER_TICK);
   for (const task of due) {
     // Clear FIRST so a failing run doesn't hot-loop every tick; the model
@@ -1090,7 +1126,12 @@ async function tick(): Promise<void> {
       console.log(`[task-engine] task ${task.id}: held question still over the limit — no run`);
     } else {
       const closing = idle?.decision.kind === IdleWake.CloseQuestion;
-      await wakeTask(task.id, closing ? `${wake.text}\n\n${CLOSE_QUESTION_NOTE}` : wake.text);
+      await wakeTask(
+        task.id,
+        closing
+          ? `${wake.text}\n\n${closeQuestionNote(task.plan_approved_at !== null)}`
+          : wake.text,
+      );
     }
     if (idle !== null && idle.decision.kind !== IdleWake.Normal && idle.decision.at !== null) {
       await noteIdleReminder(task.id, idle.state).catch(logIdleFailure);
@@ -1290,7 +1331,8 @@ export async function ownerSpokeRecently(
  */
 function wakeWhenFree(
   taskId: number,
-  eventText: EventText,
+  // K12: or read at wake time, when the event depends on what the goal holds then.
+  eventText: EventText | (() => Promise<EventText>),
   stillWanted: () => Promise<boolean>,
   onWoken: () => Promise<void>,
   delayMs: number,
@@ -1322,7 +1364,8 @@ function wakeWhenFree(
           console.log(`[task-engine] task ${taskId}: wake no longer wanted (attempt ${attempt})`);
           return;
         }
-        const woken = await wakeTask(taskId, eventText);
+        const text = typeof eventText === 'function' ? await eventText() : eventText;
+        const woken = await wakeTask(taskId, text);
         if (woken === 'woken') {
           // eslint-disable-next-line no-console
           console.log(`[task-engine] task ${taskId}: woken (attempt ${attempt})`);
@@ -1399,7 +1442,7 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
   void recordWake(taskId, DAY_ONE_WAKE, delayMs);
   wakeWhenFree(
     taskId,
-    DAY_ONE_EVENT,
+    () => dayOneEventFor(taskId),
     async () => {
       // Asked before the goal's own state, because a wake already run is not
       // owed however open the goal is. This is the sweeper standing down when
@@ -1457,6 +1500,21 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
     1,
     () => finishWake(taskId, DAY_ONE_WAKE),
   );
+}
+
+/**
+ * K12 (autonomy stage 2): a plan with steps starts as „ნაბიჯი 1 დაიწყო: …"
+ * instead of „the plan was just approved"; 3070's first-pass sentences stay.
+ */
+async function dayOneEventFor(taskId: number): Promise<EventText> {
+  const step = await planDayOneEvent(taskId);
+  if (step === null) return DAY_ONE_EVENT;
+  if (!DAY_ONE_FIRST_PASS_ON) return step;
+  const out = { ...step };
+  for (const language of Object.keys(out) as RunLanguage[]) {
+    out[language] = `${step[language]} ${DAY_ONE_FIRST_PASS[language]}`;
+  }
+  return out;
 }
 
 /**
@@ -1763,6 +1821,19 @@ export function wakeAfterResume(taskId: number, eventText: string): void {
   );
 }
 
+/** K3: the plan moved to a new step on its own rule — the goal is woken with that step. */
+function wakeForPlanStep(taskId: number, eventText: EventText): void {
+  wakeWhenFree(
+    taskId,
+    eventText,
+    () => goalOpen(taskId),
+    async () => {
+      await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
+    },
+    WAKE_RETRY_DELAY_MS,
+  );
+}
+
 /** Whether a stored value is an event text: one string, or one per language. */
 export function isEventText(value: unknown): value is EventText {
   if (typeof value === 'string') return value.trim() !== '';
@@ -1967,6 +2038,8 @@ export async function sweepMethodChanges(): Promise<number> {
     // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
     if (await goalWaitsForMorning(task.id)) continue;
     await markMethodChangeWoken(task.id);
+    // Autonomy stage 2: with steps, silence moves on_silence and needs no new yes.
+    if (planHasSteps(task.plan)) continue;
     const ok = await wakeTask(
       task.id,
       'სამი დღეა კითხვებს პასუხი არ მოჰყოლია და ახალი არავის მისწერია. სტანდარტის წესია: სამი ' +
@@ -2060,15 +2133,8 @@ export async function sweepSilentGoals(): Promise<number> {
       // eslint-disable-next-line no-console
       console.error(`[task-engine] task ${task.id}: next wave not opened:`, (err as Error).message),
     );
-    const ok = await wakeTask(
-      task.id,
-      'ერთი დღეა კითხვა უპასუხოდ არის და ახალი არავის მისწერია. სტანდარტის წესია: ჩუმი დღე = ' +
-        'მეტ ადამიანს ჰკითხე. გეგმის „ვის ვკითხავ" სიიდან, ვისაც ჯერ არ მისწერია, ახლა მისწერე — ' +
-        'რამდენიმეს ერთდროულად, არა თითო-თითოდ. ეს გეგმის ფარგლებშია და ცალკე თანხმობა არ სჭირდება. ' +
-        'თუ სიაში ყველას უკვე მისწერე — ეს მეთოდის შეცვლის დროა: propose_task_plan-ით შესთავაზე ' +
-        'ახალი წრე ან ახალი გზა. ბოლოს ერთი სტრიქონი: რა მიდის ახლა და ვის ვკითხე; თუ პასუხს ელოდები, ზუსტად „როგორც კი ვინმე გიპასუხებს, მაშინვე გეტყვი." — საათები და დღეები არ ახსენო (D563). ' +
-        RULE_268_QUIET_DAY_ONE,
-    );
+    // K9 audit B10: a plan with steps follows its next step, not the people list.
+    const ok = await wakeTask(task.id, silentDayEvent(task.plan, RULE_268_QUIET_DAY_ONE));
     if (ok === 'woken') woken++;
     // The stamp said this goal had been widened. A busy thread means nobody
     // was written to, and the next sweep must be allowed to try again rather
@@ -2084,23 +2150,8 @@ async function nightlyReview(): Promise<void> {
     // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
     if (await goalWaitsForMorning(task.id)) continue;
     await touchTaskActivity(task.id); // one review per night even if the run fails
-    await wakeTask(
-      task.id,
-      'ღამის გადახედვა: ქსელში გუშინდელის მერე ახალი ხალხი/ინფორმაცია შეიძლება გაჩნდა. ' +
-        'გაიმეორე ძირითადი ძიებები და შეადარე brief-ს — მფლობელს მხოლოდ რეალური სიახლე აცნობე; ' +
-        'თუ არაფერია, ჩუმად განაახლე brief-ი და საჭიროებისას set_task_wake-ით გადადე. ' +
-        // The standard, lines 3 and 4 (D117, D119): a silent day widens the
-        // circle inside the plan; three silent days change the method — a
-        // plan change, so a new yes, while the rest keeps running.
-        'თუ გუშინდელი კითხვა უპასუხოდ დარჩა — არ დაელოდე: გეგმის „ვის ვკითხავ" სიიდან შემდეგ ' +
-        'ადამიანებს მისწერე (რამდენიმეს ერთდროულად). თუ სამი დღეა პასუხი არ არის — მეთოდი შეცვალე: ' +
-        'propose_task_plan-ით შესთავაზე ახალი გზა ან ახალი წრე; დამტკიცებული გზები კი გრძელდება. ' +
-        'ყოველი პასუხი დაასრულე ერთი სტრიქონით: რა მიდის ახლა და ვის ვკითხე; თუ პასუხს ელოდები, ზუსტად „როგორც კი ვინმე გიპასუხებს, მაშინვე გეტყვი." — საათები და დღეები არ ახსენო (D563). ' +
-        'თუ წინსვლა მფლობელის პასუხზეა ჩამოკიდებული — გამოიძახე ask_owner_decision ზუსტი ' +
-        'კითხვით: ის კითხვას მფლობელის მომდევნო საუბარში იტანს. ეს მაშინაც გააკეთე, როცა ' +
-        'ლოდინს თხრობით ამბობ („ველოდები მის გადაწყვეტილებას ორ კანდიდატზე") — მფლობელისგან ' +
-        'რაღაცის ლოდინი ბლოკია, როგორც არ უნდა ჟღერდეს წინადადება.',
-    );
+    // Autonomy stage 2: a plan with steps moves on silence by its own rule (planNightly.ts).
+    await wakeTask(task.id, nightlyReviewEvent(task.plan));
     // The review woke it; if the run set no wake, tomorrow's is set here.
     await ensureNextWake(task.id, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
       // eslint-disable-next-line no-console
@@ -2214,6 +2265,13 @@ export function startTaskTicker(): void {
         .then((n) => {
           // eslint-disable-next-line no-console
           if (n > 0) console.log(`[task-engine] ${n} ask(s) expired after two weeks of silence`);
+        })
+        // Board #7760: and the goals whose asks are a few days quiet are woken to say so.
+        .then(() => wakeGoalsWithSilentAsks())
+        .then((n) => {
+          // eslint-disable-next-line no-console
+          if (n > 0)
+            console.log(`[task-engine] ${n} goal(s) woken: an ask is days without an answer`);
         })
         .catch((err) =>
           // eslint-disable-next-line no-console

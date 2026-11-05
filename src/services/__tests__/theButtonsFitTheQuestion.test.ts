@@ -1,4 +1,6 @@
-import { AskKind, askKindOf } from '../askKind';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { ASK_KIND_FIELD, AskKind, askKindFrom } from '../askKind';
 import {
   AskTap,
   askChoices,
@@ -10,30 +12,41 @@ import {
 
 /**
  * #1948 (Lika, iPhone, 6 Oct): the same „Yes, I can help / I can't help /
- * later" came under every question. Done when the tester's three questions
- * and two requests for help arrive with buttons that answer them.
+ * later" came under every question. The buttons follow the kind of question.
+ *
+ * #8779 group 4 (the founder, 4 Nov): the kind is the asking model's word
+ * (ask_contact's `kind`), stored with the ask — no longer read off the words.
  */
-describe('what kind of question it is', () => {
-  it.each([
-    ['Are you free tomorrow?', AskKind.YesNo],
-    ['Do you like Italian cuisine?', AskKind.YesNo],
-    ['Do you know a good plumber? If yes, can you recommend someone?', AskKind.Know],
-    ['ხომ არ იცნობ კარგ სანტექნიკს?', AskKind.Know],
-    ['Знаешь хорошего юриста?', AskKind.Know],
-    ['¿Conoces a un buen dentista?', AskKind.Know],
-    ['Can you help me find a flat in Batumi?', AskKind.Help],
-    ['დამეხმარები ბინის პოვნაში?', AskKind.Help],
-    ['Who handles hiring at TBC?', AskKind.Open],
-    ['როდის გცალია?', AskKind.Open],
-    ['ხვალ თავისუფალი ხარ?', AskKind.YesNo],
-  ])('%s → %s', (question, kind) => {
-    expect(askKindOf(question)).toBe(kind);
+describe('the kind of question', () => {
+  it('is the model’s word, and the open set when it gave none or something else', () => {
+    expect(askKindFrom('intro')).toBe(AskKind.Intro);
+    expect(askKindFrom('yes_no')).toBe(AskKind.YesNo);
+    expect(askKindFrom(undefined)).toBe(AskKind.Open);
+    expect(askKindFrom('maybe')).toBe(AskKind.Open);
+    expect(askKindFrom(3)).toBe(AskKind.Open);
+  });
+
+  it('is declared to the model as a closed set', () => {
+    expect([...ASK_KIND_FIELD.enum].sort()).toEqual(Object.values(AskKind).sort());
+  });
+
+  it('is passed by ask_contact and kept with the ask for reminders and evening cards', () => {
+    const src = (file: string): string => readFileSync(join(__dirname, '..', file), 'utf8');
+    expect(src('chat.service.ts')).toContain("askKindFrom(input['kind']),");
+    expect(src('taskAsks.service.ts')).toContain('anonymous, ask_kind)');
+    expect(src('taskAsks.service.ts')).toContain(
+      'askChoicesFor(askKindFrom(row.ask_kind), language)',
+    );
+    expect(src('eveningCard.service.ts')).toContain(
+      'askChoicesFor(askKindFrom(ask_kind), language)',
+    );
+    expect(src('askKind.ts')).not.toMatch(/_RE\b/u);
   });
 });
 
 describe('the buttons under it', () => {
   it('a yes/no question gets yes / no / later — plain answers, not taps', () => {
-    const [yes, no, later] = askChoicesFor('Are you free tomorrow?', 'en');
+    const [yes, no, later] = askChoicesFor(AskKind.YesNo, 'en');
     expect([yes, no]).toEqual(['Yes', 'No']);
     expect(later).toBe(laterChoice('en'));
     expect(askTapOf(yes)).toBeNull();
@@ -41,7 +54,7 @@ describe('the buttons under it', () => {
   });
 
   it('a „do you know someone" question gets know / don’t know / later', () => {
-    const [yes, no, keep, later] = askChoicesFor('ხომ არ იცნობ კარგ სანტექნიკს?', 'ka');
+    const [yes, no, keep, later] = askChoicesFor(AskKind.Know, 'ka');
     expect(yes).toBe('კი, ვიცნობ');
     expect(askTapOf(yes)).toBe(AskTap.Yes);
     expect(isDeclineChoice(no)).toBe(true);
@@ -54,32 +67,46 @@ describe('the buttons under it', () => {
   /** #7760: help and „do you know" asks also offer „not yet, I'll keep it in mind", before „later". */
   it('a request for help keeps the original three, with „keep it in mind" before „later"', () => {
     const [yes, no, later] = askChoices('en');
-    expect(askChoicesFor('Can you help me find a flat?', 'en')).toEqual([
+    expect(askChoicesFor(AskKind.Help, 'en')).toEqual([
       yes,
       no,
       "I don't know anyone yet, I'll keep it in mind",
       later,
     ]);
-    expect(askChoicesFor('Do you know a good plumber?', 'en')[2]).toBe(
+    expect(askChoicesFor(AskKind.Know, 'en')[2]).toBe(
       "I don't know anyone yet, I'll keep it in mind",
     );
   });
 
+  it('an introduction request gets „yes, I will introduce you" / „I can’t" / later', () => {
+    const [yes, no, later] = askChoicesFor(AskKind.Intro, 'ka');
+    expect([yes, no]).toEqual(['კი, გაგაცნობ', 'ვერ გაგაცნობ']);
+    expect(later).toBe(laterChoice('ka'));
+    expect(askTapOf(yes)).toBe(AskTap.Yes);
+    expect(isDeclineChoice(no)).toBe(true);
+    expect(askChoicesFor(AskKind.Intro, 'en')[0]).toBe("Yes, I'll introduce you");
+  });
+
   it('an open question gets only „later" — the text field is the answer', () => {
-    expect(askChoicesFor('Who handles hiring at TBC?', 'en')).toEqual([laterChoice('en')]);
+    expect(askChoicesFor(AskKind.Open, 'en')).toEqual([laterChoice('en')]);
   });
 
   it('never offers „Yes, I can help" except for help', () => {
     const helpYes = askChoices('en')[0];
-    for (const q of ['Are you free tomorrow?', 'Do you know a good plumber?', 'Who is the CEO?']) {
-      expect(askChoicesFor(q, 'en')).not.toContain(helpYes);
+    for (const kind of [AskKind.YesNo, AskKind.Know, AskKind.Open, AskKind.Intro]) {
+      expect(askChoicesFor(kind, 'en')).not.toContain(helpYes);
     }
   });
 
   it('every kind keeps „later", last', () => {
-    for (const q of ['Are you free?', 'Do you know a lawyer?', 'Can you help?', 'Who is it?']) {
-      const choices = askChoicesFor(q, 'ru');
+    for (const kind of Object.values(AskKind)) {
+      const choices = askChoicesFor(kind, 'ru');
       expect(choices[choices.length - 1]).toBe(laterChoice('ru'));
     }
+  });
+
+  it('an introduction request carries no pick-list under it', () => {
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(asks).toContain('const pickerAllowed = !sameThread && askKind !== AskKind.Intro;');
   });
 });
