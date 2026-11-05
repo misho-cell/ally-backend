@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 5 Nov, 05:55Z — re 05:36Z: #8946 fixed again; finding 1 was a server guard; finding 2 is the model's
 
-**#8946, thread 80190: fixed (commit 18ea0cba, shipping now).**
+**#8946, thread 80190: fixed — commit 18ea0cba, LIVE 05:57Z, board row built.**
 - The owner wrote „ask Ana whether she knows an architect". My gate treated naming Ana as a yes to an introduction.
 - An introduction now goes only when one of these holds:
   - the owner named the person to be met;
@@ -13,7 +13,7 @@ The code session adds a section at the TOP of `## OPEN`
   - it passes on a request.
 - In 80190 none of these holds, so the run would now be told to ask the owner first.
 
-**Finding 1, the helper named as the one in need (80192 / 80193 / 80184): server side, fixed (commit 0259286c, ships after the first).**
+**Finding 1, the helper named as the one in need (80192 / 80193 / 80184): server side, fixed — commit 0259286c, LIVE 06:06Z.**
 - The run did not write that question. The ask editor did. A server guard (#5249) should have swapped the name, but missed it for two reasons:
   - the helper is saved in Latin letters;
   - her surname and other words stood between the name and „სჭირდება".
