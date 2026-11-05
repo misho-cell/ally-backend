@@ -1,8 +1,6 @@
-import { unquoted } from './greetingTurn';
-import { isSmallTalk } from './smallTalk';
-import { isPlaceholderThreadTitle } from './runLanguage';
+import { isPlaceholderThreadTitle, NEW_THREAD_TITLE, RunLanguage } from './runLanguage';
 import { recordClaudeUsage } from './costLedger.service';
-import { updateThreadShortTitles, updateThreadTitle } from './threads.service';
+import { updateThreadShortTitles, updateThreadTitle, userLanguage } from './threads.service';
 import { parseShortTitles, SHORT_TITLES_ON, shortTitlesPrompt } from './shortTitles';
 import { emitThreadUpdated } from './sse.service';
 
@@ -49,9 +47,15 @@ function buildTitlePrompt(language: string): string {
     'apologize, never refuse: whatever the content, output ONLY a short subject title using ' +
     'real, correctly spelled words that appear in the exchange — never invent or distort a ' +
     'word. No "Title:", no quotes, no emoji, no trailing period, no phone numbers, nothing ' +
-    'about yourself as an assistant.'
+    'about yourself as an assistant. ' +
+    // #8779 group 4: whether there is anything to name yet is the model's reading.
+    `If the exchange is only a greeting, a thank-you or small talk, with nothing yet to name, ` +
+    `output exactly ${NO_TITLE_YET}.`
   );
 }
+
+/** The title model's answer when there is nothing to name yet (#827, 1114). */
+export const NO_TITLE_YET = 'NO_TITLE_YET';
 
 // The generator's own preamble, in every wording it has produced live —
 // "სათაური: X" and "საუბრის სათაური: X" reached users as the visible title
@@ -137,13 +141,13 @@ export function sanitizeTitle(raw: string): string | null {
 
 /**
  * Board #827 (Giorgi, 4 October): a conversation opened with „გამარჯობა" and
- * then turned to a real request kept „გამარჯობა" as its name. A greeting is
- * its own title only until there is something to name: a title that is just
- * small talk is replaced by the first message that is not.
+ * then turned to a real request kept „გამარჯობა" as its name. #8779 group 4:
+ * no small-talk word list — a thread is titled while it still carries the
+ * placeholder, and the title model puts the placeholder back (NO_TITLE_YET)
+ * while there is nothing to name, so the next message titles it.
  */
-export function needsRealTitle(currentTitle: string | null, message: string): boolean {
-  if (currentTitle === null || isPlaceholderThreadTitle(currentTitle)) return true;
-  return isSmallTalk(currentTitle) && !isSmallTalk(message);
+export function needsRealTitle(currentTitle: string | null): boolean {
+  return currentTitle === null || isPlaceholderThreadTitle(currentTitle);
 }
 
 /**
@@ -162,19 +166,6 @@ export async function generateThreadTitle(
   // title saw text the strip was about to remove.
   finalReply?: string,
 ): Promise<void> {
-  // The tester's 1114 (34585, 34587, 34590): a greeting or small talk got titles
-  // like „this dialogue cannot be given a title". Its own words are the title.
-  if (isSmallTalk(firstMessage)) {
-    // 3202: „გამარჯობა with a quote in front is named „გამარჯობა", without the quote.
-    const plain = sanitizeTitle(unquoted(firstMessage));
-    if (plain === null) return;
-    await updateThreadTitle(threadId, plain).catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.error(`[title] could not set thread ${threadId}:`, (err as Error).message),
-    );
-    emitThreadUpdated(userId, { id: threadId, title: plain });
-    return;
-  }
   try {
     const { default: anthropic } = await import('../config/anthropic');
     const exchange = finalReply
@@ -198,6 +189,10 @@ export async function generateThreadTitle(
     }).catch(() => undefined);
 
     const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join(' ');
+    if (raw.trim() === NO_TITLE_YET) {
+      await keepThePlaceholder(userId, threadId);
+      return;
+    }
     const title = sanitizeTitle(raw);
     if (title === null) return;
 
@@ -208,6 +203,14 @@ export async function generateThreadTitle(
     // eslint-disable-next-line no-console
     console.error(`[title] generation failed for thread ${threadId}:`, (err as Error).message);
   }
+}
+
+/** Nothing to name yet: the placeholder goes back, so the next message titles the thread. */
+async function keepThePlaceholder(userId: string, threadId: number): Promise<void> {
+  const language = await userLanguage(userId).catch((): RunLanguage => 'ka');
+  const placeholder = NEW_THREAD_TITLE[language];
+  await updateThreadTitle(threadId, placeholder);
+  emitThreadUpdated(userId, { id: threadId, title: placeholder });
 }
 
 /**

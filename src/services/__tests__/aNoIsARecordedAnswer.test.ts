@@ -132,7 +132,7 @@ describe('what the ask carries, and what the answer records', () => {
    * still joins the answer; after the wake went out the stamp stays.
    */
   it('is taken back by a later line with something in it, until the wake is delivered', () => {
-    expect(asks).toContain('[askThreadId, safe, declined, !declined && !isSmallTalk(safe)]');
+    expect(asks).toContain('[askThreadId, safe, declined, !declined]');
     const flat = answerSql.replace(/\s+/g, ' ');
     expect(flat).toContain(
       'declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW()) WHEN $4 AND wake_delivered_at IS NULL THEN NULL ELSE declined_at END',

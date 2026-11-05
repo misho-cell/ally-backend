@@ -1,4 +1,3 @@
-import { isSmallTalk } from './smallTalk';
 import { notePlanAskSent } from './planAdvance.service';
 import { netaiMember } from './netaiMembership';
 import {
@@ -2769,8 +2768,8 @@ export async function recordAskAnswer(
          -- (No backtick anywhere in here: this SQL lives in a template literal
          -- and one ends the string. Seventh time this week.)
          --
-         -- #8154: a later line with something in it ($4: not a no, not a thank
-         -- you or goodbye) un-declines it while it still joins the answer.
+         -- #8154: a later line with something in it ($4: not a no, as the model
+         -- read it — #8779 group 4) un-declines it while it still joins the answer.
          declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW())
            WHEN $4 AND wake_delivered_at IS NULL THEN NULL ELSE declined_at END
      WHERE id = (
@@ -2779,7 +2778,7 @@ export async function recordAskAnswer(
        ORDER BY id DESC LIMIT 1
      )
      RETURNING id, task_id, answer, to_user_id, from_user_id`,
-    [askThreadId, safe, declined, !declined && !isSmallTalk(safe)],
+    [askThreadId, safe, declined, !declined],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];

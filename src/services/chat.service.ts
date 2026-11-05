@@ -38,8 +38,7 @@ import {
   withoutLeadingSelfNote,
 } from './leadingSelfNote';
 import { withNameGenders } from './nameGender';
-import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
-import { greetingName, greetingText, registeredName } from './serverGreeting';
+import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS } from './greetingTurn';
 import { assistantNameSection } from './assistantName';
 import { goalsForRun } from './wakeGoalScope';
 import {
@@ -93,15 +92,8 @@ import { lap, postRunLine, startPostRunClock } from './postRunClock';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
-import { getContactCount, hasAnyContact } from './tools/getContactCount';
+import { getContactCount } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
-import {
-  isFarewell,
-  isGeorgianLine,
-  isPlainThanks,
-  isSmallTalk,
-  isToolFreeSmallTalk,
-} from './smallTalk';
 import { AskChoice, choicesProblem, parseAskChoices, withoutLaterButton } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
@@ -476,9 +468,7 @@ import { isFreeOfficialPageRead } from './officialPageRead';
 import { withoutOurSideApology } from './ourSideApology';
 import { WorldAnswer, worldAnswerMessage, worldAnswerSection } from './worldAnswer';
 import {
-  finalAnswerModel,
   finalWriterForRun,
-  smallTalkFinalModel,
   writeFinalAnswer,
   unusableReason,
   type FinalAnswer,
@@ -546,7 +536,6 @@ import {
   HELD_LINE,
 } from './instructionUnsent';
 import { questionHeldOnThread } from './paceUntilSeen';
-import { isOwnersFirstLine } from './firstOwnerLine';
 import { ABOUT_THE_NAME_FIELD, registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
 import { SUMMARIZED_THINKING, tracedInFull } from './reasoningSummary';
@@ -5978,84 +5967,6 @@ export function buildTodaySection(now: Date): string {
  * full prompt's name line made „ლუკა მაისურაძე, კარგად ვარ" of 37359) and
  * today's date, which „რა დღეა დღეს?" needs.
  */
-/**
- * #2114 (the tester's 43066, seat 177977; Misho's „კი", 7 Oct): the smaller
- * model D627 put on small talk wrote broken Georgian in 5 of 8 short replies —
- * „კარგი ვარი, წყალობით!", „რა დამეხმარება?", „თხოვნით! რა დამიხმარებული?" —
- * and called the owner „Netai". It is given the right forms to copy.
- */
-const SMALL_TALK_GEORGIAN =
-  '\n\nქართული: მოკლე, მარტივი და გრამატიკულად სწორი. ფრაზაში თუ არ ხარ დარწმუნებული, ' +
-  'ამ ნიმუშებიდან აიღე ფორმა:\n' +
-  '„როგორ ხარ?" → „კარგად, მადლობა! შენ როგორ ხარ?"\n' +
-  '„მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"\n' +
-  '„გამარჯობა" → „გამარჯობა! რით დაგეხმარო?"\n' +
-  '„კარგად ხარ?" → „კარგად, მადლობა რომ მკითხე! შენ?"\n' +
-  '„ნახვამდის" → „ნახვამდის! კარგად იყავი."\n' +
-  '„კარგად იყავი" → „შენც კარგად იყავი!" (დამშვიდობებაა, კითხვა არ არის)\n' +
-  '„დროებით" → „დროებით! თუ რამე დაგჭირდეს, მომწერე."\n' +
-  'Netai შენ ხარ — მფლობელს Netai-ს ნუ უწოდებ.';
-
-const SMALL_TALK_PROMPT =
-  'შენ ხარ Netai — მფლობელის პირადი ასისტენტი, რომელიც მის ნაცნობებში სწორ ადამიანს უძებნის. ' +
-  'ეს მოკლე, თბილი საუბარია: უპასუხე ერთი-ორი მოკლე წინადადებით, შენობით, მისივე ენაზე. ' +
-  'რჩევა არ მისცე, მიზანი არ გახსნა, ხელსაწყო არ გამოიძახო, საკუთარ შესაძლებლობებზე არ ილაპარაკო.' +
-  SMALL_TALK_GEORGIAN;
-
-function smallTalkNameLine(firstName: string | null): string {
-  return firstName === null
-    ? ''
-    : `\n\nმფლობელის სახელია ${firstName}. თუ მიმართავ, მხოლოდ სახელით, გვარის გარეშე.`;
-}
-
-/**
- * The tester's 44126 (#2114): „კარგად იყავი" was answered as „how are you" twice,
- * sample or no sample — it opens like „კარგად ხარ?". The server knows a goodbye,
- * so the turn is told it is one.
- */
-const FAREWELL_TURN_NOTE =
-  '\n\nეს შეტყობინება დამშვიდობებაა, არა კითხვა. უპასუხე მხოლოდ დამშვიდობებით ' +
-  '(მაგ. „კარგად იყავი" → „შენც კარგად იყავი!"); „როგორ ხარ"-ს და „მადლობა რომ მკითხე"-ს ნუ დაწერ.';
-
-/**
- * The tester's 44129 (#2114, conversation 42007): „მადლობა" was answered
- * „კარგად, მადლობა რომ მკითხე!" — a thank-you read as „how are you". Told the
- * same way as a goodbye.
- */
-const THANKS_TURN_NOTE =
-  '\n\nეს შეტყობინება მადლობაა, არა კითხვა. უპასუხე მადლობაზე ' +
-  '(მაგ. „მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"); „როგორ ხარ"-ს და „მადლობა რომ მკითხე"-ს ნუ დაწერ.';
-
-/** What kind of line a small-talk turn answers, when the server knows it for sure. */
-function smallTalkTurnNote(userMessage: string): string {
-  // 55870: the notes are Georgian; on another language's line they pull the reply into Georgian.
-  if (!isGeorgianLine(userMessage)) return '';
-  if (isFarewell(userMessage)) return FAREWELL_TURN_NOTE;
-  if (isPlainThanks(userMessage)) return THANKS_TURN_NOTE;
-  return '';
-}
-
-async function smallTalkAgentPrompt(
-  userId: string,
-  userMessage: string,
-): Promise<AgentPromptResult> {
-  const stablePrompt =
-    SMALL_TALK_PROMPT + smallTalkNameLine(greetingName(await registeredName(userId)));
-  const volatilePrompt = buildTodaySection(new Date()) + smallTalkTurnNote(userMessage);
-  return {
-    prompt: stablePrompt + volatilePrompt,
-    stablePrompt,
-    volatilePrompt,
-    runMode: 'quick_answer',
-    blockNames: [SMALL_TALK_BLOCK_NAME],
-    blockVersions: [],
-    basePromptId: null,
-    deliverRequestsSeparately: false,
-  };
-}
-
-const SMALL_TALK_BLOCK_NAME = 'small_talk_prompt';
-
 async function buildAgentSystemPrompt(
   userId: string,
   threadType?: string,
@@ -6603,19 +6514,6 @@ async function taskForAsk(
 const runIntroSent = new Set<string>();
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
 const runWebFound = new Set<string>();
-/** #8519: runs answering a member's first typed line, which never take the small-talk shortcut. */
-const runIsOwnersFirstLine = new Set<string>();
-
-/**
- * Whether the final writer starts beside Claude's first turn (#958, 3106). Not
- * for „where does X work?" (#8524, the tester's 82584: 11–13 s against 10): its
- * answer is one short line, and a short answer keeps Claude's words (Misho's
- * yes, 2 Nov) — so the writer started beside it was only waited for, ≈6 s, and
- * its words used instead.
- */
-export function startsTheWriterEarly(smallTalk: boolean): boolean {
-  return smallTalk;
-}
 /** #893: the labels of the list this run worked, for the check that the reply names every row. */
 const runListLabels = new Map<string, string[]>();
 /** The tool names this many rows to the model; a longer list is not checked row by row. */
@@ -10383,7 +10281,6 @@ function clearRunState(runId: string): void {
   runsFromWhatsapp.delete(runId);
   runAskSent.delete(runId);
   runAskRefused.delete(runId);
-  runIsOwnersFirstLine.delete(runId);
   runAskSentTo.delete(runId);
   runRouteClosed.delete(runId);
   runRelaySent.delete(runId);
@@ -14999,9 +14896,6 @@ export function smallTalkTurn(
   turns: readonly Anthropic.MessageParam[],
 ): boolean {
   if (ownerAbsent || userMessage.trim().length > SMALL_TALK_MAX_CHARS) return false;
-  // The tester's 1116 (S10, S11): small talk answered after the inbox tools still
-  // got the block. A listed small-talk line gets none, whatever tools ran.
-  if (isSmallTalk(userMessage)) return true;
   // A short reply like „კი" answers something; only a short QUESTION is small talk.
   if (!/[?？]\s*$/u.test(userMessage.trim())) return false;
   return !turns.some(
@@ -15063,60 +14957,6 @@ function lookedAtGoals(turns: readonly Anthropic.MessageParam[]): boolean {
       typeof t.content !== 'string' &&
       t.content.some((b) => b.type === 'tool_use' && WAITING_ASKED_TOOLS.has(b.name)),
   );
-}
-
-/** Stamped on a reply the server wrote itself (answered_by). */
-const SERVER_GREETING_AUTHOR = 'server';
-
-/**
- * The founder's D622 (tester 1120): the server greeting took 3.0–3.5 s, and
- * none of it was the greeting. Stored 3.1 s after the hello (thread 35535), it
- * waited for the goal check, the whole system prompt, the tools and the history
- * — all built for a model that is never called. Now it reads only what the
- * line needs, all at once: the name, whether the phonebook is empty, and the
- * conversation's language.
- */
-async function answerGreeting(
-  userId: string,
-  threadId: number,
-  userMessage: string,
-  runId: string,
-  storedAhead: boolean,
-): Promise<ChatResult> {
-  // Run 8 (box 62242): this answer took 2.5–3.8 s with 200 at once against 0.5 alone.
-  const startedAt = Date.now();
-  const [registered, hasContacts, spokenBefore] = await Promise.all([
-    registeredName(userId),
-    ownerHasContacts(userId),
-    ownerMessages(threadId).catch(() => [] as string[]),
-    storedAhead
-      ? Promise.resolve(0)
-      : saveMessage(userId, threadId, 'user', userMessage, 'message', runId),
-  ]);
-  const readsDoneAt = Date.now();
-  const language = languageOfConversation(
-    userMessage,
-    spokenBefore,
-    detectRunLanguage(userMessage),
-  );
-  const reply = greetingText(greetingName(registered), hasContacts, language, userMessage);
-  await saveMessage(
-    userId,
-    threadId,
-    'assistant',
-    reply,
-    'message',
-    runId,
-    null,
-    null,
-    SERVER_GREETING_AUTHOR,
-  );
-  // eslint-disable-next-line no-console
-  console.log(
-    `[greeting] run ${runId}: answered by the server — reads ${readsDoneAt - startedAt}ms, ` +
-      `saved ${Date.now() - readsDoneAt}ms`,
-  );
-  return { reply, language, requestCreated: false };
 }
 
 /**
@@ -15425,17 +15265,6 @@ async function answerThanksTap(
   }
 }
 
-/** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
-async function ownerHasContacts(userId: string): Promise<boolean> {
-  try {
-    return await hasAnyContact(userId);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[greeting] contact check failed:', (err as Error).message);
-    return true;
-  }
-}
-
 async function runToolLoop(
   userId: string,
   threadId: number,
@@ -15588,10 +15417,6 @@ async function runToolLoop(
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
-  const smallTalkOnly =
-    !ownerAbsent &&
-    !runIsOwnersFirstLine.has(runId) &&
-    isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
   // #8779 group 4: the weather and „where does X work?" are no longer looked up before the
   // first turn on a word match — the model calls web_search or the contact search itself.
   const systemPrompt = promptBeforeTheRun;
@@ -15607,7 +15432,7 @@ async function runToolLoop(
   // with the final writer switched off, so nobody could see GPT never ran.
   // They are read, and stamped, only when GPT will actually write.
   // N: a scheduled check or wake has no writer, so its blocks are not loaded either.
-  const writer = finalWriterForRun(ownerAbsent, smallTalkOnly);
+  const writer = finalWriterForRun(ownerAbsent);
   // Read once, on the first write, so a run whose writer never writes pays no read.
   let gptBlocksRead: Promise<string> | null = null;
   const gptBlocks = (): Promise<string> => (gptBlocksRead ??= gptBlocksFor(runId, userId));
@@ -15635,28 +15460,13 @@ async function runToolLoop(
       runLang(runId),
       model,
     );
-  // #958 (the tester's 44122): a small-talk reply is the writer's, and Claude's is only its
-  // fallback — one after the other they took 2 s each. Small talk runs no tool, so the
-  // writer starts now, beside Claude, from the same conversation; Claude does not stream
-  // meanwhile, so the two never mix on the screen.
-  // 3106 (the tester's 62615, 0385 FAIL 1/3: 14.0 / 11.1 / 19.8 s): the writer waited
-  // for Claude, 4-9 s, then took 4-5 s of its own. The weather it writes from is in
-  // its prompt already, so it starts beside Claude, as small talk's does.
-  const earlyFinal =
-    startsTheWriterEarly(smallTalkOnly) && writer !== '' ? writeWith(writer) : null;
-  const firstTurnText = earlyFinal === null ? stream : undefined;
   // #8681 retest 2: set when the forced final was left to the writer.
   let claudeFinalSkipped = false;
-  // 3106, the speed half again (16 Oct 07:35, 3 runs: 21-42 s against 12). With
-  // the weather already found, the first turn only reads it back — the small
-  // model's job, as small talk's is. The blank-answer retry below keeps the big one.
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
-    onText: firstTurnText,
-    model:
-      // #8524 (82667): a lookup answer is the owner's reply itself — no writer
-      // rewrites it now (#8779) — so the main model writes it, not the small one.
-      smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
-    ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+    onText: stream,
+    // D631: a tap the server already acted on is answered by the small model.
+    model: tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
+    ...(otherTap && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
   });
   /** The forced final the writer was trusted with, written after all because the writer failed. */
@@ -15675,7 +15485,7 @@ async function runToolLoop(
       `[chat] run ${runId} first answer was blank (stop_reason ${response.stop_reason}) — asking once more`,
     );
     response = await callClaude(messages, systemPrompt + BLANK_RETRY_NOTE, tools, ctx, {
-      onText: firstTurnText,
+      onText: stream,
       model: TOOL_TURN_MODEL,
     });
   }
@@ -15950,7 +15760,7 @@ async function runToolLoop(
       // The capped turn's streamed text was narration too. The forced final
       // always runs on the strong model.
       resetTurnStream();
-      if (writer !== '' && earlyFinal === null) {
+      if (writer !== '') {
         // #8681 retest 2 (82402, run 79070): this final took 118 s and was then
         // discarded for the writer's (38 s). With a writer set, it is written
         // only if the writer fails (claudeFinalIfSkipped below).
@@ -15997,7 +15807,6 @@ async function runToolLoop(
     // #8524: a short answer that planned and sent nothing keeps Claude's words.
     const keepShort =
       !claudeFinalSkipped &&
-      earlyFinal === null &&
       writer !== '' &&
       shortAnswerStands(
         extractText(response.content),
@@ -16015,22 +15824,7 @@ async function runToolLoop(
       // eslint-disable-next-line no-console
       console.log(`[final-answer] run ${runId}: short answer — Claude's words stand (#8524)`);
     }
-    let rewritten = keepShort ? null : await (earlyFinal ?? writeWith(writer));
-    // D627: a small writer that fails before writing a word hands the turn to the
-    // ordinary one, so trying a small model can cost a moment and never the voice.
-    if (
-      rewritten === null &&
-      smallTalkOnly &&
-      writer !== '' &&
-      !openAiStarted &&
-      smallTalkFinalModel() !== finalAnswerModel()
-    ) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[final-answer] run ${runId}: the small-talk writer failed — the ordinary writer answers`,
-      );
-      rewritten = await writeWith(finalAnswerModel());
-    }
+    const rewritten = keepShort ? null : await writeWith(writer);
     if (rewritten === null) await claudeFinalIfSkipped();
     if (rewritten === null) {
       // Row 155: the deltas were already on the screen before the answer could
@@ -18125,16 +17919,6 @@ async function ensureGoalForRequest(
 ): Promise<GoalForRequest> {
   if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX))
     return NO_GOAL_FOR_REQUEST;
-  // The tester's 1113 (the founder's account): „გამარჯობა" and „რა დღეა დღეს?"
-  // after the new-goal button became goals. Small talk is never a goal.
-  // 958: checked before the discussion read below, which costs small talk a
-  // database round trip for an answer that is „no goal" either way.
-  if (isSmallTalk(userMessage)) {
-    if (intent?.asGoal === true)
-      // eslint-disable-next-line no-console
-      console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is small talk`);
-    return NO_GOAL_FOR_REQUEST;
-  }
   // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
   if (await conversationIsDiscussion(threadId, userMessage)) {
     // eslint-disable-next-line no-console
@@ -18339,13 +18123,6 @@ export async function processChat(
   // #8779 b (rule 30, the founder 4 Nov 19:07): a typed stop is no longer read by stop
   // words before the run. The Stop button has its own route (POST /threads/:id/stop); a
   // typed stop goes to the model, whose update_task can only touch this chat's own goal.
-  // The tester's 1114 and 1116 (D617): a hello gets a hello at once, from the
-  // server, in a goal's conversation too. D622 (1120): before the prompt is built.
-  // #8519 RETEST (the tester's 80967): a new member's first hello was answered here, by the
-  // server's own greeting, before the small-talk path ever saw it. Their first line gets the run.
-  if (!ownerAbsent && isBareGreeting(userMessage) && !(await isOwnersFirstLine(userId))) {
-    return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
-  }
   // 3070 (b): the approve tap is answered by the server and day one starts at once.
   const approvedLine = ownerAbsent
     ? null
@@ -18446,12 +18223,8 @@ export async function processChat(
   // that goal (Ticket 10 Task 18). Only a regular thread qualifies — an ask,
   // an invite or a request thread is already a situation of its own — and an
   // engine event never names anything: it addresses the goal it runs in.
-  // The tester's 1116 (S11, 34670): „როგორ ხარ?" in a new conversation bound to an
-  // old test goal of the same words and ran a full goal turn. Small talk names no goal.
   const namedTask =
-    thread.type === 'regular' &&
-    !userMessage.startsWith(RUN_EVENT_PREFIX) &&
-    !isSmallTalk(userMessage)
+    thread.type === 'regular' && !userMessage.startsWith(RUN_EVENT_PREFIX)
       ? await findOpenTaskNamedIn(userId, userMessage).catch((err: unknown) => {
           // eslint-disable-next-line no-console
           console.warn('[goal-mention] lookup failed:', (err as Error).message);
@@ -18500,13 +18273,6 @@ export async function processChat(
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
   }
 
-  const smallTalkLine = !ownerAbsent && isToolFreeSmallTalk(userMessage);
-  if (smallTalkLine && (await isOwnersFirstLine(userId))) {
-    runIsOwnersFirstLine.add(runId);
-    // eslint-disable-next-line no-console
-    console.log(`[small-talk] run ${runId}: the member's first line — the full run answers it`);
-  }
-  const listedSmallTalk = smallTalkLine && !runIsOwnersFirstLine.has(runId);
   steps.mark('named');
   // 3106 (speed): the two reads the run's language needs depend on nothing the
   // prompt build does, so they start beside it instead of after it.
@@ -18519,18 +18285,16 @@ export async function processChat(
   const [agentPrompt, tools, history] = await Promise.all([
     steps.timed(
       'prompt',
-      listedSmallTalk
-        ? smallTalkAgentPrompt(userId, userMessage)
-        : buildAgentSystemPrompt(
-            userId,
-            thread.type,
-            thread.introduction_request_id,
-            thread.id,
-            undefined,
-            namedTask,
-            ownerAbsent,
-            ownerAbsent ? '' : userMessage,
-          ),
+      buildAgentSystemPrompt(
+        userId,
+        thread.type,
+        thread.introduction_request_id,
+        thread.id,
+        undefined,
+        namedTask,
+        ownerAbsent,
+        ownerAbsent ? '' : userMessage,
+      ),
     ),
     steps.timed('tools', buildToolsForThread(userId, thread.type, ownerAbsent)),
     steps.timed('history', loadHistory(threadId)),
@@ -18947,15 +18711,12 @@ export async function processChat(
   // events and the cliffhanger nudge — persist as kind 'event' so they never
   // render as words the user wrote (ticket 5 item B1: the nudge appeared in the
   // DOM as the user's own message and the assistant answered IT).
-  const moderationSkipped =
-    !ownerAbsent && !runIsOwnersFirstLine.has(runId) && isToolFreeSmallTalk(userMessage);
   // Only where the owner waits for the reply: a system run often ends quietly, unchecked.
-  const earlyVerdict: EarlyVerdict | null =
-    moderationSkipped || ownerAbsent
-      ? null
-      : startEarlyModeration(withoutInvisibleCharacters(finalText), (text) =>
-          moderateReply(text, userId),
-        );
+  const earlyVerdict: EarlyVerdict | null = ownerAbsent
+    ? null
+    : startEarlyModeration(withoutInvisibleCharacters(finalText), (text) =>
+        moderateReply(text, userId),
+      );
   await saveRunTrail(userId, threadId, pending);
   lap(postRun, 'trail');
 
@@ -19235,11 +18996,6 @@ export async function processChat(
   // takes two independent UNSAFE votes (see moderation.service) — a false
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
-  // The server's own greeting never reaches here (answerGreeting): it is our
-  // fixed sentence and needs no reply check. The tester's 1132: a listed
-  // small-talk line („მადლობა", „როგორ ხარ") was still 6–8 s, about a second of it
-  // this check. Its reply was one short text-only turn to a line from a fixed
-  // handful of words, so it skips the check like the greeting.
   /**
    * 3106 (speed): a read that does not depend on the reply check starts before
    * it, beside its model call, and is awaited where it was awaited before. The
@@ -19250,9 +19006,9 @@ export async function processChat(
     getPendingRequestsForMediator(userId),
   );
   requestsEarly.catch(() => undefined);
-  const verdict = moderationSkipped
-    ? { safe: true }
-    : await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));
+  const verdict = await verdictForShown(cleanedFinal, earlyVerdict, (text) =>
+    moderateReply(text, userId),
+  );
   lap(postRun, 'moderation');
   let replySafe = verdict.safe;
   if (!replySafe) {
