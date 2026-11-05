@@ -59,7 +59,6 @@ import {
   parseAskChoices,
   tapOfChoice,
   tappedPersonText,
-  allPeopleText,
   withPeopleDetails,
   withServerLater,
   withoutOtherOption,
@@ -5379,10 +5378,8 @@ export async function tappedPersonOnThread(
       ASK_QUERY_TIMEOUT_MS,
     );
     const stored = parseAskChoices(result.rows[0]?.choices);
-    // 2186: „both" is every person offered.
-    return stored === null
-      ? null
-      : (tappedPersonText(message, stored) ?? allPeopleText(message, stored));
+    // #8779 b (rule 40): a typed „both" is the model's reading; only a tap is read here.
+    return stored === null ? null : tappedPersonText(message, stored);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[ask-tap] thread ${threadId}: person not read:`, (err as Error).message);

@@ -1,32 +1,16 @@
-import { allPeopleText, ChoiceMeaning } from '../askChoices';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 /**
- * 2186 (the founder's own screen, 7 Oct): asked whom she would recommend, the
- * helper could name only one. „Both" is every person offered.
+ * 2186: a helper may recommend more than one. #8779 b (rule 40, the founder 4 Nov
+ * 19:07): a typed „both" / „all of them" is the model's reading, not a word list;
+ * only a tap on a person's button is read by the server.
  */
-const CHOICES = [
-  { label: 'ნინო სტომატოლოგი', means: ChoiceMeaning.Answer, detail: 'კლინიკა ღიმილი, ვაკე' },
-  { label: 'გია ექიმი', means: ChoiceMeaning.Answer },
-  { label: 'ვერ ვურჩევ', means: ChoiceMeaning.No },
-  { label: 'მოგვიანებით', means: ChoiceMeaning.Later },
-];
-
-describe('a helper may recommend more than one (2186)', () => {
-  it.each(['ორივე', 'ორივე, რა თქმა უნდა', 'Both', 'all of them', 'Оба', 'Ambos'])(
-    '„%s" names both, with what she saved',
-    (line) => {
-      expect(allPeopleText(line, CHOICES)).toBe(
-        'ნინო სტომატოლოგი (კლინიკა ღიმილი, ვაკე); გია ექიმი',
-      );
-    },
-  );
-
-  it('a single name, or a sentence about something else, is not „both"', () => {
-    expect(allPeopleText('ნინო სტომატოლოგი', CHOICES)).toBeNull();
-    expect(allPeopleText('ორივე ცუდი ვარიანტია, სხვას გირჩევ ვინმეს', CHOICES)).toBeNull();
-  });
-
-  it('with one person offered there is no „both"', () => {
-    expect(allPeopleText('both', CHOICES.slice(1))).toBeNull();
+describe('a helper may recommend more than one (2186, #8779)', () => {
+  it('reads only the tapped person on the server', () => {
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(asks).toContain('return stored === null ? null : tappedPersonText(message, stored);');
+    const choices = readFileSync(join(__dirname, '..', 'askChoices.ts'), 'utf8');
+    expect(choices).not.toContain('ALL_OF_THEM_RE');
   });
 });
