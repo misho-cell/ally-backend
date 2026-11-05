@@ -128,7 +128,7 @@ import { anonymousAskerName, anonymousPushTitle, withoutAskerNames } from './ano
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
 import { askBoundaryBlocks } from './askBoundary.service';
-import { withAskerAsTheOneInNeed } from './askerInNeed';
+import { editAddsTheReader, withAskerAsTheOneInNeed } from './askerInNeed';
 import { isPhoneOptedOut } from './privacyRights.service';
 import {
   checkAskBudget,
@@ -2316,7 +2316,9 @@ async function createAskNow(
    */
   const editorsAsk =
     editorsDraft.edited &&
-    questionCarriesAnotherPart(ownerWords, toName, editorsDraft.question, OWN_PART_ONLY_ON)
+    (questionCarriesAnotherPart(ownerWords, toName, editorsDraft.question, OWN_PART_ONLY_ON) ||
+      // Tester 82998 (80293): never the reader's own name written into their question.
+      editAddsTheReader(relayed.text, editorsDraft.question, toName))
       ? draftAsk
       : editorsDraft;
   // 3567: the need goes out, never somebody's condition — in the message and in its title.
