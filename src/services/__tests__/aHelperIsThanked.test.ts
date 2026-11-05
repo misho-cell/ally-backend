@@ -265,7 +265,9 @@ describe('a run that thanked a helper asks nothing more', () => {
       'if (thankedThisRun(runId) && labels.includes(SOLVED_LABEL)) {',
     );
     const finish = chat.slice(chat.indexOf("case 'finish_task': {"));
-    expect(finish.slice(0, 1600)).toContain('if (ownerSaid !== true && thankedThisRun(runId)) {');
+    expect(finish.slice(0, 1800)).toContain(
+      "if (!isConfirmed(input['confirmed']) && thankedThisRun(runId)) {",
+    );
   });
 
   it('knows such a run by the owner’s own line', () => {

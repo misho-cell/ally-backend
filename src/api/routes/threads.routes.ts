@@ -52,7 +52,6 @@ import {
   ChatResult,
   keepUserMessage,
   noteGraceAnswer,
-  ownerSaysSolved,
 } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
 import { markRunFailed } from '../../services/runFailure.service';
@@ -1917,7 +1916,6 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
           thread.type === 'regular' &&
           openTask === null &&
           !becameTask &&
-          !ownerSaysSolved(message, null) &&
           !(await chatHadAGoal(threadId));
         const finalStatus = statusAfterRun(result, pendingAsk, {
           workItem: thread.type !== 'regular' || openTask !== null || becameTask,

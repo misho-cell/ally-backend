@@ -60,7 +60,7 @@ describe('the end of a run in a chat with no goal', () => {
 
   it('keeps the chat open unless the owner said it is solved or it once had a goal', () => {
     expect(route).toMatch(
-      /const plainChat =\s+thread\.type === 'regular' &&\s+openTask === null &&\s+!becameTask &&\s+!ownerSaysSolved\(message, null\) &&\s+!\(await chatHadAGoal\(threadId\)\);/,
+      /const plainChat =\s+thread\.type === 'regular' &&\s+openTask === null &&\s+!becameTask &&\s+!\(await chatHadAGoal\(threadId\)\);/,
     );
     expect(route).toContain("finalStatus === 'done' || plainChat ? null");
   });
