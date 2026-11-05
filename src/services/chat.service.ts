@@ -130,6 +130,7 @@ import {
   routesFromFound,
   routesFromWarmPath,
   routeOrderForPlan,
+  ownerNamedAGoBetween,
 } from './severalRoutes';
 import { withQuestionFromSteps } from './questionWithButtons';
 import { withoutInternalText } from './internalText';
@@ -307,7 +308,11 @@ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { factsAboutMe, removeFactAboutMe, RemoveOutcome } from './factsAboutMe.service';
-import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
+import {
+  closedPlanRoute,
+  INTRODUCTION_FIELD_DESCRIPTION,
+  routeIntroductions,
+} from './planClosedRoute';
 import { contactsReminderSection } from './contactsReminderSection';
 import { createUploadLink } from './contactUploadLinks.service';
 import { CONTACTS_UPLOAD_LINK_DESCRIPTION } from './contactsUploadLinkText';
@@ -13790,19 +13795,53 @@ async function introductionHasTheYes(
   input: Record<string, unknown>,
 ): Promise<boolean> {
   const mediatorPhone = String(input['mediator_phone'] ?? '');
+  const targetName = String(input['target_name'] ?? '');
   const plan = goal === null ? null : planInForce(goal);
-  const approvedPlanNamesThem =
-    plan !== null &&
-    plan.approved_at !== null &&
+  const approved = plan !== null && plan.approved_at !== null;
+  const approvedPlanNamesTheGoBetween =
+    approved &&
     mediatorPhone !== '' &&
     plan.people_to_involve.some((p) => phoneDigits(p.phone) === phoneDigits(mediatorPhone));
+  const approvedPlanIntroducesThem =
+    approved &&
+    targetName.trim() !== '' &&
+    routeIntroductions(plan).some((intro) => ownerNamedAGoBetween(intro.toName, [targetName]));
   return introductionMayGo({
-    permissionGranted: goal?.permission_granted === true,
-    approvedPlanNamesThem,
     passesARequestOn: false,
+    approvedPlanIntroducesThem,
+    approvedPlanNamesTheGoBetween,
+    ownerSpokeSinceTheAnswer: threadId == null ? false : await ownerSpokeSinceTheAnswer(threadId),
     ownerLines: threadId == null ? [] : await ownersRecentLines(threadId),
     mediatorName: String(input['mediator_name'] ?? ''),
+    targetName,
   });
+}
+
+/** How buildShownAnswersWakeEvent opens, after the event prefix. */
+const ANSWER_EVENT_OPENING = 'მოვიდა';
+
+/** #8946: the owner's last line came after the latest answer event here (or no answer came). */
+async function ownerSpokeSinceTheAnswer(threadId: number): Promise<boolean> {
+  try {
+    const result = await query<{ spoke: boolean }>(
+      `WITH owner AS (
+         SELECT MAX(created_at) AS at FROM conversations
+          WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND content <> ''
+            AND content NOT LIKE $2),
+       answer AS (
+         SELECT MAX(created_at) AS at FROM conversations
+          WHERE thread_id = $1 AND role = 'user' AND content LIKE $3)
+       SELECT answer.at IS NULL OR (owner.at IS NOT NULL AND owner.at > answer.at) AS spoke
+         FROM owner, answer`,
+      [threadId, `${RUN_EVENT_PREFIX}%`, `${RUN_EVENT_PREFIX} ${ANSWER_EVENT_OPENING}%`],
+      PLAN_CONSENT_TIMEOUT_MS,
+    );
+    return result.rows[0]?.spoke === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[intro-gate] could not read the order of lines:', (err as Error).message);
+    return false;
+  }
 }
 
 /** An answer with nothing in it: no text a person could read and no tool to run. */
