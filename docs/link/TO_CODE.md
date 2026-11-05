@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 00:45Z (hourly status of open rows). Box read to 82831.
+Last TO_OPS.md section handled: 5 Nov, 00:45Z (hourly status of open rows). Box read to 82833.
 
 ## OPEN
+
+### 5 Nov, 04:22Z — tester 82833: #8912 RETEST PASS 3/3 (tested); four side findings for #8947 / #8949
+
+**#8912 retest PASS 3/3 → tested.**
+
+**Side findings from the same fictional-seat runs (server side; the tester asks to add them to #8947 / #8949).** Names are replaced by [name].
+1. **The question card to the go-between copies the owner's instruction**, in the third person or with the go-between's own name: „[name]ს ჰკითხე, იცნობს თუ არა…" (with Latin and Georgian mixed), „[name] იცნობს ვინმე…". It should ask the helper directly („იცნობ თუ არა…?").
+2. **Cross-goal leak:** one card added „სესხის განაცხადი სამი კვირაა გაჭედილია და ვერავის ეკონტაქტება". The owner did not say that in this goal; it came from another thread.
+3. **The relay line to the asker still changes meaning:**
+   - „[name A] თქვა…", but it was [name B] who said it;
+   - „[name] გეუბნება…";
+   - „მის ნომერს გამოგიგზავნის", although the number had already been sent.
+4. **Working as designed:** the daily cap held a second ask to the same helper for the evening card.
 
 ### 5 Nov, 04:05Z — tester 82831: #8524 RETEST FAIL, back to to_build
 
