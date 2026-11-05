@@ -583,28 +583,8 @@ export function listRowsNudge(missing: readonly string[]): string {
 }
 
 /**
- * The tester's 1149 (38149, 38157): a web search and two pages read, then a
- * reply that was only „რა მიზნით გჭირდება…?" — nothing found was shown. A
- * reply this short, ending on a question and carrying no link, is a question
- * alone.
- */
-const ONLY_A_QUESTION_MAX_CHARS = 300;
-const LINK_RE = /https?:\/\//iu;
-
-export function isOnlyAQuestion(text: string): boolean {
-  const reply = text.trim();
-  return (
-    reply.length > 0 &&
-    reply.length <= ONLY_A_QUESTION_MAX_CHARS &&
-    /[?？]$/u.test(reply) &&
-    !LINK_RE.test(reply)
-  );
-}
-
-/**
- * 65212 (3) (56271, 56543): the note put the web results ahead of the way in
- * through the owner's own people, and its „no apology" leaked into replies
- * („I am not apologising"). A way in found comes first; the note is never named.
+ * #8948 (battery 5 Nov): no longer sent — it forced a second reply on research
+ * asks. Kept only so that copies already stored in a history are left out of it.
  */
 export const FINDS_FIRST_NUDGE =
   '(სისტემური შენიშვნა: ამ გაშვებაში ვებ-ძებნამ შედეგები მოიტანა, შენი პასუხი კი მხოლოდ კითხვაა. ' +
