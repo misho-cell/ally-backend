@@ -56,7 +56,7 @@ Expected owner questions after approval: **1** (close).
 
 O: ბუღალტერი მჭირდება მცირე ბიზნესისთვის, სანდო, ნაცნობის რეკომენდაციით.
 
-A: plan: s1 ask ნინო (expert → advice „ვის ურჩევდი?“, on_named ask, on_silence 2 → s2),
+A: plan: s1 ask ნინო (expert → advice „ვის ურჩევდი?“, on_named introduce, on_silence 2 → s2),
 s2 ask ბექა (on_silence 2 → s3), s3 search (second circle „ბუღალტერი“).
 
 O: შენ გადაწყვიტე
@@ -92,7 +92,7 @@ Expected owner questions after approval: **0** until the result.
 
 O: ლოგოს დიზაინერი მინდა, ბიუჯეტი ჯერ არ ვიცი.
 
-A: plan: s1 ask ლიკა (on_named ask), s2 ask the named designer for a price — **ask_owner
+A: plan: s1 ask ლიკა (on_named introduce), s2 the price from the designer — **ask_owner
 true** („ფასზე შენი სიტყვა“). The ≤5 lines name that point.
 
 O: ok, დაიწყე
@@ -101,10 +101,9 @@ A: approve; the first round asks ლიკა; one line.
 
 [event: ლიკა names a designer, Netai member **თამარ ნიმუშელი**]
 
-A: on_named ask → ask_contact თამარ about availability (inside the plan, no question).
-**Blocked today** by the `outside_plan` wall (K9_REFUSALS.md B4): თამარ is not in
-people_to_involve. Run this step only after B4's structural fix; until then write the step
-as on_named introduce (the introduction through ლიკა).
+A: on_named introduce → request_introduction to თამარ through ლიკა (inside the plan, no
+question). Not on_named ask: that is blocked by the `outside_plan` wall until K9 B4's
+structural fix (decided 5 Nov).
 [event: თამარ quotes a price]
 
 A: **marked point**: one sentence naming who and what — „თამარი 600 ლარს ითხოვს; ვუთხრა, რომ
@@ -137,7 +136,7 @@ Expected owner questions after approval: **1** (meeting) + 1 (close).
 
 O: ფოტოგრაფი მინდა ღონისძიებისთვის.
 
-A: plan: s1 ask ბექა (on_named ask), s2 ask ლიკა.
+A: plan: s1 ask ბექა (on_named introduce), s2 ask ლიკა.
 
 O: ეგრე ქენი
 

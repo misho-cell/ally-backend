@@ -63,6 +63,8 @@ const GUARDED_AT_THE_ROUTER = [
   'threads.routes.ts',
   'threadFiles.routes.ts',
   'updates.routes.ts',
+  // #8623: admin only — mounted inside admin.routes and guarded on its own too.
+  'teamAccounts.routes.ts',
 ];
 
 /**
@@ -120,7 +122,7 @@ describe('every route file is either behind the router-level guard or named as a
    * instead of being dropped from the list quietly.
    */
   const REFUSES_AN_ADMIN_TOKEN = GUARDED_AT_THE_ROUTER.filter(
-    (f) => f !== 'admin.routes.ts' && f !== 'privacy.routes.ts',
+    (f) => f !== 'admin.routes.ts' && f !== 'teamAccounts.routes.ts' && f !== 'privacy.routes.ts',
   );
 
   it.each(REFUSES_AN_ADMIN_TOKEN)('%s also refuses an admin token on a user endpoint', (file) => {

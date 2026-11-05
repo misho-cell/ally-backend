@@ -419,6 +419,7 @@ import { adminReadOnlyQuery } from './roQuery.routes';
 import { RoUrlStatus, roUrlStatus } from '../../services/roUrlStatus.service';
 import { SeatCircleIn, setSeatCircles } from '../../services/seatCircles.service';
 import { SeatExclusion, setSeatExcluded } from '../../services/excludedHolders.service';
+import { teamAccountsRouter } from './teamAccounts.routes';
 import { addSeatPhone } from '../../services/seatPhones.service';
 import { acceptDeclinedForMediator } from '../../services/introduction.service';
 
@@ -511,6 +512,8 @@ const AXEL_EXPORTS_PER_MINUTE = 3;
 const STAFF_NAME_MAX_CHARS = 60;
 
 adminRouter.use(authenticateJwt, requireAdminRole);
+// #8623 (DR10): a Netai team member's own account is never a route.
+adminRouter.use('/team-accounts', teamAccountsRouter);
 
 // The read-only SQL window for a signed-in admin (see roQuery.routes.ts).
 adminRouter.post(

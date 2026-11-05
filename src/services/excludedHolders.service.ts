@@ -8,7 +8,11 @@ import { normalizePhone } from './phone';
  */
 
 const EXCLUDED_QUERY_TIMEOUT_MS = 3_000;
-/** The list changes by migration only, so a short cache spares every walk a read. */
+/**
+ * The list changes rarely (a migration, a test seat, a team account set by an admin), so a
+ * short cache spares every walk a read. A change clears this process's cache at once; another
+ * running instance reads it within this window.
+ */
 const EXCLUDED_CACHE_MS = 10 * 60_000;
 const MAX_EXCLUDED_PHONES = 1_000;
 
@@ -55,8 +59,8 @@ export enum SeatExclusion {
 /**
  * Tester 75911 (25 Oct): the plan card's groups leave excluded holders out
  * (0fc7629f), and testing that needs one on a fictional seat. A test seat — and
- * only a test seat — may be made one, or no longer one. Real accounts change by
- * migration alone.
+ * only a test seat — may be made one, or no longer one. A real account changes by
+ * migration, or as a Netai team account (setTeamAccountExcluded).
  */
 export async function setSeatExcluded(
   seatUserId: number,
@@ -84,4 +88,82 @@ export async function setSeatExcluded(
   }
   forgetExcludedHolders();
   return excluded ? SeatExclusion.Set : SeatExclusion.Cleared;
+}
+
+const TEAM_REASON = 'netai_team';
+/** The most team accounts one listing returns. */
+export const MAX_TEAM_ACCOUNTS_LISTED = 200;
+
+export enum TeamAccountExclusion {
+  Set = 'set',
+  Cleared = 'cleared',
+  /** Already never a bridge for another reason (a copied phonebook, a test seat): left as it is. */
+  ExcludedForAnotherReason = 'excluded_for_another_reason',
+  /** Not marked as a team account, so there was nothing to clear. */
+  NotATeamAccount = 'not_a_team_account',
+  NoSuchUser = 'no_such_user',
+}
+
+/**
+ * #8623 (DR10): a member of the Netai team is never a route — a real member got
+ * one's own account as their first route three times. Who is on the team is set
+ * by Misho or ops through the admin route, never written into git. Only rows
+ * with this reason are written or removed; the test-seat and copied-phonebook
+ * rows are never touched here.
+ */
+export async function setTeamAccountExcluded(
+  userId: number,
+  excluded: boolean,
+): Promise<TeamAccountExclusion> {
+  const user = await query<{ id: number }>(
+    'SELECT id FROM "User" WHERE id = $1 LIMIT 1',
+    [userId],
+    EXCLUDED_QUERY_TIMEOUT_MS,
+  );
+  if (user.rows.length === 0) return TeamAccountExclusion.NoSuchUser;
+  const outcome = excluded ? await markTeamAccount(userId) : await unmarkTeamAccount(userId);
+  if (outcome === TeamAccountExclusion.Set || outcome === TeamAccountExclusion.Cleared) {
+    forgetExcludedHolders();
+  }
+  return outcome;
+}
+
+async function markTeamAccount(userId: number): Promise<TeamAccountExclusion> {
+  const inserted = await query(
+    `INSERT INTO excluded_holders (user_id, reason) VALUES ($1, $2)
+     ON CONFLICT (user_id) DO NOTHING`,
+    [userId, TEAM_REASON],
+    EXCLUDED_QUERY_TIMEOUT_MS,
+  );
+  if ((inserted.rowCount ?? 0) > 0) return TeamAccountExclusion.Set;
+  const existing = await query<{ reason: string }>(
+    'SELECT reason FROM excluded_holders WHERE user_id = $1 LIMIT 1',
+    [userId],
+    EXCLUDED_QUERY_TIMEOUT_MS,
+  );
+  return existing.rows[0]?.reason === TEAM_REASON
+    ? TeamAccountExclusion.Set
+    : TeamAccountExclusion.ExcludedForAnotherReason;
+}
+
+async function unmarkTeamAccount(userId: number): Promise<TeamAccountExclusion> {
+  const deleted = await query(
+    'DELETE FROM excluded_holders WHERE user_id = $1 AND reason = $2',
+    [userId, TEAM_REASON],
+    EXCLUDED_QUERY_TIMEOUT_MS,
+  );
+  return (deleted.rowCount ?? 0) > 0
+    ? TeamAccountExclusion.Cleared
+    : TeamAccountExclusion.NotATeamAccount;
+}
+
+/** The user ids marked as Netai team accounts, ids only, oldest mark first. */
+export async function listTeamAccounts(): Promise<readonly number[]> {
+  const result = await query<{ user_id: number }>(
+    `SELECT user_id FROM excluded_holders WHERE reason = $1
+      ORDER BY created_at, user_id LIMIT $2`,
+    [TEAM_REASON, MAX_TEAM_ACCOUNTS_LISTED],
+    EXCLUDED_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => Number(r.user_id));
 }
