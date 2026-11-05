@@ -12,8 +12,9 @@ import { ownerNamedAGoBetween } from './severalRoutes';
  *  - the owner named the person to be met (target) in this conversation, or
  *  - an approved plan carries this very introduction (its route names the
  *    target), or
- *  - the owner has written since the latest answer arrived and named the
- *    go-between or approved a plan with them — a yes given to that answer, or
+ *  - an approved plan asks this go-between (the owner's delegation, Misho
+ *    5 Nov), or the owner has written since the latest answer arrived and
+ *    named the go-between — a yes given to that answer, or
  *  - it passes on a request the go-between was asked (the asker's own).
  * Names are matched, not words: no word list.
  */
@@ -40,13 +41,16 @@ function namedIn(lines: readonly string[], name: string): boolean {
   return lines.some((line) => ownerNamedAGoBetween(line, spellings));
 }
 
+/**
+ * Misho, 5 Nov 11:10Z (autonomy plan, stage 1): an approved plan is the owner's
+ * delegation, and it covers an introduction too. When a person the approved plan
+ * asks names somebody, the introduction through them goes without asking again.
+ */
 export function introductionMayGo(facts: IntroGateFacts): boolean {
   if (facts.passesARequestOn || facts.approvedPlanIntroducesThem) return true;
+  if (facts.approvedPlanNamesTheGoBetween) return true;
   if (namedIn(facts.ownerLines, facts.targetName)) return true;
-  return (
-    facts.ownerSpokeSinceTheAnswer &&
-    (facts.approvedPlanNamesTheGoBetween || namedIn(facts.ownerLines, facts.mediatorName))
-  );
+  return facts.ownerSpokeSinceTheAnswer && namedIn(facts.ownerLines, facts.mediatorName);
 }
 
 /** What the run is told instead of the send. */
