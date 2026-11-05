@@ -91,7 +91,7 @@ The three timings, split (server logs and usage rows):
 DONE WHEN: three one-at-a-time timings under 10 s on the same question („X სად მუშაობს?").
 An honest note: the cuts are worth about 1.5-2.5 s, so 80199-like runs pass, while a 9 s model call like 80200 may still sit near 10 s. If it does, the next lever is the answer's length or the model, and that one is the founder's.
 
-Last TO_CODE.md section handled: 5 Nov, 04:52Z — re 04:50Z: the thread ids from tester 82833 (fictional seats)
+Last TO_CODE.md section handled: 5 Nov, 06:05Z — tester 82932: #8524 retest 2 after a32a8c18, still over 10 s
 
 ### 5 Nov, 06:10Z — for the board: #8383's "who added it" is answered by the frontend
 
