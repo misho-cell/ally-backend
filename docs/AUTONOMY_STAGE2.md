@@ -243,9 +243,44 @@ Costs to watch on a fictional seat (DONE WHEN each holds):
   that, the B4 refusal text only fires for people no step named.
 - Test: `k9AuditTextsFollowThePlan.test.ts`.
 
+## Fourth round — Board #7760 (an ask that is never answered)
+
+Merged `origin/claude/wizardly-johnson-a6orxq` again first (0cb275f3, no conflicts).
+
+What already covered it, read end to end:
+- **A helper who says they can't help** (rule 38, `cannot_help` / `recordAskAnswer`
+  decline): covered. The answer wake shows the answer card in the asker's goal thread
+  first (`answersAreOnScreen`), then wakes the goal; on a plan with steps K3 moves to the
+  step's `on_no`. After only „no"s the run stays quiet (Misho, 1489), so the owner reads
+  it on the card, with no push.
+- **A helper who never answers, plan with steps:** covered by K3's `on_silence`.
+- **A helper who never answers, no steps:** NOT covered. The silent-day sweep only takes
+  goals with an approved plan (`getSilentGoals`: `plan IS NOT NULL`), and its text asks the
+  run to write to more people without naming who stayed silent. A goal with no approved
+  plan heard nothing until the 14-day expiry (#1684) — the owner was first told then.
+- **An ask from an ordinary chat:** there is no such thing. `task_asks.task_id` is
+  NOT NULL, so an ask always belongs to a goal (the run opens one first). This is the case
+  above.
+
+Built (structural — days since the ask row, no words read):
+- Migration **300**: `task_asks.silence_told_at`.
+- `askSilence.service.ts`: after `SILENT_ASK_DAYS` (3) a sent, unexpired, untold ask of
+  the owner's own (no relay), not under a running „later", on an open goal without steps,
+  pulls the goal's wake to now (run after the expiry sweep, same claim). The scheduled
+  wake claims those asks (told once) and carries one line: „ამ ადამიანებს 3 დღეა კითხვაზე
+  არ უპასუხიათ: … მფლობელს ერთი ხაზით უთხარი, ვინ არ უპასუხა, და რა არის შემდეგი ნაბიჯი…".
+  The run says the next step.
+- Test: `aSilentAskIsToldToTheOwner.test.ts`. DONE WHEN, on a fictional seat: a goal
+  without steps asks a fictional member who never answers; three days later the goal
+  wakes once and the owner reads who did not answer and what comes next. The ask stays
+  „sent" and expires at 14 days as before.
+
+Question for Misho: **3 days** is my pick, between the silent-day sweep (1 day, plans
+only) and the expiry (14). *Recommendation:* keep 3.
+
 ## Notes for the lead session
 
-- Migrations on this branch: 296, 297, 298, 299 (main ends at 295 per the lead).
+- Migrations on this branch: 296, 297, 298, 299, 300 (main ends at 295 per the lead).
 - Migration number 296 was the next free one on this branch's base. If main took 296
   meanwhile, rename the file to the next free number before merging — nothing else
   refers to the number.
