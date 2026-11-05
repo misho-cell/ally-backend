@@ -1,4 +1,4 @@
-import { AskKind, askKindOf } from './askKind';
+import { AskKind } from './askKind';
 import { georgianToLatin, hasGeorgian } from './tools/transliterate';
 import { nameToSay } from './spokenName';
 import { RunLanguage } from './runLanguage';
@@ -450,13 +450,14 @@ export function askChoices(language: RunLanguage): readonly string[] {
 }
 
 /**
- * #1948: the buttons under THIS question, by what kind of question it is.
- * Every kind keeps „later"; only a request for help keeps „yes, I can help".
+ * #1948: the buttons under THIS question, by what kind of question it is (the
+ * asking model's word, #8779). Every kind keeps „later"; only a request for help
+ * keeps „yes, I can help".
  */
-export function askChoicesFor(question: string, language: RunLanguage): readonly string[] {
+export function askChoicesFor(kind: AskKind, language: RunLanguage): readonly string[] {
   const pick = (labels: Readonly<Record<RunLanguage, string>>): string =>
     labels[language] ?? labels.ka;
-  switch (askKindOf(question)) {
+  switch (kind) {
     case AskKind.Intro:
       return [INTRO_YES_CHOICE, INTRO_NO_CHOICE, LATER_CHOICE].map(pick);
     case AskKind.Know:

@@ -351,6 +351,7 @@ import {
 } from './taskPlans.service';
 import { PLAN_STEPS_SCHEMA_PROPERTIES } from './planStepsSchema';
 import { whereWeAreSection } from './whereWeAre.service';
+import { ASK_KIND_FIELD, askKindFrom } from './askKind';
 import { DELEGATED_FIELD_SCHEMA, recordDelegation } from './planDelegation';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
@@ -1803,6 +1804,8 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
           'name too. A later ask to the same person stays unnamed; pass false there only after ' +
           'the owner has agreed to be named.',
       },
+      // #8779 group 4: the reader's buttons follow the model's word, not a word list (askKind.ts).
+      kind: ASK_KIND_FIELD,
     },
     required: ['task_id', 'phone', 'question', 'choices'],
   },
@@ -11627,6 +11630,7 @@ async function executeToolCall(
         typeof input['anonymous'] === 'boolean' ? input['anonymous'] : undefined,
         !ownerAbsent,
         !ownerAbsent && runId !== undefined && runGrantedTheGoal.get(runId)?.has(taskId) === true,
+        askKindFrom(input['kind']),
       );
       if ((askOutcome as { sent?: unknown }).sent !== true && runId) runAskRefused.add(runId);
       if ((askOutcome as { sent?: unknown }).sent === true) {

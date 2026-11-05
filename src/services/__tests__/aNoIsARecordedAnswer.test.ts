@@ -71,7 +71,7 @@ describe('what the ask carries, and what the answer records', () => {
 
   /** Row 300: the decline is one of three buttons, all offered with the question. */
   it('offers the decline with the question itself', () => {
-    expect(asks).toContain('askChoicesFor(safeQuestion, language)');
+    expect(asks).toContain('askChoicesFor(askKind, language)');
     expect(asks).toContain('saveThreadMessage(');
   });
 
@@ -98,7 +98,7 @@ describe('what the ask carries, and what the answer records', () => {
     // too (aMediatorIsAskedWhomHeRecommends), so the window just got longer.
     // D712: the buttons are the asking model's, or the old set; the editor's either way.
     expect(offer.slice(0, 300)).toContain('choices.map((choice) => choice.label)');
-    expect(asks).toContain('askChoicesFor(safeQuestion, language)');
+    expect(asks).toContain('askChoicesFor(askKind, language)');
   });
 
   /**
