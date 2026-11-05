@@ -554,6 +554,8 @@ export async function heldUpdatesWaiting(userId: string): Promise<HeldUpdate[]> 
     `SELECT p.kind, p.task_id, p.payload->>'request_id' AS request_id
      ${HELD_AND_STILL_REAL}
        AND (p.release_at <= NOW() OR p.kind = ANY($3::text[]))
+       -- #8748: the release query's own guard — a goal question waits only while its goal does.
+       AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
      ORDER BY p.id
      LIMIT ${HELD_ROWS_READ_LIMIT + 1}`,
     [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, STICKY_KINDS],

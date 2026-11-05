@@ -3995,6 +3995,9 @@ export interface PendingAsk {
  * check_my_inbox reported `waiting_for_me: []` twice, an hour apart, in the
  * same run.
  */
+/** CLAUDE.md: never more than needed; a person with more open questions sees the oldest first. */
+const PENDING_ASKS_LISTED = 50;
+
 export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[]> {
   const result = await query<PendingAsk>(
     `SELECT ta.id AS ask_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS from_name, ta.question, ta.created_at,
@@ -4006,7 +4009,11 @@ export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[
        -- (latest round only) refused it. Only a thread's latest round waits.
        AND (ta.ask_thread_id IS NULL
             OR ta.id = (SELECT MAX(t2.id) FROM task_asks t2 WHERE t2.ask_thread_id = ta.ask_thread_id))
-     ORDER BY ta.created_at ASC`,
+       -- #8748: an expired question stays 'sent' (askState.ts: the state is in the
+       -- dates) and was listed on every surface; „are you free on 7 October?" was.
+       AND ta.expired_at IS NULL
+     ORDER BY ta.created_at ASC
+     LIMIT ${PENDING_ASKS_LISTED}`,
     [userId],
     ASK_QUERY_TIMEOUT_MS,
   );
