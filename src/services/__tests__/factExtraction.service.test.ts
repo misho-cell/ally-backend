@@ -47,13 +47,19 @@ beforeEach(() => {
 });
 
 describe('sweepFactsFromExchange (engine T1)', () => {
-  it('skips the model call for a very short message that confirms nothing', async () => {
-    await sweepFactsFromExchange('7', 42, 'აა', 'კარგი');
+  it('skips the model call for a very short message with no reply to agree to', async () => {
+    await sweepFactsFromExchange('7', 42, 'აა');
 
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('DOES read a short message when it is an agreement with a reply to agree to', async () => {
+  it('skips the model call for a very short question — a question agrees to nothing', async () => {
+    await sweepFactsFromExchange('7', 42, 'ვინ?', 'ნიკა ბათუმში ცხოვრობს.');
+
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('DOES read a short message that could be an agreement, with a reply to agree to', async () => {
     // „კი" used to be skipped by length. But an agreement is short by nature,
     // and it is the one short message that carries a fact: it makes the
     // assistant's last sentence the user's own. Skipping it meant "what the
