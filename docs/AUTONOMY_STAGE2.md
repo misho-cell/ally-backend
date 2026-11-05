@@ -275,8 +275,7 @@ Built (structural — days since the ask row, no words read):
   wakes once and the owner reads who did not answer and what comes next. The ask stays
   „sent" and expires at 14 days as before.
 
-Question for Misho: **3 days** is my pick, between the silent-day sweep (1 day, plans
-only) and the expiry (14). *Recommendation:* keep 3.
+Decided (the owner, 5 Nov): **3 days** stays, as built.
 
 ## Notes for the lead session
 
