@@ -383,19 +383,20 @@ export function clearPushDedupe(): void {
 }
 
 /**
- * Whether the WhatsApp copy is held back. Always for an answer asked from
- * WhatsApp (the answer itself goes back there) and while the device that asked
- * is in use. With both channels on, also while any Netai screen is open; with
- * WhatsApp only, an open screen elsewhere does not hold it back (#8713).
+ * Whether the WhatsApp copy is held back: for an answer asked from WhatsApp (the
+ * answer itself goes back there) and while the device that asked is in use.
+ *
+ * #8978 (Tornike and Lika, 5 Nov 09:10Z, urgent): with both channels on, any
+ * Netai screen left open held the WhatsApp copy back — a tab on Tornike's
+ * computer kept every incoming question of Lika's off his phone. The same
+ * lesson as push row 6: a screen open on one device says nothing about the
+ * person reading another. An open screen elsewhere no longer holds it back.
  */
 export function whatsappCopyHeldBack(
-  whatsappOnly: boolean,
   askedFrom: string | null | undefined,
-  anyScreenOpen: boolean,
   askerReading: boolean,
 ): boolean {
-  if (askedFrom === WHATSAPP_DEVICE || askerReading) return true;
-  return !whatsappOnly && anyScreenOpen;
+  return askedFrom === WHATSAPP_DEVICE || askerReading;
 }
 
 /** WhatsApp only, and the channel is on — otherwise the app notifies as before. */
@@ -430,7 +431,7 @@ export async function sendPushNotification(
     void mirrorToWhatsapp(
       Number(userId),
       payload,
-      whatsappCopyHeldBack(true, options.askedFrom, hasActiveConnection(userId), askerReading),
+      whatsappCopyHeldBack(options.askedFrom, askerReading),
       options.highValue === true,
     );
     return;
@@ -442,7 +443,7 @@ export async function sendPushNotification(
   void mirrorToWhatsapp(
     Number(userId),
     payload,
-    whatsappCopyHeldBack(false, options.askedFrom, hasActiveConnection(userId), askerReading),
+    whatsappCopyHeldBack(options.askedFrom, askerReading),
     options.highValue === true,
   );
 
