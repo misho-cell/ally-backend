@@ -1,4 +1,5 @@
 import { notePlanAskSent } from './planAdvance.service';
+import { namedOnAnAskStep } from './planAdvance.service';
 import { netaiMember } from './netaiMembership';
 import {
   PACE_UNTIL_SEEN_ON,
@@ -1918,15 +1919,18 @@ async function createAskNow(
   if (
     !verdict.allowed &&
     parentAskId === undefined &&
-    !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone))
+    !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone)) &&
+    // K9 B4 (stage 2's helper): a person an answer named on an on_named: ask step is in the plan.
+    !(await namedOnAnAskStep(taskId, toName))
   ) {
     return {
       sent: false,
       reason: 'outside_plan',
       error:
-        `${toName} დამტკიცებულ გეგმაში არ არის. ეს გეგმის ცვლილებაა: propose_task_plan-ით ` +
-        'შესთავაზე მფლობელს განახლებული სია (ის, რაც უკვე დამტკიცებულია, უწყვეტად გრძელდება), ' +
-        'დაელოდე „კი"-ს და მხოლოდ მერე მისწერე. სიაში მყოფ ადამიანებს ახლავე შეგიძლია მისწერო.',
+        // K9 B4 (autonomy stage 1): the plan goes on; the new person is asked about beside it.
+        `${toName} გეგმის სიაში არ არის. თუ ის გეგმის ადამიანმა დაასახელა, გაცნობა მისი გავლით ` +
+        'ითხოვე (request_introduction) — ეს გეგმაშია. სხვა შემთხვევაში გეგმის შემდეგი ნაბიჯი ' +
+        `გააგრძელე და მფლობელს ერთი წინადადებით ჰკითხე, დავამატოთ თუ არა ${toName}.`,
     };
   }
 

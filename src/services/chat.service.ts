@@ -1,6 +1,6 @@
 import { rewriteDropsFacts } from './rewriteKeepsFacts';
 import { relayInMeetingChat } from './meetingChat.service';
-import { INTRODUCTION_WAITS_FOR_THE_YES, introductionMayGo } from './introYesGate';
+import { introductionMayGo, introductionWaitsLine } from './introYesGate';
 import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
 import { offersMatching, withOffers } from './tools/searchOffers';
 import { maskPersonalIds } from './personalIdMask';
@@ -3857,8 +3857,9 @@ export const APPROVE_PLAN_DESCRIPTION =
   'TURN — their tap on the approve button, or a short go-ahead they typed. If the newest ' +
   'message is yours and not theirs, there is no yes to record and you must not call this. ' +
   'Your own summary, your own question and your own certainty are not approvals. Pass ' +
-  'confirmed: true. From then on, an ask to a person the plan names goes without asking again; ' +
-  'a person outside the plan needs a plan change first.';
+  'confirmed: true. From then on every step of the plan and every rule written in it goes ' +
+  'without asking again — including the introduction or ask its on_named rule calls for. Only ' +
+  'a person no step or rule brings in needs a plan change first.';
 
 const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
   name: 'approve_task_plan',
@@ -5751,11 +5752,15 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
       return `- ${who} [${askStateOf(a, new Date())}]${answer}`;
     })
     .join('\n');
+  const plan = planInForce(task);
+  // K9 B1 (autonomy stage 1): an approved plan is the consent; the ask-first line is for no plan.
   const autonomyLine =
     task.autonomy === 'autonomous'
       ? 'ავტონომიური — მოქმედებ დაუკითხავად და მხოლოდ აცნობებ მფლობელს.'
-      : 'ჯერ-კითხვა — ვინმესთვის მიწერამდე ამ თრედში დაეკითხე მფლობელს და დაელოდე თანხმობას.';
-  const plan = planInForce(task);
+      : plan?.approved_at
+        ? 'დამტკიცებული გეგმა — მისი ნაბიჯები და წესები უკვე თანხმობაა: აკეთებ და მფლობელს ერთი ' +
+          'ხაზით აცნობებ. მის სიტყვას ითხოვ მხოლოდ მონიშნულ ნაბიჯზე.'
+        : 'ჯერ-კითხვა — ვინმესთვის მიწერამდე ამ თრედში დაეკითხე მფლობელს და დაელოდე თანხმობას.';
   // Ticket 10 Task 21 (D119): with an approved plan, consent is the PLAN's,
   // not the message's. Without one, the old per-message rule holds, and the
   // first job is to propose the plan.
@@ -10764,7 +10769,13 @@ async function executeToolCall(
       // 5347: in a link's own request thread, the request that goes on is the owner's.
       const passedOn = threadId == null ? null : await requestThisThreadPassesOn(userId, threadId);
       if (passedOn === null && !(await introductionHasTheYes(threadId, goalForIntro, input))) {
-        return { success: false, sent: false, error: INTRODUCTION_WAITS_FOR_THE_YES };
+        return {
+          success: false,
+          sent: false,
+          error: introductionWaitsLine(
+            Boolean(goalForIntro?.plan && goalForIntro.plan_approved_at),
+          ),
+        };
       }
       const introOutcome =
         passedOn === null
@@ -10778,7 +10789,10 @@ async function executeToolCall(
               input['target_phone'] as string | undefined,
               input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
               input['accept_dormant'] === true,
-              introContextFor(threadId, goalForIntro?.id),
+              {
+                ...introContextFor(threadId, goalForIntro?.id),
+                planApproved: Boolean(goalForIntro?.plan && goalForIntro.plan_approved_at),
+              },
             )
           : await passOwnersRequestOn(userId, passedOn, input);
       if ((introOutcome as { success?: unknown }).success === true) {
@@ -15783,10 +15797,7 @@ async function runToolLoop(
     console.log(`[final] run ${runId}: a refused plan's narration is not the answer`);
     bestNarration = '';
   }
-  if (
-    bestNarration.length > 0 &&
-    (STAGE_DIRECTION_ONLY_RE.test(finalText) || isOnlyAWaitingLine(finalText))
-  ) {
+  if (bestNarration.length > 0 && STAGE_DIRECTION_ONLY_RE.test(finalText)) {
     finalText = '';
   }
   const buriedAnswer =
@@ -17119,31 +17130,6 @@ const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id
  * is none of this rule's business; markdown emphasis around the
  * outside is allowed because the model wrapped one of these in asterisks.
  */
-/**
- * The tester's 1012 (thread 30041): the real line — „…ასე გადავცე?" — went
- * out as a step, and the final was only „დაველოდები შენს პასუხს.". The person
- * saw the filler and not the question it was waiting on. A final that is
- * nothing but „I'll wait for your answer" is no answer; the step is.
- */
-/**
- * The tester's 1048 (thread 30889): the final was „ელოდები, რომ აირჩიო." — a
- * waiting line about the owner's CHOICE, and in the second person — while the
- * real 199-character reply sat in the step, one character under the rescue's
- * length floor. Waiting for a choice or a yes is the same non-answer as waiting
- * for a reply, in either person.
- */
-/**
- * The tester's 1135 (37065), seen live on 4 Oct (run 53f8f216): „დამელოდე შენს
- * არჩევანს." — the same non-answer in the imperative — went out as the reply
- * while the step above it said what to do.
- */
-const WAITING_LINE_ONLY_RE =
-  /^[*_`~(\s]*(?:(?:და)?ვ?ელოდები|დამელოდე)[,\s]+(?:რომ\s+)?(?:შენს\s+)?(?:პასუხს|არჩევანს|დასტურს|აირჩიო|აირჩიე|აირჩევ|დაადასტურო|დამიდასტურო)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?m|I am)\s+waiting\s+for\s+(?:you\s+to\s+(?:choose|pick|confirm)|your\s+(?:choice|answer|reply))[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?ll|I will)\s+wait\s+for\s+your\s+(?:answer|reply)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*жду\s+(?:твоего\s+)?ответа[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:espero|esperaré)\s+tu\s+respuesta[.!…]?[*_`~)\s]*$/i;
-
-export function isOnlyAWaitingLine(text: string): boolean {
-  return WAITING_LINE_ONLY_RE.test(text.trim());
-}
-
 // The tester's 1055 (thread 31058): „(აირჩიე რომელი შეესაბამება შენს სურვილს)." —
 // a full stop after the bracket is still only a stage direction.
 export const STAGE_DIRECTION_ONLY_RE =
