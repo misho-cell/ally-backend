@@ -486,7 +486,6 @@ import {
   continuationRepeatsAnnouncement,
   continuationCoversAnswer,
   describeCliffhangerOutcome,
-  isCliffhangerReply,
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
   claimsToHavePassedItOn,
@@ -16662,6 +16661,9 @@ async function runToolLoop(
                             : foreignWord !== null
                               ? foreignWordNudge(foreignWord)
                               : CLIFFHANGER_NUDGE;
+  // #8948 (tester 82831, run of thread 80162): the „ends on a promise" reading forced a
+  // second turn after a finished answer — 70 s more, at 124 s in all. No forced turn on a
+  // reading of the words (founder: server notes go); the guards here read facts.
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -16677,8 +16679,7 @@ async function runToolLoop(
       bookMembersSkipped.length > 0 ||
       farFindUnplanned ||
       rowsMissing.length > 0 ||
-      foreignWord !== null ||
-      isCliffhangerReply(finalText))
+      foreignWord !== null)
   ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
     // announcement is kept because the log line compares the two texts, and
