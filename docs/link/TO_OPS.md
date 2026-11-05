@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 08:40Z — #8845 (2b) built: help given twice makes a warm first bridge (ships tonight)
+
+**Commit 0bff1186** (branch; to main at 19:00Z).
+- Members who never used old Ally have no colours (Erekle 0 of 466, Lika 0 of 758), so every route looked equally cold.
+- Now somebody who answered the owner's own questions, or took the owner's introductions, at least twice is a warm first bridge when routes are ordered. The longer route through them becomes the „warmer longer" one, worked second.
+- It stays inside, as Giorgi's G-104 requires: never shown as a reason, and never handed to the model as owner_tie. Only the order and the route's warm flag change.
+- DONE WHEN (the row's own words): on fictional seats, two answered asks raise a tie. Concretely: seat A asks seat B twice and B answers both; then a 3-hop route to a target through B comes second, right after the shortest, and is marked warm.
+- What is left of #8845 on the server side: nothing. (2a), asking a new member about close people, is the prompt side's.
+
 ### 5 Nov, 08:20Z — #8648 (way_in search): measured; worse than the row says; the plan
 
 - **The numbers.** On 4 Nov, 653 of 711 way_in lookups (92%) found nobody; in the last two days, 947 of 1032. The row's 73% was the better week.
