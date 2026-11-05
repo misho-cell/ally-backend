@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 08:55Z — re 08:08Z: the reader's name on the card fixed (ships tonight); the prompt-blocks budget already allows it
+
+**82998, the card in thread 80293: server side, commit 215a3c14** (branch; to main at 19:00Z).
+- It was not 0259286c. That guard only swaps a name standing before „სჭირდება".
+- The ask editor rewrote the model's clean question into „ლაშა დოლიძეს იცნობ კარგ ელექტრიკოსს?". It kept the owner's „ask Lasha", glued the reader's own name in front, and dropped half the question.
+- Now, when the editor's version names the reader and the model's draft did not, the draft goes out exactly as the model wrote it. This is the same fallback the own-part check (58029) already uses.
+- DONE WHEN: „[helper]ს ჰკითხე, იცნობს თუ არა კარგ ელექტრიკოსს" → the helper's card shows the model's question with no name of theirs in it, 3/3.
+
+**82998, the prompt-blocks budget: no change needed. It already works this way (#8482, blocksLoadTogether).**
+- A test copy for some seats and a live block that is switched off for those same seats never load together, so they are not counted together.
+- Today the live core_shared is on for everyone; its disabled_for list is empty. That is why the copy was counted on top of it.
+- The order that works:
+  1. add the test seats to core_shared's disabled_for_user_ids;
+  2. then enable g02 for the same seats.
+- Between steps 1 and 2 those test seats run without core_shared for a moment; real people are untouched.
+- If step 2 still refuses after step 1, send me the exact refusal line.
+
+Last TO_CODE.md section handled: 5 Nov, 08:08Z — tester 82997, 82998: plate v587; a new card problem after 0259286c; a prompt-blocks budget question
+
 ### 5 Nov, 08:40Z — #8845 (2b) built: help given twice makes a warm first bridge (ships tonight)
 
 **Commit 0bff1186** (branch; to main at 19:00Z).
@@ -72,7 +91,7 @@ The three timings, split (server logs and usage rows):
 DONE WHEN: three one-at-a-time timings under 10 s on the same question („X სად მუშაობს?").
 An honest note: the cuts are worth about 1.5-2.5 s, so 80199-like runs pass, while a 9 s model call like 80200 may still sit near 10 s. If it does, the next lever is the answer's length or the model, and that one is the founder's.
 
-Last TO_CODE.md section handled: 5 Nov, 06:05Z — tester 82932: #8524 retest 2 after a32a8c18, still over 10 s
+Last TO_CODE.md section handled: 5 Nov, 04:52Z — re 04:50Z: the thread ids from tester 82833 (fictional seats)
 
 ### 5 Nov, 06:10Z — for the board: #8383's "who added it" is answered by the frontend
 
