@@ -139,7 +139,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { armAnswerDebrief, armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
 import { LATER_DEFAULT_DAYS, laterSentenceForAsker } from './askState';
-import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
+import { LATER_UNTIL_SQL } from './laterChoices';
 import { oneAtATimeFor } from './recipientLock';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
 import { eveningCardFor } from './eveningCard.service';
@@ -2912,10 +2912,7 @@ export async function sendApprovedAskAnswer(
   // #7459 retest (tester 73833): once the answer has gone, a helper's „busy until
   // Monday, then she can" is more for the asker, not a postponed answer — it
   // joins the answer like any addition (#6865) instead of being refused.
-  if (
-    row.status !== 'answered' &&
-    (askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText))
-  ) {
+  if (row.status !== 'answered' && askTapOf(approvedText.trim()) === AskTap.Later) {
     return { sent: false, error: LATER_IS_NOT_AN_ANSWER };
   }
   // D648: the answer goes in the assistant's words, with the helper's facts
@@ -5232,9 +5229,9 @@ export async function noteDeclineIfButtonPressed(threadId: number, message: stri
  * happen only once.
  */
 export async function answerAskTapAtOnce(threadId: number, message: string): Promise<void> {
-  // #1686 (A3): „later" typed in words counts as the button — three days.
-  const tap =
-    (await askTapOnThread(threadId, message)) ?? (isTypedLater(message) ? AskTap.Later : null);
+  // #8779 b (rule 39): only the button is read here; „later" typed in words is the
+  // model's reading — postpone_answer (setLaterDays).
+  const tap = await askTapOnThread(threadId, message);
   if (tap !== AskTap.Yes && tap !== AskTap.Later) return;
   try {
     const claimed = await claimAskTap(threadId, tap);
