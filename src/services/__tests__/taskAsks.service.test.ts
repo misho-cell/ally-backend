@@ -562,11 +562,11 @@ describe('createAsk', () => {
       expect(mockCreateThread).not.toHaveBeenCalled();
     });
 
-    it('a person outside the plan is a plan change, with the instruction to propose one', async () => {
+    it('a person outside the plan is refused with the plan’s next step (K9 B4)', async () => {
       routeAskQueries({ member: { userId: 7, name: 'ბექა' }, plan: PLAN });
       const out = await createAsk('42', 3, '+995599000000', 'q');
       expect((out as { reason?: string }).reason).toBe('outside_plan');
-      expect((out as { error: string }).error).toContain('propose_task_plan');
+      expect((out as { error: string }).error).toContain('გეგმის შემდეგი ნაბიჯი');
       expect(mockCreateThread).not.toHaveBeenCalled();
     });
 

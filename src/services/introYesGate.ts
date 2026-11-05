@@ -58,3 +58,17 @@ export const INTRODUCTION_WAITS_FOR_THE_YES =
   'Not sent: the owner has not said yes to being introduced to this person. Tell them in a ' +
   'line who was found and through whom, and ask whether to ask for the introduction; send ' +
   'it only after their yes. Do not tell them it went.';
+
+/**
+ * K9 B5 (autonomy stage 1): under an approved plan this refusal fires only for a
+ * go-between outside the plan. The plan does not stop: the next step goes on, and
+ * the introduction is asked about once, beside it.
+ */
+export const INTRODUCTION_OUTSIDE_THE_PLAN =
+  'Not sent: this go-between is not in the approved plan, so this introduction is outside it. ' +
+  'Go on with the plan’s next step now; tell the owner in one line who was found and through ' +
+  'whom, and ask once whether to add the introduction. Do not tell them it went.';
+
+export function introductionWaitsLine(planApproved: boolean): string {
+  return planApproved ? INTRODUCTION_OUTSIDE_THE_PLAN : INTRODUCTION_WAITS_FOR_THE_YES;
+}
