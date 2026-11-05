@@ -1,77 +1,31 @@
+import { recordClaudeUsage } from './costLedger.service';
 import { dictatesTheText, sentenceCarriedOver } from './sentenceCarriedOver';
-import { nameKey } from './tools/transliterate';
+
 /**
  * Board #100 (plate F1): when Netai worded a question for the owner it changed
  * facts. An ask said „for a friend" though the owner asked for himself, and
- * „last year" became „this year". The person asked answers what they read, so
- * a changed fact is a wrong answer delivered politely.
+ * „last year" became „this year" (3037/3670, #1552: „ტვირთი" became „ავეჯი").
+ * The person asked answers what they read, so a changed fact is a wrong answer
+ * delivered politely.
  *
- * Checked in code before a question goes out, against the owner's own lines
- * in the goal's conversation. Two checks, each narrow:
- *
- *   beneficiary  the question says it is for a friend or an acquaintance, and
- *                the owner never mentioned one;
- *   time         the question carries a time word, the owner used time words,
- *                and not this one.
- *
- * A miss costs a question that goes out as today; a false refusal costs one
- * rewrite. Both checks therefore fire only on a word that is plainly there.
+ * #8779 (ops 18:45Z, 5 Nov): the check was three word lists (friend words, time
+ * words, a bracketed word whose stem the owner never wrote) and it refused a real
+ * owner's ask over „იგივე" („the same"). Like the reply claims (Misho's choice,
+ * 5 Nov: „პატარა მოდელი"), a small model now reads the owner's lines and the
+ * question and says whether the question changed who it is for, when, or added
+ * a detail the owner did not give. The word it names must stand in the question,
+ * so it cannot invent one; on any failure nothing is held back.
  */
-/**
- * 3037/3670 (tester 44551; asks 17039, 17722, 18252 on 8–9 October): „მეგობარს
- * ეზო აქვს", „ჩემმა მეგობარმა", „მეგობარს ესაჭიროება" went out though the owner
- * named nobody. Every SINGULAR case of „friend" counts; the plural („შენს
- * მეგობრებში" — among your friends) is how a question is asked, and stays.
- */
-const BENEFICIARY_IN_QUESTION_RE =
-  /(მეგობ(?:არ(?:ს|მა|ი|ის|თან)?|რის(?:თვის)?)(?![\p{L}])|ნაცნობისთვის|ჩემს\s+ნაცნობს|for\s+a\s+friend|a\s+friend\s+of\s+mine|my\s+friend|для\s+друга|мой\s+друг|моему\s+другу)/iu;
-
-/** The owner naming somebody else at all: a friend, an acquaintance, family. */
-const OWNER_NAMES_SOMEONE_ELSE_RE =
-  /(მეგობ|ნაცნობ|ძმა|ძმის|დეიდა|მამიდა|ბიძა|მეუღლ|ცოლ|ქმარ|შვილ|\b(friend|acquaint\w*|brother|sister|mother|father|mom|dad|wife|husband|son|daughter|cousin|colleague)s?\b|друг|знаком|брат|сестр|жен|муж)/iu;
-
-/** Time words that name a different moment from each other. */
-const TIME_WORDS: readonly (readonly string[])[] = [
-  ['შარშან', 'last year', 'в прошлом году'],
-  ['წელს', 'ამ წელს', 'this year', 'в этом году'],
-  ['გუშინ', 'yesterday', 'вчера'],
-  ['დღეს', 'today', 'сегодня'],
-  ['ხვალ', 'tomorrow', 'завтра'],
-  ['გასულ კვირას', 'წინა კვირას', 'last week', 'на прошлой неделе'],
-  ['ამ კვირაში', 'ამ კვირას', 'this week', 'на этой неделе'],
-  ['მომავალ კვირას', 'შემდეგ კვირას', 'next week', 'на следующей неделе'],
-  ['მომავალ წელს', 'next year', 'в следующем году'],
-];
+const FACT_CHECK_MODEL = process.env.FACT_CHECK_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const FACT_CHECK_TIMEOUT_MS = 4_000;
+const FACT_CHECK_MAX_TOKENS = 120;
+const MAX_OWNER_CHARS = 3_000;
+const MAX_QUESTION_CHARS = 1_500;
 
 export enum FactChange {
   Beneficiary = 'beneficiary',
   Time = 'time',
   Detail = 'detail',
-}
-
-/**
- * Tester 39832 (#1552): the owner wrote „ტვირთი მაქვს ჩამოსატანი" (cargo) and
- * the ask read „ტვირთის (ავეჯის) ჩამოტანა" — furniture, a detail he never gave.
- * A word the model puts in brackets to narrow the owner's own is the plainest
- * form of it: one whose stem is nowhere in the owner's lines is held back.
- */
-const BRACKETED_RE = /\(([^()]{1,60})\)/gu;
-const WORD_RE = /\p{L}{4,}/gu;
-/** Enough of a word to survive a case ending: „ავეჯი" / „ავეჯის" share „ავეჯ". */
-const DETAIL_STEM_CHARS = 4;
-
-function bracketedDetailNotSaid(question: string, owner: string): string | null {
-  const low = lowered(owner);
-  const ownerKey = nameKey(owner);
-  const said = (w: string): boolean =>
-    low.includes(lowered(w).slice(0, DETAIL_STEM_CHARS)) ||
-    ownerKey.includes(nameKey(w).slice(0, DETAIL_STEM_CHARS));
-  for (const match of question.matchAll(BRACKETED_RE)) {
-    const words = match[1].match(WORD_RE) ?? [];
-    const unsaid = words.find((w) => !said(w));
-    if (unsaid !== undefined) return unsaid;
-  }
-  return null;
 }
 
 export interface FactChanged {
@@ -80,36 +34,91 @@ export interface FactChanged {
   readonly word: string;
 }
 
-function lowered(text: string): string {
-  return text.toLowerCase();
+const FACT_PROMPT =
+  'You compare a QUESTION an assistant will send to another person with the OWNER lines ' +
+  '(what the owner actually wrote). Does the question change a fact? Only these count: ' +
+  '"beneficiary" — it says the need is for someone else (a friend, a relative) when the owner ' +
+  'asked for himself; "time" — it names a different time than the owner gave (last year vs this ' +
+  'year); "detail" — it narrows the owner\'s thing to something he never said (cargo → ' +
+  'furniture). Rewording, politeness, a summary, and words like "the same" or "also" are NOT ' +
+  'changes. Reply JSON only: {"change": "none"} or {"change": "<kind>", "word": "<the exact ' +
+  'word or short phrase from the QUESTION>"}.';
+
+const FACT_KINDS: readonly string[] = Object.values(FactChange);
+
+function replyText(content: readonly { type: string; text?: string }[]): string {
+  return content.map((block) => (block.type === 'text' ? (block.text ?? '') : '')).join('');
 }
 
-/** The index of each time group the text mentions, and the word it used. */
-function timeGroupsIn(text: string): Map<number, string> {
-  const found = new Map<number, string>();
-  const low = lowered(text);
-  TIME_WORDS.forEach((group, index) => {
-    const word = group.find((w) => low.includes(w));
-    if (word !== undefined) found.set(index, word);
-  });
-  return found;
+/** The model's answer, checked: a known kind, and a word that stands in the question. */
+export function factChangeFromAnswer(answer: string, question: string): FactChanged | null {
+  const start = answer.indexOf('{');
+  const end = answer.lastIndexOf('}');
+  if (start === -1 || end <= start) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(answer.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== 'object') return null;
+  const { change, word } = parsed as { change?: unknown; word?: unknown };
+  if (typeof change !== 'string' || !FACT_KINDS.includes(change)) return null;
+  if (typeof word !== 'string' || word.trim() === '') return null;
+  const said = word.trim();
+  if (!question.toLowerCase().includes(said.toLowerCase())) return null;
+  return { change: change as FactChange, word: said };
 }
 
-/** What the question changed from the owner's own lines, or null when it kept them. */
-export function factChangedIn(question: string, ownerLines: readonly string[]): FactChanged | null {
-  const owner = ownerLines.join('\n');
-  const beneficiary = BENEFICIARY_IN_QUESTION_RE.exec(question);
-  if (beneficiary !== null && !OWNER_NAMES_SOMEONE_ELSE_RE.test(owner)) {
-    return { change: FactChange.Beneficiary, word: beneficiary[0] };
+export interface FactCheckOrigin {
+  readonly userId: string;
+  readonly runId?: string | null;
+  readonly threadId?: number | null;
+}
+
+/** What the question changed from the owner's own lines, or null when it kept them (or on any failure). */
+export async function factChangedIn(
+  question: string,
+  ownerLines: readonly string[],
+  origin: FactCheckOrigin,
+): Promise<FactChanged | null> {
+  const owner = ownerLines.join('\n').trim();
+  if (owner === '' || question.trim() === '') return null;
+  try {
+    const { default: anthropic } = await import('../config/anthropic');
+    const response = await anthropic.messages.create(
+      {
+        model: FACT_CHECK_MODEL,
+        max_tokens: FACT_CHECK_MAX_TOKENS,
+        system: FACT_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content:
+              `OWNER:\n${owner.slice(-MAX_OWNER_CHARS)}\n\n` +
+              `QUESTION:\n${question.slice(0, MAX_QUESTION_CHARS)}`,
+          },
+        ],
+      },
+      { timeout: FACT_CHECK_TIMEOUT_MS },
+    );
+    await recordClaudeUsage({
+      userId: origin.userId,
+      kind: 'fact_check',
+      model: FACT_CHECK_MODEL,
+      usage: response.usage,
+      ...(origin.runId ? { runId: origin.runId } : {}),
+      ...(origin.threadId ? { threadId: origin.threadId } : {}),
+    }).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[fact-keeping] usage not recorded:', (err as Error).message);
+    });
+    return factChangeFromAnswer(replyText(response.content), question);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[fact-keeping] could not read the question:', (err as Error).message);
+    return null;
   }
-  const ownerTimes = timeGroupsIn(owner);
-  if (ownerTimes.size > 0) {
-    for (const [group, word] of timeGroupsIn(question)) {
-      if (!ownerTimes.has(group)) return { change: FactChange.Time, word };
-    }
-  }
-  const detail = bracketedDetailNotSaid(question, owner);
-  return detail === null ? null : { change: FactChange.Detail, word: detail };
 }
 
 const CHANGE_EXPLAINED: Readonly<Record<FactChange, (word: string) => string>> = {
