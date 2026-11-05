@@ -58,11 +58,12 @@ import {
   OWNERS_LINE_QUOTED_REFUSAL,
 } from './factKeeping';
 import {
-  discussionHolds,
   DISCUSS_MAX_TOKENS,
   DISCUSS_TURN_NOTE,
-  lineDecidesDiscussion,
+  setDiscussion,
+  threadInDiscussion,
 } from './discussFirst';
+import { SET_DISCUSSION_TOOL, SET_DISCUSSION_TOOL_NAME } from './tools/setDiscussion';
 import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withoutOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
@@ -10123,6 +10124,8 @@ function runLang(runId: string | undefined): RunLanguage {
 const runModes = new Map<string, RunMode>();
 /** #8948: the tools this turn holds back, refused at the call rather than removed from the list. */
 const runHeldTools = new Map<string, Set<string>>();
+/** #67 / #8779 group 4: runs in a conversation the model put in discussion — set_discussion only. */
+const runInDiscussion = new Set<string>();
 const TOOL_HELD_THIS_TURN =
   'Not used in this turn: this tool is not for the owner’s current message. Answer with what ' +
   'you have, or with the other tools; do not call it again in this run.';
@@ -10306,6 +10309,7 @@ function clearRunState(runId: string): void {
   runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
   runHeldTools.delete(runId);
+  runInDiscussion.delete(runId);
   runGrantedTheGoal.delete(runId);
   runThankedAHelper.delete(runId);
   runPostponedAnAnswer.delete(runId);
@@ -10541,7 +10545,11 @@ async function executeToolCall(
     };
   }
   // #8948 / #8524: a tool held back for this turn is refused here, not taken off the list.
-  if (runId !== undefined && runHeldTools.get(runId)?.has(name)) {
+  if (
+    runId !== undefined &&
+    (runHeldTools.get(runId)?.has(name) ||
+      (runInDiscussion.has(runId) && name !== SET_DISCUSSION_TOOL_NAME))
+  ) {
     // eslint-disable-next-line no-console
     console.log(`[tools] run ${runId}: ${name} held for this turn`);
     return { error: TOOL_HELD_THIS_TURN };
@@ -10701,6 +10709,14 @@ async function executeToolCall(
       // field was a TypeError, where the honest answer `unknown_country` was
       // already one line away.
       return searchContactsByCountry(userId, String(input['country'] ?? ''));
+    case 'set_discussion': {
+      if (threadId === undefined) return { set: false, error: 'No conversation to set.' };
+      const discuss = input['discuss'] === true;
+      const set = await setDiscussion(threadId, userId, discuss);
+      // Asked to act: the rest of this run has its tools back.
+      if (set && !discuss && runId !== undefined) runInDiscussion.delete(runId);
+      return { set, discuss };
+    }
     case 'get_upcoming_birthdays':
       return { birthdays: await upcomingBirthdays(userId, input['days']) };
     case 'get_contact_count':
@@ -13868,29 +13884,6 @@ function lastOwnerText(messages: readonly Anthropic.MessageParam[]): string | nu
 }
 
 /**
- * #67: the owner's own typed lines in this run's history, newest first; events are ours.
- *
- * The tester's 1094 (32573): a line is not always a string. mergeAdjacentSameRole
- * joins an event row and the owner's next line into one turn of text blocks, and
- * reading strings only skipped exactly that line — „დაიწყე, მოძებნე" was never
- * seen, the older „ჯერ მკითხე" decided, and the release did not fire.
- */
-export function ownerLinesNewestFirst(messages: readonly Anthropic.MessageParam[]): string[] {
-  const lines: string[] = [];
-  for (const m of messages) {
-    if (m.role !== 'user') continue;
-    const texts =
-      typeof m.content === 'string'
-        ? [m.content]
-        : m.content.flatMap((block) => (block.type === 'text' ? [block.text] : []));
-    for (const text of texts) {
-      if (text.trim() !== '' && !text.startsWith(RUN_EVENT_PREFIX)) lines.push(text);
-    }
-  }
-  return lines.reverse();
-}
-
-/**
  * #8681 FAIL 3 (the tester's 82593: 157 / 211 / 218 s against 180): after the
  * searches, the turn that wrote the answer thought for 38 s before its first
  * word (run 168a8197), and the writer then rewrote it in 27 s. Past the search
@@ -15413,7 +15406,9 @@ async function runToolLoop(
   // Tester 1088: the „other, I'll write it" label sent as text is one short line, no tools.
   const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
-  const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
+  // #8779 group 4: the mode the model set (set_discussion), not the owner's words read by a list.
+  const discussing = !ownerAbsent && !otherTap && (await threadInDiscussion(threadId));
+  if (discussing) runInDiscussion.add(runId);
   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
   // #8779 group 4: the weather and „where does X work?" are no longer looked up before the
   // first turn on a word match — the model calls web_search or the contact search itself.
@@ -15465,7 +15460,7 @@ async function runToolLoop(
     // D631: a tap the server already acted on is answered by the small model.
     model: tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
     ...(otherTap && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
-    ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
+    ...(discussing && { maxTokens: DISCUSS_MAX_TOKENS }),
   });
   /** The forced final the writer was trusted with, written after all because the writer failed. */
   const claudeFinalIfSkipped = async (): Promise<void> => {
@@ -17066,6 +17061,8 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   SET_TASK_RESULT_TOOL,
   // #8779 group 4: the birthdays question is the model's to read (birthdaysAsked.ts).
   GET_UPCOMING_BIRTHDAYS_TOOL,
+  // #8779 group 4: the discuss-first mode is the model's reading (discussFirst.ts).
+  SET_DISCUSSION_TOOL,
   CREATE_TASK_TOOL,
   GET_MY_TASKS_TOOL,
   UPDATE_TASK_TOOL,
@@ -17751,40 +17748,6 @@ interface GoalForRequest {
   readonly repeats: Task | null;
 }
 
-const DISCUSSION_READ_TIMEOUT_MS = 5_000;
-const DISCUSSION_LINES_READ = 12;
-
-/**
- * #67: the new line and the owner's earlier lines in this conversation, newest
- * first, decide whether it is still a discussion. A failed read is not a
- * discussion: the goal opens as it always has.
- */
-
-/** The owner's own typed lines in this conversation, newest first. */
-async function ownerTypedLines(threadId: number): Promise<string[]> {
-  const earlier = await query<{ content: string }>(
-    `SELECT content FROM conversations
-      WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
-        AND content <> '' AND content NOT LIKE $2
-      ORDER BY created_at DESC LIMIT ${DISCUSSION_LINES_READ}`,
-    [threadId, `${RUN_EVENT_PREFIX}%`],
-    DISCUSSION_READ_TIMEOUT_MS,
-  );
-  return earlier.rows.map((r) => r.content);
-}
-
-async function conversationIsDiscussion(threadId: number, userMessage: string): Promise<boolean> {
-  const decided = lineDecidesDiscussion(userMessage);
-  if (decided !== null) return decided;
-  try {
-    return discussionHolds(await ownerTypedLines(threadId));
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(`[goal-intent] thread ${threadId}: discussion not read:`, (err as Error).message);
-    return false;
-  }
-}
-
 const MAX_SECOND_CIRCLE_FAMILY_WORDS = 3;
 const OWNER_LINES_FOR_FACTS = 40;
 const OWNER_LINES_TIMEOUT_MS = 5_000;
@@ -17919,7 +17882,8 @@ async function ensureGoalForRequest(
   if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX))
     return NO_GOAL_FOR_REQUEST;
   // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
-  if (await conversationIsDiscussion(threadId, userMessage)) {
+  // #8779 group 4: the mode is the model's set_discussion, kept on the thread.
+  if (await threadInDiscussion(threadId)) {
     // eslint-disable-next-line no-console
     console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
     return NO_GOAL_FOR_REQUEST;
