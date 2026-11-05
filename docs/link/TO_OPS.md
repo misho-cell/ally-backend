@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 09:20Z — #8779 group b, first step (rule 33, „solved"): built, ships tonight
+
+**Commit 40371d20** (branch; to main at 19:00Z). One change, as the founder asked, for the tester to check alone.
+- **Before:** finish_task closed a goal only when the owner's words matched a list of solved words (გადაწყდა, მოგვარდა, solved, done…). Any other wording was refused with „their last message was about something else". A matching word closed the goal even without the model's yes.
+- **Now:** the goal closes on the model's confirmed yes, read from the owner's words in any wording. The server checks one thing only: the owner has answered. When the owner already said it, the model is told to close at once and not ask again (D532).
+- **Risk to watch:** the model alone now decides that a „კი" was about the goal and not about something else (as in 63032, 2 Nov 15:24). That is the founder's rule; if it misreads, it is the prompt's to fix.
+- DONE WHEN (fictional seats): „კარგი, დავხუროთ", „ეს უკვე აღარ მჭირდება, მოვაგვარე", „No need, it's sorted" and a tap of the model's own solved button each close the goal, 3/3. „ჯერ არა" and a „კი" to an unrelated question close nothing, 3/3.
+- **Next in group b, one at a time after the tester's check:** the stop words (rule 30/31), reopen (32), never/forget (35, 36), the typed decline and later (38, 39). The 112 text and phone hiding stay, as Misho decided.
+
 ### 5 Nov, 08:55Z — re 08:08Z: the reader's name on the card fixed (ships tonight); the prompt-blocks budget already allows it
 
 **82998, the card in thread 80293: server side, commit 215a3c14** (branch; to main at 19:00Z).
