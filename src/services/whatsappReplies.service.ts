@@ -12,6 +12,8 @@ const MAX_NUMBERED_CHOICES = 10;
 interface OwedReply {
   readonly phone: string;
   readonly until: number;
+  /** #8748: the server's own cards this run wrote, sent under the answer. */
+  readonly cards: string[];
 }
 const owedReplies = new Map<string, OwedReply>();
 /** The choices last offered, so a typed „2" means the second one. */
@@ -25,7 +27,29 @@ export function oweWhatsappReply(
   phone: string,
   now: number = Date.now(),
 ): void {
-  owedReplies.set(owedKey(userId, threadId), { phone, until: now + OWED_REPLY_TTL_MS });
+  owedReplies.set(owedKey(userId, threadId), {
+    phone,
+    until: now + OWED_REPLY_TTL_MS,
+    cards: [],
+  });
+}
+
+/**
+ * #8748 („13 unanswered questions + 1 introduction" on WhatsApp, 6 in the app):
+ * the server's cards of what waits went to the app thread only, so on WhatsApp
+ * the model counted by itself. A run asked from WhatsApp now sends them there
+ * too, as text under its answer. False when no answer is owed there.
+ */
+export function addCardToOwedReply(userId: number, threadId: number, text: string): boolean {
+  const owed = owedReplies.get(owedKey(userId, threadId));
+  if (owed === undefined || text.trim() === '') return false;
+  owed.cards.push(text.trim());
+  return true;
+}
+
+/** The answer, its choices, then the server's cards, each its own paragraph. */
+export function withCards(text: string, cards: readonly string[]): string {
+  return [text, ...cards].join('\n\n');
 }
 
 export function forgetOwedWhatsappReply(userId: number, threadId: number): void {
@@ -72,7 +96,7 @@ export async function deliverOwedWhatsappReply(
     await replyInWhatsapp(
       userId,
       owed.phone,
-      replyText(reply, choices, buttons !== null),
+      withCards(replyText(reply, choices, buttons !== null), owed.cards),
       threadId,
       buttons,
     );

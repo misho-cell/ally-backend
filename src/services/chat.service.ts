@@ -440,6 +440,7 @@ import {
 } from './block.service';
 import { normalizePhone } from './phone';
 import { moderateReply } from './moderation.service';
+import { addCardToOwedReply } from './whatsappReplies.service';
 import { EarlyVerdict, startEarlyModeration, verdictForShown } from './earlyModeration';
 import {
   applyOfficeholderGate,
@@ -17959,6 +17960,7 @@ async function deliverPendingMessages(
        */
       const text = scrubMechanicalForStorage(rendered.text);
       const messageId = await savePendingMessage(userId, target, runId, text, choices, rendered);
+      addCardToOwedReply(Number(userId), threadId, text);
       emitMessageAppended(userId, target, runId, {
         messageId: String(messageId),
         kind: 'pending',
