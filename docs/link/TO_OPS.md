@@ -11,13 +11,18 @@ The code session adds a section at the TOP of `## OPEN`
 - DONE WHEN (fictional seats): „კარგი, დავხუროთ", „ეს უკვე აღარ მჭირდება, მოვაგვარე", „No need, it's sorted" and a tap of the model's own solved button each close the goal, 3/3. „ჯერ არა" and a „კი" to an unrelated question close nothing, 3/3.
 - **Next in group b, one at a time after the tester's check:** the stop words (rule 30/31), reopen (32), never/forget (35, 36), the typed decline and later (38, 39). The 112 text and phone hiding stay, as Misho decided.
 
+### 5 Nov, 18:20Z — re 18:05Z (tester 83539, #8524 19.9 s): the cause is the removed pre-lookup, not the claims model; Misho decides
+Trace of 80754: first model step about 5 s → search_contact_by_name 2.8 s → get_contact_full_profile 2.0 s → the final written at +19.3 s; the claims check adds about 0.5 s after it. The time went to three model rounds that 183dbcea (#8524) had saved: the „where does X work" lookup ran BEFORE the model and answered in its first turn. That pre-lookup was triggered by a word list (nameAskedWhereTheyWork), and #8779 group 4 (the founder's „no fixed word lists", shipped 17:55Z with stage 2) removed it. So #8524 and #8779 pull against each other here; it is Misho's call (asked in his chat). Misho said today that the result comes first and speed second, so #8524 waits on that answer. Stage 2 and the stage-3 prompt are live since 17:55Z / 17:56Z; #7760 live; #8623 and #8950 shipping now.
+
+Last TO_CODE.md section handled: 5 Nov, 18:05Z — tester 83539: #8524 retest after 6065a18c FAIL, 19.9 s
+
 ### 5 Nov, 16:50Z — re 16:22Z (tester 83515): #8950 fixed at the second root; #8615's extra ask is the plan's wave; #8623 marking goes to Misho
 1. **215a3c14 PASS — thank you.** Noted.
 2. **#8950 (a new seat still gets the shared fictional account as a route): built, ships after the running chain (lead branch, „no first link between two test seats in the second circle").** d1a053b4 stopped reverse aliases between two test seats, but the second circle reads „who saved the owner's number" live, and the shared account holds whole ranges of fictional numbers. The same rule now holds there and for the community connectors. **DONE WHEN:** a seat created after the deploy gets none of the shared fictional accounts as a route or an ask unless they were added to it through /admin/test-accounts/:id/contacts.
 3. **#8615 (80559: an ask also went to a person the owner did not name):** the plan the model proposed named both people and asked „the first one first?"; the owner wrote „write to the first one", the model approved the whole plan, and the server's day-one wave then wrote to everyone in it. So the server part is the waves: with stage 2 (plan as steps, shipping now) such a plan reads „step 1: the first person; on silence: the second", and only step 1 goes on day one. Whether „write to X" approves the whole plan or only X is the model's reading — the stage-3 prompt (Misho's). The original #8615 gate disagreement (grant vs plan) is fixed by b8ae5b8a. **Retest after stage 2 is live**, ideally with the stage-3 prompt.
 4. **#8623 marking:** understood — I asked Misho for his word on which accounts are the team.
 
-Last TO_CODE.md section handled: 5 Nov, 16:22Z — tester 83515: 215a3c14 PASS; #8615 and #8950 back to to_build; re 16:15Z, #8623 marking
+Last TO_CODE.md section handled (moved): see 18:20Z
 
 ### 5 Nov, 16:15Z — autonomy stage 1 (#8779 words → model) live in part; the rest shipping now (Misho's „now")
 **Live on main** (each its own deploy): #8779 rules 30–40 and group c's plan question (81a487ba, 7382fd35, da7559ad, 6390be74, 789bba68, 3d5592f8, 466a0fd5, a3d902b8, d4b19913, 610a01ca, 1d281018, 96824dcf); stage 1 K11 — an approved plan covers the introduction (1f13d618); K15 — a re-proposed plan keeps the people it found (30cd6221); tester 83096 — the model's ask goes as written (48f23404).
