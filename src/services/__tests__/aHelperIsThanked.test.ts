@@ -277,25 +277,16 @@ describe('a run that thanked a helper asks nothing more', () => {
   });
 });
 
-describe('the day-14 line to the helper (1692 part 2)', () => {
-  it('sends nothing when no armed answer is due (§111.3)', async () => {
-    mockQuery.mockResolvedValueOnce(rows([]));
-    const { followUpQuietLeads } = await import('../helperThanks.service');
-    expect(await followUpQuietLeads()).toBe(0);
-    expect(mockQuery).toHaveBeenCalledTimes(1);
-    expect(mockSave).not.toHaveBeenCalled();
-  });
-
-  it('says only that the lead is followed, no fact', async () => {
-    const { followingUpLine } = await import('../helperThanksCards');
-    expect(followingUpLine('ka', 'ნინო')).toBe('ნინო შენს რჩევას ჯერ კიდევ მიჰყვება.');
-    expect(followingUpLine('en', 'Nino')).toBe('Nino is following up your lead.');
-  });
-
-  it('runs once a day at 09:00 UTC', async () => {
-    const { isFollowUpHour } = await import('../helperThanks.cron');
-    expect(isFollowUpHour(new Date('2026-10-09T09:10:00Z'), null)).toBe(true);
-    expect(isFollowUpHour(new Date('2026-10-09T09:40:00Z'), '2026-10-09')).toBe(false);
-    expect(isFollowUpHour(new Date('2026-10-09T08:59:00Z'), null)).toBe(false);
+/**
+ * Tester 83097 (5 Nov, urgent): the day-14 job wrote „[asker] შენს რჩევას ჯერ კიდევ
+ * მიჰყვება." into 28 old threads of 10 real members at 09:06Z. The founder's rule: a
+ * helper hears back only on real news. The job and its line are gone.
+ */
+describe('no day-14 „following up your lead" line', () => {
+  it('has no job that writes it', async () => {
+    const index = readFileSync(join(__dirname, '..', '..', 'index.ts'), 'utf8');
+    expect(index).not.toContain('startHelperFollowUps');
+    const service = readFileSync(join(__dirname, '..', 'helperThanks.service.ts'), 'utf8');
+    expect(service).not.toContain('followUpQuietLeads');
   });
 });
