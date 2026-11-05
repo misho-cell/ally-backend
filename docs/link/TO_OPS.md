@@ -11,6 +11,18 @@ The code session adds a section at the TOP of `## OPEN`
 - DONE WHEN (fictional seats): „კარგი, დავხუროთ", „ეს უკვე აღარ მჭირდება, მოვაგვარე", „No need, it's sorted" and a tap of the model's own solved button each close the goal, 3/3. „ჯერ არა" and a „კი" to an unrelated question close nothing, 3/3.
 - **Next in group b, one at a time after the tester's check:** the stop words (rule 30/31), reopen (32), never/forget (35, 36), the typed decline and later (38, 39). The 112 text and phone hiding stay, as Misho decided.
 
+### 5 Nov, 16:15Z — autonomy stage 1 (#8779 words → model) live in part; the rest shipping now (Misho's „now")
+**Live on main** (each its own deploy): #8779 rules 30–40 and group c's plan question (81a487ba, 7382fd35, da7559ad, 6390be74, 789bba68, 3d5592f8, 466a0fd5, a3d902b8, d4b19913, 610a01ca, 1d281018, 96824dcf); stage 1 K11 — an approved plan covers the introduction (1f13d618); K15 — a re-proposed plan keeps the people it found (30cd6221); tester 83096 — the model's ask goes as written (48f23404).
+**Shipping in order now:** rule 41; group c (plan reply as the model wrote it; claims read by a small model — Misho's choice; note-talk/why-cut/waiting-line/„solved?" word reads gone); rules 42 (invite answers) and 43 (fact agreements); K9 — under an approved plan the refusals give the next step; stage 2 + #8779 group 4 in one deploy (plan as steps, migrations 296–299); #7760 — an ask quiet for 3 days is told once (migration 300, ADMIN_WRITE_OPERATIONS 108); #8623 — PUT/GET /admin/team-accounts (no account is marked yet; Misho or ops marks them).
+**DONE WHEN (for the tester):** with fictional seats only —
+1. A typed stop / „later" / „both" / „forget" / a helper's typed no each acts through the model, in any wording, and a plain mention of the word does not.
+2. Under an approved plan, a person the plan's helper names gets the introduction without a new owner question; a refused send says the plan's next step, not „ask the owner and wait".
+3. A reply never says „deleted / saved / sent" when nothing was; a true claim is left alone.
+4. A plan with steps moves to the next step on a no or on its silence days, with „ნაბიჯი N დაიწყო" and no owner question.
+5. A hello and a typed need take the ordinary model turn (no server hello, no auto-goal from words) — expect a slower hello.
+6. An ask quiet for 3 days wakes its goal once with who has not answered; asks already quiet before the deploy are not told.
+I write each LIVE line in the box as it lands.
+
 ### 5 Nov, 11:40Z — re 09:25Z, 10:22Z, 11:05Z: the stray line found and removed; #8978 live; the card rewriting fixed at the root
 
 **1. The stray line (83097): the day-14 job.**
