@@ -3443,16 +3443,20 @@ export function answerSentNote(language: RunLanguage): string {
 const PLAN_ANSWER_IN_WORDS: Readonly<Record<RunLanguage, string>> = {
   ka:
     'ღილაკები არ არის: მფლობელი სიტყვით გიპასუხებს. present_choices არ გამოიძახო. ' +
-    'approve_task_plan გამოიძახე მხოლოდ მაშინ, როცა მფლობელი გეგმას მკაფიოდ დაეთანხმება („კი", „დავიწყოთ").',
+    'approve_task_plan გამოიძახე, როცა მფლობელის სიტყვები გეგმაზე თანხმობას ნიშნავს — მათ შორის „შენ გადაწყვიტე" ' +
+    '(მაშინ delegated: true).',
   en:
     'There are no buttons: the owner answers in words. Do not call present_choices. Call ' +
-    'approve_task_plan only when the owner clearly agrees to the plan („yes", „go ahead").',
+    'approve_task_plan when the owner’s words mean agreement with the plan — „you decide" included ' +
+    '(then delegated: true).',
   ru:
     'Кнопок нет: владелец отвечает словами. Не вызывай present_choices. Вызывай ' +
-    'approve_task_plan только когда владелец ясно согласился с планом («да», «давай»).',
+    'approve_task_plan, когда слова владельца означают согласие с планом — в том числе «реши сам» ' +
+    '(тогда delegated: true).',
   es:
     'No hay botones: el dueño responde con palabras. No llames a present_choices. Llama a ' +
-    'approve_task_plan solo cuando el dueño acepte el plan con claridad («sí», «adelante»).',
+    'approve_task_plan cuando las palabras del dueño signifiquen acuerdo con el plan — también ' +
+    '«decide tú» (entonces delegated: true).',
 };
 
 export function planInYourReplyNote(language: RunLanguage): string {

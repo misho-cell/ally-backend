@@ -10,6 +10,8 @@ import {
 } from './idleWakes.service';
 import { planDayOneEvent, planStepNoteForAnswers, sweepSilentSteps } from './planAdvance.service';
 import { withStepNote } from './planAdvance';
+import { nightlyReviewEvent } from './planNightly';
+import { planHasSteps } from './planSteps';
 import { answersElsewhereNote, answersInSiblingGoals } from './answersElsewhere.service';
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
 import { unheardAnswerOf } from './answerAddition';
@@ -2013,6 +2015,8 @@ export async function sweepMethodChanges(): Promise<number> {
     // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
     if (await goalWaitsForMorning(task.id)) continue;
     await markMethodChangeWoken(task.id);
+    // Autonomy stage 2: with steps, silence moves on_silence and needs no new yes.
+    if (planHasSteps(task.plan)) continue;
     const ok = await wakeTask(
       task.id,
       'სამი დღეა კითხვებს პასუხი არ მოჰყოლია და ახალი არავის მისწერია. სტანდარტის წესია: სამი ' +
@@ -2130,23 +2134,8 @@ async function nightlyReview(): Promise<void> {
     // #7234: a goal of a real owner is not stamped or woken at night; the next sweep after 09:30 takes it.
     if (await goalWaitsForMorning(task.id)) continue;
     await touchTaskActivity(task.id); // one review per night even if the run fails
-    await wakeTask(
-      task.id,
-      'ღამის გადახედვა: ქსელში გუშინდელის მერე ახალი ხალხი/ინფორმაცია შეიძლება გაჩნდა. ' +
-        'გაიმეორე ძირითადი ძიებები და შეადარე brief-ს — მფლობელს მხოლოდ რეალური სიახლე აცნობე; ' +
-        'თუ არაფერია, ჩუმად განაახლე brief-ი და საჭიროებისას set_task_wake-ით გადადე. ' +
-        // The standard, lines 3 and 4 (D117, D119): a silent day widens the
-        // circle inside the plan; three silent days change the method — a
-        // plan change, so a new yes, while the rest keeps running.
-        'თუ გუშინდელი კითხვა უპასუხოდ დარჩა — არ დაელოდე: გეგმის „ვის ვკითხავ" სიიდან შემდეგ ' +
-        'ადამიანებს მისწერე (რამდენიმეს ერთდროულად). თუ სამი დღეა პასუხი არ არის — მეთოდი შეცვალე: ' +
-        'propose_task_plan-ით შესთავაზე ახალი გზა ან ახალი წრე; დამტკიცებული გზები კი გრძელდება. ' +
-        'ყოველი პასუხი დაასრულე ერთი სტრიქონით: რა მიდის ახლა და ვის ვკითხე; თუ პასუხს ელოდები, ზუსტად „როგორც კი ვინმე გიპასუხებს, მაშინვე გეტყვი." — საათები და დღეები არ ახსენო (D563). ' +
-        'თუ წინსვლა მფლობელის პასუხზეა ჩამოკიდებული — გამოიძახე ask_owner_decision ზუსტი ' +
-        'კითხვით: ის კითხვას მფლობელის მომდევნო საუბარში იტანს. ეს მაშინაც გააკეთე, როცა ' +
-        'ლოდინს თხრობით ამბობ („ველოდები მის გადაწყვეტილებას ორ კანდიდატზე") — მფლობელისგან ' +
-        'რაღაცის ლოდინი ბლოკია, როგორც არ უნდა ჟღერდეს წინადადება.',
-    );
+    // Autonomy stage 2: a plan with steps moves on silence by its own rule (planNightly.ts).
+    await wakeTask(task.id, nightlyReviewEvent(task.plan));
     // The review woke it; if the run set no wake, tomorrow's is set here.
     await ensureNextWake(task.id, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
       // eslint-disable-next-line no-console
