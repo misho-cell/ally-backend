@@ -302,7 +302,7 @@ import {
   closeOpenQuestions,
 } from './taskAsks.service';
 import { askThreadForName, askThreadsForName } from './askThreadByName';
-import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
+import { laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
@@ -7442,47 +7442,6 @@ const ASKS_FOR_A_CHANGE = new RegExp(
 );
 
 /**
- * ROW 238, SECOND CUT — TWO LISTS, BECAUSE THE TWO ANSWERS COST DIFFERENT
- * THINGS. The seat's own control found this within the hour.
- *
- * On goal 9871, at 17:02:13, the owner typed:
- *
- *     „By the way, tomorrow I will be at home INSTEAD of the office."
- *
- * …and the goal was held. A real goal, paused because somebody mentioned where
- * they would be, with nothing on any screen to say so. That is the fault this
- * whole row is about, arriving through the fix for it.
- *
- * THE BROAD LIST IS NOT WRONG WHERE IT LIVES. It decides whether a NEW
- * `approve_task_plan` counts, and the comment above it argues the direction:
- * „refusing a real yes costs the owner one more tap; accepting a withdrawn one
- * sends messages that cannot be recalled." At one tap, catching „instead" too
- * often is the cheap mistake.
- *
- * PAUSING A GOAL IS NOT ONE TAP. It is invisible — no card, no line, nothing
- * the owner or the seat can see — and it stops the work until somebody
- * approves a plan. So the pause gets its own list, and it holds only
- * sentences that can hardly be anything but „change the plan".
- *
- * WHAT THIS DELIBERATELY MISSES, said out loud rather than discovered: „Ask
- * only Netai Test 8, not Netai Test 10" IS a change request and this list does
- * not catch it. The wave may start on a plan the owner is mid-changing — which
- * is exactly what happened before today and is the lesser of the two, because
- * it is visible and the consent wall still stands in front of every send.
- */
-const ASKS_TO_CHANGE_THE_PLAN = new RegExp(
-  `${NOT_A_LETTER_BEFORE}(?:${ASKS_FOR_A_CHANGE_STEMS.join('|')})` +
-    `|\\bchange it\\b|\\bchange that\\b|\\bchange the plan\\b|\\blet'?s change\\b` +
-    `|\\brewrite the plan\\b|\\bredo the plan\\b|\\bdo it differently\\b`,
-  'iu',
-);
-
-/** The narrow one: only a sentence that can hardly be anything but „change the plan". */
-export function asksToChangeThePlan(said: string): boolean {
-  return ASKS_TO_CHANGE_THE_PLAN.test(said);
-}
-
-/**
  * Is the yes still a yes after this line?
  *
  * Two different ways for it not to be, deliberately kept apart above: the
@@ -9566,6 +9525,33 @@ const ANSWER_OPEN_ASKS_CARD_TOOL: AnthropicTool = {
 const NO_OPEN_ASKS_CARD =
   'Nothing changed: no close-or-keep question about open questions waits in this chat.';
 
+/**
+ * #1686 (A3) / #8779 b (rule 39): a helper who says in their own words that they
+ * will answer later — the model reads it and calls this; the latest open question
+ * on this chat comes back on that day, and the asker is told the day.
+ */
+const DEFAULT_LATER_DAYS = 3;
+const MAX_LATER_DAYS = 14;
+const runPostponedAnAnswer = new Set<string>();
+
+const POSTPONE_ANSWER_TOOL: AnthropicTool = {
+  name: 'postpone_answer',
+  description:
+    'In a chat where someone asked the user a question: when the user says they will answer ' +
+    'later (busy now, will check, in a few days), call this. The question comes back to them ' +
+    'on that day and the asker is told when. days: how many days from now (default 3).' +
+    ' WHEN: the user, asked a question, says they will answer later.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      days: { type: 'number', description: 'Days until the question comes back, 1 to 14.' },
+    },
+    required: [],
+  },
+};
+
+const NOTHING_TO_POSTPONE = 'Nothing changed: no open question waits for the user in this chat.';
+
 const THANKS_NOT_SENT =
   'Not sent: no single helper who answered the owner and was not thanked yet matches that ' +
   'name. Ask the owner whom they mean, in one line.';
@@ -9706,6 +9692,23 @@ export function wayInPhonesIn(raw: unknown): string[] {
  * not a way in: the plan is refused with their names, so it is proposed again
  * without them and nobody is offered with a made-up reason.
  */
+/**
+ * Autonomy plan, stage 1 (K15; Misho's thread 76858, 4 Nov 12:11): a plan
+ * proposed again was refused because the people of the EARLIER proposal — found
+ * in an earlier run — were „not found by any search in this run". The people of
+ * the plan in force and of the proposal waiting both count as already known.
+ */
+export function plansPeopleSoFar(
+  task: { readonly plan?: unknown; readonly plan_proposed?: unknown } | null | undefined,
+): TaskPlan | null {
+  const peopleOf = (plan: unknown): unknown[] => {
+    const people = (plan as { people_to_involve?: unknown } | null)?.people_to_involve;
+    return Array.isArray(people) ? people : [];
+  };
+  const people = [...peopleOf(task?.plan), ...peopleOf(task?.plan_proposed)];
+  return people.length === 0 ? null : ({ people_to_involve: people } as unknown as TaskPlan);
+}
+
 export async function peopleNoSearchFound(
   userId: string,
   threadId: number,
@@ -10522,6 +10525,7 @@ function clearRunState(runId: string): void {
   runHeldTools.delete(runId);
   runGrantedTheGoal.delete(runId);
   runThankedAHelper.delete(runId);
+  runPostponedAnAnswer.delete(runId);
 }
 
 /**
@@ -12341,7 +12345,7 @@ async function executeToolCall(
               threadId,
               Number.isFinite(taskId) ? taskId : undefined,
               input['plan'],
-              (planTask?.plan ?? null) as TaskPlan | null,
+              plansPeopleSoFar(planTask),
               runWayInPhones.get(runId),
             );
       if (unfound.length > 0) {
@@ -12354,6 +12358,14 @@ async function executeToolCall(
         runLang(runId),
         planRouteOrder(runId, input['plan']),
       );
+      // #8779 b (rule 41): a new plan proposed over an approved one IS the owner's change
+      // request (the model's reading of their words) — the next wave waits for the new yes.
+      if (planTask?.plan_approved_at && threadId !== undefined) {
+        void notePlanChangeRequested(threadId).catch((err: unknown) =>
+          // eslint-disable-next-line no-console
+          console.error('[task-engine] could not note the change request:', (err as Error).message),
+        );
+      }
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
       //
@@ -12993,6 +13005,18 @@ async function executeToolCall(
       return getTopConnectors(userId, input['limit'] as number | undefined);
     case 'get_curiosity_queue':
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
+    case 'postpone_answer': {
+      if (ownerAbsent || threadId === undefined)
+        return { postponed: false, error: NOTHING_TO_POSTPONE };
+      const asked = Number(input['days']);
+      const days = Number.isFinite(asked)
+        ? Math.min(MAX_LATER_DAYS, Math.max(1, Math.round(asked)))
+        : DEFAULT_LATER_DAYS;
+      const until = await setLaterDays(threadId, days);
+      if (until === null) return { postponed: false, error: NOTHING_TO_POSTPONE };
+      if (runId !== undefined) runPostponedAnAnswer.add(runId);
+      return { postponed: true, until: until.toISOString() };
+    }
     case 'answer_open_asks_card': {
       if (ownerAbsent || threadId === undefined)
         return { settled: false, error: NO_OPEN_ASKS_CARD };
@@ -17509,6 +17533,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
   THANK_HELPER_TOOL,
   ANSWER_OPEN_ASKS_CARD_TOOL,
+  POSTPONE_ANSWER_TOOL,
   STOP_CONTACTING_TOOL,
   RESUME_CONTACT_TOOL,
   EXCLUDE_CONTACT_TOOL,
@@ -18550,20 +18575,6 @@ export async function processChat(
    * Best-effort: the run is the person's reply and must not fail because a
    * column could not be written.
    */
-  if (!ownerAbsent && asksToChangeThePlan(userMessage)) {
-    void notePlanChangeRequested(threadId)
-      .then((taskId) => {
-        if (taskId === null) return;
-        // eslint-disable-next-line no-console
-        console.log(
-          `[task-engine] task ${taskId}: the owner asked for a change — the next wave waits for their new yes (the plan stays approved)`,
-        );
-      })
-      .catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[task-engine] could not note the change request:', (err as Error).message);
-      });
-  }
   // Ticket 16 Task 90: a stated need becomes a goal BEFORE the assistant
   // answers, so the run is a goal run (plan, one yes, day one) by construction
   // and not by the model's mood — five requests in two days never became one.
@@ -19205,7 +19216,7 @@ export async function processChat(
   // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
   const laterTapped =
     thread.type === 'incoming_ask' &&
-    (askTapOf(userMessage) === AskTap.Later || isTypedLater(userMessage));
+    (askTapOf(userMessage) === AskTap.Later || runPostponedAnAnswer.has(runId));
   const choices = laterTapped
     ? [...laterDayChoices(language)]
     : planToNobody === null
