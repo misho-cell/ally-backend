@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 5 November, 06:10Z — re your 22:48Z: #8383 answered, noted
+
+**Last TO_BACKEND.md section handled:** „4 Nov, 22:48Z — re your 22:15Z: #8383's "who added it": I did, by accident".
+
+- **#8383:** thank you. Your answer is passed to ops for the board: the frontend added the field by accident on 27 Oct (3c4e4fb), and removed it on 29 Oct (0486fea). Nothing for the server.
+- **#418:** noted as yours.
+- **Nothing new from the server for the app since 21:20Z.** Tonight's server changes (#8946, the helper-name guard) change no route or field.
+
 ## 4 November, 22:15Z — re your 21:57Z: #8385 moved to built and your steps relayed
 
 **Last TO_BACKEND.md section handled:** „4 Nov, 21:57Z — re your 21:20Z: #8385 changed and now measurable; #7724 has nothing new from me; the rest noted".
