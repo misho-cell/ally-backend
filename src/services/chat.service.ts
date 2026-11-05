@@ -109,7 +109,14 @@ import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
-import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
+import {
+  ClaimKind,
+  claimsOfKind,
+  NO_CLAIMS,
+  readReplyClaims,
+  ReplyClaims,
+  withoutSentences,
+} from './replyClaims.service';
 import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
 import { namesTheReader } from './askerInNeed';
 import {
@@ -4832,23 +4839,6 @@ function mergeAdjacentSameRole(rows: Anthropic.MessageParam[]): Anthropic.Messag
     out.push({ role: row.role, content: row.content });
   }
   return out.filter((row) => asBlocks(row.content).length > 0 || typeof row.content === 'string');
-}
-
-/** A sentence telling the helper their answer did not go. */
-const NOT_SENT_RE =
-  /ვერ\s+(?:გადა)?(?:გა)?იგზავნ|ვერ\s+გადაეცა|(?:could\s*n[o']t|was\s+not|wasn'?t)\s+(?:be\s+)?(?:sent|delivered)|не\s+удалось\s+отправить|no\s+se\s+pudo\s+enviar/iu;
-const REPLY_SENTENCE_RE = /[^.!?…\n]+[.!?…]*\s*|\n+/gu;
-
-export function claimsNotSent(reply: string): boolean {
-  return NOT_SENT_RE.test(reply);
-}
-
-/** The reply without its „not sent" sentences. */
-export function withoutNotSentSentences(reply: string): string {
-  return (reply.match(REPLY_SENTENCE_RE) ?? [reply])
-    .filter((sentence) => !NOT_SENT_RE.test(sentence))
-    .join('')
-    .trim();
 }
 
 const ANSWERED_SINCE_TIMEOUT_MS = 3_000;
@@ -9725,9 +9715,9 @@ const runApprovedAPlan = new Set<string>();
 const runPlanApprovedInRun = new Set<string>();
 
 /** MTR #7 (2113): „writing now" on a run that approved nothing — after „change the plan". */
-function saysItSendsNowWithoutApproval(runId: string, finalText: string): boolean {
+function saysItSendsNowWithoutApproval(runId: string, claims: ReplyClaims): boolean {
   return (
-    claimsASendNow(finalText) &&
+    claimsASendNow(claims) &&
     !runApprovedAPlan.has(runId) &&
     !runPlanApprovedInRun.has(runId) &&
     !isApproveChoice((runOwnerLine.get(runId) ?? '').trim())
@@ -10325,6 +10315,24 @@ export const NOT_FROM_A_GUESSED_CHAT_NOTE =
 const runsWhereNothingWent = new Set<string>();
 /** 4555: the value a save kept only as a mentioned note in this run. */
 const runMentionedNote = new Map<string, string>();
+/** #8779 c: what the run's reply claims, read once per text by the small model. */
+const runReplyClaims = new Map<
+  string,
+  { readonly text: string; readonly claims: Promise<ReplyClaims> }
+>();
+
+function replyClaimsOf(
+  runId: string,
+  userId: string,
+  threadId: number,
+  text: string,
+): Promise<ReplyClaims> {
+  const kept = runReplyClaims.get(runId);
+  if (kept?.text === text) return kept.claims;
+  const claims = readReplyClaims(text, runOwnerLine.get(runId) ?? '', { userId, runId, threadId });
+  runReplyClaims.set(runId, { text, claims });
+  return claims;
+}
 /** The tester's 1119 (F3): the open goal this run's message repeats, by id. */
 const runRepeatedGoal = new Map<string, number>();
 /**
@@ -10348,6 +10356,7 @@ function clearRunState(runId: string): void {
   runsWhereNothingWent.delete(runId);
   runFoundPeople.delete(runId);
   runMentionedNote.delete(runId);
+  runReplyClaims.delete(runId);
   runRepeatedGoal.delete(runId);
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
@@ -16454,7 +16463,12 @@ async function runToolLoop(
   // Ana". A relay sent in this run is the hand-on, and nothing is missing.
   const helperRunSentNothing =
     runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId) && !runRelaySent.has(runId);
-  const claimedASendThatDidNotHappen = helperRunSentNothing && claimsToHavePassedItOn(finalText);
+  // #8779 c: read only when a guard below can use it — every one needs the owner, but the helper's.
+  const claims =
+    ownerAbsent && !helperRunSentNothing
+      ? NO_CLAIMS
+      : await replyClaimsOf(runId, userId, threadId, finalText);
+  const claimedASendThatDidNotHappen = helperRunSentNothing && claimsToHavePassedItOn(claims);
   // #2113 (41598): „I have already written to both assistants" on a goal that had sent nothing.
   const claimedAnAskNobodyGot =
     !ownerAbsent &&
@@ -16466,7 +16480,7 @@ async function runToolLoop(
     !runAskSent.has(runId) &&
     !runIntroSent.has(runId) &&
     !runRelaySent.has(runId) &&
-    (claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText)) &&
+    (claimsAnAskWasSent(claims) || saysItSendsNowWithoutApproval(runId, claims)) &&
     (await goalSentNothing(threadId));
   // #7229: a send claimed in a run whose every ask was refused — the goal may have sent before.
   const claimedARefusedAsk =
@@ -16477,7 +16491,7 @@ async function runToolLoop(
     runModes.get(runId) !== 'incoming_ask' &&
     runAskRefused.has(runId) &&
     !runAskSent.has(runId) &&
-    claimsAnAskWasSent(finalText);
+    claimsAnAskWasSent(claims);
   // #7229 (65053; Misho's yes, 24 Oct): in a helper's own chat, „I asked X's assistant" with no ask to X.
   const claimedAHelperAskNobodyGot =
     !claimedASendThatDidNotHappen &&
@@ -16485,7 +16499,7 @@ async function runToolLoop(
     !promoted &&
     !answeringALaterTap &&
     runModes.get(runId) === 'incoming_ask' &&
-    helperChatClaimsAnAskNobodyGot(finalText, {
+    helperChatClaimsAnAskNobodyGot(claims, {
       asked: runAskSentTo.get(runId) ?? [],
       anythingWent: runAskSent.has(runId) || runRelaySent.has(runId) || runAnswerSent.has(runId),
     });
@@ -16897,10 +16911,11 @@ async function runToolLoop(
   }
 
   // 3302: „deleted" is said only when a deleting tool ran; otherwise the truth and a confirm button.
-  if (
-    !ownerAbsent &&
-    deletionClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
-  ) {
+  const claimsNow =
+    ownerAbsent && !runMentionedNote.has(runId)
+      ? NO_CLAIMS
+      : await replyClaimsOf(runId, userId, threadId, finalText);
+  if (!ownerAbsent && deletionClaimWithoutTool(claimsNow, toolNamesUsed)) {
     // eslint-disable-next-line no-console
     console.warn(
       `[delete-claim] run ${runId} thread ${threadId}: said deleted, nothing was — corrected`,
@@ -16911,22 +16926,20 @@ async function runToolLoop(
   }
 
   // 4555: „I saved his job" for a value kept only as a mentioned note becomes the server's line.
-  finalText = withMentionedNoteLine(finalText, runMentionedNote.get(runId) ?? '', runLang(runId));
+  finalText = withMentionedNoteLine(
+    finalText,
+    runMentionedNote.get(runId) ?? '',
+    runLang(runId),
+    claimsNow,
+  );
 
   // 4490: a plain question saves nothing — an „I saved" sentence under its answer is taken out.
   if (!ownerAbsent) {
-    finalText = withoutSavedClaimOnAQuestion(
-      finalText,
-      runOwnerLine.get(runId) ?? '',
-      toolNamesUsed,
-    );
+    finalText = withoutSavedClaimOnAQuestion(finalText, claimsNow, toolNamesUsed);
   }
 
   // 3796: „saved your offer" is said only when save_offer ran; otherwise the truth and a button.
-  if (
-    !ownerAbsent &&
-    offerClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
-  ) {
+  if (!ownerAbsent && offerClaimWithoutTool(claimsNow, toolNamesUsed)) {
     // eslint-disable-next-line no-console
     console.warn(
       `[offer-claim] run ${runId} thread ${threadId}: said saved, nothing was — corrected`,
@@ -16934,21 +16947,6 @@ async function runToolLoop(
     const notSaved = offerNotSavedLine(runLang(runId));
     finalText = notSaved.text;
     choices = [notSaved.confirm];
-  }
-
-  // 4258: „introduction request sent" is said only when one went; otherwise the truth and a button.
-  if (
-    INTRO_CLAIM_GUARD_ON &&
-    !ownerAbsent &&
-    introClaimWithoutSend(finalText, runIntroSent.has(runId))
-  ) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[intro-claim] run ${runId} thread ${threadId}: said the request went, none did — corrected`,
-    );
-    const notSent = introNotSentLine(runLang(runId));
-    finalText = notSent.text;
-    choices = [notSent.confirm];
   }
 
   // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
@@ -19232,13 +19230,15 @@ export async function processChat(
   // on arrival, the run called no tool and wrote „პასუხი ჩვენი მხრიდან ვერ
   // გადაიგზავნა" — false. When this question's answer went during this run, a
   // „not sent" sentence gives way to the agreed sent line.
-  if (
-    thread?.type === 'incoming_ask' &&
-    !runAnswerSent.has(runId) &&
-    claimsNotSent(effectiveFinal) &&
-    (await askAnsweredSince(threadId, startedAt))
-  ) {
-    effectiveFinal = withoutNotSentSentences(effectiveFinal);
+  const notSentSaid =
+    thread?.type === 'incoming_ask' && !runAnswerSent.has(runId)
+      ? claimsOfKind(
+          await replyClaimsOf(runId, userId, threadId, effectiveFinal),
+          ClaimKind.NotSent,
+        )
+      : [];
+  if (notSentSaid.length > 0 && (await askAnsweredSince(threadId, startedAt))) {
+    effectiveFinal = withoutSentences(effectiveFinal, notSentSaid);
     runAnswerSent.add(runId);
   }
   if (runAnswerSent.has(runId)) {
