@@ -717,7 +717,7 @@ import {
   introductionsWithdrawnLine,
   alreadyStoppedLine,
 } from './goalStop.service';
-import { asksToEndSomething, looksLikeStopRequest, replySaysItStopped } from './stopIntent';
+import { asksToEndSomething, looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { withPlanDecisionAgain } from './planDecisionReoffer';
@@ -4835,38 +4835,6 @@ function mergeAdjacentSameRole(rows: Anthropic.MessageParam[]): Anthropic.Messag
     out.push({ role: row.role, content: row.content });
   }
   return out.filter((row) => asBlocks(row.content).length > 0 || typeof row.content === 'string');
-}
-
-/**
- * #7236 retest (tester 73758, goal 31421): „მოვრჩეთ ეს ამბავი" on a waiting
- * plan — the reply said „ვწყვეტ", no tool closed the goal, and it stayed open
- * with its plan. When the owner's line asks to end AND the reply says it
- * stopped, the server closes the goal the way the stop button does (asks and
- * introductions withdrawn, plan buttons cleared), without a second line: the
- * reply already says it. Two signs, because „აღარ მინდა …" alone can be about
- * one person rather than the goal.
- */
-async function closeWhatTheReplySaysItStopped(
-  userId: string,
-  threadId: number,
-  ownerLine: string,
-  reply: string,
-  language: RunLanguage,
-  runId: string,
-): Promise<void> {
-  if (!asksToEndSomething(ownerLine) || !replySaysItStopped(reply)) return;
-  try {
-    const open = await getOpenTaskByThread(threadId);
-    if (open === null) return;
-    await stopGoal(userId, open, language, false);
-    // eslint-disable-next-line no-console
-    console.log(
-      `[stop-intent] run ${runId}: goal ${open.id} closed — the owner ended it and the reply said so`,
-    );
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(`[stop-intent] run ${runId}: could not close the goal:`, (err as Error).message);
-  }
 }
 
 /** A sentence telling the helper their answer did not go. */
@@ -12123,8 +12091,9 @@ async function executeToolCall(
       }
       const closing = status === 'closed';
       // The tester's 1108 (33540): a run closed its own goal as a duplicate with
-      // nobody asking. Only the owner's own word ends a goal from a run.
-      if (closing && runId !== undefined && !asksToEndSomething(runOwnerLine.get(runId) ?? '')) {
+      // nobody asking. Only the owner's own turn ends a goal from a run.
+      // #8779 b (rule 31): no end words — in the owner's turn the model reads his meaning.
+      if (closing && runId !== undefined && !ownersOwnTurn(runId)) {
         // eslint-disable-next-line no-console
         console.warn(
           `[goal-close] run ${runId} thread ${threadId ?? '-'}: refused to close ${taskIdToUpdate} — the owner did not ask`,
@@ -19681,15 +19650,6 @@ export async function processChat(
           })
       : null;
   if (planAgain !== null) cleanedFinal = planAgain.text;
-  if (!ownerAbsent && replySafe)
-    await closeWhatTheReplySaysItStopped(
-      userId,
-      threadId,
-      userMessage,
-      cleanedFinal,
-      language,
-      runId,
-    );
   const offeredChoices =
     earlySolved !== null ? earlySolved.choices : (planAgain?.choices ?? choices);
   // Question A (tester 947): a web-found person's page link, by their name.
