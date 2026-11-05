@@ -18,7 +18,7 @@ const silentSweep = engine.slice(
 
 describe('the quiet-day wake', () => {
   it('asks for one new step, told to the owner in one line in their language', () => {
-    expect(silentSweep).toContain('RULE_268_QUIET_DAY_ONE,');
+    expect(silentSweep).toContain('silentDayEvent(task.plan, RULE_268_QUIET_DAY_ONE)');
     expect(RULE_268_QUIET_DAY_ONE).toContain('Take one new step the same turn');
     expect(RULE_268_QUIET_DAY_ONE).toContain("in the owner's language, what new step you took");
   });

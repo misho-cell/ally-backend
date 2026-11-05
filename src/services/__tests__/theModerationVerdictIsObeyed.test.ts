@@ -40,7 +40,7 @@ describe('the moderation verdict is read, and everything downstream obeys it', (
   /** If this slice ever came back empty the rest would pass vacuously. */
   it('finds the gate at all', () => {
     expect(source).toContain(
-      ': await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));',
+      'const verdict = await verdictForShown(cleanedFinal, earlyVerdict, (text) =>',
     );
   });
 

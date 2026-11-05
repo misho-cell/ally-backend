@@ -39,9 +39,7 @@ describe('the reader’s own people beside the model’s buttons', () => {
 
   it('is built whether or not the model wrote buttons, never under an introduction', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain(
-      'const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;',
-    );
+    expect(asks).toContain('const pickerAllowed = !sameThread && askKind !== AskKind.Intro;');
     expect(asks).toContain(
       'ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))',
     );
@@ -101,6 +99,6 @@ describe('the editor’s rewrite (46136, asks 16209 / 16210)', () => {
     expect(asks).toContain(
       'ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))',
     );
-    expect(asks).toContain('await choicesInLanguage(editedChoices, said, edited.question)');
+    expect(asks).toContain('await choicesInLanguage(editedChoices, said, askKind)');
   });
 });

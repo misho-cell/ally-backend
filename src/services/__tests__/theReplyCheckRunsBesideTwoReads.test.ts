@@ -11,7 +11,7 @@ describe('the reply check runs beside the read that does not need it', () => {
   it('starts the waiting-requests read before the check, and awaits it after', () => {
     const early = chat.indexOf('const requestsEarly = requestsToDeliver(');
     const check = chat.indexOf(
-      ': await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));',
+      'const verdict = await verdictForShown(cleanedFinal, earlyVerdict, (text) =>',
     );
     expect(early).toBeGreaterThan(-1);
     expect(early).toBeLessThan(check);

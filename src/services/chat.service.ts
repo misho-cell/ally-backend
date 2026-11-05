@@ -3,7 +3,6 @@ import { relayInMeetingChat } from './meetingChat.service';
 import { introductionMayGo, introductionWaitsLine } from './introYesGate';
 import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
 import { offersMatching, withOffers } from './tools/searchOffers';
-import { lookupAnswersIt, nameAskedWhereTheyWork, whereTheyWorkSection } from './whereTheyWork';
 import { maskPersonalIds } from './personalIdMask';
 import {
   askedFileFormat,
@@ -39,8 +38,7 @@ import {
   withoutLeadingSelfNote,
 } from './leadingSelfNote';
 import { withNameGenders } from './nameGender';
-import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
-import { greetingName, greetingText, registeredName } from './serverGreeting';
+import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS } from './greetingTurn';
 import { assistantNameSection } from './assistantName';
 import { goalsForRun } from './wakeGoalScope';
 import {
@@ -60,11 +58,12 @@ import {
   OWNERS_LINE_QUOTED_REFUSAL,
 } from './factKeeping';
 import {
-  discussionHolds,
   DISCUSS_MAX_TOKENS,
   DISCUSS_TURN_NOTE,
-  lineDecidesDiscussion,
+  setDiscussion,
+  threadInDiscussion,
 } from './discussFirst';
+import { SET_DISCUSSION_TOOL, SET_DISCUSSION_TOOL_NAME } from './tools/setDiscussion';
 import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withoutOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
@@ -94,16 +93,8 @@ import { lap, postRunLine, startPostRunClock } from './postRunClock';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
-import { getContactCount, hasAnyContact } from './tools/getContactCount';
+import { getContactCount } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
-import {
-  asksTheWeather,
-  isFarewell,
-  isGeorgianLine,
-  isPlainThanks,
-  isSmallTalk,
-  isToolFreeSmallTalk,
-} from './smallTalk';
 import { AskChoice, choicesProblem, parseAskChoices, withoutLaterButton } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
@@ -163,10 +154,9 @@ const OFFER_TOOLS_ON = true;
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
 import { isWarmTie } from './ownerTies';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
-import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
-  isReminderRequestOnly,
+  REMINDER_ALONE_NOTE,
   setOwnerReminder,
 } from './ownerReminders.service';
 import { personZone } from './personZone';
@@ -316,15 +306,14 @@ import {
 import { contactsReminderSection } from './contactsReminderSection';
 import { createUploadLink } from './contactUploadLinks.service';
 import { CONTACTS_UPLOAD_LINK_DESCRIPTION } from './contactsUploadLinkText';
-import { asksForAPersonByName, asksWhoHoldsAPost, WEB_TOOL_NAMES } from './personByName';
+import { asksWhoHoldsAPost, NAMED_PERSON_NOT_ON_THE_WEB } from './personByName';
 import { namesakesIn } from './namesakeButtons';
 import {
   FoundPerson,
   peopleFoundIn,
-  walksToTheNamedPerson,
   isRouteToSomeoneFound,
   walkTargetPhone,
-  WARM_PATH_TOOL,
+  WALK_AFTER_FINDING_THEM,
 } from './warmPathAfterSearch';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
 import { ruledOutOnSubject } from './ruledOutBridges';
@@ -350,6 +339,11 @@ import {
   peopleToWake,
   TaskPlan,
 } from './taskPlans.service';
+import { PLAN_STEPS_SCHEMA_PROPERTIES } from './planStepsSchema';
+import { whereWeAreSection } from './whereWeAre.service';
+import { INVITE_ON_THE_OWNERS_WORD } from './replyGuards';
+import { ASK_KIND_FIELD, askKindFrom } from './askKind';
+import { DELEGATED_FIELD_SCHEMA, recordDelegation } from './planDelegation';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
 import { searchRoster } from './tools/searchRoster';
 import { findWarmPath, type WarmPathOutcome } from './tools/findWarmPath';
@@ -475,16 +469,7 @@ import { isFreeOfficialPageRead } from './officialPageRead';
 import { withoutOurSideApology } from './ourSideApology';
 import { WorldAnswer, worldAnswerMessage, worldAnswerSection } from './worldAnswer';
 import {
-  buildRoleSearchSection,
-  RoleQueries,
-  RoleSearchRun,
-  roleSearchQueries,
-  runRoleSearch,
-} from './roleWebSearch.service';
-import {
-  finalAnswerModel,
   finalWriterForRun,
-  smallTalkFinalModel,
   writeFinalAnswer,
   unusableReason,
   type FinalAnswer,
@@ -511,13 +496,9 @@ import {
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
   asksTheOwnerForADetail,
-  wantsSomethingDone,
   ASK_THE_DETAIL_FIRST,
   bookingWithoutAWhen,
   farFindUnplannedNudge,
-  INVITE_NOT_ASKED,
-  asksForAnInvite,
-  asksForTheLink,
   asksAboutOwnPeople,
   asksWhoTheyHave,
   withoutQuotedCopy,
@@ -555,8 +536,7 @@ import {
   HELD_LINE,
 } from './instructionUnsent';
 import { questionHeldOnThread } from './paceUntilSeen';
-import { isOwnersFirstLine } from './firstOwnerLine';
-import { registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
+import { ABOUT_THE_NAME_FIELD, registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
 import { SUMMARIZED_THINKING, tracedInFull } from './reasoningSummary';
 import {
@@ -584,7 +564,6 @@ import { noteFactForgotten } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
 import {
-  LOOKUP_ANSWER_MAX_CHARS,
   SHORT_ANSWER_MAX_CHARS,
   SHORT_ANSWER_ON_TEST_SEATS_ONLY,
   shortAnswerStands,
@@ -666,16 +645,12 @@ import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
 import { AUTOMATIC_ANSWER_NOTE, asksForAnAutomaticAnswer } from './automaticAnswerRequest';
 import {
+  A_NEED_OPENS_A_GOAL,
   asksForAPreview,
-  looksLikeGoalRequest,
-  seeksAPerson,
-  statesANeed,
   goalTitleFrom,
-  isQuestionNotGoal,
   instructionNames,
   instructionSentence,
   looksLikeContactInstruction,
-  needsNoOpeningSearch,
 } from './goalIntent';
 import { renderPendingMessage, PendingItemInput } from './pendingMessages';
 import { requestIdOfCard, requestThreadOf } from './requestCardThread';
@@ -739,8 +714,7 @@ import {
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { withPlainDigits } from './noScores';
-import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
-import type { UpcomingBirthday } from './birthdayLens.service';
+import { GET_UPCOMING_BIRTHDAYS_TOOL, upcomingBirthdays } from './birthdaysAsked';
 import { preparedAnswerOn } from './preparedAnswer.service';
 import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
@@ -1657,7 +1631,9 @@ const CREATE_TASK_TOOL: AnthropicTool = {
   name: 'create_task',
   description:
     'Save a goal the user wants worked on as a standing task that survives after this chat closes ("find a startup lawyer", "get introduced to X"). task_type is "solve" (find several helpers) or "reach" (a path to one target). Use when the user states something to achieve through their network, not a one-off lookup. Returns task_id. Starts no outreach by itself.' +
-    ' WHEN: to save a goal so it outlives this conversation.',
+    ' WHEN: to save a goal so it outlives this conversation.' +
+    // #8779 group 4: the need words that opened a goal before the run are gone.
+    A_NEED_OPENS_A_GOAL,
   input_schema: {
     type: 'object',
     properties: {
@@ -1800,6 +1776,8 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
           'name too. A later ask to the same person stays unnamed; pass false there only after ' +
           'the owner has agreed to be named.',
       },
+      // #8779 group 4: the reader's buttons follow the model's word, not a word list (askKind.ts).
+      kind: ASK_KIND_FIELD,
     },
     required: ['task_id', 'phone', 'question', 'choices'],
   },
@@ -1872,7 +1850,9 @@ const SET_REMINDER_TOOL: AnthropicTool = {
     // The tester's 58580 (run 51813; Misho's yes, 14 Oct): „…next week", no hour, and the
     // run said it could not set a reminder for a specific day.
     'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 60 ' +
-    'days away, set it for 60 days from now and tell the owner it will come then and why.',
+    'days away, set it for 60 days from now and tell the owner it will come then and why. ' +
+    // #8779 group 4: was REMINDER_REQUEST_RE holding every other tool back (#502).
+    REMINDER_ALONE_NOTE,
   input_schema: {
     type: 'object',
     properties: {
@@ -2663,7 +2643,8 @@ const INVITE_CONTACT_TOOL: AnthropicTool = {
     'list you gave, or wants to reach a named contact who is not on Netai. „Whom should I ' +
     'invite / offer Netai to?" asks for NAMES, not texts: answer with three to five people, ' +
     'one clear reason each, and call this only once the user picks one or asks for the text. ' +
-    'The USER sends the text themselves — Netai never messages them.',
+    'The USER sends the text themselves — Netai never messages them. ' +
+    INVITE_ON_THE_OWNERS_WORD,
   input_schema: {
     type: 'object',
     properties: {
@@ -2687,7 +2668,8 @@ const GET_INVITE_LINK_TOOL: AnthropicTool = {
     "The user's own personal invite link — unlimited uses, no cap, the same referral code " +
     'invite_contact carries. Attach it to any message when the user wants to invite someone ' +
     'not already in their contacts, or asks for "the link" generally. Present it as a link to ' +
-    'share themselves — Netai never messages anyone on their behalf.',
+    'share themselves — Netai never messages anyone on their behalf. ' +
+    INVITE_ON_THE_OWNERS_WORD,
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
@@ -3438,16 +3420,22 @@ export function answerSentNote(language: RunLanguage): string {
 const PLAN_ANSWER_IN_WORDS: Readonly<Record<RunLanguage, string>> = {
   ka:
     'ღილაკები არ არის: მფლობელი სიტყვით გიპასუხებს. present_choices არ გამოიძახო. ' +
-    'approve_task_plan გამოიძახე მხოლოდ მაშინ, როცა მფლობელი გეგმას მკაფიოდ დაეთანხმება („კი", „დავიწყოთ").',
+    // K9 audit B3 (session 3), word for word; delegated is the stage-2 field.
+    'approve_task_plan გამოიძახე, როცა მფლობელის სიტყვები გეგმაზე თანხმობას ნიშნავს — ' +
+    'ნებისმიერი სიტყვებით, მათ შორის როცა გადაწყვეტილებას შენ განდობს („შენ გადაწყვიტე") ' +
+    '(მაშინ delegated: true).',
   en:
     'There are no buttons: the owner answers in words. Do not call present_choices. Call ' +
-    'approve_task_plan only when the owner clearly agrees to the plan („yes", „go ahead").',
+    'approve_task_plan when the owner’s words mean agreement with the plan — in any words, ' +
+    'including when they leave the decision to you („you decide") (then delegated: true).',
   ru:
     'Кнопок нет: владелец отвечает словами. Не вызывай present_choices. Вызывай ' +
-    'approve_task_plan только когда владелец ясно согласился с планом («да», «давай»).',
+    'approve_task_plan, когда слова владельца означают согласие с планом — любыми словами, в том ' +
+    'числе когда он доверяет решение тебе («реши сам») (тогда delegated: true).',
   es:
     'No hay botones: el dueño responde con palabras. No llames a present_choices. Llama a ' +
-    'approve_task_plan solo cuando el dueño acepte el plan con claridad («sí», «adelante»).',
+    'approve_task_plan cuando las palabras del dueño signifiquen acuerdo con el plan — con ' +
+    'cualquier palabra, también cuando te deja la decisión («decide tú») (entonces delegated: true).',
 };
 
 export function planInYourReplyNote(language: RunLanguage): string {
@@ -3841,8 +3829,10 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
               'true when this is real work — a job, a hire, hours of somebody’s time — rather ' +
               'than a small favour: five people are asked per wave instead of three.',
           },
+          // Autonomy stage 2, K1: result_when + steps (planStepsSchema.ts).
+          ...PLAN_STEPS_SCHEMA_PROPERTIES,
         },
-        required: ['solved_when', 'routes'],
+        required: ['routes'],
         description:
           '{ solved_when: string, routes: [{name, status: running|waiting|done|dropped}], ' +
           'people_to_involve: [{name, phone, route}], never_contact: [{name, phone?}] }. ' +
@@ -3890,6 +3880,8 @@ const APPROVE_TASK_PLAN_TOOL: AnthropicTool = {
     properties: {
       task_id: { type: 'number', description: 'The open goal.' },
       confirmed: { type: 'boolean', description: 'true only after the user said yes.' },
+      // Autonomy stage 2, K5 (planDelegation.ts).
+      delegated: DELEGATED_FIELD_SCHEMA,
     },
     required: ['task_id', 'confirmed'],
   },
@@ -4391,7 +4383,8 @@ const FIND_WARM_PATH_TOOL: AnthropicTool = {
     'by name with is_member (a path is relayable only through Netai users). The first bridge is a ' +
     'direct contact: when that bridge can reach the target themselves, this is an introduction ' +
     'and goes through request_introduction; only a longer path uses ask_contact for the hops in ' +
-    "between. If no path: offer an invite or the user's own message.",
+    "between. If no path: offer an invite or the user's own message. " +
+    WALK_AFTER_FINDING_THEM,
   input_schema: {
     type: 'object',
     properties: {
@@ -4524,6 +4517,8 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
           description:
             'The name or partial name to search for. Can be first name, last name, or full name.',
         },
+        // #8779 group 4: the model's reading, not a word list (registeredNameOnlyWhenAsked.ts).
+        about_the_name: ABOUT_THE_NAME_FIELD,
       },
       required: ['name_query'],
     },
@@ -4615,7 +4610,8 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive. ' +
       RULE_280_WEB_LEADS_ARE_PEOPLE +
       ' ' +
-      RULE_A_WEB_LEAD_DETAILS,
+      RULE_A_WEB_LEAD_DETAILS +
+      NAMED_PERSON_NOT_ON_THE_WEB,
     input_schema: {
       type: 'object',
       properties: {
@@ -5916,84 +5912,6 @@ export function buildTodaySection(now: Date): string {
  * full prompt's name line made „ლუკა მაისურაძე, კარგად ვარ" of 37359) and
  * today's date, which „რა დღეა დღეს?" needs.
  */
-/**
- * #2114 (the tester's 43066, seat 177977; Misho's „კი", 7 Oct): the smaller
- * model D627 put on small talk wrote broken Georgian in 5 of 8 short replies —
- * „კარგი ვარი, წყალობით!", „რა დამეხმარება?", „თხოვნით! რა დამიხმარებული?" —
- * and called the owner „Netai". It is given the right forms to copy.
- */
-const SMALL_TALK_GEORGIAN =
-  '\n\nქართული: მოკლე, მარტივი და გრამატიკულად სწორი. ფრაზაში თუ არ ხარ დარწმუნებული, ' +
-  'ამ ნიმუშებიდან აიღე ფორმა:\n' +
-  '„როგორ ხარ?" → „კარგად, მადლობა! შენ როგორ ხარ?"\n' +
-  '„მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"\n' +
-  '„გამარჯობა" → „გამარჯობა! რით დაგეხმარო?"\n' +
-  '„კარგად ხარ?" → „კარგად, მადლობა რომ მკითხე! შენ?"\n' +
-  '„ნახვამდის" → „ნახვამდის! კარგად იყავი."\n' +
-  '„კარგად იყავი" → „შენც კარგად იყავი!" (დამშვიდობებაა, კითხვა არ არის)\n' +
-  '„დროებით" → „დროებით! თუ რამე დაგჭირდეს, მომწერე."\n' +
-  'Netai შენ ხარ — მფლობელს Netai-ს ნუ უწოდებ.';
-
-const SMALL_TALK_PROMPT =
-  'შენ ხარ Netai — მფლობელის პირადი ასისტენტი, რომელიც მის ნაცნობებში სწორ ადამიანს უძებნის. ' +
-  'ეს მოკლე, თბილი საუბარია: უპასუხე ერთი-ორი მოკლე წინადადებით, შენობით, მისივე ენაზე. ' +
-  'რჩევა არ მისცე, მიზანი არ გახსნა, ხელსაწყო არ გამოიძახო, საკუთარ შესაძლებლობებზე არ ილაპარაკო.' +
-  SMALL_TALK_GEORGIAN;
-
-function smallTalkNameLine(firstName: string | null): string {
-  return firstName === null
-    ? ''
-    : `\n\nმფლობელის სახელია ${firstName}. თუ მიმართავ, მხოლოდ სახელით, გვარის გარეშე.`;
-}
-
-/**
- * The tester's 44126 (#2114): „კარგად იყავი" was answered as „how are you" twice,
- * sample or no sample — it opens like „კარგად ხარ?". The server knows a goodbye,
- * so the turn is told it is one.
- */
-const FAREWELL_TURN_NOTE =
-  '\n\nეს შეტყობინება დამშვიდობებაა, არა კითხვა. უპასუხე მხოლოდ დამშვიდობებით ' +
-  '(მაგ. „კარგად იყავი" → „შენც კარგად იყავი!"); „როგორ ხარ"-ს და „მადლობა რომ მკითხე"-ს ნუ დაწერ.';
-
-/**
- * The tester's 44129 (#2114, conversation 42007): „მადლობა" was answered
- * „კარგად, მადლობა რომ მკითხე!" — a thank-you read as „how are you". Told the
- * same way as a goodbye.
- */
-const THANKS_TURN_NOTE =
-  '\n\nეს შეტყობინება მადლობაა, არა კითხვა. უპასუხე მადლობაზე ' +
-  '(მაგ. „მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"); „როგორ ხარ"-ს და „მადლობა რომ მკითხე"-ს ნუ დაწერ.';
-
-/** What kind of line a small-talk turn answers, when the server knows it for sure. */
-function smallTalkTurnNote(userMessage: string): string {
-  // 55870: the notes are Georgian; on another language's line they pull the reply into Georgian.
-  if (!isGeorgianLine(userMessage)) return '';
-  if (isFarewell(userMessage)) return FAREWELL_TURN_NOTE;
-  if (isPlainThanks(userMessage)) return THANKS_TURN_NOTE;
-  return '';
-}
-
-async function smallTalkAgentPrompt(
-  userId: string,
-  userMessage: string,
-): Promise<AgentPromptResult> {
-  const stablePrompt =
-    SMALL_TALK_PROMPT + smallTalkNameLine(greetingName(await registeredName(userId)));
-  const volatilePrompt = buildTodaySection(new Date()) + smallTalkTurnNote(userMessage);
-  return {
-    prompt: stablePrompt + volatilePrompt,
-    stablePrompt,
-    volatilePrompt,
-    runMode: 'quick_answer',
-    blockNames: [SMALL_TALK_BLOCK_NAME],
-    blockVersions: [],
-    basePromptId: null,
-    deliverRequestsSeparately: false,
-  };
-}
-
-const SMALL_TALK_BLOCK_NAME = 'small_talk_prompt';
-
 async function buildAgentSystemPrompt(
   userId: string,
   threadType?: string,
@@ -6169,6 +6087,8 @@ async function buildAgentSystemPrompt(
   // change: global, then per-account, then per-goal, then the clock.
   // 958: these six reads do not depend on each other, so they run together; one
   // after another they were the slowest part of building the prompt.
+  // Autonomy stage 2, K4: where the plan stands — read alongside, placed before the goal.
+  const whereWeAre = boundTask ? whereWeAreSection(boundTask) : Promise.resolve('');
   const [heldNote, askStates, waveNote, firstAsk, contactQuestion, noContacts] = await Promise.all([
     boundTask ? heldAsksNoteOrNothing(boundTask.id, userId) : Promise.resolve(''),
     boundTask ? askStatusSectionOrNothing(boundTask, boundAsks) : Promise.resolve(''),
@@ -6197,6 +6117,7 @@ async function buildAgentSystemPrompt(
       buildPrivateContextSection(privateContext) +
       buildInsightFieldsSection(fieldsResult.rows) +
       // Per-situation — changes when the work does.
+      (await whereWeAre) +
       (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
       heldNote +
       askStates +
@@ -6425,10 +6346,6 @@ function noteFoundFurtherOut(runId: string, further: readonly FarHit[]): void {
   ]);
 }
 
-function peopleFoundCount(runId: string): number {
-  return runFoundPeople.get(runId)?.length ?? 0;
-}
-
 async function runLoggedSearch(
   userId: string,
   tool: string,
@@ -6542,125 +6459,6 @@ async function taskForAsk(
 const runIntroSent = new Set<string>();
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
 const runWebFound = new Set<string>();
-/**
- * 3106 (the weather half, re-run 13 Oct 01:50Z): runs that look up the weather. A
- * weather page's title gave the way-in lookup „Weather" and „ამინდი" to search the
- * owner's phonebook for, on every run, while the reply waited. Nobody is looked for
- * in a weather question, so it searches the web and nothing else.
- */
-const runLooksUpTheWeather = new Set<string>();
-
-/** #8519: runs answering a member's first typed line, which never take the small-talk shortcut. */
-const runIsOwnersFirstLine = new Set<string>();
-
-/**
- * 3106, the speed half (the tester's 58029, 14 Oct: 18.0 / 19.2 / 19.1 s against
- * 12). A weather run spent one whole model turn deciding to call the web search
- * it was forced to call (~6 s before the search began). The server now runs that
- * one search itself and hands the results over in the opening-search section, the
- * same text a goal's opening search uses, so the model answers in its first turn.
- * Null on any failure: the run then falls back to the forced search, as before.
- */
-async function weatherFoundFirst(
-  userId: string,
-  threadId: number,
-  runId: string,
-  ownerLine: string,
-): Promise<string | null> {
-  const startedAt = Date.now();
-  try {
-    const raw = await webSearch(ownerLine);
-    void recordFixedUsage({
-      userId,
-      kind: 'web_search',
-      ...(await webSearchLedger()),
-      runId,
-      threadId,
-    }).catch(() => {});
-    void logToolCall({
-      threadId,
-      surface: 'chat',
-      runId,
-      userId,
-      tool: 'web_search:weather',
-      input: { query: ownerLine },
-      result: raw,
-      durationMs: Date.now() - startedAt,
-    });
-    if (!hasWebResults(raw)) return null;
-    registerWebResult(runId, raw);
-    runWebFound.add(runId);
-    const section = buildOpeningSearchSection({
-      web: JSON.stringify(raw),
-      secondDegree: null,
-      missing: [],
-      waysIn: new Map(),
-      webRaw: raw,
-    });
-    return section === '' ? null : section;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[weather] server search failed, the run searches itself:',
-      (err as Error).message,
-    );
-    return null;
-  }
-}
-/**
- * Whether the final writer starts beside Claude's first turn (#958, 3106). Not
- * for „where does X work?" (#8524, the tester's 82584: 11–13 s against 10): its
- * answer is one short line, and a short answer keeps Claude's words (Misho's
- * yes, 2 Nov) — so the writer started beside it was only waited for, ≈6 s, and
- * its words used instead.
- */
-export function startsTheWriterEarly(smallTalk: boolean, weatherFound: boolean): boolean {
-  return smallTalk || weatherFound;
-}
-/** #8524: the owner's contacts searched for the name before the first turn; null when they do not answer it. */
-/**
- * #8524 (tester 82699: 11.2 / 60.6 / 14.5 s against 10): the contacts lookup
- * (≈3 s under load) waited until the prompt was built (≈2.3 s). It now starts
- * the moment the run does, and the first turn takes it when it is ready.
- */
-interface LookupAhead {
-  readonly name: string;
-  readonly found: Promise<string | null>;
-}
-const runLookupsAhead = new Map<string, LookupAhead>();
-/** A lookup no turn took (the server answered first) is let go after this long. */
-const LOOKUP_AHEAD_KEPT_MS = 120_000;
-
-function startLookupAhead(runId: string, userId: string, ownerLine: string): void {
-  if (asksTheWeather(ownerLine)) return;
-  const name = nameAskedWhereTheyWork(ownerLine);
-  if (name === null) return;
-  runLookupsAhead.set(runId, { name, found: whereTheyWorkFirst(userId, name) });
-  setTimeout(() => runLookupsAhead.delete(runId), LOOKUP_AHEAD_KEPT_MS).unref();
-}
-
-/** The lookup started ahead for this name, or a fresh one. */
-function lookupFor(runId: string, userId: string, name: string): Promise<string | null> {
-  const ahead = runLookupsAhead.get(runId);
-  runLookupsAhead.delete(runId);
-  return ahead !== undefined && ahead.name === name
-    ? ahead.found
-    : whereTheyWorkFirst(userId, name);
-}
-
-async function whereTheyWorkFirst(userId: string, name: string): Promise<string | null> {
-  try {
-    const result = await searchContactByName(userId, name);
-    return lookupAnswersIt(result) ? whereTheyWorkSection(name, result) : null;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[where-they-work] lookup failed, the run searches itself:',
-      (err as Error).message,
-    );
-    return null;
-  }
-}
 /** #893: the labels of the list this run worked, for the check that the reply names every row. */
 const runListLabels = new Map<string, string[]>();
 /** The tool names this many rows to the model; a longer list is not checked row by row. */
@@ -10190,6 +9988,8 @@ function runLang(runId: string | undefined): RunLanguage {
 const runModes = new Map<string, RunMode>();
 /** #8948: the tools this turn holds back, refused at the call rather than removed from the list. */
 const runHeldTools = new Map<string, Set<string>>();
+/** #67 / #8779 group 4: runs in a conversation the model put in discussion — set_discussion only. */
+const runInDiscussion = new Set<string>();
 const TOOL_HELD_THIS_TURN =
   'Not used in this turn: this tool is not for the owner’s current message. Answer with what ' +
   'you have, or with the other tools; do not call it again in this run.';
@@ -10360,13 +10160,11 @@ function clearRunState(runId: string): void {
   runMembersFound.delete(runId);
   runIntroSent.delete(runId);
   runWebFound.delete(runId);
-  runLooksUpTheWeather.delete(runId);
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
   runsFromWhatsapp.delete(runId);
   runAskSent.delete(runId);
   runAskRefused.delete(runId);
-  runIsOwnersFirstLine.delete(runId);
   runAskSentTo.delete(runId);
   runRouteClosed.delete(runId);
   runRelaySent.delete(runId);
@@ -10394,6 +10192,7 @@ function clearRunState(runId: string): void {
   runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
   runHeldTools.delete(runId);
+  runInDiscussion.delete(runId);
   runGrantedTheGoal.delete(runId);
   runThankedAHelper.delete(runId);
   runPostponedAnAnswer.delete(runId);
@@ -10627,7 +10426,11 @@ async function executeToolCall(
     };
   }
   // #8948 / #8524: a tool held back for this turn is refused here, not taken off the list.
-  if (runId !== undefined && runHeldTools.get(runId)?.has(name)) {
+  if (
+    runId !== undefined &&
+    (runHeldTools.get(runId)?.has(name) ||
+      (runInDiscussion.has(runId) && name !== SET_DISCUSSION_TOOL_NAME))
+  ) {
     // eslint-disable-next-line no-console
     console.log(`[tools] run ${runId}: ${name} held for this turn`);
     return { error: TOOL_HELD_THIS_TURN };
@@ -10687,12 +10490,12 @@ async function executeToolCall(
       // 5908: the contact card opened next reads the network's names by these words.
       rememberNameAsked(runId, byName, input['name_query']);
       // #8528: the member's registered name goes only to a question about the name.
-      const ownerLine = runId === undefined ? '' : (runOwnerLine.get(runId) ?? '');
+      const aboutTheName = input['about_the_name'];
       if (notInThePhonebook(byName)) {
         return withFurtherOut(
           userId,
           input['name_query'],
-          { ...registeredNameOnlyWhenAsked(byName, ownerLine), look_further: LOOK_ONE_RING_OUT },
+          { ...registeredNameOnlyWhenAsked(byName, aboutTheName), look_further: LOOK_ONE_RING_OUT },
           runId,
         );
       }
@@ -10700,7 +10503,7 @@ async function executeToolCall(
       return withCommunities(
         await withLikelyEmployers(
           userId,
-          await withContactsWhoKnowThem(userId, registeredNameOnlyWhenAsked(byName, ownerLine)),
+          await withContactsWhoKnowThem(userId, registeredNameOnlyWhenAsked(byName, aboutTheName)),
         ),
       );
     }
@@ -10787,6 +10590,16 @@ async function executeToolCall(
       // field was a TypeError, where the honest answer `unknown_country` was
       // already one line away.
       return searchContactsByCountry(userId, String(input['country'] ?? ''));
+    case 'set_discussion': {
+      if (threadId === undefined) return { set: false, error: 'No conversation to set.' };
+      const discuss = input['discuss'] === true;
+      const set = await setDiscussion(threadId, userId, discuss);
+      // Asked to act: the rest of this run has its tools back.
+      if (set && !discuss && runId !== undefined) runInDiscussion.delete(runId);
+      return { set, discuss };
+    }
+    case 'get_upcoming_birthdays':
+      return { birthdays: await upcomingBirthdays(userId, input['days']) };
     case 'get_contact_count':
       return getContactCount(userId);
     case 'work_the_list': {
@@ -10863,15 +10676,12 @@ async function executeToolCall(
       noteFoundUrls(runId, found);
       noteFoundNames(runId, webResultNames(found));
       const wayInStartedAt = Date.now();
-      const waysIn =
-        runId !== undefined && runLooksUpTheWeather.has(runId)
-          ? new Map<string, WayIn>()
-          : await findWaysIn(
-              userId,
-              // #8648: the names a small model read in the titles, not words cut out by rule.
-              await wayInNamesFrom(found, MAX_WAY_IN_CHECKS, { userId, runId, threadId }),
-              { threadId, runId },
-            );
+      const waysIn = await findWaysIn(
+        userId,
+        // #8648: the names a small model read in the titles, not words cut out by rule.
+        await wayInNamesFrom(found, MAX_WAY_IN_CHECKS, { userId, runId, threadId }),
+        { threadId, runId },
+      );
       // Misho, 3 Nov (#8648): the way_in check does not spend the web's search clock.
       if (runId !== undefined) {
         creditSearchTime(runId + WEB_BUDGET_KEY_SUFFIX, Date.now() - wayInStartedAt);
@@ -11499,6 +11309,7 @@ async function executeToolCall(
         typeof input['anonymous'] === 'boolean' ? input['anonymous'] : undefined,
         !ownerAbsent,
         !ownerAbsent && runId !== undefined && runGrantedTheGoal.get(runId)?.has(taskId) === true,
+        askKindFrom(input['kind']),
       );
       if ((askOutcome as { sent?: unknown }).sent !== true && runId) runAskRefused.add(runId);
       if ((askOutcome as { sent?: unknown }).sent === true) {
@@ -11705,19 +11516,8 @@ async function executeToolCall(
       return { deleted: await deleteAnswerRule(userId, ruleId) };
     }
     case 'invite_contact': {
-      // The tester's 1145 (37808): an invitation nobody asked for. A run that
-      // answers the owner's own words prepares one only when they ask or approve.
-      // #8087: an invite chat is itself the ask, so its runs are never refused here.
-      const ownerLine = runId === undefined ? undefined : runOwnerLine.get(runId);
-      const inInviteChat = runId !== undefined && runModes.get(runId) === 'campaign_invite';
-      if (
-        ownerLine !== undefined &&
-        !inInviteChat &&
-        !asksForAnInvite(ownerLine) &&
-        !isApproveChoice(ownerLine.trim())
-      ) {
-        return { invited: false, error: INVITE_NOT_ASKED };
-      }
+      // The tester's 1145 (37808): an invitation nobody asked for. #8779 group 4: the owner's
+      // word is the model's reading (INVITE_ON_THE_OWNERS_WORD), not ASKS_FOR_AN_INVITE_RE.
       const langRaw = String(input['language'] ?? 'ka');
       const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
       const invite = await inviteContact(userId, String(input['phone'] ?? ''), lang);
@@ -12390,6 +12190,7 @@ async function executeToolCall(
         runLang(runId),
       );
       if (!outcome.ok) return { approved: false, error: outcome.error };
+      await recordDelegation(userId, Number(input['task_id']), input['delegated']);
       if (runId) runPlanApprovedInRun.add(runId);
       // Dynamic import — the engine imports this module, so a static one would
       // be a cycle. One import, both things taken from it.
@@ -13973,29 +13774,6 @@ function lastOwnerText(messages: readonly Anthropic.MessageParam[]): string | nu
 }
 
 /**
- * #67: the owner's own typed lines in this run's history, newest first; events are ours.
- *
- * The tester's 1094 (32573): a line is not always a string. mergeAdjacentSameRole
- * joins an event row and the owner's next line into one turn of text blocks, and
- * reading strings only skipped exactly that line — „დაიწყე, მოძებნე" was never
- * seen, the older „ჯერ მკითხე" decided, and the release did not fire.
- */
-export function ownerLinesNewestFirst(messages: readonly Anthropic.MessageParam[]): string[] {
-  const lines: string[] = [];
-  for (const m of messages) {
-    if (m.role !== 'user') continue;
-    const texts =
-      typeof m.content === 'string'
-        ? [m.content]
-        : m.content.flatMap((block) => (block.type === 'text' ? [block.text] : []));
-    for (const text of texts) {
-      if (text.trim() !== '' && !text.startsWith(RUN_EVENT_PREFIX)) lines.push(text);
-    }
-  }
-  return lines.reverse();
-}
-
-/**
  * #8681 FAIL 3 (the tester's 82593: 157 / 211 / 218 s against 180): after the
  * searches, the turn that wrote the answer thought for 38 s before its first
  * word (run 168a8197), and the writer then rewrote it in 27 s. Past the search
@@ -14377,22 +14155,6 @@ const RUN_HEARTBEAT_POLL_MS = 5_000;
  * D315 and it is one line to put back.
  */
 /**
- * #5248 (D825): the role search's prompt section. What it found joins the run's
- * evidence and its published pages exactly as the model's own web_search does.
- */
-async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Promise<string> {
-  const finds = await runRoleSearch(run, queries);
-  for (const found of finds.results) {
-    if (found.result === null) continue;
-    recordRunEvidence(run.runId, profileEvidence(found.result) ?? '');
-    recordRunLinkedinEvidence(run.runId, linkedinEvidence(found.result));
-    registerWebResult(run.runId, found.result);
-  }
-  if (finds.managementPage !== null) recordRunEvidence(run.runId, finds.managementPage.text);
-  return buildRoleSearchSection(finds);
-}
-
-/**
  * #8350 (founder, 29 Oct): an ask about the world is answered from the web
  * first. Only on a goal just opened from a stated need, as the opening searches
  * are, and never when the owner asks to reach a person or names people to ask:
@@ -14406,8 +14168,6 @@ async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Prom
 function worldAnswerIsDue(goalOpened: boolean, ownerLine: string): boolean {
   return (
     (goalOpened || asksWhoHoldsAPost(ownerLine)) &&
-    !needsNoOpeningSearch(ownerLine) &&
-    !asksTheWeather(ownerLine) &&
     !goalAsksToReachAPerson(ownerLine) &&
     !ownerLineNamesPeopleToAsk(ownerLine)
   );
@@ -15017,9 +14777,6 @@ export function smallTalkTurn(
   turns: readonly Anthropic.MessageParam[],
 ): boolean {
   if (ownerAbsent || userMessage.trim().length > SMALL_TALK_MAX_CHARS) return false;
-  // The tester's 1116 (S10, S11): small talk answered after the inbox tools still
-  // got the block. A listed small-talk line gets none, whatever tools ran.
-  if (isSmallTalk(userMessage)) return true;
   // A short reply like „კი" answers something; only a short QUESTION is small talk.
   if (!/[?？]\s*$/u.test(userMessage.trim())) return false;
   return !turns.some(
@@ -15081,92 +14838,6 @@ function lookedAtGoals(turns: readonly Anthropic.MessageParam[]): boolean {
       typeof t.content !== 'string' &&
       t.content.some((b) => b.type === 'tool_use' && WAITING_ASKED_TOOLS.has(b.name)),
   );
-}
-
-/** Stamped on a reply the server wrote itself (answered_by). */
-const SERVER_GREETING_AUTHOR = 'server';
-
-/**
- * The founder's D622 (tester 1120): the server greeting took 3.0–3.5 s, and
- * none of it was the greeting. Stored 3.1 s after the hello (thread 35535), it
- * waited for the goal check, the whole system prompt, the tools and the history
- * — all built for a model that is never called. Now it reads only what the
- * line needs, all at once: the name, whether the phonebook is empty, and the
- * conversation's language.
- */
-async function answerGreeting(
-  userId: string,
-  threadId: number,
-  userMessage: string,
-  runId: string,
-  storedAhead: boolean,
-): Promise<ChatResult> {
-  // Run 8 (box 62242): this answer took 2.5–3.8 s with 200 at once against 0.5 alone.
-  const startedAt = Date.now();
-  const [registered, hasContacts, spokenBefore] = await Promise.all([
-    registeredName(userId),
-    ownerHasContacts(userId),
-    ownerMessages(threadId).catch(() => [] as string[]),
-    storedAhead
-      ? Promise.resolve(0)
-      : saveMessage(userId, threadId, 'user', userMessage, 'message', runId),
-  ]);
-  const readsDoneAt = Date.now();
-  const language = languageOfConversation(
-    userMessage,
-    spokenBefore,
-    detectRunLanguage(userMessage),
-  );
-  const reply = greetingText(greetingName(registered), hasContacts, language, userMessage);
-  await saveMessage(
-    userId,
-    threadId,
-    'assistant',
-    reply,
-    'message',
-    runId,
-    null,
-    null,
-    SERVER_GREETING_AUTHOR,
-  );
-  // eslint-disable-next-line no-console
-  console.log(
-    `[greeting] run ${runId}: answered by the server — reads ${readsDoneAt - startedAt}ms, ` +
-      `saved ${Date.now() - readsDoneAt}ms`,
-  );
-  return { reply, language, requestCreated: false };
-}
-
-/**
- * 3203: the line asks whether one saved contact knows someone, and that contact
- * is not on Netai. The server says so with the two ways left, and no model runs.
- * Null when the line is anything else.
- */
-async function answerNonMemberNamed(
-  userId: string,
-  threadId: number,
-  userMessage: string,
-  runId: string,
-  intent: RunIntent | undefined,
-): Promise<ChatResult | null> {
-  const asked = namedKnower(userMessage);
-  if (asked === null) return null;
-  const saved = await savedNonMember(userId, asked);
-  if (saved === null) return null;
-  if (intent?.alreadyStored !== true) {
-    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
-  }
-  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
-  const language = languageOfConversation(
-    userMessage,
-    spokenBefore,
-    detectRunLanguage(userMessage),
-  );
-  const answer = nonMemberAnswer(saved, language);
-  await saveMessage(userId, threadId, 'assistant', answer.text, 'message', runId, answer.choices);
-  // eslint-disable-next-line no-console
-  console.log(`[non-member] run ${runId}: answered by the server`);
-  return { reply: answer.text, language, choices: [...answer.choices], requestCreated: false };
 }
 
 /**
@@ -15288,38 +14959,6 @@ async function answerTargetQuestion(
     console.error('[intro] the target’s answer was not settled:', (err as Error).message);
     return null;
   }
-}
-
-/** 3269: the told birthdays in the coming month, said by the server; null when they cannot be read. */
-async function answerBirthdaysSoon(
-  userId: string,
-  threadId: number,
-  userMessage: string,
-  runId: string,
-  intent: RunIntent | undefined,
-): Promise<ChatResult | null> {
-  let rows: UpcomingBirthday[];
-  try {
-    rows = await birthdaysSoon(userId);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[birthdays] not read:', (err as Error).message);
-    return null;
-  }
-  if (intent?.alreadyStored !== true) {
-    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
-  }
-  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
-  const language = languageOfConversation(
-    userMessage,
-    spokenBefore,
-    detectRunLanguage(userMessage),
-  );
-  const text = birthdaysAnswer(rows, language);
-  await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
-  // eslint-disable-next-line no-console
-  console.log(`[birthdays] run ${runId}: answered by the server (${rows.length})`);
-  return { reply: text, language, requestCreated: false };
 }
 
 /** 1690: the owner's tap on a fact-confirm card, settled by the server; null when it is not one. */
@@ -15507,17 +15146,6 @@ async function answerThanksTap(
   }
 }
 
-/** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
-async function ownerHasContacts(userId: string): Promise<boolean> {
-  try {
-    return await hasAnyContact(userId);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[greeting] contact check failed:', (err as Error).message);
-    return true;
-  }
-}
-
 async function runToolLoop(
   userId: string,
   threadId: number,
@@ -15668,31 +15296,13 @@ async function runToolLoop(
   // Tester 1088: the „other, I'll write it" label sent as text is one short line, no tools.
   const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
-  const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
+  // #8779 group 4: the mode the model set (set_discussion), not the owner's words read by a list.
+  const discussing = !ownerAbsent && !otherTap && (await threadInDiscussion(threadId));
+  if (discussing) runInDiscussion.add(runId);
   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
-  const smallTalkOnly =
-    !ownerAbsent &&
-    !runIsOwnersFirstLine.has(runId) &&
-    isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
-  const weatherLookUp =
-    !ownerAbsent &&
-    asksTheWeather(lastOwnerText(messages) ?? '') &&
-    tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
-  if (weatherLookUp) runLooksUpTheWeather.add(runId);
-  const weatherFound = weatherLookUp
-    ? await weatherFoundFirst(userId, threadId, runId, lastOwnerText(messages) ?? '')
-    : null;
-  // #8524: „where does X work?" is looked up in the owner's contacts before the first turn.
-  const jobName =
-    !ownerAbsent && !weatherLookUp ? nameAskedWhereTheyWork(lastOwnerText(messages) ?? '') : null;
-  const jobFound = jobName === null ? null : await lookupFor(runId, userId, jobName);
-  // #8524 (82699): the lookup answer is text, short — on the blank-answer retry too,
-  // which used to drop both and once ran a whole plan for 60 s instead.
-  const lookupTurn = jobFound === null ? {} : { forceText: true, maxTokens: DISCUSS_MAX_TOKENS };
-  // 0283's regression (the tester's 58065): the weather the server found was in the first
-  // turn's prompt only; the final writer and every later round never saw it and wrote
-  // „I cannot check live". It is part of the run's prompt from here on, for every call.
-  const systemPrompt = promptBeforeTheRun + (weatherFound ?? '') + (jobFound ?? '');
+  // #8779 group 4: the weather and „where does X work?" are no longer looked up before the
+  // first turn on a word match — the model calls web_search or the contact search itself.
+  const systemPrompt = promptBeforeTheRun;
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   // 2971: every step bubble the owner saw, so a question said only there is not lost.
@@ -15705,7 +15315,7 @@ async function runToolLoop(
   // with the final writer switched off, so nobody could see GPT never ran.
   // They are read, and stamped, only when GPT will actually write.
   // N: a scheduled check or wake has no writer, so its blocks are not loaded either.
-  const writer = finalWriterForRun(ownerAbsent, smallTalkOnly);
+  const writer = finalWriterForRun(ownerAbsent);
   // Read once, on the first write, so a run whose writer never writes pays no read.
   let gptBlocksRead: Promise<string> | null = null;
   const gptBlocks = (): Promise<string> => (gptBlocksRead ??= gptBlocksFor(runId, userId));
@@ -15733,40 +15343,14 @@ async function runToolLoop(
       runLang(runId),
       model,
     );
-  // #958 (the tester's 44122): a small-talk reply is the writer's, and Claude's is only its
-  // fallback — one after the other they took 2 s each. Small talk runs no tool, so the
-  // writer starts now, beside Claude, from the same conversation; Claude does not stream
-  // meanwhile, so the two never mix on the screen.
-  // 3106 (the tester's 62615, 0385 FAIL 1/3: 14.0 / 11.1 / 19.8 s): the writer waited
-  // for Claude, 4-9 s, then took 4-5 s of its own. The weather it writes from is in
-  // its prompt already, so it starts beside Claude, as small talk's does.
-  const earlyFinal =
-    startsTheWriterEarly(smallTalkOnly, weatherLookUp && weatherFound !== null) && writer !== ''
-      ? writeWith(writer)
-      : null;
-  const firstTurnText = earlyFinal === null ? stream : undefined;
   // #8681 retest 2: set when the forced final was left to the writer.
   let claudeFinalSkipped = false;
-  // 3106, the speed half again (16 Oct 07:35, 3 runs: 21-42 s against 12). With
-  // the weather already found, the first turn only reads it back — the small
-  // model's job, as small talk's is. The blank-answer retry below keeps the big one.
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
-    onText: firstTurnText,
-    model:
-      // #8524 (82667): a lookup answer is the owner's reply itself — no writer
-      // rewrites it now (#8779) — so the main model writes it, not the small one.
-      smallTalkOnly || tapSettledByServer || (weatherLookUp && weatherFound !== null)
-        ? SMALL_TALK_MODEL
-        : TOOL_TURN_MODEL,
-    ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
-    ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
-    // #8524: with the person already looked up, the first turn is the answer.
-    ...lookupTurn,
-    // 3106: with the weather already found, the first turn is the answer.
-    ...(weatherLookUp &&
-      (weatherFound === null
-        ? { forceTool: WEB_SEARCH_TOOL }
-        : { forceText: true, maxTokens: DISCUSS_MAX_TOKENS })),
+    onText: stream,
+    // D631: a tap the server already acted on is answered by the small model.
+    model: tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
+    ...(otherTap && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+    ...(discussing && { maxTokens: DISCUSS_MAX_TOKENS }),
   });
   /** The forced final the writer was trusted with, written after all because the writer failed. */
   const claudeFinalIfSkipped = async (): Promise<void> => {
@@ -15784,9 +15368,8 @@ async function runToolLoop(
       `[chat] run ${runId} first answer was blank (stop_reason ${response.stop_reason}) — asking once more`,
     );
     response = await callClaude(messages, systemPrompt + BLANK_RETRY_NOTE, tools, ctx, {
-      onText: firstTurnText,
+      onText: stream,
       model: TOOL_TURN_MODEL,
-      ...lookupTurn,
     });
   }
   // Tester 1081 (32204, 32206): blank on the re-ask too. Said once here and
@@ -15943,7 +15526,6 @@ async function runToolLoop(
 
       scanAssistantBlocks(response.content);
 
-      const foundBeforeRound = peopleFoundCount(runId);
       const toolResults = await processToolBlocks(
         userId,
         threadId,
@@ -15990,14 +15572,6 @@ async function runToolLoop(
       // This turn ended in tool calls — its streamed text was narration, and
       // it was already emitted as a step above; don't emit it twice.
       resetTurnStream(false);
-      // 3732: a search found the person the owner asked to reach by name — walk to them next.
-      const walkNext = walksToTheNamedPerson({
-        ownerLine: runOwnerLine.get(runId) ?? '',
-        toolsUsed: toolNamesUsed,
-        roundTools,
-        walkOffered: tools.some((tool) => tool.name === WARM_PATH_TOOL),
-        roundFoundSomeone: peopleFoundCount(runId) > foundBeforeRound,
-      });
       response = await callClaudeLate(
         messages,
         systemPrompt,
@@ -16006,7 +15580,6 @@ async function runToolLoop(
         {
           onText: stream,
           model: TOOL_TURN_MODEL,
-          ...(walkNext && { forceTool: WARM_PATH_TOOL }),
         },
         Date.now() - startedAt,
       );
@@ -16070,7 +15643,7 @@ async function runToolLoop(
       // The capped turn's streamed text was narration too. The forced final
       // always runs on the strong model.
       resetTurnStream();
-      if (writer !== '' && earlyFinal === null) {
+      if (writer !== '') {
         // #8681 retest 2 (82402, run 79070): this final took 118 s and was then
         // discarded for the writer's (38 s). With a writer set, it is written
         // only if the writer fails (claudeFinalIfSkipped below).
@@ -16117,7 +15690,6 @@ async function runToolLoop(
     // #8524: a short answer that planned and sent nothing keeps Claude's words.
     const keepShort =
       !claudeFinalSkipped &&
-      earlyFinal === null &&
       writer !== '' &&
       shortAnswerStands(
         extractText(response.content),
@@ -16127,7 +15699,7 @@ async function runToolLoop(
             runAskSent.has(runId) || runAnswerSent.has(runId) || runIntroSent.has(runId),
           hasChoices: choices !== undefined && choices.length > 0,
         },
-        jobFound === null ? SHORT_ANSWER_MAX_CHARS : LOOKUP_ANSWER_MAX_CHARS,
+        SHORT_ANSWER_MAX_CHARS,
       ) &&
       (!SHORT_ANSWER_ON_TEST_SEATS_ONLY ||
         (await allAreTestSeats([Number(userId)]).catch(() => false)));
@@ -16135,22 +15707,7 @@ async function runToolLoop(
       // eslint-disable-next-line no-console
       console.log(`[final-answer] run ${runId}: short answer — Claude's words stand (#8524)`);
     }
-    let rewritten = keepShort ? null : await (earlyFinal ?? writeWith(writer));
-    // D627: a small writer that fails before writing a word hands the turn to the
-    // ordinary one, so trying a small model can cost a moment and never the voice.
-    if (
-      rewritten === null &&
-      smallTalkOnly &&
-      writer !== '' &&
-      !openAiStarted &&
-      smallTalkFinalModel() !== finalAnswerModel()
-    ) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[final-answer] run ${runId}: the small-talk writer failed — the ordinary writer answers`,
-      );
-      rewritten = await writeWith(finalAnswerModel());
-    }
+    const rewritten = keepShort ? null : await writeWith(writer);
     if (rewritten === null) await claudeFinalIfSkipped();
     if (rewritten === null) {
       // Row 155: the deltas were already on the screen before the answer could
@@ -16605,8 +16162,9 @@ async function runToolLoop(
   const farFindGoal =
     foundFurtherOut.length > 0 ? await getGoalOnThread(threadId).catch(() => null) : null;
   const farFindHasNoGoal = farFindGoal === null;
-  // With no goal, only a line that asks for something: a need or an introduction.
-  const farFindAsked = !farFindHasNoGoal || wantsSomethingDone(runOwnerLine.get(runId) ?? '');
+  // #8779 group 4: with no goal, no word list decides the line asked for something — the
+  // nudge goes only where a goal exists; with none, the model opens one itself.
+  const farFindAsked = !farFindHasNoGoal;
   const farFindUnplanned =
     !ownerAbsent &&
     !promoted &&
@@ -16657,7 +16215,7 @@ async function runToolLoop(
                           ? PROMISED_ACTION_NO_GOAL_NUDGE
                           : PROMISED_ACTION_NUDGE
                         : farFindUnplanned
-                          ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
+                          ? farFindUnplannedNudge(foundFurtherOut)
                           : rowsMissing.length > 0
                             ? listRowsNudge(rowsMissing)
                             : foreignWord !== null
@@ -17372,6 +16930,10 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_INTRO_STATUS_TOOL,
   GET_THREAD_CONTEXT_TOOL,
   SET_TASK_RESULT_TOOL,
+  // #8779 group 4: the birthdays question is the model's to read (birthdaysAsked.ts).
+  GET_UPCOMING_BIRTHDAYS_TOOL,
+  // #8779 group 4: the discuss-first mode is the model's reading (discussFirst.ts).
+  SET_DISCUSSION_TOOL,
   CREATE_TASK_TOOL,
   GET_MY_TASKS_TOOL,
   UPDATE_TASK_TOOL,
@@ -18032,40 +17594,6 @@ interface GoalForRequest {
   readonly repeats: Task | null;
 }
 
-const DISCUSSION_READ_TIMEOUT_MS = 5_000;
-const DISCUSSION_LINES_READ = 12;
-
-/**
- * #67: the new line and the owner's earlier lines in this conversation, newest
- * first, decide whether it is still a discussion. A failed read is not a
- * discussion: the goal opens as it always has.
- */
-
-/** The owner's own typed lines in this conversation, newest first. */
-async function ownerTypedLines(threadId: number): Promise<string[]> {
-  const earlier = await query<{ content: string }>(
-    `SELECT content FROM conversations
-      WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
-        AND content <> '' AND content NOT LIKE $2
-      ORDER BY created_at DESC LIMIT ${DISCUSSION_LINES_READ}`,
-    [threadId, `${RUN_EVENT_PREFIX}%`],
-    DISCUSSION_READ_TIMEOUT_MS,
-  );
-  return earlier.rows.map((r) => r.content);
-}
-
-async function conversationIsDiscussion(threadId: number, userMessage: string): Promise<boolean> {
-  const decided = lineDecidesDiscussion(userMessage);
-  if (decided !== null) return decided;
-  try {
-    return discussionHolds(await ownerTypedLines(threadId));
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(`[goal-intent] thread ${threadId}: discussion not read:`, (err as Error).message);
-    return false;
-  }
-}
-
 const MAX_SECOND_CIRCLE_FAMILY_WORDS = 3;
 const OWNER_LINES_FOR_FACTS = 40;
 const OWNER_LINES_TIMEOUT_MS = 5_000;
@@ -18199,40 +17727,26 @@ async function ensureGoalForRequest(
 ): Promise<GoalForRequest> {
   if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX))
     return NO_GOAL_FOR_REQUEST;
-  // The tester's 1113 (the founder's account): „გამარჯობა" and „რა დღეა დღეს?"
-  // after the new-goal button became goals. Small talk is never a goal.
-  // 958: checked before the discussion read below, which costs small talk a
-  // database round trip for an answer that is „no goal" either way.
-  if (isSmallTalk(userMessage)) {
-    if (intent?.asGoal === true)
-      // eslint-disable-next-line no-console
-      console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is small talk`);
-    return NO_GOAL_FOR_REQUEST;
-  }
   // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
-  if (await conversationIsDiscussion(threadId, userMessage)) {
+  // #8779 group 4: the mode is the model's set_discussion, kept on the thread.
+  if (await threadInDiscussion(threadId)) {
     // eslint-disable-next-line no-console
     console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
     return NO_GOAL_FOR_REQUEST;
   }
-  // Row 103: the app flag may turn a statement into a goal; it may not turn a
-  // question into one. Named in the log rather than dropped silently — a goal
-  // that quietly does not appear is the mirror image of the bug being fixed.
-  if (isQuestionNotGoal(userMessage)) {
-    if (intent?.asGoal === true)
-      // eslint-disable-next-line no-console
-      console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is a question`);
-    return NO_GOAL_FOR_REQUEST;
-  }
+  // #8779 group 4 (the founder, 4 Nov): no need words open a goal before the run. Only the
+  // app's own new-goal button does; otherwise the model opens one with create_task when it
+  // reads a need (Ticket 16 Task 90's need words, row 103's question words and D617's
+  // „must still state a need" are gone with the lists).
+  if (intent?.asGoal !== true) return NO_GOAL_FOR_REQUEST;
   // Row 103/104: the flag may turn a statement into a goal; it may not turn an
   // INSTRUCTION TO A NAMED PERSON into one. Lika typed „ask Tornike Abuladze
   // if he knows a good philosopher", it became a goal, and a new goal has its
   // plan proposed — so she was asked to approve her own sentence, twice.
   //
   // The cheap half runs first and keeps the phonebook query off every message
-  // that cannot need it. Only the flag path is guarded, because
-  // looksLikeGoalRequest already says false for all six of these.
-  if (intent?.asGoal === true && looksLikeContactInstruction(userMessage)) {
+  // that cannot need it.
+  if (looksLikeContactInstruction(userMessage)) {
     if (await messageNamesOwnContact(userId, userMessage)) {
       // eslint-disable-next-line no-console
       console.log(
@@ -18240,22 +17754,6 @@ async function ensureGoalForRequest(
       );
       return NO_GOAL_FOR_REQUEST;
     }
-  }
-  /*
-   * The tester's 1114 (seat 16, the founder's D617): the small-talk list held for
-   * its own lines and missed the next wording — „გამარჯობა, როგორ ხარ?", „დილა
-   * მშვიდობისა", a sum, a joke — each a goal with a full goal turn after the
-   * new-goal button. The flag no longer decides alone: it lifts the length floor,
-   * and the message must still state a need. Anything else is answered as a
-   * question, and the model can still open a goal itself when it sees one.
-   */
-  const flaggedNeed =
-    intent?.asGoal === true && (statesANeed(userMessage) || seeksAPerson(userMessage));
-  if (!flaggedNeed && !looksLikeGoalRequest(userMessage)) {
-    if (intent?.asGoal === true)
-      // eslint-disable-next-line no-console
-      console.log(`[goal-intent] thread ${threadId}: app flag ignored, no need stated`);
-    return NO_GOAL_FOR_REQUEST;
   }
   try {
     if ((await getOpenTaskByThread(threadId)) !== null) return NO_GOAL_FOR_REQUEST;
@@ -18381,7 +17879,6 @@ export async function processChat(
   // thing: whether the tools that record the owner's own consent exist for
   // this run (ticket 19 item 0).
   const ownerAbsent = userMessage.startsWith(RUN_EVENT_PREFIX);
-  if (!ownerAbsent) startLookupAhead(runId, userId, userMessage);
   /**
    * ROW 238 (D119) — the owner asking for a change stops the NEXT WAVE, and
    * until today it stopped nothing at all.
@@ -18414,13 +17911,6 @@ export async function processChat(
   // #8779 b (rule 30, the founder 4 Nov 19:07): a typed stop is no longer read by stop
   // words before the run. The Stop button has its own route (POST /threads/:id/stop); a
   // typed stop goes to the model, whose update_task can only touch this chat's own goal.
-  // The tester's 1114 and 1116 (D617): a hello gets a hello at once, from the
-  // server, in a goal's conversation too. D622 (1120): before the prompt is built.
-  // #8519 RETEST (the tester's 80967): a new member's first hello was answered here, by the
-  // server's own greeting, before the small-talk path ever saw it. Their first line gets the run.
-  if (!ownerAbsent && isBareGreeting(userMessage) && !(await isOwnersFirstLine(userId))) {
-    return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
-  }
   // 3070 (b): the approve tap is answered by the server and day one starts at once.
   const approvedLine = ownerAbsent
     ? null
@@ -18432,12 +17922,6 @@ export async function processChat(
   if (approvedLine !== null) return approvedLine;
   // 2810: „that is what I needed" right after a search is that search's outcome.
   if (!ownerAbsent) void noteSearchVerdict(userId, userMessage);
-  // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.
-  const nonMember =
-    !ownerAbsent && thread.type === 'regular'
-      ? await answerNonMemberNamed(userId, threadId, userMessage, runId, intent)
-      : null;
-  if (nonMember !== null) return nonMember;
   // #8524: the goal step's 1.0-1.4 s split, so a retest shows which part costs it.
   steps.mark('before_checks');
   // 3170: „who of mine is NOT a <word>" names a few who are not, from the server.
@@ -18446,12 +17930,6 @@ export async function processChat(
       ? await answerNotTagged(userId, threadId, userMessage, runId, intent)
       : null;
   if (notTagged !== null) return notTagged;
-  // 3269: „who has a birthday soon?" is answered from the told birthdays, by the server.
-  const birthdays =
-    !ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)
-      ? await answerBirthdaysSoon(userId, threadId, userMessage, runId, intent)
-      : null;
-  if (birthdays !== null) return birthdays;
   // 1690 (A7): a tap on the fact-confirm card (or the answer to its „where now?") is the server's.
   const confirmed =
     !ownerAbsent && thread.type === 'regular'
@@ -18533,12 +18011,8 @@ export async function processChat(
   // that goal (Ticket 10 Task 18). Only a regular thread qualifies — an ask,
   // an invite or a request thread is already a situation of its own — and an
   // engine event never names anything: it addresses the goal it runs in.
-  // The tester's 1116 (S11, 34670): „როგორ ხარ?" in a new conversation bound to an
-  // old test goal of the same words and ran a full goal turn. Small talk names no goal.
   const namedTask =
-    thread.type === 'regular' &&
-    !userMessage.startsWith(RUN_EVENT_PREFIX) &&
-    !isSmallTalk(userMessage)
+    thread.type === 'regular' && !userMessage.startsWith(RUN_EVENT_PREFIX)
       ? await findOpenTaskNamedIn(userId, userMessage).catch((err: unknown) => {
           // eslint-disable-next-line no-console
           console.warn('[goal-mention] lookup failed:', (err as Error).message);
@@ -18574,34 +18048,19 @@ export async function processChat(
    * opening web search read the Georgian question word as a domain, searched
    * VIN.GE, and told the owner it had found them a contact there.
    */
+  // #8779 group 4: no word list skips the opening searches on a goal any more.
   const lateSearch =
-    autoGoalId === null || needsNoOpeningSearch(userMessage) || asksTheWeather(userMessage)
-      ? null
-      : startOpeningSearches(userId, userMessage, runId, threadId);
+    autoGoalId === null ? null : startOpeningSearches(userId, userMessage, runId, threadId);
   // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
   const worldAnswerWork =
     !ownerAbsent && worldAnswerIsDue(autoGoalId !== null, userMessage)
       ? worldAnswerFor(userId, threadId, runId, userMessage, language)
       : Promise.resolve(null);
-  // #5248 (D825): a goal at a lender about a loan is searched by ROLE before the
-  // first answer, and this one is waited for — the answer must start from it.
-  const roleQueries = lateSearch === null ? null : roleSearchQueries(userMessage);
-  const roleSection =
-    roleQueries === null
-      ? Promise.resolve('')
-      : roleSearchSection({ userId, runId, threadId }, roleQueries);
   // #397: the opening searches are the run's first search; the line says so.
   if (lateSearch !== null) {
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
   }
 
-  const smallTalkLine = !ownerAbsent && isToolFreeSmallTalk(userMessage);
-  if (smallTalkLine && (await isOwnersFirstLine(userId))) {
-    runIsOwnersFirstLine.add(runId);
-    // eslint-disable-next-line no-console
-    console.log(`[small-talk] run ${runId}: the member's first line — the full run answers it`);
-  }
-  const listedSmallTalk = smallTalkLine && !runIsOwnersFirstLine.has(runId);
   steps.mark('named');
   // 3106 (speed): the two reads the run's language needs depend on nothing the
   // prompt build does, so they start beside it instead of after it.
@@ -18614,38 +18073,23 @@ export async function processChat(
   const [agentPrompt, tools, history] = await Promise.all([
     steps.timed(
       'prompt',
-      listedSmallTalk
-        ? smallTalkAgentPrompt(userId, userMessage)
-        : buildAgentSystemPrompt(
-            userId,
-            thread.type,
-            thread.introduction_request_id,
-            thread.id,
-            undefined,
-            namedTask,
-            ownerAbsent,
-            ownerAbsent ? '' : userMessage,
-          ),
+      buildAgentSystemPrompt(
+        userId,
+        thread.type,
+        thread.introduction_request_id,
+        thread.id,
+        undefined,
+        namedTask,
+        ownerAbsent,
+        ownerAbsent ? '' : userMessage,
+      ),
     ),
     steps.timed('tools', buildToolsForThread(userId, thread.type, ownerAbsent)),
     steps.timed('history', loadHistory(threadId)),
   ]);
   // #502 (46334): a message that is only „remind me …" sets the reminder and starts nothing else.
-  // 3400 (MASTER TEST RUN, 3 of 3): the first run of a goal called invite_contact on its own;
-  // the gate refused it, but the run then apologised. An owner's run whose line neither asks
-  // for an invitation nor approves one does not hold the tool at all.
-  // #8087 (founder, 27 Oct): an invite chat exists to invite — the user there always gets the
-  // ready text with their own link, so both tools are held whatever the line says.
-  const inviteHeld =
-    ownerAbsent ||
-    thread.type === 'campaign_invite' ||
-    asksForAnInvite(userMessage) ||
-    isApproveChoice(userMessage.trim());
-  // 3400 (the tester's 47027, 1 of 3): get_invite_link wrote the invitation text before the
-  // owner said yes. It sits behind the same yes, or the owner asking for the link itself.
-  const linkHeld = inviteHeld || asksForTheLink(userMessage);
-  // 3730 (3), 3732: a person named to meet or reach is found in the network, never on the web.
-  const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);
+  // 3400 / 3730 / #8087: the invite, link and web tools are no longer held back on the
+  // owner's words (#8779 group 4) — each tool's own description carries its rule.
   // 3730 (2): „ask X too" on a goal that has asked is a follow-up, not a new goal and plan.
   const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
   // #8944: no server card stands between a reader's line and the asker any more, so a
@@ -18660,12 +18104,9 @@ export async function processChat(
   if (thread.type === REQUEST_THREAD_TYPE && typeof thread.introduction_request_id === 'number') {
     runThreadRequest.set(runId, thread.introduction_request_id);
   }
-  const runTools =
-    !ownerAbsent && isReminderRequestOnly(userMessage)
-      ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
-      : requestAnswerOnly
-        ? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)
-        : tools;
+  const runTools = requestAnswerOnly
+    ? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)
+    : tools;
   // #8948 / #8524 (tester 82831): a tool list that changed from one message to the next
   // missed the prompt cache — the first call wrote ~52k tokens again, several seconds
   // each time. The list stays whole; the tools held back for this turn are refused when
@@ -18675,9 +18116,6 @@ export async function processChat(
       .filter(
         (tool) =>
           !(
-            (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
-            (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
-            (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
             (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
             (relayHeld || tool.name !== RELAY_ASK_TOOL.name)
           ),
@@ -18894,7 +18332,6 @@ export async function processChat(
         `never that a plan is ready or waits for their yes unless a plan was proposed.`) +
     // #1123: told in THIS run only, so no always-on line reads as „cannot send" (#1090).
     (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '') +
-    (await roleSection) +
     (worldAnswer === null ? '' : worldAnswerSection(worldAnswer));
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.
@@ -19062,15 +18499,12 @@ export async function processChat(
   // events and the cliffhanger nudge — persist as kind 'event' so they never
   // render as words the user wrote (ticket 5 item B1: the nudge appeared in the
   // DOM as the user's own message and the assistant answered IT).
-  const moderationSkipped =
-    !ownerAbsent && !runIsOwnersFirstLine.has(runId) && isToolFreeSmallTalk(userMessage);
   // Only where the owner waits for the reply: a system run often ends quietly, unchecked.
-  const earlyVerdict: EarlyVerdict | null =
-    moderationSkipped || ownerAbsent
-      ? null
-      : startEarlyModeration(withoutInvisibleCharacters(finalText), (text) =>
-          moderateReply(text, userId),
-        );
+  const earlyVerdict: EarlyVerdict | null = ownerAbsent
+    ? null
+    : startEarlyModeration(withoutInvisibleCharacters(finalText), (text) =>
+        moderateReply(text, userId),
+      );
   await saveRunTrail(userId, threadId, pending);
   lap(postRun, 'trail');
 
@@ -19347,11 +18781,6 @@ export async function processChat(
   // takes two independent UNSAFE votes (see moderation.service) — a false
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
-  // The server's own greeting never reaches here (answerGreeting): it is our
-  // fixed sentence and needs no reply check. The tester's 1132: a listed
-  // small-talk line („მადლობა", „როგორ ხარ") was still 6–8 s, about a second of it
-  // this check. Its reply was one short text-only turn to a line from a fixed
-  // handful of words, so it skips the check like the greeting.
   /**
    * 3106 (speed): a read that does not depend on the reply check starts before
    * it, beside its model call, and is awaited where it was awaited before. The
@@ -19362,9 +18791,9 @@ export async function processChat(
     getPendingRequestsForMediator(userId),
   );
   requestsEarly.catch(() => undefined);
-  const verdict = moderationSkipped
-    ? { safe: true }
-    : await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));
+  const verdict = await verdictForShown(cleanedFinal, earlyVerdict, (text) =>
+    moderateReply(text, userId),
+  );
   lap(postRun, 'moderation');
   let replySafe = verdict.safe;
   if (!replySafe) {

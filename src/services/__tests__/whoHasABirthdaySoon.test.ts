@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { birthdayFromNote } from '../birthdayLens.service';
-import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from '../birthdaysAsked';
+import { GET_UPCOMING_BIRTHDAYS_TOOL, upcomingBirthdays } from '../birthdaysAsked';
 
 /** 3269 (SE-039, ME-040): told birthdays were never told back. */
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -28,14 +28,6 @@ describe('a birthday told as a note', () => {
 });
 
 describe('who has a birthday soon', () => {
-  it('knows the question, not a told birthday', () => {
-    expect(asksForBirthdays('ვის აქვს მალე დაბადების დღე?')).toBe(true);
-    expect(asksForBirthdays('Whose birthday is coming up soon? Any upcoming birthdays?')).toBe(
-      true,
-    );
-    expect(asksForBirthdays('ლევან მოგონილაძის დაბადების დღე 13 ოქტომბერს არის.')).toBe(false);
-  });
-
   it('lists the told birthdays, soonest first, notes included', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-10-08T12:00:00Z'));
     mockQuery.mockResolvedValue({
@@ -46,25 +38,21 @@ describe('who has a birthday soon', () => {
       ],
       rowCount: 3,
     } as never);
-    const rows = await birthdaysSoon('180122');
-    expect(birthdaysAnswer(rows, 'ka')).toBe(
-      'მალე დაბადების დღე აქვთ:\n• ლევან მოგონილაძე — 13 ოქტომბერი (5 დღეში)\n• ნინო გამოგონილი — 20 ოქტომბერი (12 დღეში)',
-    );
+    await expect(upcomingBirthdays('180122', undefined)).resolves.toEqual([
+      { name: 'ლევან მოგონილაძე', birthday: '13 ოქტომბერი', days_until: 5 },
+      { name: 'ნინო გამოგონილი', birthday: '20 ოქტომბერი', days_until: 12 },
+    ]);
     const [sql] = mockQuery.mock.calls[0] as [string];
     expect(sql).toContain("cf.field_type = 'note'");
     jest.useRealTimers();
   });
 
-  it('says so when none falls in the next month', () => {
-    expect(birthdaysAnswer([], 'ka')).toBe(
-      'მომდევნო 30 დღეში შენახული დაბადების დღე არავისი მაქვს.',
-    );
-  });
-
-  it('runs before the model, in the owner’s own conversation', () => {
+  /** #8779 group 4: the question is the model's to read, with the connector's own tool. */
+  it('is a tool of the app’s run, not a word list before it', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      "!ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)",
-    );
+    expect(GET_UPCOMING_BIRTHDAYS_TOOL.name).toBe('get_upcoming_birthdays');
+    expect(chat).toContain('  GET_UPCOMING_BIRTHDAYS_TOOL,\n');
+    expect(chat).toContain("case 'get_upcoming_birthdays':");
+    expect(chat).not.toContain('asksForBirthdays');
   });
 });

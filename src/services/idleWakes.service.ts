@@ -118,3 +118,13 @@ export async function setIdleWake(taskId: number, at: Date): Promise<void> {
 export const CLOSE_QUESTION_NOTE =
   'ამ მიზანში ერთი კვირაა არავის არაფერი დაუწერია. მფლობელს ერთხელ, მოკლედ ჰკითხე: ' +
   'გავაგრძელოთ, შევცვალოთ თუ დავხუროთ — და მეტი შეხსენება აღარ გააკეთო, სანამ არ გიპასუხებს.';
+
+/** K9 audit B11 (session 3): with an approved plan, its next step comes before the question. */
+export const CLOSE_QUESTION_NOTE_WITH_PLAN =
+  'ამ მიზანში ერთი კვირაა არავის არაფერი დაუწერია. თუ დამტკიცებულ გეგმას შემდეგი ნაბიჯი ' +
+  'აქვს — ის ახლავე გააკეთე და მფლობელს ერთი ხაზით უთხარი. მხოლოდ თუ ნაბიჯები ამოიწურა, ' +
+  'ჰკითხე ერთხელ: გავაგრძელოთ ახალი გზით თუ დავხუროთ.';
+
+export function closeQuestionNote(planApproved: boolean): string {
+  return planApproved ? CLOSE_QUESTION_NOTE_WITH_PLAN : CLOSE_QUESTION_NOTE;
+}

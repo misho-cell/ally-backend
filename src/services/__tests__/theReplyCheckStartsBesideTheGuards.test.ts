@@ -43,7 +43,7 @@ describe('#8524: the reply check starts beside the guards', () => {
     const start = chat.indexOf('const earlyVerdict: EarlyVerdict | null');
     expect(start).toBeGreaterThan(0);
     expect(chat.indexOf('await saveRunTrail(userId, threadId, pending);')).toBeGreaterThan(start);
-    expect(chat.slice(start, start + 200)).toMatch(/moderationSkipped \|\| ownerAbsent/);
+    expect(chat.slice(start, start + 200)).toMatch(/ownerAbsent\s+\? null/);
     expect(chat).toMatch(/await verdictForShown\(cleanedFinal, earlyVerdict,/);
   });
 });

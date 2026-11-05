@@ -9,7 +9,7 @@ import { join } from 'path';
 describe('a blocked plan reply', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
   const blockAt = chat.indexOf(
-    ': await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));',
+    'const verdict = await verdictForShown(cleanedFinal, earlyVerdict, (text) =>',
   );
   const replyAt = chat.indexOf(
     '(safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked)',

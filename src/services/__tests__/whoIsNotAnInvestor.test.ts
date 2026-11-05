@@ -102,7 +102,7 @@ describe('the answer', () => {
 
   it('runs before the model, in an ordinary conversation the owner started', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const at = chat.indexOf('if (nonMember !== null) return nonMember;');
+    const at = chat.indexOf("steps.mark('before_checks');");
     const after = chat.slice(at, at + 600);
     expect(after).toContain("!ownerAbsent && thread.type === 'regular'");
     expect(after).toContain('await answerNotTagged(userId, threadId, userMessage, runId, intent)');

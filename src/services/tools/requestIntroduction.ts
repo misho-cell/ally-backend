@@ -1,4 +1,5 @@
 import { findContactPhonesByName } from './nameMatch';
+import { notePlanNamed } from '../planAdvance.service';
 import { recordIntroPrematch } from '../bridgeOrder';
 import { CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON, closedRouteFor } from '../closedRoute';
 import { reasonAboutAsker } from '../askEditor.service';
@@ -653,6 +654,10 @@ async function requestIntroductionInner(
 
   // 1697 (A14): both sides pre-cleared at the same moment, for the admin; nothing is sent by it.
   void recordIntroPrematch(insertResult.rows[0].id);
+  // Autonomy stage 2, K3: a go-between the plan asked named somebody — `named` on their step.
+  if (context.requesterTaskId != null && !isDirect && !forwarded) {
+    void notePlanNamed(context.requesterTaskId, insertResult.rows[0].id, mediatorUserId);
+  }
   const stored: StoredRequest = {
     requestId: insertResult.rows[0].id,
     requestRef: insertResult.rows[0].request_ref,

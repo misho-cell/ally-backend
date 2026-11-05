@@ -44,18 +44,6 @@ describe("an owner's run", () => {
     'utf8',
   );
 
-  it('lets a hello or listed small talk start without waiting for a slot', () => {
-    const fn = routes.slice(
-      routes.indexOf('export function runOwnerMessage(run: OwnerRun): void {'),
-    );
-    const body = fn.slice(0, fn.indexOf('\n}\n'));
-    const quickAt = body.indexOf(
-      'if (isBareGreeting(run.message) || isToolFreeSmallTalk(run.message)) {',
-    );
-    expect(quickAt).toBeGreaterThan(-1);
-    expect(body.indexOf('void takeRunSlot(')).toBeGreaterThan(quickAt);
-  });
-
   it('takes a slot before it starts, and gives it back however it ends', () => {
     expect(routes).toContain(
       'void takeRunSlot(run.runId).then(() => startOwnerRun(run).finally(releaseRunSlot));',

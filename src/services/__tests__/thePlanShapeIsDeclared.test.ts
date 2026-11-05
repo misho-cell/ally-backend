@@ -52,9 +52,18 @@ describe('the plan argument declares its shape instead of describing it', () => 
     const props = (plan.properties ?? {}) as Record<string, unknown>;
 
     expect(Object.keys(props).sort()).toEqual(
-      ['never_contact', 'people_to_involve', 'real_work', 'routes', 'solved_when'].sort(),
+      [
+        'never_contact',
+        'people_to_involve',
+        'real_work',
+        'result_when',
+        'routes',
+        'solved_when',
+        'steps',
+      ].sort(),
     );
-    expect(plan.required).toEqual(['solved_when', 'routes']);
+    // Autonomy stage 2, K1: solved_when OR result_when — the server requires one of them.
+    expect(plan.required).toEqual(['routes']);
   });
 
   /**

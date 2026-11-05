@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { askChoicesFor } from './askOpening';
+import { askKindFrom } from './askKind';
 import {
   EVENING_CARD_HOUR,
   EVENING_CARD_SNOOZE_MS,
@@ -149,6 +150,11 @@ interface EveningCardItemRow {
   readonly answered: boolean;
 }
 
+/** #8779 group 4: the asking model's kind, read only to pick the buttons. */
+interface EveningCardItemQueryRow extends EveningCardItemRow {
+  readonly ask_kind: string | null;
+}
+
 export interface EveningCardItem extends EveningCardItemRow {
   /** #1948: the taps that fit this question, in the person's language; „later" always last. */
   readonly choices: readonly string[];
@@ -178,9 +184,9 @@ export async function currentEveningCard(userId: number): Promise<EveningCardVie
   const row = card.rows[0];
   if (!row) return null;
   const language = await userLanguage(String(userId));
-  const items = await query<EveningCardItemRow>(
+  const items = await query<EveningCardItemQueryRow>(
     `SELECT ta.id AS ask_id, ta.ask_thread_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS from_name,
-            ta.question,
+            ta.question, ta.ask_kind,
             (ta.status <> 'sent' OR ta.offered_help_at IS NOT NULL OR ta.later_at IS NOT NULL
               OR ta.declined_at IS NOT NULL) AS answered
        FROM task_asks ta
@@ -194,7 +200,10 @@ export async function currentEveningCard(userId: number): Promise<EveningCardVie
     id: Number(row.id),
     due_at: new Date(row.due_at).toISOString(),
     snoozes: row.snoozes,
-    items: items.rows.map((item) => ({ ...item, choices: askChoicesFor(item.question, language) })),
+    items: items.rows.map(({ ask_kind, ...item }) => ({
+      ...item,
+      choices: askChoicesFor(askKindFrom(ask_kind), language),
+    })),
   };
 }
 
