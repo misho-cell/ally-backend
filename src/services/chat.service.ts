@@ -326,7 +326,7 @@ import {
   WARM_PATH_TOOL,
 } from './warmPathAfterSearch';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
-import { keepNeverInvolved, keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
+import { ruledOutOnSubject } from './ruledOutBridges';
 import { mutualGroupsFor, plannedGoBetweensLabel } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.service';
 import { askStepNames, askStepsToKeepUnnamed } from './askCaptions';
@@ -18605,17 +18605,9 @@ export async function processChat(
   runLanguages.set(runId, language);
   if (!ownerAbsent) runOwnerLine.set(runId, userMessage);
   if (intent?.fromWhatsapp === true) runsFromWhatsapp.add(runId);
-  // #6358: a person the owner rules out is kept out before this run searches.
+  // #8779 b (rule 35): a person the owner rules out („not him", „never her") is no longer
+  // read from refusal or „never" words; the model saves it with exclude_contact (#6358).
   if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
-    await keepRuledOutBridges(userId, threadId, userMessage).catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.warn(`[ruled-out] run ${runId}: not kept:`, (err as Error).message),
-    );
-    // #6358 (69148): „never involve <contact>" is kept by the server, goal or no goal.
-    await keepNeverInvolved(userId, userMessage).catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.warn(`[ruled-out] run ${runId}: never not kept:`, (err as Error).message),
-    );
     // #8522: a pasted table becomes the conversation's file before the history is read.
     await keepPastedList(threadId, Number(userId), userMessage).catch((err: unknown) => {
       // eslint-disable-next-line no-console
