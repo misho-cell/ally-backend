@@ -7,18 +7,20 @@
  * owner did not ask about the name.
  *
  * #1355 (Tornike, 5 Oct) still holds: asked „what is his surname exactly", the
- * model needs the member's own spelling. So the search keeps `registered_name`
- * only when the owner's line in this run asks about the name or its spelling.
+ * model needs the member's own spelling.
+ *
+ * #8779 group 4 (the founder, 4 Nov): no fixed word lists. Whether the owner is
+ * asking about the name is the model's reading, said in the search's own
+ * `about_the_name` argument; the server keeps `registered_name` only then.
  */
-const ASKS_ABOUT_THE_NAME_RE =
-  /გვარ|სახელ|ჰქვია|იწერება|spell|surname|last\s*name|first\s*name|full\s*name|\bname\b|фамили|имя|зовут|пишется/iu;
-
 const REGISTERED_NAME_KEY = 'registered_name';
 
-/** Does the owner's line ask what a person's name is, or how it is spelled? */
-export function asksAboutTheName(ownerLine: string): boolean {
-  return ASKS_ABOUT_THE_NAME_RE.test(ownerLine);
-}
+export const ABOUT_THE_NAME_FIELD = {
+  type: 'boolean',
+  description:
+    'true only when the owner asks how this person’s name is spelled or what it is exactly — ' +
+    'then a member’s own registered spelling comes back as `registered_name`. Otherwise false.',
+} as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -29,9 +31,9 @@ function withoutRegisteredName(row: unknown): unknown {
   return Object.fromEntries(Object.entries(row).filter(([key]) => key !== REGISTERED_NAME_KEY));
 }
 
-/** A name search's result as the model may see it for this owner line. */
-export function registeredNameOnlyWhenAsked<T>(result: T, ownerLine: string): T {
-  if (asksAboutTheName(ownerLine) || !isRecord(result) || !Array.isArray(result.results)) {
+/** The search result, without `registered_name` unless the run said the owner asks about the name. */
+export function registeredNameOnlyWhenAsked<T>(result: T, aboutTheName: unknown): T {
+  if (aboutTheName === true || !isRecord(result) || !Array.isArray(result.results)) {
     return result;
   }
   return { ...result, results: result.results.map(withoutRegisteredName) };

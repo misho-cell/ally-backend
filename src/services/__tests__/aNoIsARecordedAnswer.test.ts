@@ -71,7 +71,7 @@ describe('what the ask carries, and what the answer records', () => {
 
   /** Row 300: the decline is one of three buttons, all offered with the question. */
   it('offers the decline with the question itself', () => {
-    expect(asks).toContain('askChoicesFor(safeQuestion, language)');
+    expect(asks).toContain('askChoicesFor(askKind, language)');
     expect(asks).toContain('saveThreadMessage(');
   });
 
@@ -98,7 +98,7 @@ describe('what the ask carries, and what the answer records', () => {
     // too (aMediatorIsAskedWhomHeRecommends), so the window just got longer.
     // D712: the buttons are the asking model's, or the old set; the editor's either way.
     expect(offer.slice(0, 300)).toContain('choices.map((choice) => choice.label)');
-    expect(asks).toContain('askChoicesFor(safeQuestion, language)');
+    expect(asks).toContain('askChoicesFor(askKind, language)');
   });
 
   /**
@@ -132,7 +132,7 @@ describe('what the ask carries, and what the answer records', () => {
    * still joins the answer; after the wake went out the stamp stays.
    */
   it('is taken back by a later line with something in it, until the wake is delivered', () => {
-    expect(asks).toContain('[askThreadId, safe, declined, !declined && !isSmallTalk(safe)]');
+    expect(asks).toContain('[askThreadId, safe, declined, !declined]');
     const flat = answerSql.replace(/\s+/g, ' ');
     expect(flat).toContain(
       'declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW()) WHEN $4 AND wake_delivered_at IS NULL THEN NULL ELSE declined_at END',

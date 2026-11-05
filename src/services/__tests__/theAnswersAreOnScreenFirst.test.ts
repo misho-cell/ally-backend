@@ -190,8 +190,9 @@ describe('the reply that follows the card', () => {
   /** A quote guarantee under the card would print the answer a second time. */
   it('carries no quote guarantee when the card is on screen', () => {
     const deliver = engine.slice(engine.indexOf('async function deliverOwedAnswers'));
-    expect(deliver.slice(0, 1700)).toContain(
-      'buildShownAnswersWakeEvent(arrived),\n        undefined,',
+    // Autonomy stage 2, K3: the event carries the plan step's note; still no guarantee.
+    expect(deliver.slice(0, 2000)).toContain(
+      'withStepNote(buildShownAnswersWakeEvent(arrived), stepNote),\n        undefined,',
     );
   });
 

@@ -45,6 +45,6 @@ describe('askReminderMessage', () => {
     );
     expect(sweep).toContain('askReminderMessage(language, row.asker_name, shown)');
     expect(sweep).toContain('stored.map((choice) => choice.label)');
-    expect(sweep).toContain('askChoicesFor(row.question, language)');
+    expect(sweep).toContain('askChoicesFor(askKindFrom(row.ask_kind), language)');
   });
 });

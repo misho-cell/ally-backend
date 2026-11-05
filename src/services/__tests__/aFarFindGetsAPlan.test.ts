@@ -1,6 +1,8 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { farFindLeftUnplanned } from '../chat.service';
 import { farFindUnplannedNudge } from '../replyGuards';
 
@@ -33,10 +35,8 @@ describe('somebody found further out', () => {
     expect(farFindLeftUnplanned([], [], noPlan)).toBe(false);
   });
 
-  it('sends a quick answer with no goal back too, to open one first (64549)', () => {
+  it('reads a quick answer with no goal as unplanned too (64549)', () => {
     expect(farFindLeftUnplanned(zurab, ['search_second_degree'], null)).toBe(true);
-    expect(farFindUnplannedNudge(zurab, true)).toContain('create_task');
-    expect(farFindUnplannedNudge(zurab)).not.toContain('create_task');
   });
 
   it('names who was found and the tools that make the card', () => {
@@ -54,16 +54,12 @@ describe('somebody found further out', () => {
   });
 });
 
+/** #8779 group 4: with no goal, no word list decides the owner asked for something done. */
 describe('a quick answer with no goal', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { wantsSomethingDone } = require('../replyGuards') as typeof import('../replyGuards');
-
-  it('is sent back only when the owner asked for something done', () => {
-    expect(wantsSomethingDone('ზურაბ ქიმერიძის გაცნობა მინდა')).toBe(true);
-    expect(wantsSomethingDone('მჭირდება ნოტარიუსი ქუთაისში')).toBe(true);
-    expect(wantsSomethingDone('Please introduce me to Zurab')).toBe(true);
-    expect(wantsSomethingDone('ვინ ვიცი თიბისიში?')).toBe(false);
-    expect(wantsSomethingDone('who do I know at TBC?')).toBe(false);
+  it('is not sent back — the nudge goes only where a goal exists', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('const farFindAsked = !farFindHasNoGoal;');
+    expect(chat).not.toContain('wantsSomethingDone');
   });
 });
 
@@ -73,7 +69,7 @@ describe('the far-find note is the server’s, never the owner’s (tester 77502
     const { isModelOnlyNudge } = require('../chat.service') as typeof import('../chat.service');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { foreignWordNudge } = require('../buttonLetters') as typeof import('../buttonLetters');
-    expect(isModelOnlyNudge(farFindUnplannedNudge(['გიორგი ხატიაშვილი'], true))).toBe(true);
+    expect(isModelOnlyNudge(farFindUnplannedNudge(['გიორგი ხატიაშვილი']))).toBe(true);
     expect(isModelOnlyNudge(farFindUnplannedNudge(['ზურაბ ქობულაძე']))).toBe(true);
     expect(isModelOnlyNudge(foreignWordNudge('გამარ健ობა'))).toBe(true);
     expect(isModelOnlyNudge('ლიკას სთხოვე')).toBe(false);

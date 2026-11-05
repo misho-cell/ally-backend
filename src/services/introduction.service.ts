@@ -13,9 +13,9 @@ import {
   targetSettledLine,
 } from './targetConsent';
 import { query } from '../db/postgres/client';
+import { approvedPlanNamesMember } from './planAdvance.service';
 // Type only, on purpose: `taskEngine.events` is imported dynamically below to
 // keep the module cycle broken, and a type import is erased before runtime.
-import { refersSomebody } from './referralRecommendation';
 import type { IntroContactOutcome } from './taskEngine.events';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { sendPushNotification } from './notification.service';
@@ -1416,7 +1416,10 @@ async function wakeRequestersGoal(
         shownInGoalThread,
         {
           answer: answer === '' ? null : scrubText(answer),
-          suggestsSomeoneElse: !accepted && answer !== '' && refersSomebody(answer),
+          // K9 audit B6: a mediator the approved plan asks — acting on their suggestion is the plan's.
+          mediatorInPlan:
+            req.mediator_user_id !== null &&
+            (await approvedPlanNamesMember(req.requester_task_id, req.mediator_user_id)),
         },
         targetOffNetai,
       ),

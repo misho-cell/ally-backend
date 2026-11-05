@@ -184,7 +184,7 @@ describe('the run (#8350)', () => {
     expect(body).toContain('!ownerLineNamesPeopleToAsk(ownerLine)');
     // Tester 78509: „who is <post>" asks the world even in a chat with no goal.
     expect(body).toContain('(goalOpened || asksWhoHoldsAPost(ownerLine))');
-    expect(body).toContain('!needsNoOpeningSearch(ownerLine)');
+    expect(body).not.toContain('needsNoOpeningSearch');
   });
 
   it('waits for the answer before the first turn, and posts it after the owner’s line', () => {

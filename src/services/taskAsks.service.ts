@@ -1,4 +1,5 @@
-import { isSmallTalk } from './smallTalk';
+import { notePlanAskSent } from './planAdvance.service';
+import { namedOnAnAskStep } from './planAdvance.service';
 import { netaiMember } from './netaiMembership';
 import {
   PACE_UNTIL_SEEN_ON,
@@ -29,7 +30,7 @@ import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
 import { firstNamesInBothScripts, plainWordForms } from './firstNameNamed';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
-import { AskKind, askKindOf } from './askKind';
+import { AskKind, askKindFrom } from './askKind';
 import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './bridgePicker';
 import { recommendedByLine, recommenderFor } from './recommendedBy';
 import { query } from '../db/postgres/client';
@@ -797,7 +798,7 @@ async function ownerWordsOn(taskId: number): Promise<string[]> {
 async function choicesInLanguage(
   choices: readonly AskChoice[],
   language: RunLanguage,
-  question: string,
+  kind: AskKind,
 ): Promise<AskChoice[]> {
   if (choicesFit(choices, language)) return [...choices];
   const translated = await Promise.all(
@@ -817,7 +818,7 @@ async function choicesInLanguage(
   if (usable) return translated;
   // eslint-disable-next-line no-console
   console.warn('[ask-language] buttons not in the message language — the ordinary ones went');
-  return choicesFromLabels(askChoicesFor(question, language));
+  return choicesFromLabels(askChoicesFor(kind, language));
 }
 
 /** The bridge picker, or the ordinary buttons when it cannot be built. */
@@ -1353,6 +1354,8 @@ async function createAskNow(
   ownerAskedNow?: boolean,
   /** #8615: the owner granted this goal in this very run, on their own words. */
   grantedInThisRun?: boolean,
+  /** #8779 group 4: the asking model's word for what kind of question it is. */
+  kind?: AskKind,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1916,7 +1919,9 @@ async function createAskNow(
   if (
     !verdict.allowed &&
     parentAskId === undefined &&
-    !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone))
+    !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone)) &&
+    // K9 B4 (stage 2's helper): a person an answer named on an on_named: ask step is in the plan.
+    !(await namedOnAnAskStep(taskId, toName))
   ) {
     return {
       sent: false,
@@ -2271,7 +2276,8 @@ async function createAskNow(
   const searchedNeed = bridgeNeed ?? needFromQuestion(safeQuestion);
   const pickerNeed =
     ownerNamedHelper && searchedNeed !== undefined ? { need: searchedNeed.need } : searchedNeed;
-  const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;
+  const askKind = kind ?? AskKind.Open;
+  const pickerAllowed = !sameThread && askKind !== AskKind.Intro;
   const questionNeed = needFromQuestion(safeQuestion);
   const picker = !pickerAllowed
     ? null
@@ -2282,11 +2288,11 @@ async function createAskNow(
   // 2185 (MTR #7, 2 of 2): „whom would you recommend?" got yes / no, or answers made up in the
   // helper's mouth („20 ლარი ღირს"). An open question's answer is the helper's to type: only
   // the server's own buttons go with it — her own people, or „later".
-  const openQuestion = askKindOf(safeQuestion) === AskKind.Open;
+  const openQuestion = askKind === AskKind.Open;
   const ownButtons = openQuestion ? undefined : authored;
   const draftChoices =
     ownButtons === undefined
-      ? choicesFromLabels(picker ? picker.choices : askChoicesFor(safeQuestion, language))
+      ? choicesFromLabels(picker ? picker.choices : askChoicesFor(askKind, language))
       : picker
         ? ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))
         : ownButtons;
@@ -2360,7 +2366,7 @@ async function createAskNow(
   const editedChoices = openQuestion
     ? pickerFits
       ? ownPeopleBeside(picker.names, [], declineChoice(said), laterChoice(said))
-      : choicesFromLabels(askChoicesFor(edited.question, said))
+      : choicesFromLabels(askChoicesFor(askKind, said))
     : pickerFits
       ? ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))
       : edited.choices;
@@ -2368,7 +2374,7 @@ async function createAskNow(
     withoutOtherOption(
       withPeopleDetails(
         withServerLater(
-          withoutPointingAnswers(await choicesInLanguage(editedChoices, said, edited.question)),
+          withoutPointingAnswers(await choicesInLanguage(editedChoices, said, askKind)),
           said,
         ),
         picker && said === language ? picker.details : {},
@@ -2496,9 +2502,10 @@ async function createAskNow(
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
                             wave_no, evening_card_id, choices, shown_question,
                             prematch, prematch_source, prematch_at, a2a_rounds, field, prepared_answer,
-                            anonymous)
+                            anonymous, ask_kind)
      VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
-             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17, $18, $19)
+             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17, $18, $19,
+             $20)
      RETURNING id`,
     [
       taskId,
@@ -2521,6 +2528,7 @@ async function createAskNow(
       isFollowUp || parentAskId !== undefined ? null : askField(goalText) || null,
       prepared,
       unnamed,
+      kind ?? null,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -2535,6 +2543,8 @@ async function createAskNow(
     return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
   }
   recountAnswerStats(toUserId);
+  // Autonomy stage 2, K3: the owner's own ask moves the goal's plan to its step.
+  if (parentAskId === undefined) void notePlanAskSent(taskId, ask.rows[0].id, toUserId);
   if (waveNo !== null && !isFollowUp) {
     void noteWaveAsk(taskId).catch((err: unknown) =>
       // eslint-disable-next-line no-console
@@ -2762,8 +2772,8 @@ export async function recordAskAnswer(
          -- (No backtick anywhere in here: this SQL lives in a template literal
          -- and one ends the string. Seventh time this week.)
          --
-         -- #8154: a later line with something in it ($4: not a no, not a thank
-         -- you or goodbye) un-declines it while it still joins the answer.
+         -- #8154: a later line with something in it ($4: not a no, as the model
+         -- read it — #8779 group 4) un-declines it while it still joins the answer.
          declined_at = CASE WHEN $3 THEN COALESCE(declined_at, NOW())
            WHEN $4 AND wake_delivered_at IS NULL THEN NULL ELSE declined_at END
      WHERE id = (
@@ -2772,7 +2782,7 @@ export async function recordAskAnswer(
        ORDER BY id DESC LIMIT 1
      )
      RETURNING id, task_id, answer, to_user_id, from_user_id`,
-    [askThreadId, safe, declined, !declined && !isSmallTalk(safe)],
+    [askThreadId, safe, declined, !declined],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];
@@ -4932,6 +4942,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
     to_user_id: number;
     question: string;
     shown_question: string | null;
+    ask_kind: string | null;
     choices: unknown;
     asker_name: string | null;
   }>(
@@ -4958,7 +4969,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
        ORDER BY created_at
        LIMIT $1
      )
-     RETURNING ask_thread_id, to_user_id, question, shown_question, choices,
+     RETURNING ask_thread_id, to_user_id, question, shown_question, choices, ask_kind,
                -- 4094: the name the thread's header and first message carry, so the
                -- reminder never names the asker differently (§117.2).
                (SELECT NULLIF(TRIM(u.name), '') FROM "User" u
@@ -4984,7 +4995,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
       'message',
       null,
       stored === null
-        ? askChoicesFor(row.question, language)
+        ? askChoicesFor(askKindFrom(row.ask_kind), language)
         : stored.map((choice) => choice.label),
     ).catch((err: unknown) => {
       // eslint-disable-next-line no-console

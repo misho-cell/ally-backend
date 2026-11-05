@@ -107,8 +107,6 @@ import {
 import { claimRun, releaseRun } from '../../services/runDedupe';
 import { enterThread, leaveThread, threadRunSince } from '../../services/threadRunQueue';
 import { releaseRunSlot, takeRunSlot } from '../../services/runSlots';
-import { isBareGreeting } from '../../services/greetingTurn';
-import { isToolFreeSmallTalk } from '../../services/smallTalk';
 import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { PhaseClock } from '../../services/acceptTiming';
@@ -1209,7 +1207,7 @@ threadsRouter.post(
       // Run 9 (16 Oct): the title waited for the thread and the wallet waited
       // for the title, two round trips of ~150 ms each that depend on nothing
       // between them. It is written beside the wallet check and awaited with it.
-      const needsTitle = thread.type === 'regular' && needsRealTitle(thread.title, message);
+      const needsTitle = thread.type === 'regular' && needsRealTitle(thread.title);
       const provisional = provisionalTitle(message).slice(0, MAX_TITLE_CHARS);
       // 5321: the 202 no longer waits for this write, so the list hears the title when it lands.
       const titled = needsTitle
@@ -1704,13 +1702,6 @@ function saveErrorLineOnce(threadId: number, userId: string, line: string, runId
  * of run slots is free (runSlots.ts), and its budget clock starts then.
  */
 export function runOwnerMessage(run: OwnerRun): void {
-  // The tester's third 200 run (60425): behind the cap a „გამარჯობა" waited 48 s
-  // for searches to finish. A hello or listed small talk is seconds of work and
-  // holds no slot, so it never waits for one.
-  if (isBareGreeting(run.message) || isToolFreeSmallTalk(run.message)) {
-    void startOwnerRun(run);
-    return;
-  }
   void takeRunSlot(run.runId).then(() => startOwnerRun(run).finally(releaseRunSlot));
 }
 
