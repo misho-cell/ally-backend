@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { REVERSE_TIE_SOURCE } from './reverseTieSource';
-import { notAnExcludedHolder } from './excludedHolders.service';
+import { betweenTwoTestSeats, notAnExcludedHolder } from './excludedHolders.service';
 import { getSession } from '../db/neo4j/client';
 import { getCompositeKeysForUsers } from './neo4j.keys';
 
@@ -42,18 +42,6 @@ export async function isReverseTiesEnabled(): Promise<boolean> {
 }
 
 /** The members whose own phonebooks hold one of this member's numbers. */
-/**
- * #8950 (the tester's test environment, 5 Nov): every new fictional seat got
- * reverse ties to the shared fictional accounts that hold whole ranges of
- * fictional numbers — they showed up in almost every plan, shared daily limits,
- * and were the only routes offered in two battery cases. Between two test
- * seats no tie is ever made backwards: a seat's network is what was added to
- * it through /admin/test-accounts/:id/contacts, and nothing else.
- */
-const TWO_TEST_SEATS_SQL = (member: string, holder: string): string =>
-  `(EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = ${member}::int)
-    AND EXISTS (SELECT 1 FROM test_seats th WHERE th.user_id = ${holder}))`;
-
 export async function holdersOf(memberId: number): Promise<Holder[]> {
   const result = await query<{ user_id: number; name: string | null; phone: string }>(
     `SELECT DISTINCT ON (ua."contactId") ua."contactId" AS user_id, u.name, hp.phone
@@ -62,7 +50,7 @@ export async function holdersOf(memberId: number): Promise<Holder[]> {
        JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
        JOIN "UserPhone" hp ON hp."userId" = ua."contactId"
       WHERE ua."contactId" <> $1 AND ${notAnExcludedHolder('ua."contactId"')}
-        AND NOT ${TWO_TEST_SEATS_SQL('$1', 'ua."contactId"')}
+        AND NOT ${betweenTwoTestSeats('$1', 'ua."contactId"')}
       ORDER BY ua."contactId", hp.phone
       LIMIT $2`,
     [memberId, MAX_HOLDERS],

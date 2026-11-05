@@ -1,5 +1,5 @@
 import { query } from '../../db/postgres/client';
-import { notAnExcludedHolder } from '../excludedHolders.service';
+import { betweenTwoTestSeats, notAnExcludedHolder } from '../excludedHolders.service';
 import { netaiMember } from '../netaiMembership';
 import { phoneDigits } from '../phone';
 
@@ -28,6 +28,7 @@ export async function ownerHolderPhones(
        JOIN "User" u ON u.id = ua."contactId" AND u."deletedAt" IS NULL
       WHERE ua.phone = ANY($2::text[]) AND ua."contactId" <> $1::int
         AND ${notAnExcludedHolder('ua."contactId"')}
+        AND NOT ${betweenTwoTestSeats('$1', 'ua."contactId"')}
         -- Only members: their assistant can be asked, and the search stays the size it was.
         AND ${netaiMember('u')}
       LIMIT $3`,
@@ -84,6 +85,7 @@ export async function ownerCommunityPhones(
         AND mine.neo4j_contact_id = ANY($2::text[])
         AND up."userId" <> $1::int
         AND ${notAnExcludedHolder('up."userId"')}
+        AND NOT ${betweenTwoTestSeats('$1', 'up."userId"')}
         AND ${netaiMember('u')}
       LIMIT $3`,
     [userId, [...ownerPhones], MAX_OWNER_HOLDERS],

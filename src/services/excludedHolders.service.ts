@@ -16,6 +16,17 @@ const EXCLUDED_QUERY_TIMEOUT_MS = 3_000;
 const EXCLUDED_CACHE_MS = 10 * 60_000;
 const MAX_EXCLUDED_PHONES = 1_000;
 
+/**
+ * #8950 (the tester's test environment): shared fictional accounts hold whole
+ * ranges of fictional numbers, so every new seat looked held by them. Between
+ * two test seats no tie is made backwards — a seat's network is only what was
+ * added to it. SQL; both arguments are expressions we write, never input.
+ */
+export function betweenTwoTestSeats(memberExpr: string, holderExpr: string): string {
+  return `(EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = ${memberExpr}::int)
+    AND EXISTS (SELECT 1 FROM test_seats th WHERE th.user_id = ${holderExpr}))`;
+}
+
 /** SQL: this account is not one that never vouches. `idExpr` is a column we write, never input. */
 export function notAnExcludedHolder(idExpr: string): string {
   return `NOT EXISTS (SELECT 1 FROM excluded_holders eh WHERE eh.user_id = ${idExpr})`;
