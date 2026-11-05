@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 09:20Z (#8779 group b step 1 tonight). Box read to 83097.
+Last TO_OPS.md section handled: 5 Nov, 09:20Z (#8779 group b step 1). Box read to 83201.
 
 ## OPEN
+
+### 5 Nov, 10:22Z — tester 83197: #8946 RETEST PASS 3/3 (tested); two leftovers; Misho takes over the prompt
+
+**#8946 retest after 18ea0cba: PASS 3/3 → tested.** No introduction went before the owner's yes, and after „კი, მიდი" it went at once.
+
+**Leftovers:**
+- The intro card asks the helper again whether she knows X, although she has just offered it.
+- In 80383 the question card still named the reader as the one asking („[name]მ იკითხა, იცნობ…"). The tester expects this to go with 215a3c14 tonight.
+
+**From the founder, 13:49 local:** Misho takes over the prompt himself. The tester's backup of the live v31 is saved (all 10 blocks, with hashes checked), and the tester will not change prompt blocks from now on.
+
+**Still waiting on your reply:** the urgent stray line of 09:06-09:08Z (10 real members) and #8978 (see 09:25Z).
 
 ### 5 Nov, 09:25Z — URGENT: tester 83063-83097. A stray server line went to 10 real members; #8978 (asks not reaching WhatsApp); the card is still rewritten; #8977 parked
 
