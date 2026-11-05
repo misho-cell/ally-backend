@@ -130,9 +130,9 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 | item | status | commit | notes |
 |---|---|---|---|
 | K11 | done (lead) | 0ab4ca9 | approved plan covers introductions |
-| design | done | (this commit) | |
-| K1 | done | (see log) | `planSteps.ts` (parse/structure), `planStepsText.ts` (card line), `planStepsSchema.ts` (tool schema); `parsePlan` reads `result_when`/`steps`; card + engine prompt show the steps line. Test: `planSteps.test.ts` |
-| K2 | todo | | |
+| design | done | 52e1c4d6 | |
+| K1 | done | 7525b4cb | `planSteps.ts` (parse/structure), `planStepsText.ts` (card line), `planStepsSchema.ts` (tool schema); `parsePlan` reads `result_when`/`steps`; card + engine prompt show the steps line. Test: `planSteps.test.ts` |
+| K2 | done | (see log) | migration `296_plan_step_events.sql` (table + `tasks.plan_step`); `planProgress.service.ts` (record / move-in-a-transaction / read, LIMITed). `Task` row type not widened. Test: `planProgress.service.test.ts` |
 | K3 | todo | | |
 | K4 | todo | | |
 | K5 | todo | | |
@@ -147,6 +147,15 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
   step marked `ask_owner` reads „(აქ შენს სიტყვას დაველოდები)"; an old-shape plan reads
   exactly as before; a step naming somebody not in people_to_involve is refused with the
   fix named (`step s2: … is not in people_to_involve — add them there too`).
+
+- K2: after deploy (lead), `\d plan_step_events` exists and `tasks.plan_step` is a column;
+  nothing writes to them until K3.
+
+## Notes for the lead session
+
+- Migration number 296 was the next free one on this branch's base. If main took 296
+  meanwhile, rename the file to the next free number before merging — nothing else
+  refers to the number.
 
 ## Questions for Misho
 
