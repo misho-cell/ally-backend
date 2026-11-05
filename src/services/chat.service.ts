@@ -713,7 +713,13 @@ import { endsWithQuestion } from './threadStatus.service';
 import { stopGoal } from './goalStop.service';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
-import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
+import {
+  offerOpenAsksChoice,
+  openAskCount,
+  OpenAsksTap,
+  settleOpenAsks,
+  settleOpenAsksOnTap,
+} from './openAsksAfterSolved';
 import { ANSWER_SENT_FORMS, ANSWER_SENT_LINE, withAnswerSentLineOnce } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutCardRepeat, withoutEarlySolvedCard } from './answerCardGuard';
 import { latestAnswerCard } from './answerCard.service';
@@ -9520,6 +9526,30 @@ const THANK_HELPER_TOOL: AnthropicTool = {
   },
 };
 
+/**
+ * 2581 / #8779 b (rule 37): the owner answers the „close or keep the open
+ * questions?" card in their own words; the model reads which and calls this.
+ */
+const ANSWER_OPEN_ASKS_CARD_TOOL: AnthropicTool = {
+  name: 'answer_open_asks_card',
+  description:
+    'After a goal was solved, the owner was asked whether to close the questions still ' +
+    'waiting on other people or keep them open. When they answer that in their own words, ' +
+    'call this with close or keep. close cancels the open questions; keep leaves them open ' +
+    'so a late answer still arrives. Confirm in one short line.' +
+    ' WHEN: the owner answers the close-or-keep question about open questions.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      choice: { type: 'string', enum: ['close', 'keep'] },
+    },
+    required: ['choice'],
+  },
+};
+
+const NO_OPEN_ASKS_CARD =
+  'Nothing changed: no close-or-keep question about open questions waits in this chat.';
+
 const THANKS_NOT_SENT =
   'Not sent: no single helper who answered the owner and was not thanked yet matches that ' +
   'name. Ask the owner whom they mean, in one line.';
@@ -12940,6 +12970,15 @@ async function executeToolCall(
       return getTopConnectors(userId, input['limit'] as number | undefined);
     case 'get_curiosity_queue':
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
+    case 'answer_open_asks_card': {
+      if (ownerAbsent || threadId === undefined)
+        return { settled: false, error: NO_OPEN_ASKS_CARD };
+      const tap = input['choice'] === 'close' ? OpenAsksTap.Close : OpenAsksTap.Keep;
+      const line = await settleOpenAsks(userId, threadId, tap);
+      return line === null
+        ? { settled: false, error: NO_OPEN_ASKS_CARD }
+        : { settled: true, note: line };
+    }
     case 'thank_helper': {
       if (ownerAbsent) return { thanked: false, error: THANKS_NOT_SENT };
       const thanked = await thankHelperByName(userId, String(input['helper_name'] ?? ''));
@@ -17446,6 +17485,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_CURIOSITY_QUEUE_TOOL,
   RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
   THANK_HELPER_TOOL,
+  ANSWER_OPEN_ASKS_CARD_TOOL,
   STOP_CONTACTING_TOOL,
   RESUME_CONTACT_TOOL,
   EXCLUDE_CONTACT_TOOL,
