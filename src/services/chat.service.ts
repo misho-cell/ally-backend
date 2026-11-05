@@ -10316,6 +10316,11 @@ function runLang(runId: string | undefined): RunLanguage {
 // empty run never leaves a stale entry behind.
 /** Row 290: the mode each run resolved to, so GPT can load the same mode's blocks. */
 const runModes = new Map<string, RunMode>();
+/** #8948: the tools this turn holds back, refused at the call rather than removed from the list. */
+const runHeldTools = new Map<string, Set<string>>();
+const TOOL_HELD_THIS_TURN =
+  'Not used in this turn: this tool is not for the owner’s current message. Answer with what ' +
+  'you have, or with the other tools; do not call it again in this run.';
 
 /**
  * Plate row 268, the language half (goal 11221, 1 Oct 07:35). Test 57 writes
@@ -10479,6 +10484,7 @@ function clearRunState(runId: string): void {
   forgetFinds(runId);
   runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
+  runHeldTools.delete(runId);
 }
 
 /**
@@ -10709,6 +10715,12 @@ async function executeToolCall(
         'here who could have said yes. A proposed plan stays proposed until the owner ' +
         'presses the button themselves. Do not tell them it was approved.',
     };
+  }
+  // #8948 / #8524: a tool held back for this turn is refused here, not taken off the list.
+  if (runId !== undefined && runHeldTools.get(runId)?.has(name)) {
+    // eslint-disable-next-line no-console
+    console.log(`[tools] run ${runId}: ${name} held for this turn`);
+    return { error: TOOL_HELD_THIS_TURN };
   }
   const freeOfficialRead =
     runId !== undefined && isFreeOfficialPageRead(name, input, runOfficialReads.get(runId) ?? 0);
@@ -18842,14 +18854,26 @@ export async function processChat(
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
       : requestAnswerOnly
         ? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)
-        : tools.filter(
-            (tool) =>
-              (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
-              (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
-              (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
-              (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
-              (relayHeld || tool.name !== RELAY_ASK_TOOL.name),
-          );
+        : tools;
+  // #8948 / #8524 (tester 82831): a tool list that changed from one message to the next
+  // missed the prompt cache — the first call wrote ~52k tokens again, several seconds
+  // each time. The list stays whole; the tools held back for this turn are refused when
+  // called (executeTool), which costs a round only on the rare call that reaches one.
+  const heldThisTurn = new Set(
+    tools
+      .filter(
+        (tool) =>
+          !(
+            (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
+            (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
+            (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
+            (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
+            (relayHeld || tool.name !== RELAY_ASK_TOOL.name)
+          ),
+      )
+      .map((tool) => tool.name),
+  );
+  if (heldThisTurn.size > 0) runHeldTools.set(runId, heldThisTurn);
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
