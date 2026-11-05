@@ -39,7 +39,9 @@ const source = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 describe('the moderation verdict is read, and everything downstream obeys it', () => {
   /** If this slice ever came back empty the rest would pass vacuously. */
   it('finds the gate at all', () => {
-    expect(source).toContain(': await moderateReply(cleanedFinal, userId);');
+    expect(source).toContain(
+      ': await verdictForShown(cleanedFinal, earlyVerdict, (text) => moderateReply(text, userId));',
+    );
   });
 
   it('reads the verdict rather than assuming it', () => {
