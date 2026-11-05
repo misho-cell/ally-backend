@@ -2294,8 +2294,16 @@ async function createAskNow(
   // approved word for word (BN, box 52869: the editor made the helper the one in need).
   const ownerWords = parentAskId === undefined ? await ownerWordsOn(taskId) : [];
   const draftAsk = { question: relayed.text, choices: draftChoices, edited: false };
+  /**
+   * Tester 83096 / 82998 (5 Nov: threads 80192, 80293, 80368, 80369, 80383): the
+   * model's clean question was rewritten from the owner's line — the reader named
+   * as the one in need, as the one asking, or „ask X whether…" sent to X. The
+   * tester: „show the model's question as written". The editor now shapes only
+   * the owner's own raw line (fromOwnersLine); a question the model wrote goes
+   * as written, through the same checks after it.
+   */
   const editorsDraft =
-    approvedWording === true
+    approvedWording === true || fromOwnersLine !== true
       ? draftAsk
       : await editOutgoingAsk(
           { question: relayed.text, choices: draftChoices },
