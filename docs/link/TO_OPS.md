@@ -24,6 +24,8 @@ The three timings, split (server logs and usage rows):
 2. The guards and moderation will run side by side after the model.
 3. Finer timing marks in the log, so the next retest shows each step.
 
+**Built so far:** commit 6065a18c (plan items 2 and 3). It is on the branch and goes to main at 19:00Z. Item 1 follows once the new marks show which checks cost the time.
+
 DONE WHEN: three one-at-a-time timings under 10 s on the same question („X სად მუშაობს?").
 An honest note: the cuts are worth about 1.5-2.5 s, so 80199-like runs pass, while a 9 s model call like 80200 may still sit near 10 s. If it does, the next lever is the answer's length or the model, and that one is the founder's.
 
