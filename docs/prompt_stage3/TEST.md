@@ -12,6 +12,8 @@ What every test checks, beside its own point:
 - **No offer lines.** No „გინდა, …?“, „ვთხოვო …?“, „გავაგრძელო?“, „დავიწყო?“ after approval,
   except at a marked point.
 - **Updates** are one or two lines of fact with the next step (P6).
+- After an approval the run never sends the first step itself: approve_task_plan starts the
+  plan's first round on the server, and a second send would be refused (K9_REFUSALS.md).
 - The ten approving lines are all different; none of them is a word the server looks for (#8779).
 
 Seat for tests 1–9: owner **ნიკოლოზ ნიმუშაძე** (test seat), contacts on Netai:
@@ -32,8 +34,9 @@ marked. ≤5 lines: result, order, what happens on a no/silence, „შენი
 
 O: კი, წადი
 
-A: approve_task_plan; ask_contact გიორგი **in the same turn**; one line: „გიორგის ასისტენტს
-ვკითხე. შემდეგი: ლიკა, თუ ორ დღეში პასუხი არ იქნება.“
+A: approve_task_plan, and no ask_contact of its own — the approval starts the first round
+(გიორგი); one line: „ვიწყებ — გიორგის ასისტენტს ვკითხავ. შემდეგი: ლიკა, თუ ორ დღეში პასუხი
+არ იქნება.“
 
 [event: გიორგი answers „ლილუ ტესტაძე ჩემი სტუდენტია, დაინტერესდება“]
 
@@ -58,7 +61,7 @@ s2 ask ბექა (on_silence 2 → s3), s3 search (second circle „ბუღ
 
 O: შენ გადაწყვიტე
 
-A: approve_task_plan with **delegated true** [K5]; ask ნინო now; one line.
+A: approve_task_plan with **delegated true** [K5]; the first round asks ნინო; one line.
 
 [2 days pass, ნინო silent → the server records `silent s1`, starts s2, wakes the goal]
 
@@ -76,7 +79,7 @@ A: plan: s1 ask ბექა (on_no → s2), s2 ask ლიკა (on_no → s3),
 
 O: რაც საჭიროა, გააკეთე
 
-A: approve_task_plan (delegated true [K5]); ask ბექა; one line.
+A: approve_task_plan (delegated true [K5]); the first round asks ბექა; one line.
 
 [event: ბექა „ვერ დაგეხმარები“ — the model marks it declined; server starts s2]
 
@@ -94,11 +97,14 @@ true** („ფასზე შენი სიტყვა“). The ≤5 lines n
 
 O: ok, დაიწყე
 
-A: approve; ask ლიკა; one line.
+A: approve; the first round asks ლიკა; one line.
 
 [event: ლიკა names a designer, Netai member **თამარ ნიმუშელი**]
 
 A: on_named ask → ask_contact თამარ about availability (inside the plan, no question).
+**Blocked today** by the `outside_plan` wall (K9_REFUSALS.md B4): თამარ is not in
+people_to_involve. Run this step only after B4's structural fix; until then write the step
+as on_named introduce (the introduction through ლიკა).
 [event: თამარ quotes a price]
 
 A: **marked point**: one sentence naming who and what — „თამარი 600 ლარს ითხოვს; ვუთხრა, რომ
@@ -115,7 +121,7 @@ s3 arrange the meeting — **ask_owner true**.
 
 O: კარგი, მიხედე
 
-A: approve; ask გიორგი; one line.
+A: approve; the first round asks გიორგი; one line.
 
 [event: გიორგი names **დავით საცდელაძე**] → introduction asked at once; one line.
 [event: დავით accepts and proposes Thursday 15:00]
@@ -135,7 +141,7 @@ A: plan: s1 ask ბექა (on_named ask), s2 ask ლიკა.
 
 O: ეგრე ქენი
 
-A: approve; ask ბექა.
+A: approve; the first round asks ბექა.
 
 [event: ბექა: „ფოტოგრაფს ვერ გეტყვი, მაგრამ ნიკოლოზს ვიდეოგრაფი თუ სჭირდება, ზურა ნიმუშაური
 კარგია“]
@@ -155,7 +161,7 @@ A: plan: s1 ask ბექა, s2 ask ნინო, s3 search.
 O: კი, ოღონდ ბექა არა
 
 A: propose_task_plan without ბექა (s1 ნინო, s2 search) and approve_task_plan **in the same
-turn**, without showing it again; ask ნინო now; one line: „ბექა ამოვიღე — ნინოს ვკითხე.
+turn**, without showing it again; the first round asks ნინო; one line: „ბექა ამოვიღე — ნინოს ვკითხე.
 შემდეგი: ძებნა, თუ ორ დღეში პასუხი არ იქნება.“ ბექა saved to never_contact for this goal and
 never proposed again.
 
@@ -169,7 +175,7 @@ A: plan: s1 ask ლიკა (on_no → s2, on_silence 2 → s2), s2 ask ბე�
 
 O: როგორც ჯობია
 
-A: approve (delegated true [K5]); ask ლიკა.
+A: approve (delegated true [K5]); the first round asks ლიკა.
 
 [ლიკა no → ბექა; ბექა silent 2 days; s3 web finds nothing that a saved fact links]
 
@@ -187,7 +193,7 @@ A: plan: s1 ask ნინო, s2 ask ლიკა (on_silence 2 → s3), s3 sear
 
 O: 👍
 
-A: approve; ask ნინო; one line.
+A: approve; the first round asks ნინო; one line.
 
 O (next day): რა ხდება?
 
@@ -216,7 +222,7 @@ A: no approve_task_plan, nothing sent; a short acknowledgement, no question.
 
 O (next day): go ahead, keep me posted
 
-A: approve; ask Mia now; one line: „Asked Mia's assistant. Next: Leo, if no answer in two days.“
+A: approve; the first round asks Mia; one line: „Starting with Mia's assistant. Next: Leo, if no answer in two days.“
 
 [Mia no, Leo silent 2 days, s3 finds the lead **Ivy Placeholder** on Netai → s4 starts]
 

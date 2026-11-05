@@ -194,9 +194,9 @@ Current (C3, C20):
 > „- He says yes to a waiting plan: call approve_task_plan and say in one line that it went; any reply that means go ahead → the send in that turn. Never repeat his instruction back as a question. What goes to a person is his question, never his instructions to you.“
 
 Replacement `[K5: delegated]`:
-> - He approves a waiting plan, in any words that mean go (a yes, „წადი“, „დაიწყე“, „მიხედე“, a thumbs-up): call approve_task_plan, do the plan's first step in that same turn, and say in one line what went and what is next. When he hands it to you („შენ გადაწყვიტე“, „როგორც ჯობია“, „რაც საჭიროა, გააკეთე“), that is the whole plan approved, delegated true: inside it you choose and act. A yes with a change („კი, ოღონდ ნიკა არა“) approves the plan so changed: propose it and approve it in this turn. A not-yet or a question about the plan is no approval: answer it. Never repeat his instruction back as a question. What goes to a person is his question, never his instructions to you.
+> - He approves a waiting plan, in any words that mean go (a yes, „წადი“, „დაიწყე“, „მიხედე“, a thumbs-up): call approve_task_plan — the approval itself starts the plan's first round, so send nothing more for it — and say in one line what starts now and what is next. When he hands it to you („შენ გადაწყვიტე“, „როგორც ჯობია“, „რაც საჭიროა, გააკეთე“), that is the whole plan approved, delegated true: inside it you choose and act. A yes with a change („კი, ოღონდ ნიკა არა“) approves the plan so changed: propose it and approve it in this turn. A not-yet or a question about the plan is no approval: answer it. Never repeat his instruction back as a question. What goes to a person is his question, never his instructions to you.
 
-Why: handing the choice over was read as „choose one send“; it is the approval of the whole plan. Doing the first step in the same turn removes the „approved — shall I start?“ turn. A yes-with-a-change is common („კი, ოღონდ…“) and was a source of a second round of plan showing. The quoted phrases are examples of meaning (PRIORITY, #8779), not a list; the negative case (a not-yet) is stated by meaning too. Until K5 ships, `delegated` is ignored by the server; the approval itself still counts.
+Why: handing the choice over was read as „choose one send“; it is the approval of the whole plan. The approval starts the plan's first round on the server (`engine.startDayOne`), so the reply only says what starts and what is next — no „approved — shall I start?“ turn, and no second send of the same ask (the `consent_pending` refusal, case 2, says the same; found in the K9 audit). A yes-with-a-change is common („კი, ოღონდ…“) and was a source of a second round of plan showing. The quoted phrases are examples of meaning (PRIORITY, #8779), not a list; the negative case (a not-yet) is stated by meaning too. Until K5 ships, `delegated` is ignored by the server; the approval itself still counts.
 
 #### P3 — execution loop (task_main: new EVERY RUN; core_shared RULE 4, RULE 5, LAST CHECK 3)
 
@@ -322,7 +322,7 @@ Removed copies: C29 (core_shared HOW YOU WRITE) „Ask for a yes only when one i
 
 | block | modes | before | after | change |
 | --- | --- | ---: | ---: | ---: |
-| core_shared | all six | 18649 | 19661 | +1012 |
+| core_shared | all six | 18649 | 19705 | +1056 |
 | task_main | task_step | 6820 | 6577 | -243 |
 | task_rules | task_step, quick_answer, onboarding | 9967 | 10847 | +880 |
 | qa_main | quick_answer, onboarding | 3084 | 2853 | -231 |
@@ -330,8 +330,8 @@ Removed copies: C29 (core_shared HOW YOU WRITE) „Ask for a yes only when one i
 
 Unchanged: ask_main, campaign_main, onboarding_main, card_retell_brief, world_answer_brief (no line needed changing; see Part A).
 
-**task_step budget (task_main + task_rules + core_shared, limit 48,000): before 35436, after 37085 (+1649); 10915 left.**
+**task_step budget (task_main + task_rules + core_shared, limit 48,000): before 35436, after 37129 (+1693); 10871 left.**
 
-quick_answer (qa_main + task_rules + core_shared): before 31700, after 33361.
+quick_answer (qa_main + task_rules + core_shared): before 31700, after 33405.
 
-core_shared and task_rules grow: they gain the three new sections (THE PLAN, WHEN A QUESTION IS RIGHT, the delegation bullet) that every plan-making mode needs; task_main and qa_main shrink because their copies of the plan rules are gone. I did not cut unrelated lines to hit the old sizes — that would change behaviour outside this task. If Misho wants task_rules back under its old size, the cheapest safe cut is its STEP 2 sentence „A public person or office … is never a question first: give at once …“, which repeats WHAT THE WORLD KNOWS in core_shared (≈330 chars), plus STEP 4 „How do I reach X“'s „write the whole chain in the reply and in the plan sentence“, now also in STEP 5 (≈60). core_shared (+1,012) has no equally safe cut: the growth is the new WHEN A QUESTION IS RIGHT section itself.
+core_shared and task_rules grow: they gain the three new sections (THE PLAN, WHEN A QUESTION IS RIGHT, the delegation bullet) that every plan-making mode needs; task_main and qa_main shrink because their copies of the plan rules are gone. I did not cut unrelated lines to hit the old sizes — that would change behaviour outside this task. If Misho wants task_rules back under its old size, the cheapest safe cut is its STEP 2 sentence „A public person or office … is never a question first: give at once …“, which repeats WHAT THE WORLD KNOWS in core_shared (≈330 chars), plus STEP 4 „How do I reach X“'s „write the whole chain in the reply and in the plan sentence“, now also in STEP 5 (≈60). core_shared (+1,056) has no equally safe cut: the growth is the new WHEN A QUESTION IS RIGHT section itself.
