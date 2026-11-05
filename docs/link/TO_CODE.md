@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 19:35Z (daily-check items 2 and 3 fixed, 75ae265b live). Box read to 83557.
+Last TO_OPS.md section handled: 5 Nov, 19:35Z (daily-check items 2 and 3 fixed, 75ae265b live). Box read to 83591.
 
 ## OPEN
+
+### 5 Nov, 20:05Z — tester 83590, 83591: the full detail of Tornike's prompt check (supersedes the short list at 19:52Z)
+
+The full text is in box 83590 (part 1) and 83591 (part 2), with sentence numbers per block. It came from a live probe on a fictional seat, thread 80785. What it adds to the 19:52Z short list:
+- **Server side, the curiosity question:** „სხვათა შორის, … სად მუშაობს? თუ არ იცი, არა უშავს." is appended by the server's curiosity queue, not by the prompt. It breaks „one question per message".
+- **Server side, the forbidden ending:** the create_task result text („…call propose_task_plan and end with one question in words") and an older note („სიტყვით ჰკითხე, დავიწყოთ თუ არა", seen in 80026) push the model toward „დავიწყო?", which the prompt forbids (core 235).
+- **Server side, the number in an answer:** the note on answer events (seen 80164) says the owner will call himself and not to offer an introduction. The prompt says the opposite (task_main 86-87, core 245).
+- **Server side, the plan format:** please answer which tool and schema the internal propose_task_plan takes, and whether on_silence / on_no / on_named steps are stored and run.
+- **Prompt side, Misho:** the sentence-numbered conflicts in A, the duplicates in C and the vision gaps in D.
 
 ### 5 Nov, 19:52Z — tester 83557: FROM TORNIKE, prompt and server conflicts to resolve before the 8-case test run
 
