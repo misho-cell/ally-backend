@@ -580,7 +580,7 @@ import {
   recordReplyDropped,
   recordReplyRewritten,
 } from './runTraceRecorder.service';
-import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
+import { noteFactForgotten } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
 import {
@@ -11877,22 +11877,25 @@ async function executeToolCall(
         input['excluded_for'] ? String(input['excluded_for']) : undefined,
       );
     case 'retract_contact_fact':
+      noteFactForgotten(threadId);
       return retractOwnFacts(userId, String(input['phone'] ?? ''), {
         fieldType: input['field_type'] ? String(input['field_type']) : undefined,
         valueFragment: input['value_fragment'] ? String(input['value_fragment']) : undefined,
         exactValue: input['exact_value'] ? String(input['exact_value']) : undefined,
       });
     case 'forget_contact_fact': {
-      const ownerOrdered = runId !== undefined && ownerLineOrdersTheForget(runOwnerLine.get(runId));
-      if (!isConfirmed(input['confirmed']) && !ownerOrdered) {
+      // #8779 b (rule 36): the owner's order to forget is the model's reading — confirmed=true.
+      if (!isConfirmed(input['confirmed'])) {
         return {
           deleted: 0,
           needs_confirmation: true,
           note:
-            'Nothing was deleted. This is permanent — ask the user to explicitly confirm ' +
-            'they want it erased, then call again with confirmed=true.',
+            "Nothing was deleted. If the owner's own words already order it erased, call again " +
+            'now with confirmed=true — do not ask them again (#8521). Otherwise ask them to ' +
+            'confirm, then call again with confirmed=true.',
         };
       }
+      noteFactForgotten(threadId);
       const result = await hardDeleteOwnFact(
         userId,
         String(input['phone'] ?? ''),

@@ -3,7 +3,7 @@ import { recordClaudeUsage } from './costLedger.service';
 import { parseModelJson } from './modelJson';
 import { submitContactFact, FACT_FIELD_TYPES, FactConfidence } from './contactFacts.service';
 import { findContactPhonesByName } from './tools/nameMatch';
-import { ownerLineOrdersTheForget } from './forgetOnTheOwnersWord';
+import { factForgottenRecently } from './forgetOnTheOwnersWord';
 
 // Engine T1 (ticket 6, 20 Aug spec): the live assistant saves a fact only
 // when it decides to call save_contact_fact mid-conversation — this sweep
@@ -313,7 +313,8 @@ export async function sweepFactsFromExchange(
   // Skipping it meant "what the user confirmed" could never be stored at all.
   // #8521 RETEST (the tester's 80967): „forget that X is an electrician" holds the fact in the
   // owner's own words, so the sweep saved it again the minute forget_contact_fact deleted it.
-  if (ownerLineOrdersTheForget(userMessage)) return;
+  // #8779 b (rule 36): read from the deleting tool, not from forget words.
+  if (factForgottenRecently(threadId)) return;
   const shortMessage = userMessage.trim().length < MIN_MESSAGE_CHARS_FOR_SWEEP;
   if (shortMessage && !(isConfirmation(userMessage) && finalReply)) return;
   try {

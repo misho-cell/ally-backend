@@ -28,6 +28,7 @@ jest.mock('../../config/anthropic', () => ({
 import { submitContactFact } from '../contactFacts.service';
 import { findContactPhonesByName } from '../tools/nameMatch';
 import { sweepFactsFromExchange } from '../factExtraction.service';
+import { noteFactForgotten } from '../forgetOnTheOwnersWord';
 
 const mockSubmitFact = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
 const mockFindPhones = findContactPhonesByName as jest.MockedFunction<
@@ -194,10 +195,11 @@ describe('sweepFactsFromExchange (engine T1)', () => {
 });
 
 /** #8521 RETEST (the tester's 80967): the sweep saved the fact the owner had just told us to forget. */
-describe('a line that orders a forget', () => {
-  it('is never swept for facts, so the deleted fact is not written back', async () => {
+describe('a conversation where a fact was just deleted (#8779 b, rule 36)', () => {
+  it('is not swept for facts, so the deleted fact is not written back', async () => {
     mockCreate.mockClear();
     mockSubmitFact.mockClear();
+    noteFactForgotten(1);
     await sweepFactsFromExchange('7', 1, 'დაივიწყე, რომ სალომე ელექტრიკოსია', 'კარგი, წავშალე.');
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockSubmitFact).not.toHaveBeenCalled();
