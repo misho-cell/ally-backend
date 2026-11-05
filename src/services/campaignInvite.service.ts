@@ -1,5 +1,4 @@
 import { query } from '../db/postgres/client';
-import { recordCampaignResponse } from './chorusCampaign.service';
 import { getInviteLink } from './referralLink.service';
 
 const INVITE_QUERY_TIMEOUT_MS = 8_000;
@@ -115,67 +114,25 @@ export async function getCampaignInviteContext(
 }
 
 /**
- * The three words the invite message itself prints, and the handful of ways a
- * person actually types them. Whole-message matches only: „არა, მაგრამ სხვას
- * ვიცნობ" is a conversation, not a protocol answer, and must reach the model
- * rather than be classified here.
+ * #8779 rule 42: the server no longer reads the owner's words to decide
+ * whether he agreed. The model's own respond_to_invite_campaign call is the
+ * answer; this only reads what that call wrote — the participant moved to
+ * `agreed` during this run — so the link guarantee below can still fire.
  */
-const PROTOCOL_WORDS: Readonly<Record<string, 'agreed' | 'declined' | 'told'>> = {
-  კი: 'agreed',
-  დიახ: 'agreed',
-  ki: 'agreed',
-  yes: 'agreed',
-  'თანახმა ვარ': 'agreed',
-  არა: 'declined',
-  ara: 'declined',
-  no: 'declined',
-  'ამჯერად არა': 'declined',
-  უთხარი: 'told',
-  ვუთხარი: 'told',
-  'უკვე ვუთხარი': 'told',
-};
-
-/** Trailing decoration a person adds to a one-word answer. */
-const ANSWER_DECOR_RE = /[\s.!,?;:„""''\p{Extended_Pictographic}️‍]+/gu;
-
-export function protocolResponse(message: string): 'agreed' | 'declined' | 'told' | null {
-  const bare = message.replace(ANSWER_DECOR_RE, ' ').trim().toLowerCase();
-  return PROTOCOL_WORDS[bare] ?? null;
-}
-
-/**
- * The server's own guarantee that the three words reach the campaign (ticket 9
- * task 13.7).
- *
- * Proved live on 4 September, on the deployed fix: „კი" worked — the model
- * called the tool and handed over the link — and a bare „არა" in a thread
- * whose owner also had an introduction request waiting did not. The reply was
- * polite and correct („გასაგებია, პრობლემა არ არის"), the model simply moved
- * on to the other item and never called the tool, so the campaign stayed
- * `asked` exactly as it did on 1 September.
- *
- * Prompt text cannot make that certain; this can. Same philosophy as
- * ensureVerbatimQuote and wrapAllowedNumbers: the model is asked, the server
- * makes it true. The model's own call still wins — this only fires when the
- * participant is still waiting after the run.
- */
-export async function ensureInviteAnswerRecorded(
+export async function inviteAgreedSince(
   threadId: number,
   userId: string,
-  userMessage: string,
-): Promise<'agreed' | 'declined' | 'told' | null> {
-  const response = protocolResponse(userMessage);
-  if (response === null) return null;
-  const participant = await query<{ id: number }>(
+  sinceMs: number,
+): Promise<boolean> {
+  const agreed = await query<{ id: number }>(
     `SELECT id FROM invite_campaign_participants
-     WHERE thread_id = $1 AND inviter_user_id = $2::int AND state = 'asked'
+     WHERE thread_id = $1 AND inviter_user_id = $2::int AND state = 'agreed'
+       AND state_updated_at >= to_timestamp($3::double precision / 1000)
      LIMIT 1`,
-    [threadId, userId],
+    [threadId, userId, sinceMs],
     INVITE_QUERY_TIMEOUT_MS,
   );
-  if (participant.rows.length === 0) return null;
-  const { recorded } = await recordCampaignResponse(threadId, userId, response);
-  return recorded ? response : null;
+  return agreed.rows.length > 0;
 }
 
 /** The link, appended when the user said yes and the reply forgot to carry one. */
@@ -223,6 +180,7 @@ export function buildCampaignInviteSection(ctx: CampaignInviteContext): string {
     `- „არა"/„ამჯერად არა" → respond_to_invite_campaign(response="declined"). მადლობა უთხარი, აღარ დაჟინდე და ამ ადამიანზე აღარ ჰკითხო.\n` +
     `- „უთხარი"/„უკვე ვუთხარი" → respond_to_invite_campaign(response="told").\n` +
     `- „ვინ არის ეს?" / „რატომ მე?" → უპასუხე ზემოთ მოცემული ჩანაწერიდან, მარტივი წინადადებებით. რაც აქ არ წერია, არ იცი — ნუ გამოიგონებ. ეს კითხვები არ არის უარი: პასუხის მერე ისევ შესთავაზე მოწვევა ერთხელ.\n` +
+    `- მისი პასუხი ამ თხოვნაზე, ნებისმიერი სიტყვებით, ამავე სვლაში ჩაიწერება respond_to_invite_campaign-ით — მაშინაც, როცა სხვა საკითხიც ელოდება. სერვერი სიტყვებს არ კითხულობს: თუ შენ არ ჩაწერე, პასუხი არ ჩაიწერება.\n` +
     `- ერთსიტყვიანი „კი" ან „არა" ამ თრედში სწორედ ამ თხოვნაზეა. სხვა თემას ნუ მოძებნი და ნუ დაუბრუნებ კითხვას („რაზე არა?") — ეს პასუხია, არა გაუგებრობა.\n` +
     `- თუ იტყვის, რომ ასეთი შეთავაზებები აღარ სურს — stop_contacting_me.`
   );

@@ -3,23 +3,17 @@ jest.mock('../../db/postgres/client', () => ({
   query: jest.fn(),
   __esModule: true,
 }));
-jest.mock('../chorusCampaign.service', () => ({
-  __esModule: true,
-  recordCampaignResponse: jest.fn().mockResolvedValue({ recorded: true }),
-}));
 jest.mock('../referralLink.service', () => ({
   __esModule: true,
   getInviteLink: jest.fn().mockResolvedValue({ link: 'https://www.netai.guru/join?ref=ABC12345' }),
 }));
 
 import { query } from '../../db/postgres/client';
-import { recordCampaignResponse } from '../chorusCampaign.service';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
-  ensureInviteAnswerRecorded,
   ensureInviteLinkInReply,
-  protocolResponse,
+  inviteAgreedSince,
   CampaignInviteContext,
 } from '../campaignInvite.service';
 
@@ -155,56 +149,31 @@ describe('buildCampaignInviteSection — the two questions get real answers', ()
   });
 });
 
-describe('protocolResponse — the three words, and only the three words', () => {
-  it.each([
-    ['კი', 'agreed'],
-    ['კი!', 'agreed'],
-    ['დიახ', 'agreed'],
-    ['თანახმა ვარ', 'agreed'],
-    ['არა', 'declined'],
-    ['არა.', 'declined'],
-    ['no', 'declined'],
-    ['უთხარი', 'told'],
-    ['უკვე ვუთხარი', 'told'],
-  ])('%s → %s', (message, expected) => {
-    expect(protocolResponse(message)).toBe(expected);
-  });
+describe("inviteAgreedSince — the model's own call is the answer (#8779 rule 42)", () => {
+  const RUN_STARTED_MS = 1_700_000_000_000;
 
-  it.each(['არა, მაგრამ სხვას ვიცნობ', 'კი, ოღონდ ჯერ მითხარი ვინ არის', 'ვინ არის ეს?', ''])(
-    'leaves a real sentence to the model: %s',
-    (message) => {
-      expect(protocolResponse(message)).toBeNull();
-    },
-  );
-});
-
-describe('ensureInviteAnswerRecorded — the server makes the answer true', () => {
-  it('records a bare „არა" the run forgot to record', async () => {
+  it('is true when the participant was moved to agreed during this run', async () => {
     mockQuery.mockResolvedValue(rows([{ id: 168 }]) as never);
 
-    expect(await ensureInviteAnswerRecorded(12740, '170749', 'არა')).toBe('declined');
-    expect(recordCampaignResponse).toHaveBeenCalledWith(12740, '170749', 'declined');
+    expect(await inviteAgreedSince(12740, '170749', RUN_STARTED_MS)).toBe(true);
   });
 
-  it('does nothing when the participant is no longer waiting — the model got there first', async () => {
+  it('is false when nothing was recorded as agreed in this run', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
-    expect(await ensureInviteAnswerRecorded(12739, '170748', 'კი')).toBeNull();
-    expect(recordCampaignResponse).not.toHaveBeenCalled();
+    expect(await inviteAgreedSince(12740, '170749', RUN_STARTED_MS)).toBe(false);
   });
 
-  it('asks only about a participant still in the asked state', async () => {
+  it("reads only the recorded state and its time — never the owner's words", async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
 
-    await ensureInviteAnswerRecorded(12740, '170749', 'უთხარი');
+    await inviteAgreedSince(12740, '170749', RUN_STARTED_MS);
 
-    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain("state = 'asked'");
-  });
-
-  it('never classifies a sentence — that conversation belongs to the model', async () => {
-    expect(await ensureInviteAnswerRecorded(12740, '170749', 'არა, ის ჩემი ნათესავია')).toBeNull();
-    expect(mockQuery).not.toHaveBeenCalled();
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("state = 'agreed'");
+    expect(sql).toContain('state_updated_at >=');
+    expect(sql).toContain('LIMIT 1');
+    expect(params).toEqual([12740, '170749', RUN_STARTED_MS]);
   });
 });
 
