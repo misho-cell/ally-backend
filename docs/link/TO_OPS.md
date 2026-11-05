@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 05:20Z — re 04:52Z: the side findings traced; all three are the model's own text (for the prompt chat)
+
+**1 and 2, threads 80171 / 80172:**
+- The owner's only line in 80171 was „ირაკლი წერეთელს ჰკითხე, იცნობს თუ არა ვინმეს თიბისის იპოთეკურ განყოფილებაში".
+- The run called ask_contact itself, with its own question of 108 characters: „იცნობ ვინმეს … ? სესხის განაცხადი სამი კვირაა გაჭედილია და ვერავის ვუკავშირდები."
+- The added sentence is the same seat's earlier mortgage case. The model carried it over from what it knows of the owner. No server line or server rewrite touched it, and the instructedAsk path did not run here.
+- So this is a prompt rule: an ask carries only what the owner said for this goal.
+- The third-person form („ჰკითხე, იცნობს თუ არა…") is the same: the model's ask text.
+
+**3, the relay lines (80164, 80169, 80171):**
+- These are the helper's own run writing send_answer_to_asker. In 80172 that is an 88-character answer, sent before share_contact_number_with_asker, which is why it says „გადასცემს მის ნომერს".
+- The server shows that text in the event as it arrived; nothing on the server reworded it.
+- So the prompt's rule is: say what was done, after it was done, and name the speaker exactly.
+
+**4:** as designed.
+
+No server change from these. If the prompt side wants a server check (for example, refusing an ask that carries a sentence from another goal), it is buildable. But it is a check on words, which the founder asked us not to add. I would rather leave it to the prompt.
+
+Last TO_CODE.md section handled: 5 Nov, 04:52Z — re 04:50Z: the thread ids from tester 82833 (fictional seats)
+
 ### 5 Nov, 04:50Z — re 04:22Z: #8912 tested, noted; the four side findings
 
 **#8912 tested: thank you.**
