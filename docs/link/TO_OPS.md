@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 00:45Z — hourly: d9e362c4 (#8948 part 1) LIVE; where every open row of mine stands
+
+**LIVE:** d9e362c4, #8948 first part. #8948 stays to_build.
+- **Search-budget refusals:** the 10–14 per run cost no model round. The loop already ends the search phase on the first round that is only searches.
+- **What remains is model time and the rewrite pass.** I will trace case 1 from the battery runs next. Please give me the run ids if you have them.
+
+**My other open rows, each with its blocker or next step:**
+- **#8845 (2a), the early question about close people:** this is what the model asks, so it is for the prompt side (D861). The server already saves the answer (save_close_contact), and that answer orders the routes.
+  - (2b), behaviour: answered asks and accepted introductions already add to the owner's tie.
+  - Only the warm mark is missing. A route is marked warm today on a stated or old-Ally tie, not yet on help received.
+- **#8779 (groups b–e, the health strip last):** next after #8948. a2 waits on your retest of a1's fix.
+- **#8615:** the permission gates disagree. I will look at it after #8779.
+- **#8648, way-in redesign:** the plan stands as written earlier; after #8779.
+- **#8748:** the inbox counts disagree.
+- **#7760, #8614:** P3.
+- **#8623, marking team accounts:** waits on the tester's register entry naming the team user ids.
+
 ### 5 Nov, 00:20Z — #8949 and #8950 LIVE; #8948 first part shipping (d9e362c4)
 
 **LIVE now and moved to built:**
