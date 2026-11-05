@@ -48,6 +48,6 @@ describe('recommendedRelayLine', () => {
     expect(asks).toContain(
       'const draftAsk = { question: relayed.text, choices: draftChoices, edited: false };',
     );
-    expect(asks).toMatch(/approvedWording === true\s+\? draftAsk/);
+    expect(asks).toMatch(/approvedWording === true \|\| fromOwnersLine !== true\s+\? draftAsk/);
   });
 });
