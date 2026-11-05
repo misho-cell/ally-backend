@@ -186,8 +186,41 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
   the thread reads „[მოვლენა] ნაბიჯი 1 დაიწყო: …“ (not „გეგმა ახლახან დამტკიცდა“),
   `tasks.plan_step = s1`, and the run asks step 1's person without asking the owner.
 
+
+## Second round (lead session's request, 5 Nov 13:01Z)
+
+| item | commit | what |
+|---|---|---|
+| merge lead branch | e0d7b989 | `origin/claude/wizardly-johnson-a6orxq` merged (no rebase); no conflicts; stage-2 lines used no removed word triggers |
+| two server texts | a9dbe991 | `PLAN_ANSWER_IN_WORDS`: approve when the owner's words mean agreement, „you decide" included (then `delegated: true`); nightly review: for a plan with steps silence is `on_silence`, no new yes (`planNightly.ts`), and the three-day method-change sweep skips such goals (stamps them first) |
+| #8779 g4: referral | d2312828 | RECOMMENDS_RE gone: every referral reads the recommended line; a mediator's worded decline carries „if it suggests someone else, that is a suggestion" for the model |
+| #8779 g4: KNOWS_RE | e6919049 | the server's instant „X is not on Netai" answer gone; the model's tools say it |
+| #8779 g4: birthdays | 2ed4e2c6 | the app's run gets `get_upcoming_birthdays` (the connector's own tool); the server-written answer and its regex gone |
+| #8779 g4: registered name | 09b9f8cd | `search_contact_by_name.about_the_name` (the model's reading) replaces ASKS_ABOUT_THE_NAME_RE |
+| #8779 g4: askKind | be1c33c2 | `ask_contact.kind` (intro / know / help / yes_no / open), stored as `task_asks.ask_kind` (**migration 298**); no kind = open set („later" only) |
+| #8779 g4: reminders | 59d153d4 | REMINDER_REQUEST_RE gone; set_reminder's description says „only a reminder → nothing else" |
+| #8779 g4: hidden tools | 076a0e7b | invite / link / web no longer held on words, the warm-path walk no longer forced; each rule is in the tool's description |
+| #8779 g4: lookups first | dc4bff12 | weather, where-they-work, the lender role search and the opening-search skip gone (whereTheyWork.ts, roleWebSearch.service.ts deleted) |
+| #8779 g4: small talk + greeting | af5ee4b3 | the server hello and the small-talk fast path gone; every line takes the ordinary turn. Titles: the title model answers NO_TITLE_YET when there is nothing to name; the placeholder stays |
+| #8779 g4: auto goal | 1489831a | need/question word lists gone; a goal opens before the run only on the app's new-goal button, otherwise by the model's create_task |
+| #8779 g4: discuss first | 071d4697 | `set_discussion` tool, `threads.discussion_since` (**migration 299**); the server holds every other tool in a discussion turn and opens no goal |
+
+Kept (section 5 of WORD_LISTS.md): WhatsApp STOP words, the 112 text, the health cut,
+phone scrubbing. Not touched: `answerNotTagged` (negatedTerm), `asksWhoHoldsAPost`,
+`looksLikeContactInstruction` and the other instruction readers — not in group 4's list.
+
+Costs to watch on a fictional seat (DONE WHEN each holds):
+- a „გამარჯობა" now takes a full model turn (seconds, not the server's instant line) and
+  must not open a goal or call tools; the thread keeps „ახალი საუბარი" until something
+  is named.
+- a typed need with no new-goal button: the run calls create_task first, in the same turn.
+- „ჯერ მკითხე, ლიდები არ მინდა" → set_discussion(true), then question-only turns with no
+  goal; „ახლა მოძებნე" → set_discussion(false) and the search runs.
+- an ask_contact carries `kind`; the reader's WhatsApp buttons match it.
+
 ## Notes for the lead session
 
+- Migrations on this branch: 296, 297, 298, 299 (main ends at 295 per the lead).
 - Migration number 296 was the next free one on this branch's base. If main took 296
   meanwhile, rename the file to the next free number before merging — nothing else
   refers to the number.
