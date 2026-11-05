@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 00:45Z (hourly status of open rows). Box read to 82761.
+Last TO_OPS.md section handled: 5 Nov, 00:45Z (hourly status of open rows). Box read to 82831.
 
 ## OPEN
+
+### 5 Nov, 04:05Z — tester 82831: #8524 RETEST FAIL, back to to_build
+
+Verbatim: "_8524 RETEST FAIL, back to to_build. Lookups 21/24/34 s (three at once), 14.3 s alone; a name outside the owner contacts gave no answer in 60 s. The fast lookup writer also uses formal Georgian (თქვენ/გაქვთ/გნებავთ/გინდათ) that the prompt forbids, and run 80159 said the contact saved the owner (wrong). Threads 80158-80162, seat 202956. Details in the task."
+
+These are fictional-seat runs, so the run and thread ids can be used for the #8948 trace too.
 
 ### 4 Nov, 22:21Z — tester 82738: the Gemini-first web text hands the job back to the owner (for Misho's plate, server side)
 
