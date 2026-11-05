@@ -8089,7 +8089,8 @@ async function grantFromTheOwnersInstruction(
       screen.lastOwnerMessage ?? '',
     ].some((line) => looksLikeContactInstruction(line));
     if (!instructed) return;
-    await grantTaskPermission(userId, Number(task.id));
+    if (await grantTaskPermission(userId, Number(task.id)))
+      noteGrantedInRun(runId, Number(task.id));
     // eslint-disable-next-line no-console
     console.log(
       `[consent] run ${runId}: task ${task.id} granted by the owner's instruction (D316)`,
@@ -10395,6 +10396,19 @@ const runOwnerLine = new Map<string, string>();
  * that is not that request's own.
  */
 const runsFromWhatsapp = new Set<string>();
+/**
+ * #8615 (76858, 2 and 4 Nov): approve_task_plan refused and sent the run to
+ * grant_task_permission (D316: the owner's instruction is the permission), the
+ * grant went through on the owner's own words, and ask_contact still refused
+ * „the plan is not approved". The goals the owner granted IN THIS RUN, so this
+ * run's asks pass the unapproved-draft wall; a grant from an earlier day does not.
+ */
+const runGrantedTheGoal = new Map<string, Set<number>>();
+
+function noteGrantedInRun(runId: string | undefined, taskId: number): void {
+  if (runId === undefined || !Number.isFinite(taskId)) return;
+  runGrantedTheGoal.set(runId, (runGrantedTheGoal.get(runId) ?? new Set<number>()).add(taskId));
+}
 export const NOT_FROM_A_GUESSED_CHAT_NOTE =
   'Nothing was sent. This line came from WhatsApp and was placed in this conversation by a ' +
   'guess; it is not the request’s own conversation, so it may be about something else. Tell ' +
@@ -10491,6 +10505,7 @@ function clearRunState(runId: string): void {
   runOfficialReads.delete(runId);
   runsThatProposedAPlan.delete(runId);
   runHeldTools.delete(runId);
+  runGrantedTheGoal.delete(runId);
 }
 
 /**
@@ -11580,6 +11595,7 @@ async function executeToolCall(
         undefined,
         typeof input['anonymous'] === 'boolean' ? input['anonymous'] : undefined,
         !ownerAbsent,
+        !ownerAbsent && runId !== undefined && runGrantedTheGoal.get(runId)?.has(taskId) === true,
       );
       if ((askOutcome as { sent?: unknown }).sent !== true && runId) runAskRefused.add(runId);
       if ((askOutcome as { sent?: unknown }).sent === true) {
@@ -12212,7 +12228,9 @@ async function executeToolCall(
       const grantScreen = threadId === undefined ? null : await planConsentOnScreen(threadId);
       const refused = grantPermissionRefusal(input['confirmed'], grantScreen);
       if (refused) return refused;
-      return { granted: await grantTaskPermission(userId, input['task_id'] as number) };
+      const granted = await grantTaskPermission(userId, input['task_id'] as number);
+      if (granted) noteGrantedInRun(runId, Number(input['task_id']));
+      return { granted };
     }
     case 'propose_task_plan': {
       if (runId !== undefined) runsThatProposedAPlan.add(runId);

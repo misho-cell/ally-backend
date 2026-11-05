@@ -199,7 +199,7 @@ describe('the handler and the schema, not merely the predicate', () => {
   /** Refused BEFORE the update, not after it. A granted permission is granted. */
   it('refuses before the flag is written', () => {
     const refusedAt = chat.indexOf('const refused = grantPermissionRefusal(');
-    const writtenAt = chat.indexOf('granted: await grantTaskPermission(', refusedAt);
+    const writtenAt = chat.indexOf('const granted = await grantTaskPermission(', refusedAt);
 
     expect(refusedAt).toBeGreaterThan(0);
     expect(writtenAt).toBeGreaterThan(refusedAt);

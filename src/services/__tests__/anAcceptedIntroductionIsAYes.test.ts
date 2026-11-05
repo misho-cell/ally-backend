@@ -245,7 +245,9 @@ describe('an unapproved plan does not block the person who accepted', () => {
     // The property is unchanged: the refusal reads the bypasses, not the raw
     // condition.
     expect(asks).toContain('const draftIsWaiting =');
-    expect(asks).toContain('if (!introAccepted && !ownerNamedThem && draftIsWaiting) {');
+    expect(asks).toContain(
+      'if (!introAccepted && !ownerNamedThem && !grantedNow && draftIsWaiting) {',
+    );
   });
 
   /**
