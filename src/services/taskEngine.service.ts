@@ -8,6 +8,8 @@ import {
   noteIdleReminder,
   setIdleWake,
 } from './idleWakes.service';
+import { planStepNoteForAnswers, sweepSilentSteps } from './planAdvance.service';
+import { withStepNote } from './planAdvance';
 import { answersElsewhereNote, answersInSiblingGoals } from './answersElsewhere.service';
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
 import { unheardAnswerOf } from './answerAddition';
@@ -742,17 +744,22 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
     clearQuietAfterDecline(threadId);
   }
   const wakeBeforeRun = await nextWakeText(taskId);
+  // Autonomy stage 2, K3: the plan step's own rule rides under the answers.
+  const stepNote = await planStepNoteForAnswers(
+    taskId,
+    owed.map((a) => ({ id: a.id, declined: a.declined === true })),
+  );
   const woken = onScreen
     ? await wakeTask(
         taskId,
-        buildShownAnswersWakeEvent(arrived),
+        withStepNote(buildShownAnswersWakeEvent(arrived), stepNote),
         undefined,
         WakeOrigin.Netai,
         ANSWER_IS_NEWS,
       )
     : await wakeTask(
         taskId,
-        buildAnswersWakeEvent(arrived),
+        withStepNote(buildAnswersWakeEvent(arrived), stepNote),
         arrived.map((a) => ({ text: a.answer, who: a.fromName, verbatim: a.verbatim })),
       );
   if (woken !== 'woken') return 0;
@@ -1071,6 +1078,11 @@ async function tick(): Promise<void> {
   await sweepGoalsUnsolvedAfterAnHour().catch((err: unknown) =>
     // eslint-disable-next-line no-console
     console.error('[task-engine] hour update sweep failed:', (err as Error).message),
+  );
+  // Autonomy stage 2, K3: a plan step whose silence ran out moves on by its rule.
+  await sweepSilentSteps(wakeForPlanStep).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[task-engine] plan-step silence sweep failed:', (err as Error).message),
   );
   const due = await getDueTasks(MAX_WAKES_PER_TICK);
   for (const task of due) {
@@ -1752,6 +1764,19 @@ export function startIntroOutcome(
  * had been picked up again. It is woken now with one that says so.
  */
 export function wakeAfterResume(taskId: number, eventText: string): void {
+  wakeWhenFree(
+    taskId,
+    eventText,
+    () => goalOpen(taskId),
+    async () => {
+      await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
+    },
+    WAKE_RETRY_DELAY_MS,
+  );
+}
+
+/** K3: the plan moved to a new step on its own rule — the goal is woken with that step. */
+function wakeForPlanStep(taskId: number, eventText: EventText): void {
   wakeWhenFree(
     taskId,
     eventText,

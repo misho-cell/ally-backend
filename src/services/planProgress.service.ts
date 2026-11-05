@@ -93,3 +93,28 @@ export async function stepOfAsk(taskId: number, askId: number): Promise<string |
   );
   return result.rows[0]?.step_id ?? null;
 }
+
+/**
+ * Record an event only if this exact one (goal, step, kind, ref) is not there
+ * yet; true when it was written now. A retried wake must not count one answer
+ * twice or move the plan twice.
+ */
+export async function recordStepEventOnce(
+  taskId: number,
+  stepId: string,
+  kind: StepEventKind,
+  ref: string | null = null,
+): Promise<boolean> {
+  const result = await query(
+    `INSERT INTO plan_step_events (task_id, step_id, kind, ref)
+     SELECT $1::int, $2::text, $3::text, $4::text
+      WHERE NOT EXISTS (
+        SELECT 1 FROM plan_step_events
+         WHERE task_id = $1::int AND step_id = $2::text AND kind = $3::text
+           AND ref IS NOT DISTINCT FROM $4::text
+      )`,
+    [taskId, stepId, kind, ref],
+    PROGRESS_QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}

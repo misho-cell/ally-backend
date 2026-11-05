@@ -132,8 +132,8 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 | K11 | done (lead) | 0ab4ca9 | approved plan covers introductions |
 | design | done | 52e1c4d6 | |
 | K1 | done | 7525b4cb | `planSteps.ts` (parse/structure), `planStepsText.ts` (card line), `planStepsSchema.ts` (tool schema); `parsePlan` reads `result_when`/`steps`; card + engine prompt show the steps line. Test: `planSteps.test.ts` |
-| K2 | done | (see log) | migration `296_plan_step_events.sql` (table + `tasks.plan_step`); `planProgress.service.ts` (record / move-in-a-transaction / read, LIMITed). `Task` row type not widened. Test: `planProgress.service.test.ts` |
-| K3 | todo | | |
+| K2 | done | 356d1deb | migration `296_plan_step_events.sql` (table + `tasks.plan_step`); `planProgress.service.ts` (record / move-in-a-transaction / read, LIMITed). `Task` row type not widened. Test: `planProgress.service.test.ts` |
+| K3 | done | (see log) | pure rules + texts `planAdvance.ts`; DB hooks `planAdvance.service.ts`: `notePlanAskSent` (taskAsks, after the INSERT, owner's own asks only), `notePlanNamed` (requestIntroduction, after the INSERT, not direct / not forwarded), `planStepNoteForAnswers` (answer wake, note under the event), `sweepSilentSteps` (engine tick, ≤50 goals). Idempotent on retried wakes. Tests: `planAdvance.test.ts`, `planAdvance.service.test.ts` |
 | K4 | todo | | |
 | K5 | todo | | |
 | K7 | todo | | |
@@ -151,11 +151,30 @@ Dates are absolute (no „2 days ago") so the text is deterministic and testable
 - K2: after deploy (lead), `\d plan_step_events` exists and `tasks.plan_step` is a column;
   nothing writes to them until K3.
 
+- K3, on a fictional seat with a plan of steps s1 ask A (on_no → s2), s2 ask B
+  (on_silence 1 day → s3), s3 web, approved:
+  - day one asks A → `plan_step_events` has `started s1`, `sent s1 <ask id>`.
+  - A answers „no" (the model marks it declined) → `declined s1`, `tasks.plan_step = s2`,
+    and the answer's wake event ends with „(ნაბიჯ 1-ზე უარი მოვიდა.) ნაბიჯი 2 დაიწყო: …
+    მფლობელის კითხვის გარეშე." DONE WHEN the run asks B with no question to the owner.
+  - B silent for a day → `silent s2`, `started s3`, the goal is woken with „ნაბიჯი 3
+    დაიწყო: ვებ-ძიება …". DONE WHEN the run searches with no question to the owner.
+  - an answer that is not a no → `answered`, the wake event names the result check,
+    the step's on_named rule and the next step; the plan does not move by itself.
+  - an old plan (no steps): events are recorded, wake texts are unchanged.
+
 ## Notes for the lead session
 
 - Migration number 296 was the next free one on this branch's base. If main took 296
   meanwhile, rename the file to the next free number before merging — nothing else
   refers to the number.
+- K3 touched three existing files with one delimited line each (plus an import):
+  `taskAsks.service.ts` (after the task_asks INSERT), `tools/requestIntroduction.ts`
+  (after the introduction INSERT), `taskEngine.service.ts` (`deliverOwedAnswers` event and
+  `tick`). The source-text test `theAnswersAreOnScreenFirst.test.ts` was updated to the
+  wrapped event call.
+- A step event whose wake falls in quiet hours is held like any other wake; the step has
+  already moved, so the next run reads it in the „where we are" block (K4).
 
 ## Questions for Misho
 

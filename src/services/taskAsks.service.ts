@@ -1,4 +1,5 @@
 import { isSmallTalk } from './smallTalk';
+import { notePlanAskSent } from './planAdvance.service';
 import { netaiMember } from './netaiMembership';
 import {
   PACE_UNTIL_SEEN_ON,
@@ -2535,6 +2536,8 @@ async function createAskNow(
     return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
   }
   recountAnswerStats(toUserId);
+  // Autonomy stage 2, K3: the owner's own ask moves the goal's plan to its step.
+  if (parentAskId === undefined) void notePlanAskSent(taskId, ask.rows[0].id, toUserId);
   if (waveNo !== null && !isFollowUp) {
     void noteWaveAsk(taskId).catch((err: unknown) =>
       // eslint-disable-next-line no-console
