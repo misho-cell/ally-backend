@@ -320,7 +320,6 @@ import { ruledOutOnSubject } from './ruledOutBridges';
 import { mutualGroupsFor, plannedGoBetweensLabel } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.service';
 import { askStepNames, askStepsToKeepUnnamed } from './askCaptions';
-import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { REQUEST_THREAD_TYPE, answersTheRequestOnly } from './requestReferral';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { SentSide, withoutSentRestatement } from './sentLineGuard';
@@ -9990,6 +9989,8 @@ const runModes = new Map<string, RunMode>();
 const runHeldTools = new Map<string, Set<string>>();
 /** #67 / #8779 group 4: runs in a conversation the model put in discussion — set_discussion only. */
 const runInDiscussion = new Set<string>();
+/** The tool that opens a new goal; held while the conversation already has one. */
+const CREATE_TASK_TOOL_NAME = 'create_task';
 const TOOL_HELD_THIS_TURN =
   'Not used in this turn: this tool is not for the owner’s current message. Answer with what ' +
   'you have, or with the other tools; do not call it again in this run.';
@@ -11281,7 +11282,7 @@ async function executeToolCall(
         console.log(`[own-part] run ${runId} task ${taskId}: another person's part held back`);
         return { sent: false, reason: 'other_part', error: OTHER_PART_REFUSAL };
       }
-      const changed = factChangedIn(question, ownerLines);
+      const changed = await factChangedIn(question, ownerLines, { userId, runId, threadId });
       if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {
         // eslint-disable-next-line no-console
         console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, the owner quoted`);
@@ -18091,7 +18092,16 @@ export async function processChat(
   // 3400 / 3730 / #8087: the invite, link and web tools are no longer held back on the
   // owner's words (#8779 group 4) — each tool's own description carries its rule.
   // 3730 (2): „ask X too" on a goal that has asked is a follow-up, not a new goal and plan.
-  const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
+  // 3730 (2) / #8779 (ops 18:45Z): a conversation holds one open goal, so create_task is held
+  // while it has one — a structural fact, not a reading of the owner's words. A follow-up
+  // „ask X" in that goal is sent under it; propose_task_plan stays, a plan change is legal.
+  const createTaskHeld =
+    !ownerAbsent &&
+    (await getOpenTaskByThread(thread.id).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[create-task-held] open goal not read:', (err as Error).message);
+      return null;
+    })) !== null;
   // #8944: no server card stands between a reader's line and the asker any more, so a
   // line that refers the asker to somebody keeps relay_ask like any other in an ask chat.
   const relayHeld = ownerAbsent || thread.type !== 'incoming_ask';
@@ -18116,7 +18126,7 @@ export async function processChat(
       .filter(
         (tool) =>
           !(
-            (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
+            (!createTaskHeld || tool.name !== CREATE_TASK_TOOL_NAME) &&
             (relayHeld || tool.name !== RELAY_ASK_TOOL.name)
           ),
       )
