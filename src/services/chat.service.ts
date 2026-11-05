@@ -440,6 +440,7 @@ import {
 } from './block.service';
 import { normalizePhone } from './phone';
 import { moderateReply } from './moderation.service';
+import { wayInNamesFrom } from './wayInNames.service';
 import { addCardToOwedReply } from './whatsappReplies.service';
 import { EarlyVerdict, startEarlyModeration, verdictForShown } from './earlyModeration';
 import {
@@ -462,6 +463,7 @@ import {
   buildOpeningSearchSection,
   findWaysIn,
   webResultNames,
+  MAX_WAY_IN_CHECKS,
   buildFromTheWebMessage,
   withoutNamesakes,
   WAY_IN_TOOL_NOTE,
@@ -10977,7 +10979,12 @@ async function executeToolCall(
       const waysIn =
         runId !== undefined && runLooksUpTheWeather.has(runId)
           ? new Map<string, WayIn>()
-          : await findWaysIn(userId, webResultNames(found), { threadId, runId });
+          : await findWaysIn(
+              userId,
+              // #8648: the names a small model read in the titles, not words cut out by rule.
+              await wayInNamesFrom(found, MAX_WAY_IN_CHECKS, { userId, runId, threadId }),
+              { threadId, runId },
+            );
       // Misho, 3 Nov (#8648): the way_in check does not spend the web's search clock.
       if (runId !== undefined) {
         creditSearchTime(runId + WEB_BUDGET_KEY_SUFFIX, Date.now() - wayInStartedAt);

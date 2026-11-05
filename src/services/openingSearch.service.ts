@@ -1,4 +1,5 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
+import { wayInNamesFrom } from './wayInNames.service';
 import { ExactMatch, exactMatchesForMany } from './tools/searchByTag';
 import { firmSearchName, sameFirstName, sameSurname, wayInSearchName } from './wayInName';
 import { webSearch } from './tools/webSearch';
@@ -395,7 +396,9 @@ export async function runOpeningSearches(
     webRaw = raw;
     // The way-in lookups run HERE, inside the web branch, after the search
     // they depend on.
-    waysIn = await findWaysIn(userId, webResultNames(raw), { threadId, runId });
+    // #8648: the names a small model read in the titles, not words cut out by rule.
+    const names = await wayInNamesFrom(raw, MAX_WAY_IN_CHECKS, { userId, runId, threadId });
+    waysIn = await findWaysIn(userId, names, { threadId, runId });
     return serialised;
   };
 
@@ -495,7 +498,7 @@ export function buildOpeningSearchSection(found: OpeningSearches): string {
  */
 
 /** How many of the web's results get a way-in search. */
-const MAX_WAY_IN_CHECKS = 3;
+export const MAX_WAY_IN_CHECKS = 3;
 
 /**
  * The way-in searches share this, after the web search has returned.
