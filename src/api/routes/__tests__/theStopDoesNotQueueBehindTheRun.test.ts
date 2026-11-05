@@ -51,27 +51,6 @@ import { join } from 'path';
  */
 const routes = readFileSync(join(__dirname, '..', 'threads.routes.ts'), 'utf8');
 
-describe('a typed stop skips the queue', () => {
-  it('holds the condition itself', () => {
-    expect(routes).toContain('const stopCannotWait = looksLikeStopRequest(message);');
-    expect(routes).toContain('if (!stopCannotWait) {');
-  });
-
-  /**
-   * AND THE WAIT IS INSIDE IT. The guard is worth nothing if `enterThread`
-   * also runs outside the branch — the stop would skip one wait and take
-   * another.
-   */
-  it('keeps the queue wait inside the branch it guards', () => {
-    const at = routes.indexOf('if (!stopCannotWait) {');
-    const branch = routes.slice(at, at + 1_200);
-
-    expect(branch).toContain('await enterThread(');
-    // Once in the whole handler: the branch's copy is the only one.
-    expect(routes.split('await enterThread(').length - 1).toBe(1);
-  });
-});
-
 describe('a stop that stopped nothing says so', () => {
   it('holds the null check and the 404 it answers with', () => {
     const at = routes.indexOf('const stopped = await stopGoalOnThread(');

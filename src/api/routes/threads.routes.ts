@@ -109,7 +109,6 @@ import { enterThread, leaveThread, threadRunSince } from '../../services/threadR
 import { releaseRunSlot, takeRunSlot } from '../../services/runSlots';
 import { isBareGreeting } from '../../services/greetingTurn';
 import { isToolFreeSmallTalk } from '../../services/smallTalk';
-import { looksLikeStopRequest } from '../../services/stopIntent';
 import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 import { PhaseClock } from '../../services/acceptTiming';
@@ -1237,12 +1236,10 @@ threadsRouter.post(
       let graceNote: string | null = null;
       const payerId = await runPayerFor(userId, threadId, thread.type);
       clock.mark('payer');
-      // The master test run's 45679: a typed stop on a zero balance was refused
-      // with 402 while the stop button worked. A stop is answered by the server
-      // alone, before any model call, so it costs nothing and is never walled.
-      const typedStop = looksLikeStopRequest(message);
+      // #8779 b (rule 30): a typed stop is an ordinary line for the model now; the
+      // Stop button (POST /threads/:id/stop) costs nothing and is never walled.
       const allowance =
-        payerId === null || typedStop
+        payerId === null
           ? { allowed: true as const }
           : payerId === userId
             ? await ownAllowance
@@ -1482,34 +1479,31 @@ threadsRouter.post(
          */
         const storedOnArrival = await keepUserMessage(userId, threadId, message);
         const storedAt = Date.now();
-        const stopCannotWait = looksLikeStopRequest(message);
-        if (!stopCannotWait) {
-          /**
-           * The wait is logged with its length because I do not know what it
-           * costs yet.
-           *
-           * What is bounded: the run's own ceiling starts when the run does, so
-           * a queued message's total time from typing to answer can reach twice
-           * that. Whether the app tolerates a spinner that long is a question
-           * about the client, and guessing at it in here would be the wrong way
-           * to find out — so the number is written down on every queued run and
-           * read back tomorrow.
-           */
-          const waitedFrom = Date.now();
-          const entry = await enterThread(
-            threadId,
-            runId,
-            THREAD_QUEUE_BUDGET_MS,
-            THREAD_QUEUE_POLL_MS,
+        /**
+         * The wait is logged with its length because I do not know what it
+         * costs yet.
+         *
+         * What is bounded: the run's own ceiling starts when the run does, so
+         * a queued message's total time from typing to answer can reach twice
+         * that. Whether the app tolerates a spinner that long is a question
+         * about the client, and guessing at it in here would be the wrong way
+         * to find out — so the number is written down on every queued run and
+         * read back tomorrow.
+         */
+        const waitedFrom = Date.now();
+        const entry = await enterThread(
+          threadId,
+          runId,
+          THREAD_QUEUE_BUDGET_MS,
+          THREAD_QUEUE_POLL_MS,
+        );
+        if (entry !== 'free') {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[thread-queue] run ${runId} thread ${threadId}: ${entry} after ${
+              Date.now() - waitedFrom
+            } ms`,
           );
-          if (entry !== 'free') {
-            // eslint-disable-next-line no-console
-            console.log(
-              `[thread-queue] run ${runId} thread ${threadId}: ${entry} after ${
-                Date.now() - waitedFrom
-              } ms`,
-            );
-          }
         }
 
         runOwnerMessage({
