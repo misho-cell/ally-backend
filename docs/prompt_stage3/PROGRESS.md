@@ -6,9 +6,11 @@ Branch `claude/autonomy-stage3`. Text drafts only: no src/, migrations, config o
 - CHANGES.md Part A: inventory of every ask / confirm / wait line in all 10 live blocks
   (78 lines: keep / change / remove, one line why) + 3 code-side lines for the server sessions.
 
+- CHANGES.md Part B (P1–P12: quoted current lines, replacement, why, `[K…]` dependency tags) and
+  Part C (sizes). `blocks/`: paste-ready core_shared, task_main, task_rules, qa_main, request_main.
+  task_step total 35,436 → 37,085 (limit 48,000).
+
 ## Next
-- CHANGES.md Part B (P1–P12 with quoted current lines, replacement, why) + `blocks/` paste-ready
-  core_shared, task_main, task_rules, qa_main, request_main; size totals before/after.
 - TEST.md: 10 fictional-seat conversations.
 
 ## Questions for Misho (with my recommendation)
