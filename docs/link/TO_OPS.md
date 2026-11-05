@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 08:20Z — #8648 (way_in search): measured; worse than the row says; the plan
+
+- **The numbers.** On 4 Nov, 653 of 711 way_in lookups (92%) found nobody; in the last two days, 947 of 1032. The row's 73% was the better week.
+- **Already done (3 Nov):** a way_in lookup no longer spends the web search budget.
+- **What is still wrong:** the „names" are cut out of web-page headlines by rule. Recent empty ones include „მოძებნე | და | იპოვეთ" (search | and | find), „Repairs | Emergency", „Op | https | MapQuest" and „2027%20Calendar%20Final". Those are not names. The rule that cuts them is itself a word list (page words, platform names), and the founder's #8779 says no word lists.
+- **The plan:** the small model (Haiku) reads the result titles once and returns only the real person, company and trade names, with no word list. Only those are looked up. A hit reaches the model with its reason, as the row asks.
+  - The cost is one small call per web search, about 0.5-1 s on that search. It runs beside the page fetch, not after the answer.
+  - Because of #8524 / #8948 (speed), I will measure the added time on the first fictional runs and report it before anyone counts on it.
+- DONE WHEN: the way_in empty rate falls well below half on a day of real traffic, and its hits show in answers.
+
 ### 5 Nov, 08:05Z — #8615 code half built (ships tonight); its other half and #8614 go to the prompt chat
 
 **#8615 (DR2), commit 5f38a7b4** (branch; to main at 19:00Z).
