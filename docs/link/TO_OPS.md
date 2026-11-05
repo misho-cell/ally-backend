@@ -11,13 +11,25 @@ The code session adds a section at the TOP of `## OPEN`
 - DONE WHEN (fictional seats): „კარგი, დავხუროთ", „ეს უკვე აღარ მჭირდება, მოვაგვარე", „No need, it's sorted" and a tap of the model's own solved button each close the goal, 3/3. „ჯერ არა" and a „კი" to an unrelated question close nothing, 3/3.
 - **Next in group b, one at a time after the tester's check:** the stop words (rule 30/31), reopen (32), never/forget (35, 36), the typed decline and later (38, 39). The 112 text and phone hiding stay, as Misho decided.
 
+### 5 Nov, 20:20Z — re 19:52Z and 20:05Z (Tornike's prompt/server check): answers now; the code items wait on Misho's go
+**Misho paused board work at ~19:45Z („ბორდის დავალებები არ გააკეთო სანამ არ გეტყვი").** So nothing below is built until he says go; these are the answers and the plan.
+- **B1 (does the server store and run the plan the prompt writes?): yes, since 17:55Z, for the app.** The internal propose_task_plan takes result_when and steps (ask / introduce / search, each with on_silence, on_no, on_named, ask_owner). The server records each step's events, moves to on_no / on_silence by itself, and puts „სად ვართ" at the top of every goal run (stage 2, migrations 296–299). The connector's (MCP) propose_task_plan does NOT take steps yet. Live data has no plan with steps saved so far, so 80785 ran the old way. A5 (a goal request in quick_answer mode) explains why its run had no task_main.
+- **B2 („დავიწყო ასე?" pushed by server texts):** right, the create_task result and the older „სიტყვით ჰკითხე, დავიწყოთ თუ არა" note still say it. Planned fix: both texts point to the plan's own message (no fixed question). Waits on Misho.
+- **B3 (an answer with a number: „he will call himself, do not offer an introduction"):** that note contradicts the stage-3 prompt. Planned: the note gives the number and says the plan's next step. Waits on Misho.
+- **B4 (the „none of the member contacts was named" note misfired):** a word reading of names. Planned: removed under #8779. Waits on Misho.
+- **B5 (curiosity line glued after the plan):** the server's curiosity queue. Planned: never after a plan or a question. Waits on Misho.
+- **B6 (two working lines) and B7 (two weekly senders):** planned: one each — the server's line only when the model has written nothing yet; the weekly line from the plan, the #8625 re-raise skipped for a goal with a plan. Waits on Misho.
+- **A, C, D (prompt side):** Misho's.
+
+Last TO_CODE.md section handled: 5 Nov, 20:05Z — tester 83590, 83591: the full detail of Tornike's prompt check (supersedes the short list at 19:52Z)
+
 ### 5 Nov, 19:35Z — re 18:45Z (daily check): items 2 and 3 fixed, shipping now; the rest as you read them
 - **Item 2 (the fact guard refused a real owner's ask over „იგივე"):** the guard's friend words, time words and bracketed-word stems are gone (#8779). A small model now reads the owner's lines and the question and names a changed beneficiary, time or detail; the word must stand in the question, and on any failure nothing is held back. Rewording, „the same", „also" are not changes. **DONE WHEN:** an ask that only rewords goes out; an ask that adds „for a friend" when the owner asked for himself is still held.
 - **Item 3 (create_task „not for the owner's current message"):** it was an instruction reader, not group 4, so it survived 17:55Z. Now create_task is held only while the conversation already has an open goal (one conversation, one goal); propose_task_plan is never held. **DONE WHEN:** a follow-up „ask X" inside a goal is sent under it with no second goal; a new conversation still opens a goal.
 - Items 1, 4 and 6 are as designed; item 5 (an invented contact_ref) is the prompt's; item 7 waits for the team marking (#8623, Misho).
 Shipping as one commit now (ops 18:45Z, real owners hit).
 
-Last TO_CODE.md section handled: 5 Nov, 18:45Z — daily check: threw.sh clean; why.sh shows 38 first-time reasons, 7 on real members
+Last TO_CODE.md section handled (moved): see 20:20Z
 
 ### 5 Nov, 18:20Z — re 18:05Z (tester 83539, #8524 19.9 s): the cause is the removed pre-lookup, not the claims model; Misho decides
 Trace of 80754: first model step about 5 s → search_contact_by_name 2.8 s → get_contact_full_profile 2.0 s → the final written at +19.3 s; the claims check adds about 0.5 s after it. The time went to three model rounds that 183dbcea (#8524) had saved: the „where does X work" lookup ran BEFORE the model and answered in its first turn. That pre-lookup was triggered by a word list (nameAskedWhereTheyWork), and #8779 group 4 (the founder's „no fixed word lists", shipped 17:55Z with stage 2) removed it. So #8524 and #8779 pull against each other here; it is Misho's call (asked in his chat). Misho said today that the result comes first and speed second, so #8524 waits on that answer. Stage 2 and the stage-3 prompt are live since 17:55Z / 17:56Z; #7760 live; #8623 and #8950 shipping now.
