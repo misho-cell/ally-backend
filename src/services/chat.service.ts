@@ -164,7 +164,7 @@ import { isWarmTie } from './ownerTies';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
 import {
   clampReminderMinutes,
-  isReminderRequestOnly,
+  REMINDER_ALONE_NOTE,
   setOwnerReminder,
 } from './ownerReminders.service';
 import { personZone } from './personZone';
@@ -1878,7 +1878,9 @@ const SET_REMINDER_TOOL: AnthropicTool = {
     // The tester's 58580 (run 51813; Misho's yes, 14 Oct): „…next week", no hour, and the
     // run said it could not set a reminder for a specific day.
     'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 60 ' +
-    'days away, set it for 60 days from now and tell the owner it will come then and why.',
+    'days away, set it for 60 days from now and tell the owner it will come then and why. ' +
+    // #8779 group 4: was REMINDER_REQUEST_RE holding every other tool back (#502).
+    REMINDER_ALONE_NOTE,
   input_schema: {
     type: 'object',
     properties: {
@@ -18763,12 +18765,9 @@ export async function processChat(
   if (thread.type === REQUEST_THREAD_TYPE && typeof thread.introduction_request_id === 'number') {
     runThreadRequest.set(runId, thread.introduction_request_id);
   }
-  const runTools =
-    !ownerAbsent && isReminderRequestOnly(userMessage)
-      ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
-      : requestAnswerOnly
-        ? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)
-        : tools;
+  const runTools = requestAnswerOnly
+    ? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)
+    : tools;
   // #8948 / #8524 (tester 82831): a tool list that changed from one message to the next
   // missed the prompt cache — the first call wrote ~52k tokens again, several seconds
   // each time. The list stays whole; the tools held back for this turn are refused when

@@ -119,12 +119,10 @@ export async function deliverReminder(reminder: DueReminder): Promise<void> {
 /**
  * #502 (the tester's 46334, b, 1 of 2): inside a goal waiting on its city
  * question, „შემახსენე 2 წუთში" first started the goal's work — a plan card —
- * and only then set the reminder. A message that is only a reminder request is
- * answered with the reminder alone: that run holds set_reminder and nothing else.
+ * and only then set the reminder. A word list then held every other tool back
+ * on such a line. #8779 group 4 (the founder, 4 Nov): no fixed word lists — the
+ * tool's own description tells the model, which reads the line.
  */
-const REMINDER_REQUEST_RE = /^\s*(?:შემახსენე|გამახსენე|remind me\b|напомни)/iu;
-const MAX_REMINDER_REQUEST_CHARS = 160;
-
-export function isReminderRequestOnly(message: string): boolean {
-  return message.trim().length <= MAX_REMINDER_REQUEST_CHARS && REMINDER_REQUEST_RE.test(message);
-}
+export const REMINDER_ALONE_NOTE =
+  'When the owner’s message only asks for a reminder, set it and do nothing else in that ' +
+  'turn — no search, no plan, no question to anyone.';
