@@ -755,26 +755,15 @@ export function asksWhichRoute(text: string): boolean {
 
 /**
  * The tester's 1145 (37808): an invitation was prepared for „ანა დიზაინერი"
- * when the owner had only said he needs a designer. An invitation is prepared
- * on the owner's word: one asking for an invitation or its text, or approving.
+ * when the owner had only said he needs a designer; 3400 (47027): the link was
+ * written before the owner said yes. An invitation is prepared on the owner's
+ * word. #8779 group 4 (the founder, 4 Nov): that word is the model's reading —
+ * said in the two tools' descriptions — and no word list holds the tools back.
  */
-const ASKS_FOR_AN_INVITE_RE =
-  /(მოწვ|მოვიწვ|მოიწვ|მოსაწვ|დაპატიჟ|ტექსტ|\binvit|\btext\b|пригла|текст)/iu;
-
-export function asksForAnInvite(ownerLine: string): boolean {
-  return ASKS_FOR_AN_INVITE_RE.test(ownerLine);
-}
-
-/** 3400 (the tester's 47027): the owner's own invite link, asked for by name. */
-const ASKS_FOR_THE_LINK_RE = /(ლინკ|ბმულ|\blink\b|ссылк|enlace)/iu;
-
-export function asksForTheLink(ownerLine: string): boolean {
-  return ASKS_FOR_THE_LINK_RE.test(ownerLine);
-}
-
-export const INVITE_NOT_ASKED =
-  'Not prepared: the owner did not ask to invite anyone. Say in one line that you can prepare ' +
-  'an invitation for this person, and prepare it only on their word.';
+export const INVITE_ON_THE_OWNERS_WORD =
+  'Only on the owner’s word: they ask to invite someone, ask for the text or the link, or ' +
+  'approve an invitation you offered. Never on your own because a search found someone — ' +
+  'offer it in one line instead.';
 
 /**
  * #961 (37554): a button that offers to send to people — „კი, გაუგზავნე

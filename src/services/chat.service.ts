@@ -314,15 +314,14 @@ import {
 import { contactsReminderSection } from './contactsReminderSection';
 import { createUploadLink } from './contactUploadLinks.service';
 import { CONTACTS_UPLOAD_LINK_DESCRIPTION } from './contactsUploadLinkText';
-import { asksForAPersonByName, asksWhoHoldsAPost, WEB_TOOL_NAMES } from './personByName';
+import { asksWhoHoldsAPost, NAMED_PERSON_NOT_ON_THE_WEB } from './personByName';
 import { namesakesIn } from './namesakeButtons';
 import {
   FoundPerson,
   peopleFoundIn,
-  walksToTheNamedPerson,
   isRouteToSomeoneFound,
   walkTargetPhone,
-  WARM_PATH_TOOL,
+  WALK_AFTER_FINDING_THEM,
 } from './warmPathAfterSearch';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
 import { ruledOutOnSubject } from './ruledOutBridges';
@@ -351,6 +350,7 @@ import {
 } from './taskPlans.service';
 import { PLAN_STEPS_SCHEMA_PROPERTIES } from './planStepsSchema';
 import { whereWeAreSection } from './whereWeAre.service';
+import { INVITE_ON_THE_OWNERS_WORD } from './replyGuards';
 import { ASK_KIND_FIELD, askKindFrom } from './askKind';
 import { DELEGATED_FIELD_SCHEMA, recordDelegation } from './planDelegation';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
@@ -518,9 +518,6 @@ import {
   ASK_THE_DETAIL_FIRST,
   bookingWithoutAWhen,
   farFindUnplannedNudge,
-  INVITE_NOT_ASKED,
-  asksForAnInvite,
-  asksForTheLink,
   asksAboutOwnPeople,
   asksWhoTheyHave,
   withoutQuotedCopy,
@@ -2671,7 +2668,8 @@ const INVITE_CONTACT_TOOL: AnthropicTool = {
     'list you gave, or wants to reach a named contact who is not on Netai. „Whom should I ' +
     'invite / offer Netai to?" asks for NAMES, not texts: answer with three to five people, ' +
     'one clear reason each, and call this only once the user picks one or asks for the text. ' +
-    'The USER sends the text themselves — Netai never messages them.',
+    'The USER sends the text themselves — Netai never messages them. ' +
+    INVITE_ON_THE_OWNERS_WORD,
   input_schema: {
     type: 'object',
     properties: {
@@ -2695,7 +2693,8 @@ const GET_INVITE_LINK_TOOL: AnthropicTool = {
     "The user's own personal invite link — unlimited uses, no cap, the same referral code " +
     'invite_contact carries. Attach it to any message when the user wants to invite someone ' +
     'not already in their contacts, or asks for "the link" generally. Present it as a link to ' +
-    'share themselves — Netai never messages anyone on their behalf.',
+    'share themselves — Netai never messages anyone on their behalf. ' +
+    INVITE_ON_THE_OWNERS_WORD,
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
@@ -4406,7 +4405,8 @@ const FIND_WARM_PATH_TOOL: AnthropicTool = {
     'by name with is_member (a path is relayable only through Netai users). The first bridge is a ' +
     'direct contact: when that bridge can reach the target themselves, this is an introduction ' +
     'and goes through request_introduction; only a longer path uses ask_contact for the hops in ' +
-    "between. If no path: offer an invite or the user's own message.",
+    "between. If no path: offer an invite or the user's own message. " +
+    WALK_AFTER_FINDING_THEM,
   input_schema: {
     type: 'object',
     properties: {
@@ -4632,7 +4632,8 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive. ' +
       RULE_280_WEB_LEADS_ARE_PEOPLE +
       ' ' +
-      RULE_A_WEB_LEAD_DETAILS,
+      RULE_A_WEB_LEAD_DETAILS +
+      NAMED_PERSON_NOT_ON_THE_WEB,
     input_schema: {
       type: 'object',
       properties: {
@@ -6498,10 +6499,6 @@ function noteFoundFurtherOut(runId: string, further: readonly FarHit[]): void {
     ...(runFoundThroughBridges.get(runId) ?? []),
     ...throughFirstLinks,
   ]);
-}
-
-function peopleFoundCount(runId: string): number {
-  return runFoundPeople.get(runId)?.length ?? 0;
 }
 
 async function runLoggedSearch(
@@ -11839,19 +11836,8 @@ async function executeToolCall(
       return { deleted: await deleteAnswerRule(userId, ruleId) };
     }
     case 'invite_contact': {
-      // The tester's 1145 (37808): an invitation nobody asked for. A run that
-      // answers the owner's own words prepares one only when they ask or approve.
-      // #8087: an invite chat is itself the ask, so its runs are never refused here.
-      const ownerLine = runId === undefined ? undefined : runOwnerLine.get(runId);
-      const inInviteChat = runId !== undefined && runModes.get(runId) === 'campaign_invite';
-      if (
-        ownerLine !== undefined &&
-        !inInviteChat &&
-        !asksForAnInvite(ownerLine) &&
-        !isApproveChoice(ownerLine.trim())
-      ) {
-        return { invited: false, error: INVITE_NOT_ASKED };
-      }
+      // The tester's 1145 (37808): an invitation nobody asked for. #8779 group 4: the owner's
+      // word is the model's reading (INVITE_ON_THE_OWNERS_WORD), not ASKS_FOR_AN_INVITE_RE.
       const langRaw = String(input['language'] ?? 'ka');
       const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
       const invite = await inviteContact(userId, String(input['phone'] ?? ''), lang);
@@ -16014,7 +16000,6 @@ async function runToolLoop(
 
       scanAssistantBlocks(response.content);
 
-      const foundBeforeRound = peopleFoundCount(runId);
       const toolResults = await processToolBlocks(
         userId,
         threadId,
@@ -16061,14 +16046,6 @@ async function runToolLoop(
       // This turn ended in tool calls — its streamed text was narration, and
       // it was already emitted as a step above; don't emit it twice.
       resetTurnStream(false);
-      // 3732: a search found the person the owner asked to reach by name — walk to them next.
-      const walkNext = walksToTheNamedPerson({
-        ownerLine: runOwnerLine.get(runId) ?? '',
-        toolsUsed: toolNamesUsed,
-        roundTools,
-        walkOffered: tools.some((tool) => tool.name === WARM_PATH_TOOL),
-        roundFoundSomeone: peopleFoundCount(runId) > foundBeforeRound,
-      });
       response = await callClaudeLate(
         messages,
         systemPrompt,
@@ -16077,7 +16054,6 @@ async function runToolLoop(
         {
           onText: stream,
           model: TOOL_TURN_MODEL,
-          ...(walkNext && { forceTool: WARM_PATH_TOOL }),
         },
         Date.now() - startedAt,
       );
@@ -18736,21 +18712,8 @@ export async function processChat(
     steps.timed('history', loadHistory(threadId)),
   ]);
   // #502 (46334): a message that is only „remind me …" sets the reminder and starts nothing else.
-  // 3400 (MASTER TEST RUN, 3 of 3): the first run of a goal called invite_contact on its own;
-  // the gate refused it, but the run then apologised. An owner's run whose line neither asks
-  // for an invitation nor approves one does not hold the tool at all.
-  // #8087 (founder, 27 Oct): an invite chat exists to invite — the user there always gets the
-  // ready text with their own link, so both tools are held whatever the line says.
-  const inviteHeld =
-    ownerAbsent ||
-    thread.type === 'campaign_invite' ||
-    asksForAnInvite(userMessage) ||
-    isApproveChoice(userMessage.trim());
-  // 3400 (the tester's 47027, 1 of 3): get_invite_link wrote the invitation text before the
-  // owner said yes. It sits behind the same yes, or the owner asking for the link itself.
-  const linkHeld = inviteHeld || asksForTheLink(userMessage);
-  // 3730 (3), 3732: a person named to meet or reach is found in the network, never on the web.
-  const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);
+  // 3400 / 3730 / #8087: the invite, link and web tools are no longer held back on the
+  // owner's words (#8779 group 4) — each tool's own description carries its rule.
   // 3730 (2): „ask X too" on a goal that has asked is a follow-up, not a new goal and plan.
   const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
   // #8944: no server card stands between a reader's line and the asker any more, so a
@@ -18777,9 +18740,6 @@ export async function processChat(
       .filter(
         (tool) =>
           !(
-            (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
-            (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
-            (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
             (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
             (relayHeld || tool.name !== RELAY_ASK_TOOL.name)
           ),
