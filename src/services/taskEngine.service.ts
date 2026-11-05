@@ -1,5 +1,5 @@
 import {
-  CLOSE_QUESTION_NOTE,
+  closeQuestionNote,
   IdleDecision,
   IdleState,
   IdleWake,
@@ -10,7 +10,7 @@ import {
 } from './idleWakes.service';
 import { planDayOneEvent, planStepNoteForAnswers, sweepSilentSteps } from './planAdvance.service';
 import { withStepNote } from './planAdvance';
-import { nightlyReviewEvent } from './planNightly';
+import { nightlyReviewEvent, silentDayEvent } from './planNightly';
 import { planHasSteps } from './planSteps';
 import { answersElsewhereNote, answersInSiblingGoals } from './answersElsewhere.service';
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
@@ -1108,7 +1108,12 @@ async function tick(): Promise<void> {
       console.log(`[task-engine] task ${task.id}: held question still over the limit — no run`);
     } else {
       const closing = idle?.decision.kind === IdleWake.CloseQuestion;
-      await wakeTask(task.id, closing ? `${wake.text}\n\n${CLOSE_QUESTION_NOTE}` : wake.text);
+      await wakeTask(
+        task.id,
+        closing
+          ? `${wake.text}\n\n${closeQuestionNote(task.plan_approved_at !== null)}`
+          : wake.text,
+      );
     }
     if (idle !== null && idle.decision.kind !== IdleWake.Normal && idle.decision.at !== null) {
       await noteIdleReminder(task.id, idle.state).catch(logIdleFailure);
@@ -2110,15 +2115,8 @@ export async function sweepSilentGoals(): Promise<number> {
       // eslint-disable-next-line no-console
       console.error(`[task-engine] task ${task.id}: next wave not opened:`, (err as Error).message),
     );
-    const ok = await wakeTask(
-      task.id,
-      'ერთი დღეა კითხვა უპასუხოდ არის და ახალი არავის მისწერია. სტანდარტის წესია: ჩუმი დღე = ' +
-        'მეტ ადამიანს ჰკითხე. გეგმის „ვის ვკითხავ" სიიდან, ვისაც ჯერ არ მისწერია, ახლა მისწერე — ' +
-        'რამდენიმეს ერთდროულად, არა თითო-თითოდ. ეს გეგმის ფარგლებშია და ცალკე თანხმობა არ სჭირდება. ' +
-        'თუ სიაში ყველას უკვე მისწერე — ეს მეთოდის შეცვლის დროა: propose_task_plan-ით შესთავაზე ' +
-        'ახალი წრე ან ახალი გზა. ბოლოს ერთი სტრიქონი: რა მიდის ახლა და ვის ვკითხე; თუ პასუხს ელოდები, ზუსტად „როგორც კი ვინმე გიპასუხებს, მაშინვე გეტყვი." — საათები და დღეები არ ახსენო (D563). ' +
-        RULE_268_QUIET_DAY_ONE,
-    );
+    // K9 audit B10: a plan with steps follows its next step, not the people list.
+    const ok = await wakeTask(task.id, silentDayEvent(task.plan, RULE_268_QUIET_DAY_ONE));
     if (ok === 'woken') woken++;
     // The stamp said this goal had been widened. A busy thread means nobody
     // was written to, and the next sweep must be allowed to try again rather

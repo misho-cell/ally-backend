@@ -3420,20 +3420,22 @@ export function answerSentNote(language: RunLanguage): string {
 const PLAN_ANSWER_IN_WORDS: Readonly<Record<RunLanguage, string>> = {
   ka:
     'ღილაკები არ არის: მფლობელი სიტყვით გიპასუხებს. present_choices არ გამოიძახო. ' +
-    'approve_task_plan გამოიძახე, როცა მფლობელის სიტყვები გეგმაზე თანხმობას ნიშნავს — მათ შორის „შენ გადაწყვიტე" ' +
+    // K9 audit B3 (session 3), word for word; delegated is the stage-2 field.
+    'approve_task_plan გამოიძახე, როცა მფლობელის სიტყვები გეგმაზე თანხმობას ნიშნავს — ' +
+    'ნებისმიერი სიტყვებით, მათ შორის როცა გადაწყვეტილებას შენ განდობს („შენ გადაწყვიტე") ' +
     '(მაშინ delegated: true).',
   en:
     'There are no buttons: the owner answers in words. Do not call present_choices. Call ' +
-    'approve_task_plan when the owner’s words mean agreement with the plan — „you decide" included ' +
-    '(then delegated: true).',
+    'approve_task_plan when the owner’s words mean agreement with the plan — in any words, ' +
+    'including when they leave the decision to you („you decide") (then delegated: true).',
   ru:
     'Кнопок нет: владелец отвечает словами. Не вызывай present_choices. Вызывай ' +
-    'approve_task_plan, когда слова владельца означают согласие с планом — в том числе «реши сам» ' +
-    '(тогда delegated: true).',
+    'approve_task_plan, когда слова владельца означают согласие с планом — любыми словами, в том ' +
+    'числе когда он доверяет решение тебе («реши сам») (тогда delegated: true).',
   es:
     'No hay botones: el dueño responde con palabras. No llames a present_choices. Llama a ' +
-    'approve_task_plan cuando las palabras del dueño signifiquen acuerdo con el plan — también ' +
-    '«decide tú» (entonces delegated: true).',
+    'approve_task_plan cuando las palabras del dueño signifiquen acuerdo con el plan — con ' +
+    'cualquier palabra, también cuando te deja la decisión («decide tú») (entonces delegated: true).',
 };
 
 export function planInYourReplyNote(language: RunLanguage): string {

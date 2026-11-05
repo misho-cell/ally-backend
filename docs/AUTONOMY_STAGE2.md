@@ -218,6 +218,31 @@ Costs to watch on a fictional seat (DONE WHEN each holds):
   goal; „ახლა მოძებნე" → set_discussion(false) and the search runs.
 - an ask_contact carries `kind`; the reader's WhatsApp buttons match it.
 
+## Third round (session 3's K9 audit, rows assigned by the lead, 5 Nov 13:58Z)
+
+- Merged `origin/claude/wizardly-johnson-a6orxq` again (07d4e020, no conflicts).
+- **B3** (`PLAN_ANSWER_IN_WORDS`): the audit's wording, word for word in Georgian, the same
+  meaning in en/ru/es; `delegated: true` kept.
+- **B10**: the nightly review and the silent-day wake, for a plan with steps: „თუ გეგმას
+  შემდეგი ნაბიჯი აქვს — ის ახლავე გააკეთე. ახალი გეგმა მხოლოდ მაშინ, როცა ნაბიჯები
+  ამოიწურა…" and the closing line „ბოლოს ერთი ხაზი: რა მოხდა და რა არის შემდეგი (გეგმის
+  დღეებით)." Without steps: unchanged (both texts now live in `planNightly.ts`).
+- **B11**: the five-day wake with an approved plan: „…თუ დამტკიცებულ გეგმას შემდეგი ნაბიჯი
+  აქვს — ის ახლავე გააკეთე… მხოლოდ თუ ნაბიჯები ამოიწურა, ჰკითხე ერთხელ". Without a plan:
+  unchanged (`closeQuestionNote` in `idleWakes.service.ts`).
+- **B6**: a mediator the approved plan asks, who declined with words: the event says a
+  suggestion is inside the plan — ask for the introduction through them, or go to the next
+  step, and tell the owner in a line. Mediator not in an approved plan: unchanged (waits for
+  the owner's yes). `approvedPlanNamesMember` reads it; a failed read keeps the old text.
+- **B4, structural half — built, NOT wired** (the wall's lines are the lead's):
+  `namedOnAnAskStep(taskId, personName)` in `planAdvance.service.ts` is true when an answer
+  recorded on a step whose rule is `on_named: ask` names the person (names matched as in
+  introYesGate — no meaning read). It fails closed. **Proposed hook (one condition), in
+  `taskAsks.service.ts` at the `outside_plan` refusal:** before refusing, admit the ask when
+  `await namedOnAnAskStep(taskId, toName)` — the owner approved that rule with the plan. With
+  that, the B4 refusal text only fires for people no step named.
+- Test: `k9AuditTextsFollowThePlan.test.ts`.
+
 ## Notes for the lead session
 
 - Migrations on this branch: 296, 297, 298, 299 (main ends at 295 per the lead).

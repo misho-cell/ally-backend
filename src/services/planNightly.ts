@@ -24,14 +24,20 @@ const NIGHTLY_SILENCE_WITHOUT_STEPS =
   'ადამიანებს მისწერე (რამდენიმეს ერთდროულად). თუ სამი დღეა პასუხი არ არის — მეთოდი შეცვალე: ' +
   'propose_task_plan-ით შესთავაზე ახალი გზა ან ახალი წრე; დამტკიცებული გზები კი გრძელდება. ';
 
-const NIGHTLY_SILENCE_WITH_STEPS =
-  'გეგმა ნაბიჯებად მიდის: სიჩუმეზე სერვერი თვითონ გადადის ნაბიჯის on_silence წესით, ' +
-  'უარზე — on_no წესით, და ამას მფლობელის ახალი „კი" არ სჭირდება. ვინ არის შემდეგი, ' +
-  '„სად ვართ"-ში წერია — მის გარეთ არავის მისწერო და ახალ გეგმას ნუ შესთავაზებ, სანამ ' +
-  'გეგმის ნაბიჯები არ ამოიწურა. ';
+// K9 audit B10 (session 3): with steps, silence is the step's on_silence rule — no new yes.
+const NEXT_STEP_OR_NEW_ROUTE =
+  'თუ გეგმას შემდეგი ნაბიჯი აქვს — ის ახლავე გააკეთე. ახალი გეგმა მხოლოდ მაშინ, როცა ' +
+  'ნაბიჯები ამოიწურა: მფლობელს ერთი ხაზით უთხარი, რა ვცადეთ, და ერთი ახალი გზა შესთავაზე. ';
 
-const NIGHTLY_CLOSING =
-  'ყოველი პასუხი დაასრულე ერთი სტრიქონით: რა მიდის ახლა და ვის ვკითხე; თუ პასუხს ელოდები, ზუსტად „როგორც კი ვინმე გიპასუხებს, მაშინვე გეტყვი." — საათები და დღეები არ ახსენო (D563). ' +
+const NIGHTLY_SILENCE_WITH_STEPS = NEXT_STEP_OR_NEW_ROUTE;
+
+/** K9 audit B10: the closing line for a plan with steps — what happened and what is next. */
+const STEPS_CLOSING_LINE = 'ბოლოს ერთი ხაზი: რა მოხდა და რა არის შემდეგი (გეგმის დღეებით).';
+
+const NIGHTLY_CLOSING_LINE =
+  'ყოველი პასუხი დაასრულე ერთი სტრიქონით: რა მიდის ახლა და ვის ვკითხე; თუ პასუხს ელოდები, ზუსტად „როგორც კი ვინმე გიპასუხებს, მაშინვე გეტყვი." — საათები და დღეები არ ახსენო (D563). ';
+
+const NIGHTLY_OWNER_BLOCK =
   'თუ წინსვლა მფლობელის პასუხზეა ჩამოკიდებული — გამოიძახე ask_owner_decision ზუსტი ' +
   'კითხვით: ის კითხვას მფლობელის მომდევნო საუბარში იტანს. ეს მაშინაც გააკეთე, როცა ' +
   'ლოდინს თხრობით ამბობ („ველოდები მის გადაწყვეტილებას ორ კანდიდატზე") — მფლობელისგან ' +
@@ -39,6 +45,26 @@ const NIGHTLY_CLOSING =
 
 /** The nightly review's event for this goal's plan. */
 export function nightlyReviewEvent(plan: PlanWithSteps | null): string {
-  const silence = planHasSteps(plan) ? NIGHTLY_SILENCE_WITH_STEPS : NIGHTLY_SILENCE_WITHOUT_STEPS;
-  return `${NIGHTLY_OPENING}${silence}${NIGHTLY_CLOSING}`;
+  return planHasSteps(plan)
+    ? `${NIGHTLY_OPENING}${NIGHTLY_SILENCE_WITH_STEPS}${STEPS_CLOSING_LINE} ${NIGHTLY_OWNER_BLOCK}`
+    : `${NIGHTLY_OPENING}${NIGHTLY_SILENCE_WITHOUT_STEPS}${NIGHTLY_CLOSING_LINE}${NIGHTLY_OWNER_BLOCK}`;
+}
+
+const SILENT_DAY_OPENING = 'ერთი დღეა კითხვა უპასუხოდ არის და ახალი არავის მისწერია. ';
+
+// Moved from taskEngine.service unchanged for plans without steps.
+const SILENT_DAY_WITHOUT_STEPS =
+  'სტანდარტის წესია: ჩუმი დღე = ' +
+  'მეტ ადამიანს ჰკითხე. გეგმის „ვის ვკითხავ" სიიდან, ვისაც ჯერ არ მისწერია, ახლა მისწერე — ' +
+  'რამდენიმეს ერთდროულად, არა თითო-თითოდ. ეს გეგმის ფარგლებშია და ცალკე თანხმობა არ სჭირდება. ' +
+  'თუ სიაში ყველას უკვე მისწერე — ეს მეთოდის შეცვლის დროა: propose_task_plan-ით შესთავაზე ' +
+  'ახალი წრე ან ახალი გზა. ' +
+  NIGHTLY_CLOSING_LINE;
+
+/** The silent-day wake's event (K9 audit B10): a plan with steps follows its next step. */
+export function silentDayEvent(plan: PlanWithSteps | null, quietDayRule: string): string {
+  const body = planHasSteps(plan)
+    ? `${NEXT_STEP_OR_NEW_ROUTE}${STEPS_CLOSING_LINE} `
+    : SILENT_DAY_WITHOUT_STEPS;
+  return `${SILENT_DAY_OPENING}${body}${quietDayRule}`;
 }

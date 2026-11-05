@@ -1,6 +1,9 @@
 import { query } from '../db/postgres/client';
 import { RunLanguage } from './runLanguage';
-import { PlanWithSteps, planHasSteps, stepById, stepsOf } from './planSteps';
+import { NamedAction, PlanWithSteps, planHasSteps, stepById, stepsOf } from './planSteps';
+import { georgianScriptName } from './georgianScriptName';
+import { ownerNamedAGoBetween } from './severalRoutes';
+import { phoneDigits } from './phone';
 import {
   StepEnd,
   isForward,
@@ -41,7 +44,9 @@ const MS_PER_DAY = 86_400_000;
 export type StepEventText = Readonly<Record<RunLanguage, string>>;
 
 interface PlanState {
-  readonly plan: PlanWithSteps;
+  readonly plan: PlanWithSteps & {
+    readonly people_to_involve?: readonly { readonly phone: string }[];
+  };
   readonly current: string | null;
 }
 
@@ -302,5 +307,64 @@ export async function planDayOneEvent(taskId: number): Promise<StepEventText | n
   } catch (err) {
     logFailure('day one', taskId, err);
     return null;
+  }
+}
+
+/**
+ * K9 audit B6: does this goal's approved plan name this member (any of their
+ * numbers)? False on no plan, and on a failed read — the event then keeps the
+ * no-plan wording, which waits for the owner.
+ */
+export async function approvedPlanNamesMember(taskId: number, userId: number): Promise<boolean> {
+  try {
+    const state = await approvedPlanState(taskId);
+    if (state === null) return false;
+    const inPlan = new Set((state.plan.people_to_involve ?? []).map((p) => phoneDigits(p.phone)));
+    return (await phonesOfMember(userId)).some((phone) => inPlan.has(phoneDigits(phone)));
+  } catch (err) {
+    logFailure('plan member', taskId, err);
+    return false;
+  }
+}
+
+const MAX_ANSWERS_READ_FOR_NAMES = 20;
+
+/** A name, in the spellings it is saved and read in, appears in one of these answers. */
+function nameIsIn(answers: readonly string[], name: string): boolean {
+  const trimmed = name.trim();
+  if (trimmed === '') return false;
+  const spellings = [trimmed, georgianScriptName(trimmed)];
+  return answers.some((answer) => ownerNamedAGoBetween(answer, spellings));
+}
+
+/**
+ * K9 audit B4 (structural, stage 2): a step with `on_named: ask` sends the run to
+ * ask the person an answer named, and the plan wall refused them as outside the
+ * plan. The owner approved that rule with the plan, so a person is admitted
+ * when an answer recorded on such a step names them — names are matched, as in
+ * introYesGate; no words are read for meaning. False on any failure: the wall
+ * stays shut, the direction that costs a question, never a message.
+ */
+export async function namedOnAnAskStep(taskId: number, personName: string): Promise<boolean> {
+  try {
+    const state = await approvedPlanState(taskId);
+    if (state === null || !planHasSteps(state.plan)) return false;
+    const result = await query<{ step_id: string; answer: string | null }>(
+      `SELECT e.step_id, a.answer
+         FROM plan_step_events e
+         JOIN task_asks a ON a.id::text = e.ref AND a.task_id = e.task_id
+        WHERE e.task_id = $1 AND e.kind = $2
+        ORDER BY e.id DESC
+        LIMIT $3`,
+      [taskId, StepEventKind.Answered, MAX_ANSWERS_READ_FOR_NAMES],
+      ADVANCE_QUERY_TIMEOUT_MS,
+    );
+    const answers = result.rows
+      .filter((row) => stepById(state.plan, row.step_id)?.on_named?.action === NamedAction.Ask)
+      .map((row) => row.answer ?? '');
+    return nameIsIn(answers, personName);
+  } catch (err) {
+    logFailure('named on an ask step', taskId, err);
+    return false;
   }
 }

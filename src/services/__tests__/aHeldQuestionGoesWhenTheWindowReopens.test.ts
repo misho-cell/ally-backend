@@ -165,7 +165,7 @@ describe('where it is wired', () => {
   it('sends the held questions at the scheduled wake and tells the run', () => {
     expect(engine).toContain('const wake = await scheduledWake(task.id);');
     // #8625: the five-day wake adds its close question to the same text.
-    expect(engine).toContain('await wakeTask(task.id, closing ? `${wake.text}');
+    expect(engine).toContain('closeQuestionNote(task.plan_approved_at !== null)');
     expect(engine).toContain('const held = await releaseDueHeldAsks(taskId);');
     expect(engine).toContain('return await sendReleasedHeldAsks(owner, held);');
     expect(engine).toContain('heldAsksSentNote(held)');
@@ -174,7 +174,7 @@ describe('where it is wired', () => {
   /** The tester's 1128 (#391, 32203): two checks, both still over the limit, each woke the owner. */
   it('runs nothing when every held question is still over the limit', () => {
     const skip = engine.indexOf('if (wake.onlyStillHeld) {');
-    const run = engine.indexOf('await wakeTask(task.id, closing ?');
+    const run = engine.indexOf('closeQuestionNote(task.plan_approved_at !== null)');
     expect(skip).toBeGreaterThan(-1);
     expect(run).toBeGreaterThan(skip);
   });

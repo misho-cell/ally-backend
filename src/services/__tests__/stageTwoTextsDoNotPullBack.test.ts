@@ -36,8 +36,8 @@ describe('the nightly review', () => {
     const text = nightlyReviewEvent({ steps: [STEP] });
     expect(text).not.toContain('მეთოდი შეცვალე');
     expect(text).not.toContain('propose_task_plan');
-    expect(text).toContain('on_silence');
-    expect(text).toContain('ახალი „კი" არ სჭირდება');
+    // K9 audit B10's wording: the next step now; a new plan only when the steps ran out.
+    expect(text).toContain('თუ გეგმას შემდეგი ნაბიჯი აქვს — ის ახლავე გააკეთე.');
     expect(text.startsWith('ღამის გადახედვა:')).toBe(true);
   });
 
