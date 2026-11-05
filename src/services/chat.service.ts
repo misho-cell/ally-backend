@@ -2494,6 +2494,12 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
         type: 'boolean',
         description: 'Must be true, and only after the user explicitly approved this exact text.',
       },
+      cannot_help: {
+        type: 'boolean',
+        description:
+          "true when the user's own words say they cannot help or know nobody — the question " +
+          'is then closed as a decline, and the asker is told politely.',
+      },
     },
     required: ['answer_text'],
   },
@@ -11765,7 +11771,13 @@ async function executeToolCall(
       ) {
         return { sent: false, note: NOT_FROM_A_GUESSED_CHAT_NOTE };
       }
-      const sent = await sendApprovedAskAnswer(userId, askThread, answerText);
+      const sent = await sendApprovedAskAnswer(
+        userId,
+        askThread,
+        answerText,
+        undefined,
+        input['cannot_help'] === true,
+      );
       if (sent.sent && runId) runAnswerSent.add(runId);
       return sent.sent ? { ...sent, next: answerSentNote(runLang(runId)) } : sent;
     }

@@ -1,6 +1,5 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isTypedDecline } from '../typedDecline';
 import { DECLINE_QUIET_HOURS } from '../taskAsks.service';
 
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
@@ -10,27 +9,6 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
  * answer, and the same asker's assistant then sent another question and a
  * reminder. Busy or „leave me alone" is a no, and a no closes the asking.
  */
-describe('busy or „leave me alone" is a decline', () => {
-  it.each([
-    'არ მცალია დამანებე თავი',
-    'არ მცალია',
-    'თავი დამანებე',
-    'მომეშვი რა',
-    'ნუ მწერ',
-    'Leave me alone',
-    "I'm busy",
-    'Not interested',
-    'Отстань',
-    'Déjame en paz',
-  ])('„%s"', (line) => {
-    expect(isTypedDecline(line)).toBe(true);
-  });
-
-  it('a busy line that still carries something stays an answer', () => {
-    expect(isTypedDecline('არ მცალია, მაგრამ ხვალ 10-ზე დაგირეკავ')).toBe(false);
-  });
-});
-
 describe('nothing more goes to somebody who said no', () => {
   const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
 

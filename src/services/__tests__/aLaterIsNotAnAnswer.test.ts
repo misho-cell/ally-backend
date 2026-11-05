@@ -16,7 +16,7 @@ describe('aLaterIsNotAnAnswer', () => {
       '(askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText))',
     );
     const recorded = source.indexOf(
-      'const captured = await recordAskAnswer(askThreadId, answerText);',
+      'const captured = await recordAskAnswer(askThreadId, answerText, cannotHelp);',
       refused,
     );
     expect(refused).toBeGreaterThan(0);

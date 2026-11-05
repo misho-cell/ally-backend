@@ -79,7 +79,6 @@ import {
 } from './a2aRounds';
 import { ANSWER_NOT_QUESTION_NOTE, answersAQuestionWithAQuestion } from './answerNotQuestion';
 import { withoutConditionStated } from './healthDisclosure';
-import { isTypedDecline } from './typedDecline';
 import { Prematch, prematchMany, PrematchWord } from './prematch.service';
 import { composePreparedAnswer, preparedAnswerLine } from './preparedAnswer.service';
 import { askField, recountAnswerStats } from './answerStats.service';
@@ -2656,29 +2655,16 @@ export interface CapturedAnswer {
 }
 
 /**
- * A decline is the button's own sentence, or (3433) the helper's own last line
- * in the thread, typed since the question came, saying they cannot help. The
- * stored answer is the assistant's wording (D648), so the helper's words are
- * read from the thread, never judged from the paraphrase.
+ * A decline is the button's own sentence, or (3433) the helper's typed „I can't
+ * help" — which since #8779 b (rule 38, the founder 4 Nov 19:07) is the model's
+ * reading, passed as cannot_help, never a word match.
  */
-async function answerIsADecline(askThreadId: number, answer: string): Promise<boolean> {
-  if ((await askTapOnThread(askThreadId, answer)) === AskTap.Decline) return true;
-  try {
-    const line = await query<{ content: string }>(
-      `SELECT c.content FROM conversations c
-        WHERE c.thread_id = $1 AND c.role = 'user' AND c.kind = 'message' AND c.content <> ''
-          AND c.created_at > (SELECT MAX(a.created_at) FROM task_asks a WHERE a.ask_thread_id = $1)
-        ORDER BY c.created_at DESC LIMIT 1`,
-      [askThreadId],
-      ASK_QUERY_TIMEOUT_MS,
-    );
-    const said = line.rows[0]?.content;
-    return said !== undefined && isTypedDecline(said);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(`[ask] thread ${askThreadId}: typed decline not read:`, (err as Error).message);
-    return false;
-  }
+async function answerIsADecline(
+  askThreadId: number,
+  answer: string,
+  cannotHelp: boolean,
+): Promise<boolean> {
+  return cannotHelp || (await askTapOnThread(askThreadId, answer)) === AskTap.Decline;
 }
 
 /** The most of the helper's own lines read for numbers they typed. */
@@ -2710,6 +2696,8 @@ async function helpersOwnLines(askThreadId: number): Promise<string[]> {
 export async function recordAskAnswer(
   askThreadId: number,
   answerText: string,
+  /** #8779 b (rule 38): the model read the helper's own words as „I can't help". */
+  cannotHelp = false,
 ): Promise<CapturedAnswer | null> {
   const trimmed = answerText.trim();
   const typed = containsPhoneLike(trimmed) ? await helpersOwnLines(askThreadId) : [];
@@ -2724,7 +2712,7 @@ export async function recordAskAnswer(
   // thread can carry several rounds of the same conversation, and round two's
   // answer belongs to round two's question. Without the ordering, one reply
   // would have overwritten every round at once.
-  const declined = await answerIsADecline(askThreadId, safe);
+  const declined = await answerIsADecline(askThreadId, safe, cannotHelp);
   const updated = await query<{
     id: number;
     task_id: number;
@@ -2893,6 +2881,8 @@ export async function sendApprovedAskAnswer(
   // answer similar questions this way in future". Given only on the user's
   // explicit yes to THAT; the rule is written after the answer has gone.
   remember?: { kind?: string; verbatim?: boolean },
+  /** #8779 b (rule 38): the helper's own words say they cannot help. */
+  cannotHelp = false,
 ): Promise<SentAnswer> {
   const ask = await query<{ to_user_id: number; status: string; question: string }>(
     `SELECT to_user_id, status, question FROM task_asks
@@ -2927,7 +2917,7 @@ export async function sendApprovedAskAnswer(
     const heldBack = await answerHeldBack(askThreadId, row.question, answerText);
     if (heldBack !== null) return { sent: false, error: heldBack };
   }
-  const captured = await recordAskAnswer(askThreadId, answerText);
+  const captured = await recordAskAnswer(askThreadId, answerText, cannotHelp);
   if (!captured) {
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
   }
