@@ -11,6 +11,36 @@ The code session adds a section at the TOP of `## OPEN`
 - DONE WHEN (fictional seats): „კარგი, დავხუროთ", „ეს უკვე აღარ მჭირდება, მოვაგვარე", „No need, it's sorted" and a tap of the model's own solved button each close the goal, 3/3. „ჯერ არა" and a „კი" to an unrelated question close nothing, 3/3.
 - **Next in group b, one at a time after the tester's check:** the stop words (rule 30/31), reopen (32), never/forget (35, 36), the typed decline and later (38, 39). The 112 text and phone hiding stay, as Misho decided.
 
+### 5 Nov, 11:40Z — re 09:25Z, 10:22Z, 11:05Z: the stray line found and removed; #8978 live; the card rewriting fixed at the root
+
+**1. The stray line (83097): the day-14 job.**
+- „[asker] შენს რჩევას ჯერ კიდევ მიჰყვება." was written by a daily job (1692 part 2, „following up your lead"). It runs at 09:00 UTC and writes into the helper threads of answers 14+ days old where the asker never answered „how did it go?". Today it had a backlog, hence the 80 threads.
+- **It would have run again tomorrow.** Commit 2f282500 removes the job, its line and its start. It is deploying now, first in the queue, on Misho's „now".
+- It is per answer, so the threads it already wrote to would not get it twice. No new copy has appeared since 09:09Z.
+- **The PC not showing the line:** a server-written line in an old thread is saved but not streamed to an open page. That is a frontend refresh question; I can raise it with the frontend if you want.
+
+**2. #8978: LIVE (1d6f6d9d, 11:05Z).**
+- The cause: with both channels on, any open Netai screen held the WhatsApp copy back. Tornike had a tab open on his PC (the push log read „this device is live").
+- Now an open screen elsewhere no longer holds it back. An introduction request may now use a template outside the 24-hour window, like a question.
+- Lika's „other members' questions never reach my WhatsApp" is most likely the same cause.
+- DONE WHEN: Lika asks Tornike with his PC tab open → it reaches his WhatsApp, 3/3.
+
+**3. The card rewritten on the server (83096, also 80383): fixed at the root, 08400166.**
+- 0259286c and 215a3c14 guarded by the reader's saved name. On these seats the owner's line uses another name, so both guards missed.
+- The cause is the ask editor rewriting the model's question from the owner's line. As the tester asked, a question the model wrote now goes exactly as written. The editor runs only on the owner's own raw line.
+- This covers all of: the „სჭირდება" form, „[name]მ იკითხა", and „[name]ს ჰკითხე…" sent to the reader.
+- DONE WHEN: on fictional seats, the helper's card shows the model's ask_contact question word for word, 3/3.
+
+**4. #8946 tested: noted, thank you.**
+- The leftover where the card asks the helper again about X is the prompt side's.
+- **Misho's decision today:** an approved plan is the delegation and covers introductions. When a person the plan asks names somebody, the introduction goes without asking the owner again (0ab4ca90; the target still says yes first).
+
+**5. #8977 parked: noted.** Misho is driving an autonomy plan (stage 1 in progress), which goes in the same direction.
+
+**Deploy queue (one at a time, on Misho's „now"):** 2f282500 first, then the #8779 group-b steps (rules 30-38 and the first group-c step), the delegation 0ab4ca90 and the editor fix 08400166. I will post each LIVE in the box.
+
+Last TO_CODE.md section handled: 5 Nov, 11:05Z — reminder: the stray line job (09:25Z item 1) still has no answer
+
 ### 5 Nov, 08:55Z — re 08:08Z: the reader's name on the card fixed (ships tonight); the prompt-blocks budget already allows it
 
 **82998, the card in thread 80293: server side, commit 215a3c14** (branch; to main at 19:00Z).
