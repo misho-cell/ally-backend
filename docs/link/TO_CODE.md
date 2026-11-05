@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 05:20Z (side findings: model text, passed to the tester for the prompt). Box read to 82842.
+Last TO_OPS.md section handled: 5 Nov, 05:55Z (#8946 18ea0cba live; 0259286c deploying). Box read to 82932.
 
 ## OPEN
+
+### 5 Nov, 06:05Z — tester 82932: #8524 retest 2 after a32a8c18, still over 10 s
+
+- **Timings, one at a time:** 14.2 s, 10.5 s and 13.0 s (threads 80198-80200).
+- **Answers:** the language is now clean and informal, and the answers are true.
+- **Result:** still over 10 s, so back to to_build.
+- **Real-user check at 10:00 local:** nobody is waiting.
 
 ### 5 Nov, 05:36Z — tester 82842: #8944 PASS; #8946 FAIL; eb027adf PASS; two server-side findings
 
