@@ -558,7 +558,7 @@ import {
 } from './instructionUnsent';
 import { questionHeldOnThread } from './paceUntilSeen';
 import { isOwnersFirstLine } from './firstOwnerLine';
-import { registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
+import { ABOUT_THE_NAME_FIELD, registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
 import { SUMMARIZED_THINKING, tracedInFull } from './reasoningSummary';
 import {
@@ -4534,6 +4534,8 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
           description:
             'The name or partial name to search for. Can be first name, last name, or full name.',
         },
+        // #8779 group 4: the model's reading, not a word list (registeredNameOnlyWhenAsked.ts).
+        about_the_name: ABOUT_THE_NAME_FIELD,
       },
       required: ['name_query'],
     },
@@ -10820,12 +10822,12 @@ async function executeToolCall(
       // 5908: the contact card opened next reads the network's names by these words.
       rememberNameAsked(runId, byName, input['name_query']);
       // #8528: the member's registered name goes only to a question about the name.
-      const ownerLine = runId === undefined ? '' : (runOwnerLine.get(runId) ?? '');
+      const aboutTheName = input['about_the_name'];
       if (notInThePhonebook(byName)) {
         return withFurtherOut(
           userId,
           input['name_query'],
-          { ...registeredNameOnlyWhenAsked(byName, ownerLine), look_further: LOOK_ONE_RING_OUT },
+          { ...registeredNameOnlyWhenAsked(byName, aboutTheName), look_further: LOOK_ONE_RING_OUT },
           runId,
         );
       }
@@ -10833,7 +10835,7 @@ async function executeToolCall(
       return withCommunities(
         await withLikelyEmployers(
           userId,
-          await withContactsWhoKnowThem(userId, registeredNameOnlyWhenAsked(byName, ownerLine)),
+          await withContactsWhoKnowThem(userId, registeredNameOnlyWhenAsked(byName, aboutTheName)),
         ),
       );
     }
