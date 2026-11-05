@@ -1,22 +1,26 @@
 /**
- * #8521 (the tester's 80752 item 7, case 109): „დაივიწყე ეს ფაქტი სალომეზე" was
- * answered „ადასტურებ …?" and nothing was deleted — the tool refuses a delete
- * that is not confirmed, and the owner's own order to forget did not count as
- * the confirmation. An owner's latest line that itself says forget, delete or
- * erase is that confirmation; a line that says not to is not.
+ * #8521 RETEST (the tester's 80967): „forget that X is an electrician" holds the
+ * fact in the owner's own words, so the fact sweep saved it again the minute
+ * forget_contact_fact deleted it.
+ *
+ * #8779 b (rule 36, the founder 4 Nov 19:07): the sweep no longer reads forget
+ * words. A conversation where a fact was just deleted or retracted is not swept
+ * for a short while — the deleting tool notes it here.
  */
-const FORGET_ASK_RE =
-  /((?<!\p{L})(?:დაივიწყე|დაივიწყო|წაშალე|წაშალო|ამოშალე)(?!\p{L}))|(\b(?:forget|delete|erase|remove)\b)|((?<!\p{L})(?:забудь|удали|сотри|olvida|borra|elimina)(?!\p{L}))/iu;
+const SWEEP_PAUSE_AFTER_FORGET_MS = 5 * 60_000;
+const forgottenAt = new Map<number, number>();
 
-const FORGET_NEGATED_RE =
-  /((?<!\p{L})(?:ნუ|არ)\s+(?:დაივიწყ|წაშალ|ამოშალ))|(\b(?:don'?t|do not|never)\s+(?:forget|delete|erase|remove)\b)|((?<!\p{L})не\s+(?:забывай|удаляй|стирай))|((?<!\p{L})no\s+(?:olvides|borres|elimines))/iu;
+export function noteFactForgotten(threadId: number | undefined, now: number = Date.now()): void {
+  if (threadId === undefined) return;
+  forgottenAt.set(threadId, now);
+}
 
-/** A preview or a question is not an order: „წავშალო?" asks, it does not tell. */
-const ENDS_IN_QUESTION_RE = /[?？]\s*$/u;
-
-export function ownerLineOrdersTheForget(line: string | undefined): boolean {
-  if (line === undefined) return false;
-  const text = line.trim();
-  if (text === '' || ENDS_IN_QUESTION_RE.test(text)) return false;
-  return FORGET_ASK_RE.test(text) && !FORGET_NEGATED_RE.test(text);
+export function factForgottenRecently(threadId: number, now: number = Date.now()): boolean {
+  const at = forgottenAt.get(threadId);
+  if (at === undefined) return false;
+  if (now - at > SWEEP_PAUSE_AFTER_FORGET_MS) {
+    forgottenAt.delete(threadId);
+    return false;
+  }
+  return true;
 }
