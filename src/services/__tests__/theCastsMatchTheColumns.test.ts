@@ -15,10 +15,4 @@ describe('the casts match the columns', () => {
     expect(card).toContain('WHERE user_id = $1::text AND key = ANY($2::text[])');
     expect(card).toContain('[String(memberId), PROFILE_KEYS, PROFILE_KEYS.length]');
   });
-
-  it('deletes plan steps by their uuid ids', () => {
-    const chat = source('chat.service.ts');
-    expect(chat).toContain('DELETE FROM conversations WHERE id = ANY($1::uuid[])');
-    expect(chat).not.toContain('DELETE FROM conversations WHERE id = ANY($1::int[])');
-  });
 });

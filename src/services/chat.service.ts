@@ -111,13 +111,7 @@ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
 import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
-import {
-  carriesPlanSentence,
-  introPlanOnly,
-  withoutMatchJustification,
-  withPlanSentence,
-  withOnePlanSentence,
-} from './planJustification';
+import { namesTheReader } from './askerInNeed';
 import {
   FoundThroughBridge,
   foundThroughBridges,
@@ -302,7 +296,7 @@ import {
   closeOpenQuestions,
 } from './taskAsks.service';
 import { askThreadForName, askThreadsForName } from './askThreadByName';
-import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
+import { laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
@@ -342,7 +336,6 @@ import {
   planInSentences,
   withAskablePeopleOnly,
   PLAN_CLOSING_QUESTION,
-  planAskSentenceOff,
   planClosingQuestionOff,
   EARLIER_PLAN_CLOSING_QUESTIONS,
   nobodyCanBeWrittenTo,
@@ -5256,48 +5249,6 @@ async function dropStepsTheReplyRepeats(
   }
 }
 
-/** A run writes a handful of steps; this many is more than any run has. */
-const MAX_RUN_STEPS_READ = 30;
-
-/**
- * 48247 (thread 46960): the plan went out twice, 11 s apart — the model's
- * in-between text after propose_task_plan, saved as a step („…ასისტენტებს
- * დაველაპარაკები … დავიწყო?"), and then the final reply, which told the plan
- * again in other words („კიდევ ერთი ადამიანი" where the step named Davit), so
- * the word-for-word tidy-up above could not see it. When the reply carries
- * the plan sentence, a step of the same run that carries it too is the same
- * plan said early, and it goes. Best-effort, like the tidy-up above.
- */
-async function dropPlanStepsTheReplyCarries(
-  threadId: number,
-  runId: string | null,
-  reply: string,
-): Promise<void> {
-  if (!runId || !carriesPlanSentence(reply)) return;
-  try {
-    const steps = await query<{ id: string; content: string }>(
-      `SELECT id, content FROM conversations
-        WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
-        ORDER BY id LIMIT $3`,
-      [threadId, runId, MAX_RUN_STEPS_READ],
-      STEP_TIDY_TIMEOUT_MS,
-    );
-    const ids = steps.rows.filter((s) => carriesPlanSentence(s.content)).map((s) => s.id);
-    if (ids.length === 0) return;
-    // conversations.id is a uuid: as int[] this failed on every call since 9 Oct (ops, 11 Oct).
-    await query(
-      `DELETE FROM conversations WHERE id = ANY($1::uuid[])`,
-      [ids],
-      STEP_TIDY_TIMEOUT_MS,
-    );
-    // eslint-disable-next-line no-console
-    console.log(`[chat] run ${runId}: dropped ${ids.length} plan step(s) the reply tells again`);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('[chat] could not drop plan steps:', (error as Error).message);
-  }
-}
-
 /**
  * The user's OWN direct contact's number, on explicit request only. Guards:
  * the phone must be in THEIR phonebook (UserAlias under their contactId) and
@@ -7432,47 +7383,6 @@ const ASKS_FOR_A_CHANGE = new RegExp(
 );
 
 /**
- * ROW 238, SECOND CUT — TWO LISTS, BECAUSE THE TWO ANSWERS COST DIFFERENT
- * THINGS. The seat's own control found this within the hour.
- *
- * On goal 9871, at 17:02:13, the owner typed:
- *
- *     „By the way, tomorrow I will be at home INSTEAD of the office."
- *
- * …and the goal was held. A real goal, paused because somebody mentioned where
- * they would be, with nothing on any screen to say so. That is the fault this
- * whole row is about, arriving through the fix for it.
- *
- * THE BROAD LIST IS NOT WRONG WHERE IT LIVES. It decides whether a NEW
- * `approve_task_plan` counts, and the comment above it argues the direction:
- * „refusing a real yes costs the owner one more tap; accepting a withdrawn one
- * sends messages that cannot be recalled." At one tap, catching „instead" too
- * often is the cheap mistake.
- *
- * PAUSING A GOAL IS NOT ONE TAP. It is invisible — no card, no line, nothing
- * the owner or the seat can see — and it stops the work until somebody
- * approves a plan. So the pause gets its own list, and it holds only
- * sentences that can hardly be anything but „change the plan".
- *
- * WHAT THIS DELIBERATELY MISSES, said out loud rather than discovered: „Ask
- * only Netai Test 8, not Netai Test 10" IS a change request and this list does
- * not catch it. The wave may start on a plan the owner is mid-changing — which
- * is exactly what happened before today and is the lesser of the two, because
- * it is visible and the consent wall still stands in front of every send.
- */
-const ASKS_TO_CHANGE_THE_PLAN = new RegExp(
-  `${NOT_A_LETTER_BEFORE}(?:${ASKS_FOR_A_CHANGE_STEMS.join('|')})` +
-    `|\\bchange it\\b|\\bchange that\\b|\\bchange the plan\\b|\\blet'?s change\\b` +
-    `|\\brewrite the plan\\b|\\bredo the plan\\b|\\bdo it differently\\b`,
-  'iu',
-);
-
-/** The narrow one: only a sentence that can hardly be anything but „change the plan". */
-export function asksToChangeThePlan(said: string): boolean {
-  return ASKS_TO_CHANGE_THE_PLAN.test(said);
-}
-
-/**
  * Is the yes still a yes after this line?
  *
  * Two different ways for it not to be, deliberately kept apart above: the
@@ -8909,18 +8819,6 @@ function withoutClosingVariant(reply: string, question: string): string {
   return lines.slice(0, -1).join('\n');
 }
 
-/**
- * 2909: a step that says the run will talk to people's assistants is the plan
- * told early — „ელენესა და რატის ასისტენტებს დავველაპარაკები და ვკითხავ…".
- * When the plan message follows in the same run, it is the one copy.
- */
-const PLAN_TALKS_RE =
-  /ასისტენტ\S*\s+(?:\S+\s+){0,3}?და?ვ?ველაპარაკ|\b(?:talk|speak)\s+to\s+(?:\S+\s+){0,6}?assistants?\b/iu;
-
-export function retellsThePlansTalks(step: string): boolean {
-  return PLAN_TALKS_RE.test(step);
-}
-
 /** Do the plan step and the final both end on the agreed question (D663)? */
 export function bothAskTheClosingQuestion(
   step: string,
@@ -8957,26 +8855,22 @@ async function withWhyInOneSentence(
 
 /** A question of the model's own needs at least this many words to name who and what. */
 const MIN_OWN_QUESTION_WORDS = 3;
-/**
- * It proposes the run's own next step — a first-person verb („მივწერო",
- * „ვკითხო", „დავუკავშირდე"; „Shall I", „Should I"; „Написать", „спросить") —
- * not a question back to the owner („რომელ ქალაქში ხარ?").
- */
-const OWN_ACTION_QUESTION_RE =
-  /(?:^|[\s,„"(])(?:მი|მო|გა|და|შე|ვ|ჩა|წა|გადა|და)[\p{Script=Georgian}]*ო(?=[\s,?!.])|\b(?:shall|should|may) I\b|(?:написать|спросить|связаться|попросить)/iu;
 
 /**
  * #8680 (Tornike, 4 Nov, via the tester's 82039): no bare „გავუგზავნო?" — the
- * plan asks in a sentence naming whom and what. A reply whose last line is
- * such a question of its own keeps it, and the agreed question is not added.
+ * plan asks in a sentence naming whom and what. #8779 c (the founder, 4 Nov
+ * 19:07): which kind of question it is, is the model's to decide, not a verb
+ * list's. A reply whose last line is a question of its own — not the agreed one
+ * or a variant of it — keeps it, and the agreed question is not added.
  */
 export function endsOnOwnQuestion(reply: string, question: string): boolean {
   const last = (reply.trimEnd().split('\n').pop() ?? '').trim();
   if (!last.endsWith('?')) return false;
-  if ([question, ...EARLIER_PLAN_CLOSING_QUESTIONS].some((asked) => last === asked)) return false;
   const asked = [question, ...EARLIER_PLAN_CLOSING_QUESTIONS];
-  if (asked.some((closing) => isClosingQuestionVariant(last, closing))) return false;
-  return last.split(/\s+/u).length >= MIN_OWN_QUESTION_WORDS && OWN_ACTION_QUESTION_RE.test(last);
+  if (asked.some((closing) => last === closing || isClosingQuestionVariant(last, closing))) {
+    return false;
+  }
+  return last.split(/\s+/u).length >= MIN_OWN_QUESTION_WORDS;
 }
 
 export function withClosingQuestion(given: string, language: RunLanguage): string {
@@ -9017,76 +8911,34 @@ export function replyAsksForApproval(offered: readonly string[] | null | undefin
   return (offered ?? []).some((label) => isApproveChoice(label));
 }
 
-/** Below this a reply is an announcement around a plan, not a plan. */
-const PLAN_REPLY_MIN_CHARS = 120;
-
 /**
- * Does the reply say the plan? Every person the plan will ask must be named,
- * and there must be more than a line. A reply that only asks „approve?" fails
- * both, and that is the case row 101 was about.
+ * #8779 c (the founder, 4 Nov 19:07): the server no longer rewrites the plan
+ * reply by word lists (match justifications, stage directions, a second plan
+ * sentence). It checks one thing, structurally: that the reply names everyone
+ * the plan will write to — in either alphabet, in any case ending — so the
+ * owner never approves without seeing who is written to.
  */
-export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
-  if (reply.trim().length < PLAN_REPLY_MIN_CHARS) return false;
-  // The tester's 963 (Ninia, thread 28910): the reply said the whole plan and
-  // ended on the agreed question, but wrote „ქეთევანს" and „გიორგი
-  // აბრამიშვილს" for the plan's „❤️ Ketevan" and „Giorgi Abramishvili" — so
-  // the server put its own paragraph in front and the plan was said twice.
-  // The model is told to END the plan on that question; a reply that does has
-  // written it.
-  if (Object.values(PLAN_CLOSING_QUESTION).some((question) => reply.includes(question))) {
-    return true;
-  }
-  return plan.names.every((name) => reply.includes(name));
-}
+const NOT_A_NAME_LETTER_RE = /[^\p{L}\s]/gu;
 
-/**
- * #8680 (Tornike, 4 Nov, the tester's 82572): with the plan-sentence block
- * switched off, the assistant's own sentence is the plan — the server adds
- * none. Only when that sentence names everyone the plan will ask; otherwise the
- * owner would approve without seeing who is written to, and the server's
- * sentence stays.
- */
-function ownSentenceStands(reply: string, plan: PlanForReply, language: RunLanguage): boolean {
-  if (!planAskSentenceOff(language) || reply.trim() === '') return false;
-  return plan.names.length > 0 && plan.names.every((name) => reply.includes(name));
+export function replyNamesEveryone(reply: string, plan: PlanForReply): boolean {
+  return plan.names.every((name) => namesTheReader(reply, name.replace(NOT_A_NAME_LETTER_RE, ' ')));
 }
-
 /**
- * The plan reply's text: the model's reply with the plan in it, said once and
- * ended on the agreed question.
+ * The plan reply's text: the model's reply as written; the server's plan
+ * sentence under it only when the reply leaves someone out (or is empty); the
+ * agreed question at the end when its block is on and the model asked nothing.
  */
 export function planReplyText(reply: string, plan: PlanForReply, language: RunLanguage): string {
-  // D739: an introduction plan is its one sentence and one question, on every
-  // path. 1454: nothing the model wrote before it is kept (box 53296), and a
-  // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
-  // 50065) — gives way to the server's sentence instead of standing before it.
-  if (ownSentenceStands(reply, plan, language)) {
-    const own = withOnePlanSentence(withoutMatchJustification(reply));
-    return withClosingQuestion(
-      plan.mutualGroups === undefined ? own : `${plan.mutualGroups}\n\n${own}`,
-      language,
-    );
-  }
-  if (carriesPlanSentence(plan.text)) {
-    const serverSentence = plan.introSentence ?? plan.text;
-    const sentence = withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence }));
-    return withClosingQuestion(
-      plan.mutualGroups === undefined ? sentence : `${plan.mutualGroups}\n\n${sentence}`,
-      language,
-    );
-  }
-  if (replyCarriesPlan(reply, plan)) {
-    return withClosingQuestion(
-      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
-      language,
-    );
-  }
-  // The tester's 1110 (33975): the plan line went first and the findings came
-  // after it. The news leads; the plan follows it, and the question ends it.
-  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
-  // stood alone under its buttons without „დავიწყო?". It ends on it too.
+  const own = reply.trim();
+  const serverSentence = plan.introSentence ?? plan.text;
+  const body =
+    own === ''
+      ? serverSentence
+      : replyNamesEveryone(own, plan)
+        ? own
+        : `${own}\n\n${serverSentence}`;
   return withClosingQuestion(
-    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
+    plan.mutualGroups === undefined ? body : `${plan.mutualGroups}\n\n${body}`,
     language,
   );
 }
@@ -9107,9 +8959,9 @@ function withPlanInReply(
   // reply was not asking for it to be approved. Only a reply carrying the
   // approve button is a plan reply.
   if (!replyAsksForApproval(offered)) return written;
-  if (!replyCarriesPlan(written, plan)) {
+  if (!replyNamesEveryone(written, plan)) {
     // eslint-disable-next-line no-console
-    console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+    console.warn(`[plan] run ${runId}: the reply left someone out — the server added the plan`);
   }
   return planReplyText(written, plan, runLang(runId));
 }
@@ -9556,6 +9408,33 @@ const ANSWER_OPEN_ASKS_CARD_TOOL: AnthropicTool = {
 const NO_OPEN_ASKS_CARD =
   'Nothing changed: no close-or-keep question about open questions waits in this chat.';
 
+/**
+ * #1686 (A3) / #8779 b (rule 39): a helper who says in their own words that they
+ * will answer later — the model reads it and calls this; the latest open question
+ * on this chat comes back on that day, and the asker is told the day.
+ */
+const DEFAULT_LATER_DAYS = 3;
+const MAX_LATER_DAYS = 14;
+const runPostponedAnAnswer = new Set<string>();
+
+const POSTPONE_ANSWER_TOOL: AnthropicTool = {
+  name: 'postpone_answer',
+  description:
+    'In a chat where someone asked the user a question: when the user says they will answer ' +
+    'later (busy now, will check, in a few days), call this. The question comes back to them ' +
+    'on that day and the asker is told when. days: how many days from now (default 3).' +
+    ' WHEN: the user, asked a question, says they will answer later.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      days: { type: 'number', description: 'Days until the question comes back, 1 to 14.' },
+    },
+    required: [],
+  },
+};
+
+const NOTHING_TO_POSTPONE = 'Nothing changed: no open question waits for the user in this chat.';
+
 const THANKS_NOT_SENT =
   'Not sent: no single helper who answered the owner and was not thanked yet matches that ' +
   'name. Ask the owner whom they mean, in one line.';
@@ -9696,6 +9575,23 @@ export function wayInPhonesIn(raw: unknown): string[] {
  * not a way in: the plan is refused with their names, so it is proposed again
  * without them and nobody is offered with a made-up reason.
  */
+/**
+ * Autonomy plan, stage 1 (K15; Misho's thread 76858, 4 Nov 12:11): a plan
+ * proposed again was refused because the people of the EARLIER proposal — found
+ * in an earlier run — were „not found by any search in this run". The people of
+ * the plan in force and of the proposal waiting both count as already known.
+ */
+export function plansPeopleSoFar(
+  task: { readonly plan?: unknown; readonly plan_proposed?: unknown } | null | undefined,
+): TaskPlan | null {
+  const peopleOf = (plan: unknown): unknown[] => {
+    const people = (plan as { people_to_involve?: unknown } | null)?.people_to_involve;
+    return Array.isArray(people) ? people : [];
+  };
+  const people = [...peopleOf(task?.plan), ...peopleOf(task?.plan_proposed)];
+  return people.length === 0 ? null : ({ people_to_involve: people } as unknown as TaskPlan);
+}
+
 export async function peopleNoSearchFound(
   userId: string,
   threadId: number,
@@ -10512,6 +10408,7 @@ function clearRunState(runId: string): void {
   runHeldTools.delete(runId);
   runGrantedTheGoal.delete(runId);
   runThankedAHelper.delete(runId);
+  runPostponedAnAnswer.delete(runId);
 }
 
 /**
@@ -12331,7 +12228,7 @@ async function executeToolCall(
               threadId,
               Number.isFinite(taskId) ? taskId : undefined,
               input['plan'],
-              (planTask?.plan ?? null) as TaskPlan | null,
+              plansPeopleSoFar(planTask),
               runWayInPhones.get(runId),
             );
       if (unfound.length > 0) {
@@ -12344,6 +12241,14 @@ async function executeToolCall(
         runLang(runId),
         planRouteOrder(runId, input['plan']),
       );
+      // #8779 b (rule 41): a new plan proposed over an approved one IS the owner's change
+      // request (the model's reading of their words) — the next wave waits for the new yes.
+      if (planTask?.plan_approved_at && threadId !== undefined) {
+        void notePlanChangeRequested(threadId).catch((err: unknown) =>
+          // eslint-disable-next-line no-console
+          console.error('[task-engine] could not note the change request:', (err as Error).message),
+        );
+      }
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
       //
@@ -12982,6 +12887,18 @@ async function executeToolCall(
       return getTopConnectors(userId, input['limit'] as number | undefined);
     case 'get_curiosity_queue':
       return { items: await buildCuriosityQueue(userId, input['limit'] as number | undefined) };
+    case 'postpone_answer': {
+      if (ownerAbsent || threadId === undefined)
+        return { postponed: false, error: NOTHING_TO_POSTPONE };
+      const asked = Number(input['days']);
+      const days = Number.isFinite(asked)
+        ? Math.min(MAX_LATER_DAYS, Math.max(1, Math.round(asked)))
+        : DEFAULT_LATER_DAYS;
+      const until = await setLaterDays(threadId, days);
+      if (until === null) return { postponed: false, error: NOTHING_TO_POSTPONE };
+      if (runId !== undefined) runPostponedAnAnswer.add(runId);
+      return { postponed: true, until: until.toISOString() };
+    }
     case 'answer_open_asks_card': {
       if (ownerAbsent || threadId === undefined)
         return { settled: false, error: NO_OPEN_ASKS_CARD };
@@ -16415,11 +16332,6 @@ async function runToolLoop(
     bothAskTheClosingQuestion(draft.text, finalText, runLang(runId))
   ) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
-  } else if (!buriedAnswer && finalText.includes(PLAN_CLOSING_QUESTION[runLang(runId)])) {
-    // 2909 (box 54162, conv 50220): a step announced the plan's talks two
-    // seconds before the plan message said them again, without the question.
-    const retelling = draftSteps.filter((step) => retellsThePlansTalks(step.text));
-    if (retelling.length > 0) await dropDraftSteps(userId, threadId, runId, retelling);
   }
   // 2971: buttons under a reply that asks nothing take the question a step asked.
   const askedInAStep =
@@ -17498,6 +17410,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   RESPOND_TO_THANKS_LOOP_OFFER_TOOL,
   THANK_HELPER_TOOL,
   ANSWER_OPEN_ASKS_CARD_TOOL,
+  POSTPONE_ANSWER_TOOL,
   STOP_CONTACTING_TOOL,
   RESUME_CONTACT_TOOL,
   EXCLUDE_CONTACT_TOOL,
@@ -18539,20 +18452,6 @@ export async function processChat(
    * Best-effort: the run is the person's reply and must not fail because a
    * column could not be written.
    */
-  if (!ownerAbsent && asksToChangeThePlan(userMessage)) {
-    void notePlanChangeRequested(threadId)
-      .then((taskId) => {
-        if (taskId === null) return;
-        // eslint-disable-next-line no-console
-        console.log(
-          `[task-engine] task ${taskId}: the owner asked for a change — the next wave waits for their new yes (the plan stays approved)`,
-        );
-      })
-      .catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[task-engine] could not note the change request:', (err as Error).message);
-      });
-  }
   // Ticket 16 Task 90: a stated need becomes a goal BEFORE the assistant
   // answers, so the run is a goal run (plan, one yes, day one) by construction
   // and not by the model's mood — five requests in two days never became one.
@@ -19194,7 +19093,7 @@ export async function processChat(
   // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
   const laterTapped =
     thread.type === 'incoming_ask' &&
-    (askTapOf(userMessage) === AskTap.Later || isTypedLater(userMessage));
+    (askTapOf(userMessage) === AskTap.Later || runPostponedAnAnswer.has(runId));
   const choices = laterTapped
     ? [...laterDayChoices(language)]
     : planToNobody === null
@@ -19803,7 +19702,6 @@ export async function processChat(
   lap(postRun, 'reply');
   // The same answer must not be on the screen twice (item H).
   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
-  await dropPlanStepsTheReplyCarries(threadId, runId, storedReply);
   lap(postRun, 'steps');
   // D348: the free answer says it was free, immediately after it and before
   // anything else the run has to deliver.

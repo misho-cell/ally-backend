@@ -1286,11 +1286,6 @@ export function planClosingQuestionOff(language: RunLanguage): boolean {
   return language === 'ka' && serverTextIsOff(ServerTextBlock.PlanClosingQuestionKa);
 }
 
-/** The same for the Georgian plan sentence: the assistant's own sentence stands alone. */
-export function planAskSentenceOff(language: RunLanguage): boolean {
-  return language === 'ka' && serverTextIsOff(ServerTextBlock.PlanAskSentenceKa);
-}
-
 /**
  * The agreed question before D663. A model may still write it for a while; it
  * is recognised and replaced, never left standing beside the new one.
