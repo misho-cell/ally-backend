@@ -655,8 +655,8 @@ import { withMentionedNoteLine } from './mentionedNoteLine';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
-  ensureInviteAnswerRecorded,
   ensureInviteLinkInReply,
+  inviteAgreedSince,
 } from './campaignInvite.service';
 import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
@@ -19320,20 +19320,16 @@ export async function processChat(
     cleanedFinal = ensureEveryQuote(cleanedFinal, ensureQuoted);
   }
   cleanedFinal = scrubInternalToolNames(cleanedFinal, threadId);
-  // „კი" / „არა" / „უთხარი" typed into an invite thread must reach the
-  // campaign whatever the run did with them (ticket 9 task 13.7). Live on
-  // 4 September the „კი" path worked and a bare „არა" did not — the reply was
-  // right, the tool call simply never happened. The model is asked; the server
-  // makes it true. Only fires when the participant is still waiting.
+  // An invite answer is recorded by the model's own respond_to_invite_campaign
+  // call (#8779 rule 42: no word reading). When that call recorded a yes in
+  // this run, the reply carries the invite link (ticket 9 task 13.7).
   if (thread.type === 'campaign_invite') {
-    const recorded = await ensureInviteAnswerRecorded(threadId, userId, userMessage).catch(
-      (err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[invite] answer capture failed:', (err as Error).message);
-        return null;
-      },
-    );
-    if (recorded === 'agreed') {
+    const agreed = await inviteAgreedSince(threadId, userId, startedAt).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[invite] answer read failed:', (err as Error).message);
+      return false;
+    });
+    if (agreed) {
       cleanedFinal = await ensureInviteLinkInReply(cleanedFinal, userId).catch(() => cleanedFinal);
     }
   }
