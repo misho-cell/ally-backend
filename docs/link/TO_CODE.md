@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 5 Nov, 00:20Z (#8949, #8950, #8948 part 1 live). Box read to 82761.
+Last TO_OPS.md section handled: 5 Nov, 00:45Z (hourly status of open rows). Box read to 82761.
 
 ## OPEN
 
