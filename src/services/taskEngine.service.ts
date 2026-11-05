@@ -37,6 +37,11 @@ import {
   SWEEP_WEEKLY_SUMMARY,
 } from './sweepClaim';
 import { claimExpiredAsksToTell, expireSilentAsks, expiredAsksNote } from './askExpiry.service';
+import {
+  claimSilentAsksToTell,
+  silentAsksNote,
+  wakeGoalsWithSilentAsks,
+} from './askSilence.service';
 import { widenWaveOnSilence } from './askWaves.service';
 import {
   DAY_ONE_WAKE,
@@ -942,15 +947,17 @@ interface ScheduledWake {
 }
 
 async function scheduledWake(taskId: number): Promise<ScheduledWake> {
-  const [held, lastReply, joined, expired, elsewhere] = await Promise.all([
+  const [held, lastReply, joined, expired, elsewhere, silent] = await Promise.all([
     heldOutcomes(taskId),
     lastReplyNote(taskId),
     joinedSinceNote(taskId),
     expiredNote(taskId),
     answeredElsewhereNote(taskId),
+    // Board #7760: who has not answered for a few days, told once.
+    silentNote(taskId),
   ]);
   const heldText = held.length === 0 ? null : heldAsksSentNote(held);
-  const notes = [heldText, elsewhere, expired, joined, lastReply].filter(
+  const notes = [heldText, elsewhere, expired, silent, joined, lastReply].filter(
     (n): n is string => n !== null,
   );
   return {
@@ -981,6 +988,17 @@ async function expiredNote(taskId: number): Promise<string | null> {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[task-engine] task ${taskId}: expired asks not read:`, (err as Error).message);
+    return null;
+  }
+}
+
+/** Board #7760: the asks a few days silent, claimed for this wake; null when none (or unread). */
+async function silentNote(taskId: number): Promise<string | null> {
+  try {
+    return silentAsksNote(await claimSilentAsksToTell(taskId));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] task ${taskId}: silent asks not read:`, (err as Error).message);
     return null;
   }
 }
@@ -2247,6 +2265,13 @@ export function startTaskTicker(): void {
         .then((n) => {
           // eslint-disable-next-line no-console
           if (n > 0) console.log(`[task-engine] ${n} ask(s) expired after two weeks of silence`);
+        })
+        // Board #7760: and the goals whose asks are a few days quiet are woken to say so.
+        .then(() => wakeGoalsWithSilentAsks())
+        .then((n) => {
+          // eslint-disable-next-line no-console
+          if (n > 0)
+            console.log(`[task-engine] ${n} goal(s) woken: an ask is days without an answer`);
         })
         .catch((err) =>
           // eslint-disable-next-line no-console
