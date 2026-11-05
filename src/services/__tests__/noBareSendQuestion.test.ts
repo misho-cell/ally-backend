@@ -23,9 +23,15 @@ describe('the plan asks in a sentence of its own (#8680)', () => {
     expect(withClosingQuestion(BODY, 'ka')).toBe(`${BODY}\n\n${AGREED}`);
   });
 
-  it('does not take a question back to the owner for the plan’s question', () => {
-    expect(endsOnOwnQuestion('რომელ ქალაქში ხარ?', AGREED)).toBe(false);
+  it('takes any question of the model’s own as its ask — no verb list decides (#8779 c)', () => {
+    expect(endsOnOwnQuestion('რომელ ქალაქში ხარ ახლა?', AGREED)).toBe(true);
     expect(endsOnOwnQuestion('Shall I write to Lika about Ninutsa?', 'Shall I start?')).toBe(true);
+  });
+
+  it('does not count the agreed question, a short one or a statement', () => {
+    expect(endsOnOwnQuestion(AGREED, AGREED)).toBe(false);
+    expect(endsOnOwnQuestion('გავუგზავნო?', AGREED)).toBe(false);
+    expect(endsOnOwnQuestion(BODY, AGREED)).toBe(false);
   });
 
   it('no longer tells the model to end on the bare question word for word', () => {

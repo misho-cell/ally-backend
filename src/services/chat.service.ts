@@ -100,15 +100,16 @@ import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
-import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
-import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
 import {
-  carriesPlanSentence,
-  introPlanOnly,
-  withoutMatchJustification,
-  withPlanSentence,
-  withOnePlanSentence,
-} from './planJustification';
+  ClaimKind,
+  claimsOfKind,
+  NO_CLAIMS,
+  readReplyClaims,
+  ReplyClaims,
+  withoutSentences,
+} from './replyClaims.service';
+import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
+import { namesTheReader } from './askerInNeed';
 import {
   FoundThroughBridge,
   foundThroughBridges,
@@ -331,7 +332,6 @@ import {
   planInSentences,
   withAskablePeopleOnly,
   PLAN_CLOSING_QUESTION,
-  planAskSentenceOff,
   planClosingQuestionOff,
   EARLIER_PLAN_CLOSING_QUESTIONS,
   nobodyCanBeWrittenTo,
@@ -587,7 +587,6 @@ import {
   asksAQuestion,
 } from './dailyContactQuestion';
 import { noContactsYetSection } from './noContactsYet';
-import { withoutNoteTalk } from './noteTalk';
 import {
   askIsTheIntroduction,
   asksLeaveToSend,
@@ -635,8 +634,8 @@ import { withMentionedNoteLine } from './mentionedNoteLine';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
-  ensureInviteAnswerRecorded,
   ensureInviteLinkInReply,
+  inviteAgreedSince,
 } from './campaignInvite.service';
 import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
@@ -742,7 +741,6 @@ import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
 import { withAssistantsSentLine, withoutOfferToSendAgain } from './assistantsSentLine';
 import { georgianNamesFor, georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
-import { asksWhyAboutNamed, isShortWhy, whyAnswer } from './whyThisPersonCut';
 
 const HISTORY_LIMIT = 50;
 // Engine-initiated turns are addressed to the MODEL, not the user: they carry
@@ -4835,23 +4833,6 @@ function mergeAdjacentSameRole(rows: Anthropic.MessageParam[]): Anthropic.Messag
   return out.filter((row) => asBlocks(row.content).length > 0 || typeof row.content === 'string');
 }
 
-/** A sentence telling the helper their answer did not go. */
-const NOT_SENT_RE =
-  /ვერ\s+(?:გადა)?(?:გა)?იგზავნ|ვერ\s+გადაეცა|(?:could\s*n[o']t|was\s+not|wasn'?t)\s+(?:be\s+)?(?:sent|delivered)|не\s+удалось\s+отправить|no\s+se\s+pudo\s+enviar/iu;
-const REPLY_SENTENCE_RE = /[^.!?…\n]+[.!?…]*\s*|\n+/gu;
-
-export function claimsNotSent(reply: string): boolean {
-  return NOT_SENT_RE.test(reply);
-}
-
-/** The reply without its „not sent" sentences. */
-export function withoutNotSentSentences(reply: string): string {
-  return (reply.match(REPLY_SENTENCE_RE) ?? [reply])
-    .filter((sentence) => !NOT_SENT_RE.test(sentence))
-    .join('')
-    .trim();
-}
-
 const ANSWERED_SINCE_TIMEOUT_MS = 3_000;
 
 /** This question's answer reached the asker after the given moment (this run). */
@@ -5247,48 +5228,6 @@ async function dropStepsTheReplyRepeats(
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[chat] could not drop repeated steps:', (error as Error).message);
-  }
-}
-
-/** A run writes a handful of steps; this many is more than any run has. */
-const MAX_RUN_STEPS_READ = 30;
-
-/**
- * 48247 (thread 46960): the plan went out twice, 11 s apart — the model's
- * in-between text after propose_task_plan, saved as a step („…ასისტენტებს
- * დაველაპარაკები … დავიწყო?"), and then the final reply, which told the plan
- * again in other words („კიდევ ერთი ადამიანი" where the step named Davit), so
- * the word-for-word tidy-up above could not see it. When the reply carries
- * the plan sentence, a step of the same run that carries it too is the same
- * plan said early, and it goes. Best-effort, like the tidy-up above.
- */
-async function dropPlanStepsTheReplyCarries(
-  threadId: number,
-  runId: string | null,
-  reply: string,
-): Promise<void> {
-  if (!runId || !carriesPlanSentence(reply)) return;
-  try {
-    const steps = await query<{ id: string; content: string }>(
-      `SELECT id, content FROM conversations
-        WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
-        ORDER BY id LIMIT $3`,
-      [threadId, runId, MAX_RUN_STEPS_READ],
-      STEP_TIDY_TIMEOUT_MS,
-    );
-    const ids = steps.rows.filter((s) => carriesPlanSentence(s.content)).map((s) => s.id);
-    if (ids.length === 0) return;
-    // conversations.id is a uuid: as int[] this failed on every call since 9 Oct (ops, 11 Oct).
-    await query(
-      `DELETE FROM conversations WHERE id = ANY($1::uuid[])`,
-      [ids],
-      STEP_TIDY_TIMEOUT_MS,
-    );
-    // eslint-disable-next-line no-console
-    console.log(`[chat] run ${runId}: dropped ${ids.length} plan step(s) the reply tells again`);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('[chat] could not drop plan steps:', (error as Error).message);
   }
 }
 
@@ -8664,18 +8603,6 @@ function withoutClosingVariant(reply: string, question: string): string {
   return lines.slice(0, -1).join('\n');
 }
 
-/**
- * 2909: a step that says the run will talk to people's assistants is the plan
- * told early — „ელენესა და რატის ასისტენტებს დავველაპარაკები და ვკითხავ…".
- * When the plan message follows in the same run, it is the one copy.
- */
-const PLAN_TALKS_RE =
-  /ასისტენტ\S*\s+(?:\S+\s+){0,3}?და?ვ?ველაპარაკ|\b(?:talk|speak)\s+to\s+(?:\S+\s+){0,6}?assistants?\b/iu;
-
-export function retellsThePlansTalks(step: string): boolean {
-  return PLAN_TALKS_RE.test(step);
-}
-
 /** Do the plan step and the final both end on the agreed question (D663)? */
 export function bothAskTheClosingQuestion(
   step: string,
@@ -8686,52 +8613,24 @@ export function bothAskTheClosingQuestion(
   return step.includes(question) && final.includes(question);
 }
 
-/**
- * #4886 (option A, box 67090): „why him?" about someone the last reply named is
- * answered in its first sentence. A reply that offers buttons is left whole.
- */
-async function withWhyInOneSentence(
-  reply: string,
-  ownerLine: string,
-  threadId: number,
-  choices: readonly string[] | undefined,
-): Promise<string> {
-  if (choices !== undefined || !isShortWhy(ownerLine)) return reply;
-  const earlier = await lastShownAssistantReply(threadId).catch((err: unknown) => {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[why-cut] thread ${threadId}: the earlier reply could not be read:`,
-      (err as Error).message,
-    );
-    return null;
-  });
-  return earlier !== null && asksWhyAboutNamed(ownerLine, earlier)
-    ? whyAnswer(reply, ownerLine, earlier)
-    : reply;
-}
-
 /** A question of the model's own needs at least this many words to name who and what. */
 const MIN_OWN_QUESTION_WORDS = 3;
-/**
- * It proposes the run's own next step — a first-person verb („მივწერო",
- * „ვკითხო", „დავუკავშირდე"; „Shall I", „Should I"; „Написать", „спросить") —
- * not a question back to the owner („რომელ ქალაქში ხარ?").
- */
-const OWN_ACTION_QUESTION_RE =
-  /(?:^|[\s,„"(])(?:მი|მო|გა|და|შე|ვ|ჩა|წა|გადა|და)[\p{Script=Georgian}]*ო(?=[\s,?!.])|\b(?:shall|should|may) I\b|(?:написать|спросить|связаться|попросить)/iu;
 
 /**
  * #8680 (Tornike, 4 Nov, via the tester's 82039): no bare „გავუგზავნო?" — the
- * plan asks in a sentence naming whom and what. A reply whose last line is
- * such a question of its own keeps it, and the agreed question is not added.
+ * plan asks in a sentence naming whom and what. #8779 c (the founder, 4 Nov
+ * 19:07): which kind of question it is, is the model's to decide, not a verb
+ * list's. A reply whose last line is a question of its own — not the agreed one
+ * or a variant of it — keeps it, and the agreed question is not added.
  */
 export function endsOnOwnQuestion(reply: string, question: string): boolean {
   const last = (reply.trimEnd().split('\n').pop() ?? '').trim();
   if (!last.endsWith('?')) return false;
-  if ([question, ...EARLIER_PLAN_CLOSING_QUESTIONS].some((asked) => last === asked)) return false;
   const asked = [question, ...EARLIER_PLAN_CLOSING_QUESTIONS];
-  if (asked.some((closing) => isClosingQuestionVariant(last, closing))) return false;
-  return last.split(/\s+/u).length >= MIN_OWN_QUESTION_WORDS && OWN_ACTION_QUESTION_RE.test(last);
+  if (asked.some((closing) => last === closing || isClosingQuestionVariant(last, closing))) {
+    return false;
+  }
+  return last.split(/\s+/u).length >= MIN_OWN_QUESTION_WORDS;
 }
 
 export function withClosingQuestion(given: string, language: RunLanguage): string {
@@ -8772,76 +8671,34 @@ export function replyAsksForApproval(offered: readonly string[] | null | undefin
   return (offered ?? []).some((label) => isApproveChoice(label));
 }
 
-/** Below this a reply is an announcement around a plan, not a plan. */
-const PLAN_REPLY_MIN_CHARS = 120;
-
 /**
- * Does the reply say the plan? Every person the plan will ask must be named,
- * and there must be more than a line. A reply that only asks „approve?" fails
- * both, and that is the case row 101 was about.
+ * #8779 c (the founder, 4 Nov 19:07): the server no longer rewrites the plan
+ * reply by word lists (match justifications, stage directions, a second plan
+ * sentence). It checks one thing, structurally: that the reply names everyone
+ * the plan will write to — in either alphabet, in any case ending — so the
+ * owner never approves without seeing who is written to.
  */
-export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
-  if (reply.trim().length < PLAN_REPLY_MIN_CHARS) return false;
-  // The tester's 963 (Ninia, thread 28910): the reply said the whole plan and
-  // ended on the agreed question, but wrote „ქეთევანს" and „გიორგი
-  // აბრამიშვილს" for the plan's „❤️ Ketevan" and „Giorgi Abramishvili" — so
-  // the server put its own paragraph in front and the plan was said twice.
-  // The model is told to END the plan on that question; a reply that does has
-  // written it.
-  if (Object.values(PLAN_CLOSING_QUESTION).some((question) => reply.includes(question))) {
-    return true;
-  }
-  return plan.names.every((name) => reply.includes(name));
-}
+const NOT_A_NAME_LETTER_RE = /[^\p{L}\s]/gu;
 
-/**
- * #8680 (Tornike, 4 Nov, the tester's 82572): with the plan-sentence block
- * switched off, the assistant's own sentence is the plan — the server adds
- * none. Only when that sentence names everyone the plan will ask; otherwise the
- * owner would approve without seeing who is written to, and the server's
- * sentence stays.
- */
-function ownSentenceStands(reply: string, plan: PlanForReply, language: RunLanguage): boolean {
-  if (!planAskSentenceOff(language) || reply.trim() === '') return false;
-  return plan.names.length > 0 && plan.names.every((name) => reply.includes(name));
+export function replyNamesEveryone(reply: string, plan: PlanForReply): boolean {
+  return plan.names.every((name) => namesTheReader(reply, name.replace(NOT_A_NAME_LETTER_RE, ' ')));
 }
-
 /**
- * The plan reply's text: the model's reply with the plan in it, said once and
- * ended on the agreed question.
+ * The plan reply's text: the model's reply as written; the server's plan
+ * sentence under it only when the reply leaves someone out (or is empty); the
+ * agreed question at the end when its block is on and the model asked nothing.
  */
 export function planReplyText(reply: string, plan: PlanForReply, language: RunLanguage): string {
-  // D739: an introduction plan is its one sentence and one question, on every
-  // path. 1454: nothing the model wrote before it is kept (box 53296), and a
-  // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
-  // 50065) — gives way to the server's sentence instead of standing before it.
-  if (ownSentenceStands(reply, plan, language)) {
-    const own = withOnePlanSentence(withoutMatchJustification(reply));
-    return withClosingQuestion(
-      plan.mutualGroups === undefined ? own : `${plan.mutualGroups}\n\n${own}`,
-      language,
-    );
-  }
-  if (carriesPlanSentence(plan.text)) {
-    const serverSentence = plan.introSentence ?? plan.text;
-    const sentence = withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence }));
-    return withClosingQuestion(
-      plan.mutualGroups === undefined ? sentence : `${plan.mutualGroups}\n\n${sentence}`,
-      language,
-    );
-  }
-  if (replyCarriesPlan(reply, plan)) {
-    return withClosingQuestion(
-      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
-      language,
-    );
-  }
-  // The tester's 1110 (33975): the plan line went first and the findings came
-  // after it. The news leads; the plan follows it, and the question ends it.
-  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
-  // stood alone under its buttons without „დავიწყო?". It ends on it too.
+  const own = reply.trim();
+  const serverSentence = plan.introSentence ?? plan.text;
+  const body =
+    own === ''
+      ? serverSentence
+      : replyNamesEveryone(own, plan)
+        ? own
+        : `${own}\n\n${serverSentence}`;
   return withClosingQuestion(
-    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
+    plan.mutualGroups === undefined ? body : `${plan.mutualGroups}\n\n${body}`,
     language,
   );
 }
@@ -8862,9 +8719,9 @@ function withPlanInReply(
   // reply was not asking for it to be approved. Only a reply carrying the
   // approve button is a plan reply.
   if (!replyAsksForApproval(offered)) return written;
-  if (!replyCarriesPlan(written, plan)) {
+  if (!replyNamesEveryone(written, plan)) {
     // eslint-disable-next-line no-console
-    console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+    console.warn(`[plan] run ${runId}: the reply left someone out — the server added the plan`);
   }
   return planReplyText(written, plan, runLang(runId));
 }
@@ -9628,9 +9485,9 @@ const runApprovedAPlan = new Set<string>();
 const runPlanApprovedInRun = new Set<string>();
 
 /** MTR #7 (2113): „writing now" on a run that approved nothing — after „change the plan". */
-function saysItSendsNowWithoutApproval(runId: string, finalText: string): boolean {
+function saysItSendsNowWithoutApproval(runId: string, claims: ReplyClaims): boolean {
   return (
-    claimsASendNow(finalText) &&
+    claimsASendNow(claims) &&
     !runApprovedAPlan.has(runId) &&
     !runPlanApprovedInRun.has(runId) &&
     !isApproveChoice((runOwnerLine.get(runId) ?? '').trim())
@@ -10230,6 +10087,24 @@ export const NOT_FROM_A_GUESSED_CHAT_NOTE =
 const runsWhereNothingWent = new Set<string>();
 /** 4555: the value a save kept only as a mentioned note in this run. */
 const runMentionedNote = new Map<string, string>();
+/** #8779 c: what the run's reply claims, read once per text by the small model. */
+const runReplyClaims = new Map<
+  string,
+  { readonly text: string; readonly claims: Promise<ReplyClaims> }
+>();
+
+function replyClaimsOf(
+  runId: string,
+  userId: string,
+  threadId: number,
+  text: string,
+): Promise<ReplyClaims> {
+  const kept = runReplyClaims.get(runId);
+  if (kept?.text === text) return kept.claims;
+  const claims = readReplyClaims(text, runOwnerLine.get(runId) ?? '', { userId, runId, threadId });
+  runReplyClaims.set(runId, { text, claims });
+  return claims;
+}
 /** The tester's 1119 (F3): the open goal this run's message repeats, by id. */
 const runRepeatedGoal = new Map<string, number>();
 /**
@@ -10253,6 +10128,7 @@ function clearRunState(runId: string): void {
   runsWhereNothingWent.delete(runId);
   runFoundPeople.delete(runId);
   runMentionedNote.delete(runId);
+  runReplyClaims.delete(runId);
   runRepeatedGoal.delete(runId);
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
@@ -10381,9 +10257,7 @@ export function scrubFinal(text: string, runId: string | undefined): string {
   const withoutNote = withoutOurSideApology(
     withoutStrayGeorgianCapitals(
       withoutLeadingInterjection(
-        withoutAlreadyShownNote(
-          withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
-        ),
+        withoutAlreadyShownNote(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
         runLang(runId),
       ),
     ),
@@ -15994,11 +15868,6 @@ async function runToolLoop(
     bothAskTheClosingQuestion(draft.text, finalText, runLang(runId))
   ) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
-  } else if (!buriedAnswer && finalText.includes(PLAN_CLOSING_QUESTION[runLang(runId)])) {
-    // 2909 (box 54162, conv 50220): a step announced the plan's talks two
-    // seconds before the plan message said them again, without the question.
-    const retelling = draftSteps.filter((step) => retellsThePlansTalks(step.text));
-    if (retelling.length > 0) await dropDraftSteps(userId, threadId, runId, retelling);
   }
   // 2971: buttons under a reply that asks nothing take the question a step asked.
   const askedInAStep =
@@ -16121,7 +15990,12 @@ async function runToolLoop(
   // Ana". A relay sent in this run is the hand-on, and nothing is missing.
   const helperRunSentNothing =
     runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId) && !runRelaySent.has(runId);
-  const claimedASendThatDidNotHappen = helperRunSentNothing && claimsToHavePassedItOn(finalText);
+  // #8779 c: read only when a guard below can use it — every one needs the owner, but the helper's.
+  const claims =
+    ownerAbsent && !helperRunSentNothing
+      ? NO_CLAIMS
+      : await replyClaimsOf(runId, userId, threadId, finalText);
+  const claimedASendThatDidNotHappen = helperRunSentNothing && claimsToHavePassedItOn(claims);
   // #2113 (41598): „I have already written to both assistants" on a goal that had sent nothing.
   const claimedAnAskNobodyGot =
     !ownerAbsent &&
@@ -16133,7 +16007,7 @@ async function runToolLoop(
     !runAskSent.has(runId) &&
     !runIntroSent.has(runId) &&
     !runRelaySent.has(runId) &&
-    (claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText)) &&
+    (claimsAnAskWasSent(claims) || saysItSendsNowWithoutApproval(runId, claims)) &&
     (await goalSentNothing(threadId));
   // #7229: a send claimed in a run whose every ask was refused — the goal may have sent before.
   const claimedARefusedAsk =
@@ -16144,7 +16018,7 @@ async function runToolLoop(
     runModes.get(runId) !== 'incoming_ask' &&
     runAskRefused.has(runId) &&
     !runAskSent.has(runId) &&
-    claimsAnAskWasSent(finalText);
+    claimsAnAskWasSent(claims);
   // #7229 (65053; Misho's yes, 24 Oct): in a helper's own chat, „I asked X's assistant" with no ask to X.
   const claimedAHelperAskNobodyGot =
     !claimedASendThatDidNotHappen &&
@@ -16152,7 +16026,7 @@ async function runToolLoop(
     !promoted &&
     !answeringALaterTap &&
     runModes.get(runId) === 'incoming_ask' &&
-    helperChatClaimsAnAskNobodyGot(finalText, {
+    helperChatClaimsAnAskNobodyGot(claims, {
       asked: runAskSentTo.get(runId) ?? [],
       anythingWent: runAskSent.has(runId) || runRelaySent.has(runId) || runAnswerSent.has(runId),
     });
@@ -16565,10 +16439,11 @@ async function runToolLoop(
   }
 
   // 3302: „deleted" is said only when a deleting tool ran; otherwise the truth and a confirm button.
-  if (
-    !ownerAbsent &&
-    deletionClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
-  ) {
+  const claimsNow =
+    ownerAbsent && !runMentionedNote.has(runId)
+      ? NO_CLAIMS
+      : await replyClaimsOf(runId, userId, threadId, finalText);
+  if (!ownerAbsent && deletionClaimWithoutTool(claimsNow, toolNamesUsed)) {
     // eslint-disable-next-line no-console
     console.warn(
       `[delete-claim] run ${runId} thread ${threadId}: said deleted, nothing was — corrected`,
@@ -16579,22 +16454,20 @@ async function runToolLoop(
   }
 
   // 4555: „I saved his job" for a value kept only as a mentioned note becomes the server's line.
-  finalText = withMentionedNoteLine(finalText, runMentionedNote.get(runId) ?? '', runLang(runId));
+  finalText = withMentionedNoteLine(
+    finalText,
+    runMentionedNote.get(runId) ?? '',
+    runLang(runId),
+    claimsNow,
+  );
 
   // 4490: a plain question saves nothing — an „I saved" sentence under its answer is taken out.
   if (!ownerAbsent) {
-    finalText = withoutSavedClaimOnAQuestion(
-      finalText,
-      runOwnerLine.get(runId) ?? '',
-      toolNamesUsed,
-    );
+    finalText = withoutSavedClaimOnAQuestion(finalText, claimsNow, toolNamesUsed);
   }
 
   // 3796: „saved your offer" is said only when save_offer ran; otherwise the truth and a button.
-  if (
-    !ownerAbsent &&
-    offerClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
-  ) {
+  if (!ownerAbsent && offerClaimWithoutTool(claimsNow, toolNamesUsed)) {
     // eslint-disable-next-line no-console
     console.warn(
       `[offer-claim] run ${runId} thread ${threadId}: said saved, nothing was — corrected`,
@@ -16602,21 +16475,6 @@ async function runToolLoop(
     const notSaved = offerNotSavedLine(runLang(runId));
     finalText = notSaved.text;
     choices = [notSaved.confirm];
-  }
-
-  // 4258: „introduction request sent" is said only when one went; otherwise the truth and a button.
-  if (
-    INTRO_CLAIM_GUARD_ON &&
-    !ownerAbsent &&
-    introClaimWithoutSend(finalText, runIntroSent.has(runId))
-  ) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[intro-claim] run ${runId} thread ${threadId}: said the request went, none did — corrected`,
-    );
-    const notSent = introNotSentLine(runLang(runId));
-    finalText = notSent.text;
-    choices = [notSent.confirm];
   }
 
   // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
@@ -18765,7 +18623,6 @@ export async function processChat(
     );
   }
   effectiveFinal = withFileLine(effectiveFinal, userMessage, language);
-  effectiveFinal = await withWhyInOneSentence(effectiveFinal, userMessage, threadId, choices);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
     effectiveFinal = withoutClosingApprovalAsk(
@@ -18776,13 +18633,15 @@ export async function processChat(
   // on arrival, the run called no tool and wrote „პასუხი ჩვენი მხრიდან ვერ
   // გადაიგზავნა" — false. When this question's answer went during this run, a
   // „not sent" sentence gives way to the agreed sent line.
-  if (
-    thread?.type === 'incoming_ask' &&
-    !runAnswerSent.has(runId) &&
-    claimsNotSent(effectiveFinal) &&
-    (await askAnsweredSince(threadId, startedAt))
-  ) {
-    effectiveFinal = withoutNotSentSentences(effectiveFinal);
+  const notSentSaid =
+    thread?.type === 'incoming_ask' && !runAnswerSent.has(runId)
+      ? claimsOfKind(
+          await replyClaimsOf(runId, userId, threadId, effectiveFinal),
+          ClaimKind.NotSent,
+        )
+      : [];
+  if (notSentSaid.length > 0 && (await askAnsweredSince(threadId, startedAt))) {
+    effectiveFinal = withoutSentences(effectiveFinal, notSentSaid);
     runAnswerSent.add(runId);
   }
   if (runAnswerSent.has(runId)) {
@@ -18893,20 +18752,16 @@ export async function processChat(
     cleanedFinal = ensureEveryQuote(cleanedFinal, ensureQuoted);
   }
   cleanedFinal = scrubInternalToolNames(cleanedFinal, threadId);
-  // „კი" / „არა" / „უთხარი" typed into an invite thread must reach the
-  // campaign whatever the run did with them (ticket 9 task 13.7). Live on
-  // 4 September the „კი" path worked and a bare „არა" did not — the reply was
-  // right, the tool call simply never happened. The model is asked; the server
-  // makes it true. Only fires when the participant is still waiting.
+  // An invite answer is recorded by the model's own respond_to_invite_campaign
+  // call (#8779 rule 42: no word reading). When that call recorded a yes in
+  // this run, the reply carries the invite link (ticket 9 task 13.7).
   if (thread.type === 'campaign_invite') {
-    const recorded = await ensureInviteAnswerRecorded(threadId, userId, userMessage).catch(
-      (err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[invite] answer capture failed:', (err as Error).message);
-        return null;
-      },
-    );
-    if (recorded === 'agreed') {
+    const agreed = await inviteAgreedSince(threadId, userId, startedAt).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[invite] answer read failed:', (err as Error).message);
+      return false;
+    });
+    if (agreed) {
       cleanedFinal = await ensureInviteLinkInReply(cleanedFinal, userId).catch(() => cleanedFinal);
     }
   }
@@ -19241,7 +19096,6 @@ export async function processChat(
   lap(postRun, 'reply');
   // The same answer must not be on the screen twice (item H).
   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
-  await dropPlanStepsTheReplyCarries(threadId, runId, storedReply);
   lap(postRun, 'steps');
   // D348: the free answer says it was free, immediately after it and before
   // anything else the run has to deliver.

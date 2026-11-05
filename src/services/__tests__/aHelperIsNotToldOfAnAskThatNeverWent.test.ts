@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { HELPER_ASKED_NOBODY_NUDGE, helperChatClaimsAnAskNobodyGot } from '../replyGuards';
+import { ClaimKind } from '../replyClaims.service';
+import { claimsRead } from './helpers/replyClaims';
 
 /**
  * #7229 (tester 74779, helper chat 65053; Misho's yes, 24 Oct): „გიორგი
@@ -9,50 +11,33 @@ import { HELPER_ASKED_NOBODY_NUDGE, helperChatClaimsAnAskNobodyGot } from '../re
  */
 describe('an ask claimed in a helper’s own chat', () => {
   const tester65053 = 'გიორგი სანტექნიკოსის ასისტენტს კითხვა გავუგზავნე, მალე მოგწერ.';
+  const said = claimsRead({ [ClaimKind.Sent]: [tester65053] });
 
   it('is false when the run asked somebody else (65053)', () => {
     expect(
-      helperChatClaimsAnAskNobodyGot(tester65053, { asked: ['ნინო კაპანაძე'], anythingWent: true }),
+      helperChatClaimsAnAskNobodyGot(said, { asked: ['ნინო კაპანაძე'], anythingWent: true }),
     ).toBe(true);
   });
 
   it('is false when nothing went out at all', () => {
-    expect(helperChatClaimsAnAskNobodyGot(tester65053, { asked: [], anythingWent: false })).toBe(
-      true,
-    );
+    expect(helperChatClaimsAnAskNobodyGot(said, { asked: [], anythingWent: false })).toBe(true);
   });
 
   it('is true when it names the person this run asked, in any case ending', () => {
     expect(
-      helperChatClaimsAnAskNobodyGot(tester65053, {
-        asked: ['გიორგი სანტექნიკოსი'],
-        anythingWent: true,
-      }),
+      helperChatClaimsAnAskNobodyGot(said, { asked: ['გიორგი სანტექნიკოსი'], anythingWent: true }),
     ).toBe(false);
   });
 
   it('leaves „I sent it" alone when the answer did go to the asker', () => {
-    expect(
-      helperChatClaimsAnAskNobodyGot('მადლობა, გავუგზავნე.', { asked: [], anythingWent: true }),
-    ).toBe(false);
+    const sent = claimsRead({ [ClaimKind.Sent]: ['მადლობა, გავუგზავნე.'] });
+    expect(helperChatClaimsAnAskNobodyGot(sent, { asked: [], anythingWent: true })).toBe(false);
   });
 
-  it('leaves a reply that claims no send alone', () => {
-    expect(
-      helperChatClaimsAnAskNobodyGot('გიორგი Netai-ზე არ არის.', {
-        asked: [],
-        anythingWent: false,
-      }),
-    ).toBe(false);
-  });
-
-  it('a refusal is not a claim', () => {
-    expect(
-      helperChatClaimsAnAskNobodyGot('გიორგის ვერ ვკითხე — ის Netai-ზე არ არის.', {
-        asked: [],
-        anythingWent: false,
-      }),
-    ).toBe(false);
+  it('leaves a reply the model read as claiming no send alone', () => {
+    expect(helperChatClaimsAnAskNobodyGot(claimsRead({}), { asked: [], anythingWent: false })).toBe(
+      false,
+    );
   });
 });
 

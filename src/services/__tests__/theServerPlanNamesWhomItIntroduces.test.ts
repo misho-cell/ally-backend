@@ -71,8 +71,10 @@ describe('the plan reply with the sentence', () => {
   const NAMED = georgianSentence({ via: 'ლიკა მეხუთე', to: 'ნინუცა მეხუთე' });
   const plan = { text: SERVER, names: ['ლიკა მეხუთე'], introSentence: NAMED };
 
-  it('stands in for a reply without the plan', () => {
-    expect(planReplyText('დამელოდე, სანამ დაადასტურებ.', plan, 'ka')).toBe(`${NAMED}\n\nდავიწყო?`);
+  it('follows a reply that names nobody (#8779 c: the reply is no longer cut)', () => {
+    expect(planReplyText('დამელოდე, სანამ დაადასტურებ.', plan, 'ka')).toBe(
+      `დამელოდე, სანამ დაადასტურებ.\n\n${NAMED}\n\nდავიწყო?`,
+    );
   });
 
   it('leaves the model’s own clean sentence as it is', () => {

@@ -1,3 +1,4 @@
+import { ClaimKind, claimsOfKind, makesClaim, ReplyClaims } from './replyClaims.service';
 import { RunLanguage } from './runLanguage';
 
 // A run must end on an answer, not an announcement. These are the tails the
@@ -182,37 +183,20 @@ export function continuationCoversAnswer(answer: string, continuation: string): 
  * words the helper approved, through the tool), so the server never relays the
  * line itself; it catches the claim and asks the model once more.
  */
-// The tester's 1105 (33298): „გადასაცემი პასუხი: ჯემალ ფირცხალავა." — the
-// answer labelled as passed on, with no send, is the same claim.
-// The tester's 41317 (#1783): „პასუხი გაიგზავნა." after a refused send.
-// The tester's 1102 (i, 33119): „ქეთევანს ჰკითხე: რატომ სჭირდება…" — the
-// helper's question written as an instruction to ask, and never sent.
-const CLAIMS_PASSED_ON_RE =
-  /(ჰკითხე\s*[:：]|\bask\s+\p{L}+\s*:|გადასაცემი\s+პასუხი|გასაგზავნი\s+პასუხი|answer\s+to\s+(?:pass\s+on|send|relay)\s*:|გადავეცი|(?:პასუხი|შეკითხვა)\s+გაიგზავნა|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
-
-/**
- * The tester's 1145 (37854): „ნოდარს გადავცემ: „ნანა სტომატოლოგი"" — the promise
- * in the future tense, with nothing sent. A negated one („არ გადავცემ") is not.
- */
-const PROMISES_TO_PASS_ON_RE =
-  /(?<!(?:არ|ვერ)\s)(?:გადავცემ|გავუგზავნი|გადავუგზავნი)(?!\p{L})|\bi(?:'ll| will)\s+(?:pass|send|forward|relay)\b/iu;
-
-export function claimsToHavePassedItOn(text: string): boolean {
-  return CLAIMS_PASSED_ON_RE.test(text) || PROMISES_TO_PASS_ON_RE.test(text);
+// #8779 c: the passed-on, sent and sending-now claims are the small model's reading
+// (replyClaims.service); whether a send happened is the server's check.
+export function claimsToHavePassedItOn(claims: ReplyClaims): boolean {
+  return makesClaim(claims, ClaimKind.PassedOn) || makesClaim(claims, ClaimKind.Sent);
 }
 
 /**
  * #2113 (tester 43066, conv 41598): the owner tapped approve, and the reply read
  * „plan approved, I have already written to Nika's and Mari's assistants" — the
- * goal had sent nothing to anybody. Day one, which does the writing, had not
- * run yet. A first-person past-tense send on a goal that has sent nothing at
- * all cannot be true, whatever else the reply says.
+ * goal had sent nothing to anybody. A send claimed on a goal that has sent
+ * nothing at all cannot be true, whatever else the reply says.
  */
-const CLAIMS_AN_ASK_WAS_SENT_RE =
-  /(?<!(?:არ|ვერ)\s)(?:დავწერე|მივწერე|ვკითხე|გავუგზავნე|გავაგზავნე|გადავეცი)(?!\p{L})|\bi(?:'ve| have)?\s+(?:written|wrote|asked|sent|messaged)\s+(?:to\s+)?\p{L}/iu;
-
-export function claimsAnAskWasSent(text: string): boolean {
-  return CLAIMS_AN_ASK_WAS_SENT_RE.test(text);
+export function claimsAnAskWasSent(claims: ReplyClaims): boolean {
+  return makesClaim(claims, ClaimKind.Sent);
 }
 
 /**
@@ -223,7 +207,6 @@ export function claimsAnAskWasSent(text: string): boolean {
  * names an assistant and none of the people this run asked.
  */
 const NAMES_AN_ASSISTANT_RE = /ასისტენტ|assistant|ассистент|asistente/iu;
-const SENTENCES_RE = /(?<=[.!?…])\s+|\n+/u;
 const MIN_STEM = 3;
 const LAST_VOWEL_RE = /[აეიოუaeiouаеиоуыэюя]$/iu;
 
@@ -237,14 +220,14 @@ function askedStems(askedNames: readonly string[]): string[] {
 }
 
 export function helperChatClaimsAnAskNobodyGot(
-  text: string,
+  claims: ReplyClaims,
   sent: { readonly asked: readonly string[]; readonly anythingWent: boolean },
 ): boolean {
-  const claims = text.split(SENTENCES_RE).filter((sentence) => claimsAnAskWasSent(sentence));
-  if (claims.length === 0) return false;
+  const said = claimsOfKind(claims, ClaimKind.Sent);
+  if (said.length === 0) return false;
   if (!sent.anythingWent) return true;
   const stems = askedStems(sent.asked);
-  return claims.some((sentence) => {
+  return said.some((sentence) => {
     if (!NAMES_AN_ASSISTANT_RE.test(sentence)) return false;
     const lower = sentence.toLocaleLowerCase();
     return !stems.some((stem) => lower.includes(stem));
@@ -260,16 +243,12 @@ export const HELPER_ASKED_NOBODY_NUDGE =
 
 /**
  * MTR #7 (2113 again): after „change the plan" the reply said „…ახლა ვწერ"
- * („I am writing now") and nothing went. The present tense is kept apart from
- * the past on purpose: right after an approval, „writing now" is true — the
- * engine's day one sends a moment later. The caller counts it only on a run
- * that approved nothing.
+ * („I am writing now") and nothing went. Right after an approval, „writing now"
+ * is true — the engine's day one sends a moment later — so the caller counts it
+ * only on a run that approved nothing.
  */
-const CLAIMS_A_SEND_NOW_RE =
-  /(?:ახლა|ახლავე)\s+(?:ვწერ|ვუწერ|ვაგზავნი|ვეკითხები)(?!\p{L})|\bi'?m\s+(?:now\s+)?(?:writing|sending|messaging)\b|\bsending\s+(?:it\s+)?now\b/iu;
-
-export function claimsASendNow(text: string): boolean {
-  return CLAIMS_A_SEND_NOW_RE.test(text);
+export function claimsASendNow(claims: ReplyClaims): boolean {
+  return makesClaim(claims, ClaimKind.SendingNow);
 }
 
 export const NOTHING_SENT_YET_NUDGE =

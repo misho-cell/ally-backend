@@ -87,14 +87,68 @@ describe("the fact sweep stores the user's knowledge, not the assistant's", () =
     );
   });
 
-  it('a short agreement confirms what the assistant just said', async () => {
+  it('a detail the model read as agreed to is stored after a short agreement', async () => {
+    modelReturns([
+      {
+        person_name: 'Nika',
+        field_type: 'city',
+        value: 'ბათუმი',
+        confidence: 'stated',
+        source: 'confirmed',
+      },
+    ]);
+
+    await sweepFactsFromExchange('501', 1, 'დიახ, სწორია', 'ნიკა ბათუმში ცხოვრობს, ხომ?');
+
+    expect(mockSubmit).toHaveBeenCalled();
+  });
+
+  // #8779 rule 43: the agreement is the model's reading, in any words — not a word list.
+  it('an agreement in words no list held is stored when the model reads it as agreed', async () => {
+    modelReturns([
+      {
+        person_name: 'Nika',
+        field_type: 'city',
+        value: 'ბათუმი',
+        confidence: 'stated',
+        source: 'confirmed',
+      },
+    ]);
+
+    await sweepFactsFromExchange('501', 1, 'ეგრეა, ჰო', 'ნიკა ბათუმში ცხოვრობს, ხომ?');
+
+    expect(mockSubmit).toHaveBeenCalled();
+  });
+
+  it("a short message does not make the assistant's detail the user's unless the model read an agreement", async () => {
     modelReturns([
       { person_name: 'Nika', field_type: 'city', value: 'ბათუმი', confidence: 'stated' },
     ]);
 
     await sweepFactsFromExchange('501', 1, 'დიახ, სწორია', 'ნიკა ბათუმში ცხოვრობს, ხომ?');
 
-    expect(mockSubmit).toHaveBeenCalled();
+    expect(mockSubmit).not.toHaveBeenCalled();
+  });
+
+  it('a question is never an agreement, whatever the model marked', async () => {
+    modelReturns([
+      {
+        person_name: 'Misha Omiadze',
+        field_type: 'employer',
+        value: 'კავკასიის მედიცინის ცენტრი',
+        confidence: 'stated',
+        source: 'confirmed',
+      },
+    ]);
+
+    await sweepFactsFromExchange(
+      '501',
+      1,
+      'თვალის ექიმი ვინ არის ბათუმში?',
+      'მიხეილ ომიაძე მუშაობს კავკასიის მედიცინის ცენტრში…',
+    );
+
+    expect(mockSubmit).not.toHaveBeenCalled();
   });
 
   it('a role the person left becomes past_role, never employer', async () => {
