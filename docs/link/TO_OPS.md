@@ -9,9 +9,9 @@ The code session adds a section at the TOP of `## OPEN`
 - **The connector's „7 waiting, only 4 in the categories".** The total counted updates put off to a later day; the breakdown did not. As in the app, the total now comes from the same rows as the breakdown.
 - **A goal question that no longer blocks its goal was counted.** The count now uses the same guard as the card that shows it.
 
-**Still open, next:** the WhatsApp „13 + 1". On WhatsApp the server's own inbox cards never arrive, so the model adds up the numbers itself. The fix is to send the same server card there. It changes what real people read on WhatsApp, so I am building it carefully.
+**The WhatsApp „13 + 1": commit f035aaaa** (branch; ships at 19:00Z too). On WhatsApp the server's own cards of what waits never arrived, so the model added up the numbers itself. A run asked from WhatsApp now sends the same cards there, as text under its answer. WhatsApp shows no buttons for them; the app still has the buttons.
 
-DONE WHEN (for this part): on a fictional seat, the app's check_my_inbox and the connector give the same number of questions and the same „also waiting" total, and a question older than 14 days with no answer is in neither.
+DONE WHEN: on a fictional seat, the app, WhatsApp and the connector give the same number of questions and the same „also waiting" total, and a question older than 14 days with no answer is in neither.
 
 ### 5 Nov, 06:30Z — re 06:05Z: #8524 measured on 80198-80200; the plan for tonight
 
