@@ -228,8 +228,8 @@ describe('a closing question in other words', () => {
     );
   });
 
-  it('leaves a reply with a different last question alone, adding the agreed one', () => {
-    expect(withClosingQuestion('რომელ ქალაქში ხარ?', 'ka')).toBe('რომელ ქალაქში ხარ?\n\nდავიწყო?');
+  it('leaves a reply that ends on a question of its own alone (#8779 c)', () => {
+    expect(withClosingQuestion('რომელ ქალაქში ხარ?', 'ka')).toBe('რომელ ქალაქში ხარ?');
   });
 });
 

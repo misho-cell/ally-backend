@@ -8868,18 +8868,6 @@ function withoutClosingVariant(reply: string, question: string): string {
   return lines.slice(0, -1).join('\n');
 }
 
-/**
- * 2909: a step that says the run will talk to people's assistants is the plan
- * told early — „ელენესა და რატის ასისტენტებს დავველაპარაკები და ვკითხავ…".
- * When the plan message follows in the same run, it is the one copy.
- */
-const PLAN_TALKS_RE =
-  /ასისტენტ\S*\s+(?:\S+\s+){0,3}?და?ვ?ველაპარაკ|\b(?:talk|speak)\s+to\s+(?:\S+\s+){0,6}?assistants?\b/iu;
-
-export function retellsThePlansTalks(step: string): boolean {
-  return PLAN_TALKS_RE.test(step);
-}
-
 /** Do the plan step and the final both end on the agreed question (D663)? */
 export function bothAskTheClosingQuestion(
   step: string,
@@ -8916,26 +8904,22 @@ async function withWhyInOneSentence(
 
 /** A question of the model's own needs at least this many words to name who and what. */
 const MIN_OWN_QUESTION_WORDS = 3;
-/**
- * It proposes the run's own next step — a first-person verb („მივწერო",
- * „ვკითხო", „დავუკავშირდე"; „Shall I", „Should I"; „Написать", „спросить") —
- * not a question back to the owner („რომელ ქალაქში ხარ?").
- */
-const OWN_ACTION_QUESTION_RE =
-  /(?:^|[\s,„"(])(?:მი|მო|გა|და|შე|ვ|ჩა|წა|გადა|და)[\p{Script=Georgian}]*ო(?=[\s,?!.])|\b(?:shall|should|may) I\b|(?:написать|спросить|связаться|попросить)/iu;
 
 /**
  * #8680 (Tornike, 4 Nov, via the tester's 82039): no bare „გავუგზავნო?" — the
- * plan asks in a sentence naming whom and what. A reply whose last line is
- * such a question of its own keeps it, and the agreed question is not added.
+ * plan asks in a sentence naming whom and what. #8779 c (the founder, 4 Nov
+ * 19:07): which kind of question it is, is the model's to decide, not a verb
+ * list's. A reply whose last line is a question of its own — not the agreed one
+ * or a variant of it — keeps it, and the agreed question is not added.
  */
 export function endsOnOwnQuestion(reply: string, question: string): boolean {
   const last = (reply.trimEnd().split('\n').pop() ?? '').trim();
   if (!last.endsWith('?')) return false;
-  if ([question, ...EARLIER_PLAN_CLOSING_QUESTIONS].some((asked) => last === asked)) return false;
   const asked = [question, ...EARLIER_PLAN_CLOSING_QUESTIONS];
-  if (asked.some((closing) => isClosingQuestionVariant(last, closing))) return false;
-  return last.split(/\s+/u).length >= MIN_OWN_QUESTION_WORDS && OWN_ACTION_QUESTION_RE.test(last);
+  if (asked.some((closing) => last === closing || isClosingQuestionVariant(last, closing))) {
+    return false;
+  }
+  return last.split(/\s+/u).length >= MIN_OWN_QUESTION_WORDS;
 }
 
 export function withClosingQuestion(given: string, language: RunLanguage): string {
@@ -16439,11 +16423,6 @@ async function runToolLoop(
     bothAskTheClosingQuestion(draft.text, finalText, runLang(runId))
   ) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
-  } else if (!buriedAnswer && finalText.includes(PLAN_CLOSING_QUESTION[runLang(runId)])) {
-    // 2909 (box 54162, conv 50220): a step announced the plan's talks two
-    // seconds before the plan message said them again, without the question.
-    const retelling = draftSteps.filter((step) => retellsThePlansTalks(step.text));
-    if (retelling.length > 0) await dropDraftSteps(userId, threadId, runId, retelling);
   }
   // 2971: buttons under a reply that asks nothing take the question a step asked.
   const askedInAStep =
