@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { asksTheWeather, isSmallTalk, isToolFreeSmallTalk } from '../smallTalk';
+import { isSmallTalk, isToolFreeSmallTalk } from '../smallTalk';
 import { seeksAPerson } from '../goalIntent';
 import { smallTalkTurn } from '../chat.service';
 
@@ -162,29 +162,3 @@ describe('the goal decision on small talk', () => {
 });
 
 /** The tester's 15th chat (conv 49108): the weather was „look at an app" with no tool called. */
-describe('a question about the weather', () => {
-  it.each([
-    'რა ამინდია დღეს თბილისში?',
-    'რა ამინდია?',
-    'How is the weather in Tbilisi?',
-    'Какая погода в Батуми?',
-  ])('„%s" is looked up', (line) => {
-    expect(asksTheWeather(line)).toBe(true);
-  });
-
-  it.each([
-    'მჭირდება ამინდის აპლიკაციის დეველოპერი',
-    'ამინდი კარგია, გავისეირნე',
-    'ვინ იცნობს ვინმეს, ვინც ამინდის პროგნოზზე მუშაობს და შეუძლია ჩემს სტარტაპს დაეხმაროს?',
-  ])('„%s" is not', (line) => {
-    expect(asksTheWeather(line)).toBe(false);
-  });
-
-  // 3106 (speed): the server searches first; the forced search is the fallback when it cannot.
-  it('looks the weather up: the server first, the forced model search as the fallback', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('? { forceTool: WEB_SEARCH_TOOL }');
-    expect(chat).toContain('weatherFoundFirst(userId, threadId, runId');
-    expect(chat).toContain("tool_choice: { type: 'tool' as const, name: opts.forceTool }");
-  });
-});

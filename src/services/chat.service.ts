@@ -3,7 +3,6 @@ import { relayInMeetingChat } from './meetingChat.service';
 import { INTRODUCTION_WAITS_FOR_THE_YES, introductionMayGo } from './introYesGate';
 import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
 import { offersMatching, withOffers } from './tools/searchOffers';
-import { lookupAnswersIt, nameAskedWhereTheyWork, whereTheyWorkSection } from './whereTheyWork';
 import { maskPersonalIds } from './personalIdMask';
 import {
   askedFileFormat,
@@ -97,7 +96,6 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
 import {
-  asksTheWeather,
   isFarewell,
   isGeorgianLine,
   isPlainThanks,
@@ -478,13 +476,6 @@ import { isFreeOfficialPageRead } from './officialPageRead';
 import { withoutOurSideApology } from './ourSideApology';
 import { WorldAnswer, worldAnswerMessage, worldAnswerSection } from './worldAnswer';
 import {
-  buildRoleSearchSection,
-  RoleQueries,
-  RoleSearchRun,
-  roleSearchQueries,
-  runRoleSearch,
-} from './roleWebSearch.service';
-import {
   finalAnswerModel,
   finalWriterForRun,
   smallTalkFinalModel,
@@ -584,7 +575,6 @@ import { noteFactForgotten } from './forgetOnTheOwnersWord';
 import { keepPastedList } from './pastedList.service';
 import { RenameRefusal, renameOwnContact } from './renameContact.service';
 import {
-  LOOKUP_ANSWER_MAX_CHARS,
   SHORT_ANSWER_MAX_CHARS,
   SHORT_ANSWER_ON_TEST_SEATS_ONLY,
   shortAnswerStands,
@@ -676,7 +666,6 @@ import {
   instructionNames,
   instructionSentence,
   looksLikeContactInstruction,
-  needsNoOpeningSearch,
 } from './goalIntent';
 import { renderPendingMessage, PendingItemInput } from './pendingMessages';
 import { requestIdOfCard, requestThreadOf } from './requestCardThread';
@@ -6614,71 +6603,9 @@ async function taskForAsk(
 const runIntroSent = new Set<string>();
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
 const runWebFound = new Set<string>();
-/**
- * 3106 (the weather half, re-run 13 Oct 01:50Z): runs that look up the weather. A
- * weather page's title gave the way-in lookup „Weather" and „ამინდი" to search the
- * owner's phonebook for, on every run, while the reply waited. Nobody is looked for
- * in a weather question, so it searches the web and nothing else.
- */
-const runLooksUpTheWeather = new Set<string>();
-
 /** #8519: runs answering a member's first typed line, which never take the small-talk shortcut. */
 const runIsOwnersFirstLine = new Set<string>();
 
-/**
- * 3106, the speed half (the tester's 58029, 14 Oct: 18.0 / 19.2 / 19.1 s against
- * 12). A weather run spent one whole model turn deciding to call the web search
- * it was forced to call (~6 s before the search began). The server now runs that
- * one search itself and hands the results over in the opening-search section, the
- * same text a goal's opening search uses, so the model answers in its first turn.
- * Null on any failure: the run then falls back to the forced search, as before.
- */
-async function weatherFoundFirst(
-  userId: string,
-  threadId: number,
-  runId: string,
-  ownerLine: string,
-): Promise<string | null> {
-  const startedAt = Date.now();
-  try {
-    const raw = await webSearch(ownerLine);
-    void recordFixedUsage({
-      userId,
-      kind: 'web_search',
-      ...(await webSearchLedger()),
-      runId,
-      threadId,
-    }).catch(() => {});
-    void logToolCall({
-      threadId,
-      surface: 'chat',
-      runId,
-      userId,
-      tool: 'web_search:weather',
-      input: { query: ownerLine },
-      result: raw,
-      durationMs: Date.now() - startedAt,
-    });
-    if (!hasWebResults(raw)) return null;
-    registerWebResult(runId, raw);
-    runWebFound.add(runId);
-    const section = buildOpeningSearchSection({
-      web: JSON.stringify(raw),
-      secondDegree: null,
-      missing: [],
-      waysIn: new Map(),
-      webRaw: raw,
-    });
-    return section === '' ? null : section;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[weather] server search failed, the run searches itself:',
-      (err as Error).message,
-    );
-    return null;
-  }
-}
 /**
  * Whether the final writer starts beside Claude's first turn (#958, 3106). Not
  * for „where does X work?" (#8524, the tester's 82584: 11–13 s against 10): its
@@ -6686,52 +6613,8 @@ async function weatherFoundFirst(
  * yes, 2 Nov) — so the writer started beside it was only waited for, ≈6 s, and
  * its words used instead.
  */
-export function startsTheWriterEarly(smallTalk: boolean, weatherFound: boolean): boolean {
-  return smallTalk || weatherFound;
-}
-/** #8524: the owner's contacts searched for the name before the first turn; null when they do not answer it. */
-/**
- * #8524 (tester 82699: 11.2 / 60.6 / 14.5 s against 10): the contacts lookup
- * (≈3 s under load) waited until the prompt was built (≈2.3 s). It now starts
- * the moment the run does, and the first turn takes it when it is ready.
- */
-interface LookupAhead {
-  readonly name: string;
-  readonly found: Promise<string | null>;
-}
-const runLookupsAhead = new Map<string, LookupAhead>();
-/** A lookup no turn took (the server answered first) is let go after this long. */
-const LOOKUP_AHEAD_KEPT_MS = 120_000;
-
-function startLookupAhead(runId: string, userId: string, ownerLine: string): void {
-  if (asksTheWeather(ownerLine)) return;
-  const name = nameAskedWhereTheyWork(ownerLine);
-  if (name === null) return;
-  runLookupsAhead.set(runId, { name, found: whereTheyWorkFirst(userId, name) });
-  setTimeout(() => runLookupsAhead.delete(runId), LOOKUP_AHEAD_KEPT_MS).unref();
-}
-
-/** The lookup started ahead for this name, or a fresh one. */
-function lookupFor(runId: string, userId: string, name: string): Promise<string | null> {
-  const ahead = runLookupsAhead.get(runId);
-  runLookupsAhead.delete(runId);
-  return ahead !== undefined && ahead.name === name
-    ? ahead.found
-    : whereTheyWorkFirst(userId, name);
-}
-
-async function whereTheyWorkFirst(userId: string, name: string): Promise<string | null> {
-  try {
-    const result = await searchContactByName(userId, name);
-    return lookupAnswersIt(result) ? whereTheyWorkSection(name, result) : null;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[where-they-work] lookup failed, the run searches itself:',
-      (err as Error).message,
-    );
-    return null;
-  }
+export function startsTheWriterEarly(smallTalk: boolean): boolean {
+  return smallTalk;
 }
 /** #893: the labels of the list this run worked, for the check that the reply names every row. */
 const runListLabels = new Map<string, string[]>();
@@ -10495,7 +10378,6 @@ function clearRunState(runId: string): void {
   runMembersFound.delete(runId);
   runIntroSent.delete(runId);
   runWebFound.delete(runId);
-  runLooksUpTheWeather.delete(runId);
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
   runsFromWhatsapp.delete(runId);
@@ -11002,15 +10884,12 @@ async function executeToolCall(
       noteFoundUrls(runId, found);
       noteFoundNames(runId, webResultNames(found));
       const wayInStartedAt = Date.now();
-      const waysIn =
-        runId !== undefined && runLooksUpTheWeather.has(runId)
-          ? new Map<string, WayIn>()
-          : await findWaysIn(
-              userId,
-              // #8648: the names a small model read in the titles, not words cut out by rule.
-              await wayInNamesFrom(found, MAX_WAY_IN_CHECKS, { userId, runId, threadId }),
-              { threadId, runId },
-            );
+      const waysIn = await findWaysIn(
+        userId,
+        // #8648: the names a small model read in the titles, not words cut out by rule.
+        await wayInNamesFrom(found, MAX_WAY_IN_CHECKS, { userId, runId, threadId }),
+        { threadId, runId },
+      );
       // Misho, 3 Nov (#8648): the way_in check does not spend the web's search clock.
       if (runId !== undefined) {
         creditSearchTime(runId + WEB_BUDGET_KEY_SUFFIX, Date.now() - wayInStartedAt);
@@ -14498,22 +14377,6 @@ const RUN_HEARTBEAT_POLL_MS = 5_000;
  * D315 and it is one line to put back.
  */
 /**
- * #5248 (D825): the role search's prompt section. What it found joins the run's
- * evidence and its published pages exactly as the model's own web_search does.
- */
-async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Promise<string> {
-  const finds = await runRoleSearch(run, queries);
-  for (const found of finds.results) {
-    if (found.result === null) continue;
-    recordRunEvidence(run.runId, profileEvidence(found.result) ?? '');
-    recordRunLinkedinEvidence(run.runId, linkedinEvidence(found.result));
-    registerWebResult(run.runId, found.result);
-  }
-  if (finds.managementPage !== null) recordRunEvidence(run.runId, finds.managementPage.text);
-  return buildRoleSearchSection(finds);
-}
-
-/**
  * #8350 (founder, 29 Oct): an ask about the world is answered from the web
  * first. Only on a goal just opened from a stated need, as the opening searches
  * are, and never when the owner asks to reach a person or names people to ask:
@@ -14527,8 +14390,6 @@ async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Prom
 function worldAnswerIsDue(goalOpened: boolean, ownerLine: string): boolean {
   return (
     (goalOpened || asksWhoHoldsAPost(ownerLine)) &&
-    !needsNoOpeningSearch(ownerLine) &&
-    !asksTheWeather(ownerLine) &&
     !goalAsksToReachAPerson(ownerLine) &&
     !ownerLineNamesPeopleToAsk(ownerLine)
   );
@@ -15731,25 +15592,9 @@ async function runToolLoop(
     !ownerAbsent &&
     !runIsOwnersFirstLine.has(runId) &&
     isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
-  const weatherLookUp =
-    !ownerAbsent &&
-    asksTheWeather(lastOwnerText(messages) ?? '') &&
-    tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
-  if (weatherLookUp) runLooksUpTheWeather.add(runId);
-  const weatherFound = weatherLookUp
-    ? await weatherFoundFirst(userId, threadId, runId, lastOwnerText(messages) ?? '')
-    : null;
-  // #8524: „where does X work?" is looked up in the owner's contacts before the first turn.
-  const jobName =
-    !ownerAbsent && !weatherLookUp ? nameAskedWhereTheyWork(lastOwnerText(messages) ?? '') : null;
-  const jobFound = jobName === null ? null : await lookupFor(runId, userId, jobName);
-  // #8524 (82699): the lookup answer is text, short — on the blank-answer retry too,
-  // which used to drop both and once ran a whole plan for 60 s instead.
-  const lookupTurn = jobFound === null ? {} : { forceText: true, maxTokens: DISCUSS_MAX_TOKENS };
-  // 0283's regression (the tester's 58065): the weather the server found was in the first
-  // turn's prompt only; the final writer and every later round never saw it and wrote
-  // „I cannot check live". It is part of the run's prompt from here on, for every call.
-  const systemPrompt = promptBeforeTheRun + (weatherFound ?? '') + (jobFound ?? '');
+  // #8779 group 4: the weather and „where does X work?" are no longer looked up before the
+  // first turn on a word match — the model calls web_search or the contact search itself.
+  const systemPrompt = promptBeforeTheRun;
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   // 2971: every step bubble the owner saw, so a question said only there is not lost.
@@ -15798,9 +15643,7 @@ async function runToolLoop(
   // for Claude, 4-9 s, then took 4-5 s of its own. The weather it writes from is in
   // its prompt already, so it starts beside Claude, as small talk's does.
   const earlyFinal =
-    startsTheWriterEarly(smallTalkOnly, weatherLookUp && weatherFound !== null) && writer !== ''
-      ? writeWith(writer)
-      : null;
+    startsTheWriterEarly(smallTalkOnly) && writer !== '' ? writeWith(writer) : null;
   const firstTurnText = earlyFinal === null ? stream : undefined;
   // #8681 retest 2: set when the forced final was left to the writer.
   let claudeFinalSkipped = false;
@@ -15812,18 +15655,9 @@ async function runToolLoop(
     model:
       // #8524 (82667): a lookup answer is the owner's reply itself — no writer
       // rewrites it now (#8779) — so the main model writes it, not the small one.
-      smallTalkOnly || tapSettledByServer || (weatherLookUp && weatherFound !== null)
-        ? SMALL_TALK_MODEL
-        : TOOL_TURN_MODEL,
+      smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
-    // #8524: with the person already looked up, the first turn is the answer.
-    ...lookupTurn,
-    // 3106: with the weather already found, the first turn is the answer.
-    ...(weatherLookUp &&
-      (weatherFound === null
-        ? { forceTool: WEB_SEARCH_TOOL }
-        : { forceText: true, maxTokens: DISCUSS_MAX_TOKENS })),
   });
   /** The forced final the writer was trusted with, written after all because the writer failed. */
   const claudeFinalIfSkipped = async (): Promise<void> => {
@@ -15843,7 +15677,6 @@ async function runToolLoop(
     response = await callClaude(messages, systemPrompt + BLANK_RETRY_NOTE, tools, ctx, {
       onText: firstTurnText,
       model: TOOL_TURN_MODEL,
-      ...lookupTurn,
     });
   }
   // Tester 1081 (32204, 32206): blank on the re-ask too. Said once here and
@@ -16174,7 +16007,7 @@ async function runToolLoop(
             runAskSent.has(runId) || runAnswerSent.has(runId) || runIntroSent.has(runId),
           hasChoices: choices !== undefined && choices.length > 0,
         },
-        jobFound === null ? SHORT_ANSWER_MAX_CHARS : LOOKUP_ANSWER_MAX_CHARS,
+        SHORT_ANSWER_MAX_CHARS,
       ) &&
       (!SHORT_ANSWER_ON_TEST_SEATS_ONLY ||
         (await allAreTestSeats([Number(userId)]).catch(() => false)));
@@ -18474,7 +18307,6 @@ export async function processChat(
   // thing: whether the tools that record the owner's own consent exist for
   // this run (ticket 19 item 0).
   const ownerAbsent = userMessage.startsWith(RUN_EVENT_PREFIX);
-  if (!ownerAbsent) startLookupAhead(runId, userId, userMessage);
   /**
    * ROW 238 (D119) — the owner asking for a change stops the NEXT WAVE, and
    * until today it stopped nothing at all.
@@ -18655,22 +18487,14 @@ export async function processChat(
    * opening web search read the Georgian question word as a domain, searched
    * VIN.GE, and told the owner it had found them a contact there.
    */
+  // #8779 group 4: no word list skips the opening searches on a goal any more.
   const lateSearch =
-    autoGoalId === null || needsNoOpeningSearch(userMessage) || asksTheWeather(userMessage)
-      ? null
-      : startOpeningSearches(userId, userMessage, runId, threadId);
+    autoGoalId === null ? null : startOpeningSearches(userId, userMessage, runId, threadId);
   // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
   const worldAnswerWork =
     !ownerAbsent && worldAnswerIsDue(autoGoalId !== null, userMessage)
       ? worldAnswerFor(userId, threadId, runId, userMessage, language)
       : Promise.resolve(null);
-  // #5248 (D825): a goal at a lender about a loan is searched by ROLE before the
-  // first answer, and this one is waited for — the answer must start from it.
-  const roleQueries = lateSearch === null ? null : roleSearchQueries(userMessage);
-  const roleSection =
-    roleQueries === null
-      ? Promise.resolve('')
-      : roleSearchSection({ userId, runId, threadId }, roleQueries);
   // #397: the opening searches are the run's first search; the line says so.
   if (lateSearch !== null) {
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
@@ -18956,7 +18780,6 @@ export async function processChat(
         `never that a plan is ready or waits for their yes unless a plan was proposed.`) +
     // #1123: told in THIS run only, so no always-on line reads as „cannot send" (#1090).
     (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '') +
-    (await roleSection) +
     (worldAnswer === null ? '' : worldAnswerSection(worldAnswer));
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.

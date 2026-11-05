@@ -11,11 +11,8 @@ import { join } from 'path';
 const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
 describe('the small-talk writer', () => {
-  // 3106 (0385 FAIL 1/3): a weather answer already found starts its writer the same way.
-  // #8524 (82584): not for a person looked up — its short answer keeps Claude's words.
-  const early = chat.indexOf(
-    "startsTheWriterEarly(smallTalkOnly, weatherLookUp && weatherFound !== null) && writer !== ''",
-  );
+  // #8779 group 4: the weather is no longer looked up before the run, so only small talk.
+  const early = chat.indexOf("startsTheWriterEarly(smallTalkOnly) && writer !== ''");
   const firstCall = chat.indexOf('let response = await callClaude(');
 
   it('starts before the first Claude call, not after it', () => {

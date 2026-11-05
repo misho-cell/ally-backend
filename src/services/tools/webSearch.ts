@@ -407,10 +407,6 @@ async function tavilySearch(enrichedQuery: string): Promise<object> {
  * can see it too — the model gets the sentence, and whoever asks „why did it
  * say the page does not mention him" gets the numbers.
  */
-function firstRead(text: string, from: number, startAt: RegExp | undefined): number {
-  return from === 0 && startAt !== undefined ? densestStart(text, startAt) : from;
-}
-
 function pageResult(url: string, text: string, from = 0): object {
   const start = Number.isFinite(from) && from > 0 ? Math.floor(from) : 0;
   // Past the end is not an error and must not read as „the page says nothing":
@@ -444,37 +440,8 @@ function pageResult(url: string, text: string, from = 0): object {
   };
 }
 
-/** How much of the page before the densest stretch is kept, for its heading. */
-const DENSEST_LEAD_IN_CHARS = 300;
-
-/**
- * Where the words matter most: the start of the window of one page part's
- * length that holds the most matches, a short lead-in before it; 0 when none
- * match. #5248 (the tester's 07:15Z): TBC's annual report was read from its
- * first characters, the cover, while the management board sits deep inside;
- * its first mention is the contents page, so the busiest stretch wins, not
- * the first.
- */
-export function densestStart(text: string, words: RegExp, window: number = PAGE_CHARS): number {
-  const flags = words.flags.includes('g') ? words.flags : `${words.flags}g`;
-  const at = [...text.matchAll(new RegExp(words.source, flags))].map((m) => m.index ?? 0);
-  let best = -1;
-  let bestCount = 0;
-  for (let i = 0, j = 0; i < at.length; i += 1) {
-    while (j < at.length && at[j] < at[i] + window) j += 1;
-    if (j - i > bestCount) {
-      bestCount = j - i;
-      best = at[i];
-    }
-  }
-  return best < 0 ? 0 : Math.max(0, best - DENSEST_LEAD_IN_CHARS);
-}
-
-/**
- * One page, in parts. `startAt`, only for a first read, starts the part where
- * those words are densest instead of at the first character.
- */
-export async function fetchPage(url: string, fromCharacter = 0, startAt?: RegExp): Promise<object> {
+/** One page, in parts, from `fromCharacter` on. */
+export async function fetchPage(url: string, fromCharacter = 0): Promise<object> {
   const target = (url ?? '').trim();
   if (!/^https?:\/\//i.test(target)) {
     return { error: 'Pass a full http(s) URL.' };
@@ -485,7 +452,7 @@ export async function fetchPage(url: string, fromCharacter = 0, startAt?: RegExp
     const raw = await fetchRawPage(target);
     if (raw.gone) return { url: target, content: null, note: NO_SUCH_PAGE_NOTE };
     const direct = raw.text;
-    if (direct) return pageResult(target, direct, firstRead(direct, fromCharacter, startAt));
+    if (direct) return pageResult(target, direct, fromCharacter);
     if (!TAVILY_API_KEY) return { url: target, content: null, note: NO_TEXT_NOTE };
   }
   if (!TAVILY_API_KEY) {
@@ -520,11 +487,10 @@ export async function fetchPage(url: string, fromCharacter = 0, startAt?: RegExp
     if (!content.trim()) {
       // Extractor came back empty — try a plain fetch before giving up.
       const fallback = await fetchRawPageText(target);
-      if (fallback)
-        return pageResult(target, fallback, firstRead(fallback, fromCharacter, startAt));
+      if (fallback) return pageResult(target, fallback, fromCharacter);
       return { url: target, content: null, note: NO_TEXT_NOTE };
     }
-    return pageResult(target, content, firstRead(content, fromCharacter, startAt));
+    return pageResult(target, content, fromCharacter);
   } catch (err) {
     return { error: (err as Error).message };
   } finally {

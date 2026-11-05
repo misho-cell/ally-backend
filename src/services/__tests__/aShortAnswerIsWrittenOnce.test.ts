@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
-  LOOKUP_ANSWER_MAX_CHARS,
   SHORT_ANSWER_MAX_CHARS,
   SHORT_ANSWER_ON_TEST_SEATS_ONLY,
   shortAnswerStands,
@@ -35,15 +34,5 @@ describe('a short answer', () => {
       'let rewritten = keepShort ? null : await (earlyFinal ?? writeWith(writer));',
     );
     expect(chat).toContain('allAreTestSeats([Number(userId)])');
-  });
-});
-
-/** #8524 FAIL 2/3 (82636, run 79581): a lookup answer past 300 characters was rewritten (4.1 s). */
-describe('an answer read from a lookup already made', () => {
-  it('keeps Claude’s words up to the lookup cap', () => {
-    const acts = { proposedAPlan: false, sentSomething: false, hasChoices: false };
-    const answer = 'ნიკა თიბისიში მუშაობს. '.repeat(20);
-    expect(shortAnswerStands(answer, acts)).toBe(false);
-    expect(shortAnswerStands(answer, acts, LOOKUP_ANSWER_MAX_CHARS)).toBe(true);
   });
 });

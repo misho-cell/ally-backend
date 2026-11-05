@@ -37,7 +37,7 @@ describe('the small-talk turn', () => {
   it('asks the small Claude model, and only on listed small talk', () => {
     expect(chat).toContain("|| 'claude-haiku-4-5-20251001';");
     expect(chat).toMatch(
-      /smallTalkOnly \|\| tapSettledByServer \|\| \(weatherLookUp && weatherFound !== null\)\s+\? SMALL_TALK_MODEL\s+: TOOL_TURN_MODEL,/u,
+      /smallTalkOnly \|\| tapSettledByServer\s+\? SMALL_TALK_MODEL\s+: TOOL_TURN_MODEL,/u,
     );
     // D631: a tap the server already acted on goes to the same faster model.
     expect(chat).toContain(
@@ -66,12 +66,5 @@ describe('the small-talk turn', () => {
 
   it('writes nothing through GPT when the final writer is off', async () => {
     await expect(smallTalkFinalModelWith(undefined, 'small-writer')).resolves.toBe('');
-  });
-
-  // 3106 (16 Oct 07:35): the weather, once found by the server, is read back by the small model.
-  it('answers a weather question the server already looked up on the small model', () => {
-    expect(chat).toContain(
-      'smallTalkOnly || tapSettledByServer || (weatherLookUp && weatherFound !== null)',
-    );
   });
 });
