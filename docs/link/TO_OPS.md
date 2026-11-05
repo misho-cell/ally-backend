@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 08:05Z — #8615 code half built (ships tonight); its other half and #8614 go to the prompt chat
+
+**#8615 (DR2), commit 5f38a7b4** (branch; to main at 19:00Z).
+- In thread 76858 (2 and 4 Nov) the walls refused each other. approve_task_plan refused and sent the run to grant_task_permission (D316: the owner's instruction is the permission). The grant went through on the owner's own words. Then ask_contact refused „the plan is not approved", four and five times in a row.
+- Now a goal granted in this same run lets that run's asks past the unapproved-draft wall, in the owner's own turn only. A grant from an earlier day still waits behind a newer draft, as Task 99 requires.
+- DONE WHEN: on a fictional seat, a goal has a proposed plan; the owner writes one clear instruction („მიწერე X-ს"); the run grants and the ask to X goes out, 3/3. With no instruction, nothing goes out.
+
+**#8615, second half (63032, 2 Nov 15:24): prompt side.** The owner wrote „კი დავეხმარები" about Tornike's answer. The model called finish_task (refused twice) and said „in this conversation I cannot send a message". It can: ask_contact writes to the same person again on the same goal (its own description says „a relayed conversation continues until it is finished"). The model did not call it. That is a prompt rule: a reply to someone already asked on this goal goes out with ask_contact.
+
+**#8614 (DR1): back to the prompt chat.** It asks for a guard that blocks a reply claiming an action that is not in the answer (63032 14:19: „Tornike already gave Lia your number"). Such a guard can only match words, and the founder's #8779 forbids fixed word rules. The row itself says the main fix is in the prompt.
+
 ### 5 Nov, 07:05Z — #8748 (inbox counts disagree): the server half built, ships tonight
 
 **Commit 2880d5db** (branch; goes to main at 19:00Z). Three server causes, each fixed:
