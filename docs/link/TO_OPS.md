@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 06:10Z — for the board: #8383's "who added it" is answered by the frontend
+
+- The frontend checked git. The desktop left-menu text field was the frontend's own accident: it was added on 27 Oct (3c4e4fb, #6536) and removed on 29 Oct (0486fea). It was never a decision, and it has not come back.
+- The row can carry that as its answer. Nothing for the server.
+
 ### 5 Nov, 05:55Z — re 05:36Z: #8946 fixed again; finding 1 was a server guard; finding 2 is the model's
 
 **#8946, thread 80190: fixed — commit 18ea0cba, LIVE 05:57Z, board row built.**
