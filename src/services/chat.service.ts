@@ -9696,6 +9696,23 @@ export function wayInPhonesIn(raw: unknown): string[] {
  * not a way in: the plan is refused with their names, so it is proposed again
  * without them and nobody is offered with a made-up reason.
  */
+/**
+ * Autonomy plan, stage 1 (K15; Misho's thread 76858, 4 Nov 12:11): a plan
+ * proposed again was refused because the people of the EARLIER proposal — found
+ * in an earlier run — were „not found by any search in this run". The people of
+ * the plan in force and of the proposal waiting both count as already known.
+ */
+export function plansPeopleSoFar(
+  task: { readonly plan?: unknown; readonly plan_proposed?: unknown } | null | undefined,
+): TaskPlan | null {
+  const peopleOf = (plan: unknown): unknown[] => {
+    const people = (plan as { people_to_involve?: unknown } | null)?.people_to_involve;
+    return Array.isArray(people) ? people : [];
+  };
+  const people = [...peopleOf(task?.plan), ...peopleOf(task?.plan_proposed)];
+  return people.length === 0 ? null : ({ people_to_involve: people } as unknown as TaskPlan);
+}
+
 export async function peopleNoSearchFound(
   userId: string,
   threadId: number,
@@ -12331,7 +12348,7 @@ async function executeToolCall(
               threadId,
               Number.isFinite(taskId) ? taskId : undefined,
               input['plan'],
-              (planTask?.plan ?? null) as TaskPlan | null,
+              plansPeopleSoFar(planTask),
               runWayInPhones.get(runId),
             );
       if (unfound.length > 0) {
