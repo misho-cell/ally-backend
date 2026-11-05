@@ -60,15 +60,10 @@ function isNotYetLabel(label: string): boolean {
 }
 
 /**
- * The tester's 1123 (35739): the meeting was told in full and the reply closed
- * on „ჩათვალოთ ეს საკითხი მოგვარებულად?" with no buttons at all — the question
- * in words, which the button check never saw. A closing sentence that asks
- * whether it is solved is the finish question however it arrives.
+ * The reply without its finish card, or null when it offered none. #8779 c: a
+ * „solved?" asked in words is the model's own question; only the server's own
+ * finish button is read here.
  */
-const ASKS_IF_SOLVED_RE =
-  /(მოგვარ|მოგვარდა|გადაწყდა|solved|settled|resolved|решен|решён|resuelto)/iu;
-
-/** The reply without its finish card or finish question, or null when it offered neither. */
 export function withoutEarlySolvedCard(
   text: string,
   choices: readonly string[] | undefined,
@@ -77,18 +72,13 @@ export function withoutEarlySolvedCard(
 ): GuardedReply | null {
   const trimmed = text.trim();
   const finishCard = choices !== undefined && choices.some(isSolvedLabel);
-  const finishQuestion = trimmed.endsWith('?') && ASKS_IF_SOLVED_RE.test(lastSentence(trimmed));
-  if (!finishCard && !finishQuestion) return null;
+  if (!finishCard) return null;
   const kept = (choices ?? []).filter((label) => !isSolvedLabel(label) && !isNotYetLabel(label));
   const shortQuestion = trimmed.length <= SHORT_QUESTION_CHARS && trimmed.endsWith('?');
   return {
-    text: finishQuestion || shortQuestion ? withSpeakFirst(trimmed, language) : text,
+    text: shortQuestion ? withSpeakFirst(trimmed, language) : text,
     choices: kept.length > 0 ? kept : undefined,
   };
-}
-
-function lastSentence(text: string): string {
-  return text.slice(lastSentenceStart(text));
 }
 
 /**

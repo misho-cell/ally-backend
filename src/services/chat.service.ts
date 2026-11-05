@@ -16240,10 +16240,7 @@ async function runToolLoop(
     console.log(`[final] run ${runId}: a refused plan's narration is not the answer`);
     bestNarration = '';
   }
-  if (
-    bestNarration.length > 0 &&
-    (STAGE_DIRECTION_ONLY_RE.test(finalText) || isOnlyAWaitingLine(finalText))
-  ) {
+  if (bestNarration.length > 0 && STAGE_DIRECTION_ONLY_RE.test(finalText)) {
     finalText = '';
   }
   const buriedAnswer =
@@ -17571,31 +17568,6 @@ const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id
  * is none of this rule's business; markdown emphasis around the
  * outside is allowed because the model wrapped one of these in asterisks.
  */
-/**
- * The tester's 1012 (thread 30041): the real line — „…ასე გადავცე?" — went
- * out as a step, and the final was only „დაველოდები შენს პასუხს.". The person
- * saw the filler and not the question it was waiting on. A final that is
- * nothing but „I'll wait for your answer" is no answer; the step is.
- */
-/**
- * The tester's 1048 (thread 30889): the final was „ელოდები, რომ აირჩიო." — a
- * waiting line about the owner's CHOICE, and in the second person — while the
- * real 199-character reply sat in the step, one character under the rescue's
- * length floor. Waiting for a choice or a yes is the same non-answer as waiting
- * for a reply, in either person.
- */
-/**
- * The tester's 1135 (37065), seen live on 4 Oct (run 53f8f216): „დამელოდე შენს
- * არჩევანს." — the same non-answer in the imperative — went out as the reply
- * while the step above it said what to do.
- */
-const WAITING_LINE_ONLY_RE =
-  /^[*_`~(\s]*(?:(?:და)?ვ?ელოდები|დამელოდე)[,\s]+(?:რომ\s+)?(?:შენს\s+)?(?:პასუხს|არჩევანს|დასტურს|აირჩიო|აირჩიე|აირჩევ|დაადასტურო|დამიდასტურო)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?m|I am)\s+waiting\s+for\s+(?:you\s+to\s+(?:choose|pick|confirm)|your\s+(?:choice|answer|reply))[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?ll|I will)\s+wait\s+for\s+your\s+(?:answer|reply)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*жду\s+(?:твоего\s+)?ответа[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:espero|esperaré)\s+tu\s+respuesta[.!…]?[*_`~)\s]*$/i;
-
-export function isOnlyAWaitingLine(text: string): boolean {
-  return WAITING_LINE_ONLY_RE.test(text.trim());
-}
-
 // The tester's 1055 (thread 31058): „(აირჩიე რომელი შეესაბამება შენს სურვილს)." —
 // a full stop after the bracket is still only a stage direction.
 export const STAGE_DIRECTION_ONLY_RE =
