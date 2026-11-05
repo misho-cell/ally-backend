@@ -1,0 +1,1 @@
+Retell it as Netai telling the owner what this one person answered: one short sentence, third person singular, in the owner's language; in Georgian use the informal „შენ“ — never „თქვენ“ forms („გამოგადგებათ“, „შემოგთავაზოთ“, „გაგაცნობთ“, „გაინტერესებთ“); never the person's own words, „I/we“ or „მე/ჩვენ“, never „X ამბობს, რომ …“ and no quotation marks.

@@ -23,11 +23,22 @@ const NAME_MATCH_LIMIT = 3;
 
 const EXTRACTION_FIELD_TYPES = new Set<string>([...FACT_FIELD_TYPES, 'note']);
 
+/**
+ * #8779 rule 43: whether a detail is the user's own words or the user's
+ * agreement to what the assistant said is read by the extraction model, in
+ * any words — never from a list of agreement words.
+ */
+enum FactSource {
+  User = 'user',
+  Confirmed = 'confirmed',
+}
+
 interface ExtractedFactCandidate {
-  person_name: string;
-  field_type: string;
-  value: string;
-  confidence: FactConfidence;
+  readonly person_name: string;
+  readonly field_type: string;
+  readonly value: string;
+  readonly confidence: FactConfidence;
+  readonly source: FactSource;
 }
 
 function buildExtractionPrompt(): string {
@@ -38,8 +49,9 @@ function buildExtractionPrompt(): string {
     'THE ASSISTANT BLOCK IS CONTEXT ONLY, NEVER A SOURCE. The assistant guesses, reads web ' +
     'pages and repeats phonebook labels; none of that is something the user knows. If a detail ' +
     'appears only in the ASSISTANT block and the user did not confirm it, DO NOT return it. ' +
-    'A short agreement from the user ("yes", "correct", "დიახ", "სწორია") DOES confirm what the ' +
-    'assistant just said; silence does not. ' +
+    'When the user, in any words, agrees to a detail the assistant said, that detail is ' +
+    'confirmed: give it source "confirmed". A detail in the user\'s own words is source "user". ' +
+    'Silence, thanks or a question confirm nothing. ' +
     'TENSE MATTERS: a role the person no longer holds is field_type "past_role", never ' +
     '"employer" or "occupation". "Worked at X for 15 years, left in 2022" is past_role, not ' +
     'employer X. ' +
@@ -51,7 +63,8 @@ function buildExtractionPrompt(): string {
     'reasonable guess (e.g. the current year). If a detail like a date genuinely was not given, ' +
     'leave it out of value entirely rather than inferring one. If nothing qualifies, return an ' +
     'empty array. Reply JSON only, no prose: ' +
-    '[{"person_name": "...", "field_type": "...", "value": "...", "confidence": "stated"}, ...]'
+    '[{"person_name": "...", "field_type": "...", "value": "...", "confidence": "stated", ' +
+    '"source": "user"}, ...]'
   );
 }
 
@@ -71,37 +84,16 @@ function stripUnstatedYears(value: string, sourceText: string): string {
     .trim();
 }
 
-// A short agreement turns the assistant's last sentence into something the
-// user confirmed. Anything longer is the user speaking for themselves, and
-// then their own words are the only source.
-const CONFIRMATION_WORDS = new Set([
-  'კი',
-  'დიახ',
-  'ჰო',
-  'სწორია',
-  'ასეა',
-  'ზუსტად',
-  'ნამდვილად',
-  'yes',
-  'yep',
-  'correct',
-  'right',
-  'exactly',
-  'true',
-]);
-// A few of them together still make one agreement — „დიახ, სწორია" is two
-// words and my first version, which allowed only one, refused it.
-const MAX_CONFIRMATION_WORDS = 3;
+// An agreement is short by nature. This is shape only — a few words and no
+// question — and never says WHAT they mean; that reading is the model's
+// (FactSource). „დიახ, სწორია" is two words, so one word is not the limit.
+const MAX_AGREEMENT_WORDS = 3;
 
-function isConfirmation(userMessage: string): boolean {
-  const words = userMessage
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean);
+/** A message short enough to be an agreement, and not a question. */
+function couldBeAgreement(userMessage: string): boolean {
+  const words = userMessage.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
   return (
-    words.length > 0 &&
-    words.length <= MAX_CONFIRMATION_WORDS &&
-    words.every((w) => CONFIRMATION_WORDS.has(w))
+    words.length > 0 && words.length <= MAX_AGREEMENT_WORDS && declarativePart(userMessage) !== ''
   );
 }
 
@@ -201,8 +193,10 @@ const MIN_GROUNDED_SHARE = 0.5;
  * typed by anyone. The prompt now says the assistant block is context only —
  * this is the check that does not depend on the model obeying it.
  */
-function isGroundedInUser(value: string, userMessage: string): boolean {
-  if (isConfirmation(userMessage)) return true; // they agreed to what was just said
+function isGroundedInUser(candidate: ExtractedFactCandidate, userMessage: string): boolean {
+  // The model read an agreement, and the message has an agreement's shape.
+  if (candidate.source === FactSource.Confirmed) return couldBeAgreement(userMessage);
+  const { value } = candidate;
   const said = normalizeForCompare(declarativePart(userMessage));
   if (said === '') return false; // they only asked
   const words = normalizeForCompare(value)
@@ -243,7 +237,21 @@ export function correctTense(fieldType: string, value: string, sourceText: strin
   return past ? 'past_role' : fieldType;
 }
 
-function parseCandidates(raw: string, sourceText: string): ExtractedFactCandidate[] {
+/** What the user typed, and the whole exchange they may have agreed to. */
+interface CandidateSources {
+  readonly userMessage: string;
+  readonly exchange: string;
+}
+
+/**
+ * Ticket 19 [5]: a year or a tense is checked against the user's own words,
+ * unless they agreed to the assistant's sentence, which makes it theirs.
+ */
+function sourceTextOf(source: FactSource, sources: CandidateSources): string {
+  return source === FactSource.Confirmed ? sources.exchange : sources.userMessage;
+}
+
+function parseCandidates(raw: string, sources: CandidateSources): ExtractedFactCandidate[] {
   // The sweep ran 165 times and wrote nothing: every reply arrived fenced and
   // this parse threw, so the whole batch was dropped as "no candidates".
   const parsed = parseModelJson<unknown>(raw);
@@ -255,10 +263,11 @@ function parseCandidates(raw: string, sourceText: string): ExtractedFactCandidat
     const personName = typeof c.person_name === 'string' ? c.person_name.trim() : '';
     const fieldType = typeof c.field_type === 'string' ? c.field_type.trim().toLowerCase() : '';
     const rawValue = typeof c.value === 'string' ? c.value.trim() : '';
-    const value = rawValue ? stripUnstatedYears(rawValue, sourceText) : '';
+    const source = c.source === FactSource.Confirmed ? FactSource.Confirmed : FactSource.User;
+    const value = rawValue ? stripUnstatedYears(rawValue, sourceTextOf(source, sources)) : '';
     const confidence = c.confidence === 'mentioned' ? 'mentioned' : 'stated';
     if (!personName || !value || !EXTRACTION_FIELD_TYPES.has(fieldType)) continue;
-    out.push({ person_name: personName, field_type: fieldType, value, confidence });
+    out.push({ person_name: personName, field_type: fieldType, value, confidence, source });
   }
   return out;
 }
@@ -307,16 +316,17 @@ export async function sweepFactsFromExchange(
   userMessage: string,
   finalReply?: string,
 ): Promise<void> {
-  // Short messages are skipped to save a model call — but a confirmation is
-  // short BY NATURE, and „დიახ, სწორია" is the one short message that can
-  // carry a fact: it makes the assistant's last sentence the user's own.
-  // Skipping it meant "what the user confirmed" could never be stored at all.
+  // Short messages are skipped to save a model call — but an agreement is
+  // short BY NATURE, and it is the one short message that can carry a fact:
+  // it makes the assistant's last sentence the user's own. So a short message
+  // with an agreement's shape and a reply to agree to is read; whether it
+  // agrees is the model's reading (#8779 rule 43).
   // #8521 RETEST (the tester's 80967): „forget that X is an electrician" holds the fact in the
   // owner's own words, so the sweep saved it again the minute forget_contact_fact deleted it.
   // #8779 b (rule 36): read from the deleting tool, not from forget words.
   if (factForgottenRecently(threadId)) return;
   const shortMessage = userMessage.trim().length < MIN_MESSAGE_CHARS_FOR_SWEEP;
-  if (shortMessage && !(isConfirmation(userMessage) && finalReply)) return;
+  if (shortMessage && !(couldBeAgreement(userMessage) && finalReply)) return;
   try {
     const { default: anthropic } = await import('../config/anthropic');
     const exchange = finalReply
@@ -340,19 +350,13 @@ export async function sweepFactsFromExchange(
     }).catch(() => undefined);
 
     const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-    // Ticket 19 [5], the same defect one level down. The year strip asks
-    // whether the user stated the year — and was handed the whole exchange to
-    // check against, so a year the ASSISTANT had just written always passed.
-    // „won Best Banker at Bank of Georgia in 2012": the 2012 was the
-    // assistant's. The user's own words are the source, unless they agreed to
-    // the assistant's sentence, which makes it theirs.
-    const yearSource = isConfirmation(userMessage) ? exchange : userMessage;
-    const candidates = parseCandidates(raw, yearSource);
+    const sources: CandidateSources = { userMessage, exchange };
+    const candidates = parseCandidates(raw, sources);
 
     for (const candidate of candidates) {
       // The user's own words are the only source. Everything else in the
       // exchange is the assistant thinking aloud.
-      if (!isGroundedInUser(candidate.value, userMessage)) {
+      if (!isGroundedInUser(candidate, userMessage)) {
         // eslint-disable-next-line no-console
         console.log(
           `[fact-sweep] dropped (not the user's words): ${candidate.field_type} on ` +
@@ -360,7 +364,11 @@ export async function sweepFactsFromExchange(
         );
         continue;
       }
-      const fieldType = correctTense(candidate.field_type, candidate.value, userMessage);
+      const fieldType = correctTense(
+        candidate.field_type,
+        candidate.value,
+        sourceTextOf(candidate.source, sources),
+      );
       const matches = await findContactPhonesByName(
         userId,
         candidate.person_name,
