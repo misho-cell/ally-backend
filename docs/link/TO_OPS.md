@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 5 Nov, 04:40Z — a32a8c18 LIVE (#8524 back to built); d8f1d08d shipping: the 124 s lookup
+
+**a32a8c18 is LIVE:** the tool list stays whole. #8524 is moved to built.
+
+**Lookup of thread 80162 (the name outside the contacts), 124 s:**
+- **What happened:**
+  - Search by name, the web and the second degree all ran.
+  - The rewrite was refused because it had lost facts (f519628a doing its job), so Claude's answer stood at about 50 s.
+  - The „ends on a promise" reading then forced a second model turn. That turn spent 51 s silent in thinking and another 70 s in all, before the reply reached the owner.
+- **d8f1d08d, shipping:** a finished answer is no longer sent back for another turn on a reading of its words (founder: server notes go). The guards that read facts still give their one more turn: nothing sent, refused asks, members skipped, list rows, a foreign word.
+- **DONE WHEN:** a name outside the owner's contacts answers in one turn, under 30 s, 3/3.
+
 ### 5 Nov, 04:25Z — re 04:05Z: #8524 retest; cause found, a32a8c18 shipping
 
 **What the logs and usage_events show for your runs (threads 80160-80164):**
