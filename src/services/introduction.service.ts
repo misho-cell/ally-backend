@@ -41,6 +41,7 @@ import { scrubText } from './privacyScrub';
 import { mediatorsLinesSinceAsked } from './introResponse';
 import { typedContactIn, typedContactLine, typedContactMediatorLine } from './introTypedContact';
 import { readTargetAnswer } from './targetAnswerReader';
+import { netaiMember } from './netaiMembership';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
@@ -825,6 +826,10 @@ export async function deliverAcceptOutcome(
     );
     targetUserId = member.rows[0]?.userId ?? null;
   }
+  // Lika's manual test (6 Nov): the target had an old account and had never used Netai,
+  // and was „asked first" twice — the owner would have waited for ever. Only a target
+  // who uses Netai is asked; anyone else gets the off-Netai handover.
+  if (targetUserId !== null && !(await targetUsesNetai(targetUserId))) targetUserId = null;
 
   const requesterName = await query<{ name: string | null }>(
     'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
@@ -1079,6 +1084,22 @@ const REQUEST_ROW_COLUMNS = `ir.id, ir.request_ref, ir.requester_user_id, ir.med
  * Closed once: a second tap finds nothing open.
  */
 const TARGET_QUESTION_QUERY_TIMEOUT_MS = 3_000;
+
+/** The target typed, answered or searched in Netai; true when that cannot be read (as before). */
+export async function targetUsesNetai(targetUserId: number): Promise<boolean> {
+  try {
+    const used = await query<{ id: number }>(
+      `SELECT u.id FROM "User" u WHERE u.id = $1 AND ${netaiMember('u')} LIMIT 1`,
+      [targetUserId],
+      TARGET_QUESTION_QUERY_TIMEOUT_MS,
+    );
+    return used.rows.length > 0;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[intro] could not read whether the target uses Netai:', (err as Error).message);
+    return true;
+  }
+}
 
 /** A target question on this thread still waits for its answer (#8945). */
 async function targetQuestionIsOpen(threadId: number, targetUserId: string): Promise<boolean> {
