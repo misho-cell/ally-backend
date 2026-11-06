@@ -104,6 +104,7 @@ import {
   fetchAccountStates,
   isMemberPhone,
   isSubscriberPhone,
+  netaiNotUsedYet,
 } from './membership';
 
 /**
@@ -1678,6 +1679,7 @@ export async function searchSecondDegree(
         is_member: isMemberPhone(accountStates, row.phone),
         account_state: accountStateFor(accountStates, row.phone),
         netai_subscriber: isSubscriberPhone(accountStates, row.phone),
+        ...netaiNotUsedYet(accountStates, row.phone),
         // #5479: the names in the same order as via_contacts.
         via:
           bridges.length > 0

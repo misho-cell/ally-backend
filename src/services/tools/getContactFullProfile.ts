@@ -10,6 +10,7 @@ import {
   fetchAccountStates,
   isMemberPhone,
   isSubscriberPhone,
+  netaiNotUsedYet,
   accountStateFor,
 } from './membership';
 import { LikelyEmployer, likelyEmployerFor } from './likelyEmployer';
@@ -326,6 +327,7 @@ export async function getContactFullProfile(
     is_member: isMemberPhone(accountStates, phone),
     account_state: accountStateFor(accountStates, phone),
     netai_subscriber: isSubscriberPhone(accountStates, phone),
+    ...netaiNotUsedYet(accountStates, phone),
     ...ownLabelsOnly(tagsResult.rows),
     insights: insightData,
     facts_and_ask: factsAndAsk,

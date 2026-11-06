@@ -21,6 +21,7 @@ import {
   fetchAccountStates,
   isMemberPhone,
   isSubscriberPhone,
+  netaiNotUsedYet,
   accountStateFor,
 } from './membership';
 import {
@@ -587,6 +588,7 @@ function shape(
     is_member: isMemberPhone(accountStates, row.phone),
     account_state: accountStateFor(accountStates, row.phone),
     netai_subscriber: isSubscriberPhone(accountStates, row.phone),
+    ...netaiNotUsedYet(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
     ...theySavedYou(row),
