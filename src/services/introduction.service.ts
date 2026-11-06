@@ -42,6 +42,8 @@ import { mediatorsLinesSinceAsked } from './introResponse';
 import { typedContactIn, typedContactLine, typedContactMediatorLine } from './introTypedContact';
 import { readTargetAnswer } from './targetAnswerReader';
 import { netaiMember } from './netaiMembership';
+import { geoName } from './georgianCase';
+import { georgianScriptName } from './georgianScriptName';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
@@ -1078,12 +1080,54 @@ const REQUEST_ROW_COLUMNS = `ir.id, ir.request_ref, ir.requester_user_id, ir.med
             ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status,
             ir.requester_task_id, ir.origin_thread_id, ir.mediator_thread_id, ir.created_at`;
 
-/**
- * #8945: the target's answer to the question put on their own thread. Null when
- * this line is no answer, or no question waits on this thread for this person.
- * Closed once: a second tap finds nothing open.
- */
 const TARGET_QUESTION_QUERY_TIMEOUT_MS = 3_000;
+const PASSED_ON_QUERY_TIMEOUT_MS = 3_000;
+
+/**
+ * Lika's manual test (6 Nov): Tornike wrote „მე ვერ ვიზამ, მაგრამ გიორგი
+ * დაგაკავშირებს"; his assistant passed the request on to Giorgi (5347) and then
+ * also recorded a yes, and Lika read „Tornike agreed". Passing it on is this
+ * go-between's answer: they will not introduce themselves. The name of the
+ * person it went to, when this go-between passed this request on; else null.
+ */
+export async function requestPassedOnTo(
+  mediatorUserId: string,
+  requestId: number,
+): Promise<string | null> {
+  try {
+    const passed = await query<{ name: string | null }>(
+      `SELECT NULLIF(TRIM(m.name), '') AS name
+         FROM introduction_requests o
+         JOIN introduction_requests f
+           ON f.forwarded_by_user_id = $1::int
+          AND f.requester_user_id = o.requester_user_id
+          AND LOWER(TRIM(f.target_name)) = LOWER(TRIM(o.target_name))
+          AND f.created_at >= o.created_at
+         LEFT JOIN "User" m ON m.id = f.mediator_user_id
+        WHERE o.id = $2
+        ORDER BY f.created_at DESC
+        LIMIT 1`,
+      [mediatorUserId, requestId],
+      PASSED_ON_QUERY_TIMEOUT_MS,
+    );
+    const row = passed.rows[0];
+    return row === undefined ? null : (row.name ?? '');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[intro] could not read whether the request was passed on:',
+      (err as Error).message,
+    );
+    return null;
+  }
+}
+
+/** The go-between's answer when they passed the request on: not a yes of their own. */
+export function passedOnAnswer(passedTo: string): string {
+  return passedTo === ''
+    ? 'თვითონ ვერ დაგაკავშირებ — თხოვნა სხვას გადავეცი, ვინც შეძლებს.'
+    : `თვითონ ვერ დაგაკავშირებ — თხოვნა ${geoName(georgianScriptName(passedTo), 'dat')} გადავეცი.`;
+}
 
 /** The target typed, answered or searched in Netai; true when that cannot be read (as before). */
 export async function targetUsesNetai(targetUserId: number): Promise<boolean> {
@@ -1130,6 +1174,11 @@ async function targetAnswerIn(
   return readTargetAnswer(line, { userId: targetUserId, threadId });
 }
 
+/**
+ * #8945: the target's answer to the question put on their own thread. Null when
+ * this line is no answer, or no question waits on this thread for this person.
+ * Closed once: a second tap finds nothing open.
+ */
 export async function settleTargetAnswer(
   targetUserId: string,
   threadId: number,
