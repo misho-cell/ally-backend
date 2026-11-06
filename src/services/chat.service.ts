@@ -14443,6 +14443,19 @@ export function firstLineIsDue(
 }
 
 /**
+ * Lika's manual test (6 Nov): the first line read „ვაკეში… არა, ვამოწმებ შენს
+ * ქსელში…" — the model breaking off and starting again, posted at once (#8053)
+ * as the owner's first answer. A line cut off by an ellipsis and then carried on
+ * is a false start: it is not posted as the first line, and the run's reply
+ * comes as usual.
+ */
+const FALSE_START_RE = /^[^.!?\n]{0,60}?(?:\.{3}|…)\s*\S/u;
+
+export function startsWithAFalseStart(line: string): boolean {
+  return FALSE_START_RE.test(line.trim());
+}
+
+/**
  * The tester's 1133 (E10, 36536): Claude wrote its answer beside set_task_wake
  * („…აღარაფერი გჭირდება generar?"), GPT wrote the final from the same
  * material, and the owner read the question twice — once with a stray foreign
@@ -15578,7 +15591,8 @@ async function runToolLoop(
       if (
         narration &&
         narrationIsSafeToPublish(roundTools) &&
-        firstLineIsDue(iterations, ownerAbsent, roundTools, runRepeatedGoal.has(runId))
+        firstLineIsDue(iterations, ownerAbsent, roundTools, runRepeatedGoal.has(runId)) &&
+        !startsWithAFalseStart(narration)
       ) {
         await postFirstLine(userId, threadId, runId, narration);
       } else if (narration && narrationIsSafeToPublish(roundTools)) {
