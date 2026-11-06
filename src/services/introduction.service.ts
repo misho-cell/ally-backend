@@ -39,6 +39,7 @@ import {
 import { askThreadStatusAfterRequest } from './sharedRequestThread.service';
 import { scrubText } from './privacyScrub';
 import { mediatorsLinesSinceAsked } from './introResponse';
+import { typedContactIn, typedContactLine, typedContactMediatorLine } from './introTypedContact';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
@@ -939,6 +940,19 @@ export async function deliverAcceptOutcome(
 
   const targetWasTold = targetUserId !== null;
   if (!targetWasTold) await learnGeorgianSpellings([mediatorName, req.target_name]);
+  if (targetPhone === null) {
+    const typed = typedContactIn(
+      await mediatorsLinesSinceAsked(req.mediator_thread_id, req.created_at),
+    );
+    if (typed !== null) {
+      return {
+        replacesOutcomeLine: true,
+        requesterExtra: typedContactLine(requesterLanguage, mediatorName, req.target_name, typed),
+        mediatorFollowUp: typedContactMediatorLine(mediatorLanguage, requester, req.target_name),
+        contactOutcome: 'handed_over_off_netai',
+      };
+    }
+  }
   const offNetai =
     targetWasTold || targetPhone === null
       ? null

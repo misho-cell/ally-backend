@@ -155,6 +155,14 @@ function numberKeysIn(texts: readonly string[]): Set<string> {
  * writer themselves typed (`typed`, their own messages) is marked as allowed;
  * every other number is left for scrubText exactly as before.
  */
+/** The first phone number in a text, as written; null when there is none. */
+export function firstPhoneIn(text: string): string | null {
+  for (const match of text.matchAll(new RegExp(PHONE_LIKE_PATTERN, 'gu'))) {
+    if (numberKey(match[0]) !== null) return match[0].trim();
+  }
+  return null;
+}
+
 export function allowNumbersTheyTyped(text: string, typed: readonly string[]): string {
   const theirs = numberKeysIn(typed);
   if (theirs.size === 0) return text;
@@ -523,6 +531,11 @@ export function scrubDeep(value: unknown): unknown {
 // therefore apply this at the contact-payload source, not at the SSE boundary.
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const REDACTED_EMAIL = '[email hidden]';
+
+/** The first e-mail address in a text; null when there is none. */
+export function firstEmailIn(text: string): string | null {
+  return new RegExp(EMAIL_RE.source).exec(text)?.[0] ?? null;
+}
 
 export function scrubEmailsText(text: string): string {
   return text.replace(EMAIL_RE, REDACTED_EMAIL);
