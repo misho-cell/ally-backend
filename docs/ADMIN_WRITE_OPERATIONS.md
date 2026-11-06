@@ -6775,3 +6775,8 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** `PUT /admin/prompt-blocks/task_main` with `content` only. The A4 sentence (write 110) „… — never all at once." becomes „… — never all at once, unless the owner asks for several at once („მისწერე ორივეს“): then send them together, in this turn." — the prompt half of the server change that lets the owner's own turn ask several go-betweens at once.
 - **Checked before the write:** the live block equals write 110's text; the sentence occurs once. Size 6,962 → 7,063.
 - **UNDO:** put back the content from `docs/prompt_live_6nov/task_main_after110.md` with the same route.
+
+## 113 · MISHO'S STUDENT SEARCH, OPTION B: ONE SENTENCE ADDED TO core_shared (Misho, his chat, 6 Nov: „მეორეზე ბ ვარიანტი", then „ახლავე ატვირთე და პრომპტის ხაზიც ჩასვი", on the exact text)
+- **What:** `PUT /admin/prompt-blocks/core_shared` with `content` only. After „… — never a delay, a fault, „ვერ მოხერხდა“ or an apology." one passage: when a search ends without a warm way in, try one other way in the same run (the role that handles the need, or the owner's network for people who know such a person), give both results, and close with one question — is this enough, or try another direction; searching needs no yes, writing still does.
+- **Checked before the write:** the live block equals write 110's text; the anchor occurs once. Size 19,775 → 20,399.
+- **UNDO:** put back the content from `docs/prompt_live_6nov/core_shared_after110.md` with the same route.
