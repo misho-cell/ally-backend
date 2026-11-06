@@ -6560,6 +6560,30 @@ export function skippedThese(
   return !replyOffersAMember(finalText, names);
 }
 
+/** The searches that look for people by a need, not by a name. */
+const NEED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
+  'search_by_tag',
+  'search_by_insight',
+  'search_second_degree',
+  'search_contacts_by_country',
+  'search_roster',
+  'web_search',
+]);
+
+/**
+ * The tester's battery (6 Nov, C8): „კობა ბერიძე სად მუშაობს?" — the run looked
+ * him up by name, he is a member, and the members note told it to offer the
+ * members it found: it opened a goal and a plan, and the lookup ended on three
+ * questions. A run that only searched by name looked up the people asked
+ * about; there is nobody else to offer.
+ */
+export function lookupOfNamedPeople(toolNamesUsed: readonly string[]): boolean {
+  return (
+    toolNamesUsed.includes('search_contact_by_name') &&
+    !toolNamesUsed.some((tool) => NEED_SEARCH_TOOLS.has(tool))
+  );
+}
+
 /** #960: members on Netai came back in this run's searches, and the reply offered none. */
 function skippedTheMembersFound(
   runId: string,
@@ -16134,6 +16158,7 @@ async function runToolLoop(
   const readersOwnRequest = !GO_BETWEEN_MODES.has(runModes.get(runId) ?? '');
   const membersSkipped =
     readersOwnRequest &&
+    !lookupOfNamedPeople(toolNamesUsed) &&
     !ownerAbsent &&
     !repeatsAnOpenGoal &&
     skippedTheMembersFound(runId, finalText, toolNamesUsed) &&

@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { replyOffersAMember, skippedThese } from '../chat.service';
+import { lookupOfNamedPeople, replyOffersAMember, skippedThese } from '../chat.service';
 import { MEMBERS_SKIPPED_NUDGE } from '../replyGuards';
 
 /**
@@ -79,5 +79,15 @@ describe('a member set aside as a namesake', () => {
   it('is counted when another sentence offers her', () => {
     const reply = 'ის სულ სხვა ადამიანია. თამარ ხუციშვილს შეიძლება ვკითხოთ, ნოტარიუსს თუ იცნობს.';
     expect(replyOffersAMember(reply, ['თამარ ხუციშვილი'])).toBe(true);
+  });
+});
+
+/** The tester's battery (6 Nov, C8): a lookup of one named contact offers nobody. */
+describe('a run that only looked people up by name', () => {
+  it('is a lookup, and gets no members note', () => {
+    expect(lookupOfNamedPeople(['search_contact_by_name'])).toBe(true);
+    expect(lookupOfNamedPeople(['search_contact_by_name', 'search_second_degree'])).toBe(false);
+    expect(lookupOfNamedPeople(['search_by_tag'])).toBe(false);
+    expect(chat).toContain('!lookupOfNamedPeople(toolNamesUsed) &&');
   });
 });
