@@ -5,7 +5,7 @@ jest.mock('../../db/postgres/client', () => ({
   default: { end: jest.fn() },
 }));
 
-import { firstLineIsDue } from '../chat.service';
+import { firstLineIsDue, startsWithAFalseStart } from '../chat.service';
 
 /** #8053: which round's text goes out at once as a line, and which stays a step. */
 describe('the first words of a run are due', () => {
@@ -32,5 +32,18 @@ describe('the first words of a run are due', () => {
   it('not for a round that does not search', () => {
     expect(firstLineIsDue(1, false, ['save_user_note'], false)).toBe(false);
     expect(firstLineIsDue(1, false, ['ask_contact'], false)).toBe(false);
+  });
+});
+
+/** Lika's manual test (6 Nov): „ვაკეში… არა, ვამოწმებ…" was posted as the first line. */
+describe('a false start', () => {
+  it('is not posted as the first line', () => {
+    expect(startsWithAFalseStart('ვაკეში... არა, ვამოწმებ შენს ქსელში ვინმე თიბისიში.')).toBe(true);
+    expect(startsWithAFalseStart('ვაკეში… არა, ვამოწმებ შენს ქსელში.')).toBe(true);
+  });
+
+  it('leaves an ordinary line, and one that only ends on an ellipsis', () => {
+    expect(startsWithAFalseStart('ვამოწმებ შენს ქსელში, ვინ იცნობს თიბისიში ვინმეს.')).toBe(false);
+    expect(startsWithAFalseStart('ვეძებ შენს კონტაქტებში...')).toBe(false);
   });
 });
