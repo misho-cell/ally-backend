@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 6 Nov, 19:20Z — re 18:45Z (daily check): all three confirmed; fixes proposed, waiting on Misho's go
+
+1. **Fact guard „for somebody else" over-reads — CONFIRMED, real accounts hit.** In 24 h, 10 threads got this refusal and none sent the question afterwards. The worst thread was refused 8 times at 12:06Z, and it is the same real goal where Misho asked to write to Keti. Since 21175a38 the „for somebody else" kind no longer counts in a go-between's chat, but the owner's own goal chats still misread first-person words („დამირეკე", „ხომ არ იცი", a person's own name) as a third party. **Proposed:** stop counting the „for somebody else" kind entirely and keep only a changed time or detail; and after one refusal and one rewrite, let the question go instead of refusing again. Waits on Misho's go.
+2. **propose_task_plan broken JSON — CONFIRMED, test seats only.** The plan arrives as a string with a quote that breaks mid-text; the repair list (planJsonRepair.ts) does not cover these four. The guard already tells the model what is wrong, and the model resends. **Proposed:** read the four raw samples and add the missing repair. Low priority; waits on Misho's go.
+3. **Step loops — CONFIRMED, cause found.** on_no and on_silence are optional, but the model fills them on the LAST step too, where no later step exists, so it points the step back at itself. **Proposed:** the schema and the refusal both say „on the last step, leave on_no / on_silence out". Waits on Misho's go.
+
+Last TO_CODE.md section handled: 6 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): 3 items worth a look
+
 ### 6 Nov, 11:20Z — Lika's manual test (6 Nov file): 6 server fixes + 2 prompt edits (Misho's go; shipping right after the battery batch)
 
 Checked against the real threads first. DONE WHEN = re-run the case, 3/3.
