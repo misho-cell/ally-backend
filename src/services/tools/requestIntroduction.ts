@@ -162,6 +162,13 @@ export interface IntroRequestContext {
   forwardedBy?: string;
   /** K9 (autonomy stage 1): the requester's goal has an approved plan — refusals give its next step. */
   planApproved?: boolean;
+  /**
+   * The run answers a line the owner typed himself (not a wake). Lika's manual
+   * test (6 Nov): „კი მისწერე თორნიკესაც და თიკოსაც" — the run sent both, and the
+   * one-bridge rule refused the second. Misho, 6 Nov: „ერთდროულად მიწერე". In the
+   * owner's own turn his word decides how many go at once; wakes keep #7630.
+   */
+  ownerAsked?: boolean;
 }
 
 /**
@@ -573,8 +580,9 @@ async function requestIntroductionInner(
     };
   }
 
-  // #7630: one bridge at a time to one person; the next waits for a no, or a quiet day.
-  if (!isDirect) {
+  // #7630: one bridge at a time to one person; the next waits for a no, or a quiet day —
+  // except in the owner's own turn, where he decides (Misho, 6 Nov).
+  if (!isDirect && context.ownerAsked !== true) {
     const pending = await bridgeAlreadyAsked({
       requesterUserId,
       mediatorUserId,
