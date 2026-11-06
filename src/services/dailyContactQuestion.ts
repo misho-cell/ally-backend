@@ -139,6 +139,12 @@ export function contactQuestionSection(update: CuriosityUpdate | null): string {
     // 3202 (c), Misho's yes, 8 Oct (§103): a light side question, not a reason to answer it.
     `ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, ბოლოს მსუბუქად, სხვათა შორის ჰკითხე: ` +
     `„სხვათა შორის, ${named} ${asked}? თუ არ იცი, არა უშავს." — ახსნის გარეშე.\n` +
+    // The tester's prompt check (5 Nov, C4): probe 80785 saved a goal and showed its plan in
+    // this run, and the day's question was glued under the plan's own question. One question
+    // a message: a reply that saves a goal, shows a plan or ends on its own question skips it
+    // (questionWentUnasked hands it to a later run).
+    'ეს კითხვა გამოტოვე, თუ ამ პასუხში მიზანს ინახავ (create_task), გეგმას აჩვენებ, ან პასუხი ' +
+    'შენი საკუთარი კითხვით მთავრდება — ერთ შეტყობინებაში ერთი კითხვა. ' +
     'მხოლოდ ეს ერთი კითხვა, ფორმა ან რამდენიმე კითხვა ერთად — არა. პასუხს შემდეგ შეტყობინებაში ' +
     `მოგწერს: მაშინ ${who} სახელით მოძებნე და შეინახე save_contact_fact-ით (field_type: ${fact}). ` +
     'თუ თქვა „ახლა არა", ან არ უნდა, დაანებე თავი და დღეს ამ ადამიანზე აღარ ჰკითხო.'

@@ -55,4 +55,15 @@ describe('the day’s question names the contact with the number’s last two di
     });
     expect(section).toContain('„სხვათა შორის, ნიკა (ნომერი მთავრდება 47-ზე) სად მუშაობს?');
   });
+
+  it('is skipped in a reply that saves a goal, shows a plan or asks its own question (C4)', () => {
+    const section = contactQuestionSection({
+      kind: 'curiosity',
+      task_id: null,
+      phone: '+995555123447',
+      payload: { who: 'ნიკა', missing_fact: 'employer' },
+    });
+    expect(section).toContain('ეს კითხვა გამოტოვე, თუ ამ პასუხში მიზანს ინახავ (create_task)');
+    expect(section).toContain('ერთ შეტყობინებაში ერთი კითხვა');
+  });
 });
