@@ -164,7 +164,12 @@ function forwardError(
   const to = order.get(next);
   if (to === undefined)
     return `step ${id}: ${field}.next_step "${next}" is not a step of this plan`;
-  return to > from ? null : `step ${id}: ${field}.next_step must name a later step than ${id}`;
+  // Ops' daily check (6 Nov 18:45Z): the model filled on_no / on_silence on the LAST step,
+  // where no later step exists, and pointed it back at itself.
+  return to > from
+    ? null
+    : `step ${id}: ${field}.next_step must name a later step than ${id}. On the plan's last ` +
+        `step there is no later step: leave ${field} out there.`;
 }
 
 function personError(step: PlanStep, peopleDigits: ReadonlySet<string>): string | null {
