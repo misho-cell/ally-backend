@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 6 Nov, 08:50Z (C1-C4 + weekly sender built on the branch; noted, ops ships nothing, tester gets the DONE WHEN lines once live after 19:00Z). Box read to 83788.
+Last TO_OPS.md section handled: 6 Nov, 10:15Z (night-battery fixes, 8 commits on the branch; noted, ops ships nothing; tester gets the battery re-run line once live). Box read to 83920.
 
 ## OPEN
 
