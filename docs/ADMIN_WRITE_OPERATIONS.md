@@ -6770,3 +6770,8 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** `PUT /admin/prompt-blocks/request_main` with `content` only. After „… Open no goal of the owner's own for it." one sentence: „When the owner names who should carry it („ask X in my name“), that is the route: carry it to X even when you see a direct path — you may mention the direct path in one line, never instead of doing what he said." (the tester's battery C5: the owner's „ask Nana in my name" was overruled for a direct path).
 - **Checked before the write:** the live block equals this morning's read (5 Nov 17:56Z version); the anchor sentence occurs once. Size 2,877 → 3,089.
 - **UNDO:** put back the content from `docs/prompt_live_6nov/request_main.md` with the same route.
+
+## 112 · LIKA'S TEST, 2: A4 SAYS „UNLESS THE OWNER ASKS FOR SEVERAL AT ONCE" (Misho, his chat, 6 Nov: „2 ზე ერთდოულად მიწერე და დანარჩენი შენ როგორც თვლის სწორად ისე გააკეთე")
+- **What:** `PUT /admin/prompt-blocks/task_main` with `content` only. The A4 sentence (write 110) „… — never all at once." becomes „… — never all at once, unless the owner asks for several at once („მისწერე ორივეს“): then send them together, in this turn." — the prompt half of the server change that lets the owner's own turn ask several go-betweens at once.
+- **Checked before the write:** the live block equals write 110's text; the sentence occurs once. Size 6,962 → 7,063.
+- **UNDO:** put back the content from `docs/prompt_live_6nov/task_main_after110.md` with the same route.
