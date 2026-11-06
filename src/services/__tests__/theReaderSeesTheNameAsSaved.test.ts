@@ -113,3 +113,14 @@ describe('a name as the reader has it saved', () => {
     expect(asks).toContain('nameFromLabel(savedName, registered)');
   });
 });
+
+/** The tester's battery (6 Nov, C2): a test-seat registration is not the owner's name for her. */
+describe('a registered name that shares no word with the clean label', () => {
+  it('gives way to the label', () => {
+    expect(nameFromLabel('Nino Abashidze', 'Netai Test 152')).toBe('Nino Abashidze');
+  });
+
+  it('still wins over a label with the same first name and another surname (#7631)', () => {
+    expect(nameFromLabel('ლაშა იურაშვილი', 'Lasha Kurashvili')).toBe('Lasha Kurashvili');
+  });
+});
