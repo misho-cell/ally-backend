@@ -51,6 +51,30 @@ describe('a question the owner was asked and passed on', () => {
   });
 });
 
+describe('an introduction passed on to the owner (Lika’s test, 6 Nov)', () => {
+  it('shows who passed it on before them, and whom it is for', async () => {
+    mockQuery.mockResolvedValueOnce(rows([])).mockResolvedValueOnce(
+      rows([
+        {
+          id: 6009,
+          requester_id: 184198,
+          requester_name: 'ლიკა',
+          forwarder_id: 184197,
+          forwarder_name: 'თორნიკე',
+          name: null,
+          status: 'pending',
+          target_name: 'ირაკლი',
+          updated_at: '2026-11-06T09:00:00.000Z',
+        },
+      ]),
+    );
+    const out = await chainPositionOf(184199, 51142);
+    expect(out.previous).toEqual({ name: 'თორნიკე', member_id: 184197 });
+    expect(out.origin).toEqual({ name: 'ლიკა', member_id: 184198 });
+    expect(out.next[0]).toMatchObject({ person_name: 'ირაკლი' });
+  });
+});
+
 describe('an introduction the owner was asked to make', () => {
   it('names who asked and the person to be introduced', async () => {
     mockQuery.mockResolvedValueOnce(rows([])).mockResolvedValueOnce(
@@ -59,6 +83,8 @@ describe('an introduction the owner was asked to make', () => {
           id: 6008,
           requester_id: 184198,
           requester_name: 'ლევანი',
+          forwarder_id: null,
+          forwarder_name: null,
           name: null,
           status: 'pending',
           target_name: 'თამარ ჯაფარიძე',

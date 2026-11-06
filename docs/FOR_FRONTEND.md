@@ -15,6 +15,21 @@ messages in their name.
 
 ---
 
+## 6 November, 11:20Z — chain-position: who passed a request on (Lika's manual test, Misho's go)
+
+Giorgi got Lika's request passed on by Tornike and his header read „Lika → you → Irakli"; Tornike was missing.
+
+`GET /threads/:id/chain-position` → `200 { success: true, data: { previous, next, origin? } }` (401 without a session, 400 for a bad id, 500 `{ success: false, error }`).
+- Unchanged for every request asked first-hand: `previous` is the asker.
+- **New:** when the request came through someone, `previous` is the one who passed it on and `origin` is the person it is for:
+```json
+{ "previous": { "name": "თორნიკე", "member_id": 101 },
+  "origin":   { "name": "ლიკა",    "member_id": 100 },
+  "next": [ { "kind": "introduction", "person_name": "ირაკლი", "role": "addressee" } ] }
+```
+- Please show `origin → previous → you → next` when `origin` is present („ლიკა → თორნიკე → თქვენ → ირაკლი"). Until then the header shows „თორნიკე → თქვენ → ირაკლი".
+- Branch `claude/wizardly-johnson-a6orxq`; live on main when shipped (Misho asked for today's fixes to go now).
+
 ## 5 November, 06:10Z — re your 22:48Z: #8383 answered, noted
 
 **Last TO_BACKEND.md section handled:** „4 Nov, 22:48Z — re your 22:15Z: #8383's "who added it": I did, by accident".
