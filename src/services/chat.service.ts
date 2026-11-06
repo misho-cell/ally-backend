@@ -10848,6 +10848,7 @@ async function executeToolCall(
               {
                 ...introContextFor(threadId, goalForIntro?.id),
                 planApproved: Boolean(goalForIntro?.plan && goalForIntro.plan_approved_at),
+                ownerAsked: !ownerAbsent,
               },
             )
           : await passOwnersRequestOn(userId, passedOn, input);

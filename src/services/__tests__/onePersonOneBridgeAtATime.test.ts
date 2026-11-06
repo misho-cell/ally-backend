@@ -82,3 +82,18 @@ describe('bridges asked in one turn (tester 77494, 2/9)', () => {
     expect(tool).toContain('return await oneRequestAtATime(requesterUserId, () =>');
   });
 });
+
+/**
+ * Lika's manual test (6 Nov): „კი მისწერე თორნიკესაც და თიკოსაც" — the second
+ * request was refused. Misho, 6 Nov: „ერთდროულად მიწერე". The owner's own turn
+ * decides; a wake still sends one bridge at a time (#7630).
+ */
+describe('the owner’s own turn', () => {
+  const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
+  const chatSrc = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('lets several bridges go at once, and only there', () => {
+    expect(tool).toContain('if (!isDirect && context.ownerAsked !== true) {');
+    expect(chatSrc).toContain('ownerAsked: !ownerAbsent,');
+  });
+});
