@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { replyOffersAMember } from '../chat.service';
+import { replyOffersAMember, skippedThese } from '../chat.service';
 import { MEMBERS_SKIPPED_NUDGE } from '../replyGuards';
 
 /**
@@ -29,6 +29,18 @@ describe('a reply that offers a member found on Netai', () => {
   });
 });
 
+/**
+ * The tester's prompt check (5 Nov, C3): probe 80785 proposed a plan that named
+ * a member, the word reading missed the name, and the note forced a second
+ * message. A proposed plan is where the members were weighed.
+ */
+describe('a run that proposed a plan', () => {
+  it('gets no members note, whatever the reply’s words', () => {
+    const reply = 'გეგმა მზადაა: ჯერ ერთ ადამიანს ვკითხავ, მერე მეორეს.';
+    expect(skippedThese(['ნინო ბერიძე'], reply, ['propose_task_plan'])).toBe(false);
+  });
+});
+
 describe('the guard', () => {
   it('remembers who came back on Netai from the run’s own searches', () => {
     expect(chat).toContain('noteMembersFound(runId, rows);');
@@ -36,9 +48,10 @@ describe('the guard', () => {
   });
 
   it('asks once, only when none was asked or offered, and never for a short question back', () => {
-    expect(chat).toContain(
-      "toolNamesUsed.some((t) => t === 'ask_contact' || t === 'request_introduction')",
-    );
+    const reply = 'ვებზე ვიპოვე ორი კლინიკა და ერთი ექიმი, რომელიც ამ საქმეს კარგად იცნობს.';
+    expect(skippedThese(['ნინო ბერიძე'], reply, ['search_second_degree'])).toBe(true);
+    expect(skippedThese(['ნინო ბერიძე'], reply, ['ask_contact'])).toBe(false);
+    expect(skippedThese(['ნინო ბერიძე'], reply, ['request_introduction'])).toBe(false);
     expect(chat).toContain('trimmed.length < SHORT_QUESTION_BACK_CHARS');
     expect(chat).toContain('? MEMBERS_SKIPPED_NUDGE');
     expect(MEMBERS_SKIPPED_NUDGE).toContain('people_to_involve');
