@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 6 Nov, 11:20Z — Lika's manual test (6 Nov file): 6 server fixes + 2 prompt edits (Misho's go; shipping right after the battery batch)
+
+Checked against the real threads first. DONE WHEN = re-run the case, 3/3.
+- **fc2c4910 — „write to both":** in a turn the owner typed, several go-betweens may be asked at once (Misho: „ერთდროულად მიწერე"); wakes and plan rounds still go one bridge at a time (#7630). Prompt write 112 (live 10:57Z): A4 adds „unless the owner asks for several at once". DONE WHEN: „კი, მისწერე X-საც და Y-საც" → both requests go in that turn, no „one go-between at a time" line.
+- **220fda63 — „I can't, but Z can":** when the go-between passed the request on, a yes is recorded as passed on: the owner reads that X could not and passed it to Z, never „X agreed"; the target is not asked on X's account. DONE WHEN: X answers „მე ვერ, მაგრამ Z დაგაკავშირებს" → owner reads the pass-on, Z gets the request.
+- **8a46a235 — target who never used Netai:** only a target who typed, answered or searched is asked first (#8945); anyone else → the number is handed to the owner. DONE WHEN: a target with an old, unused account → owner gets the contact, no endless „asking him directly".
+- **30ca3d54 — „has Netai, not used yet":** search/profile rows for an account with Netai that never wrote carry a note; the reply says „Netai აქვს, ჯერ არ გამოუყენებია", never „Netai-ზე არ არის".
+- **3622c02e — chain shows who passed it on:** chain-position gives `previous` = the forwarder and a new `origin` = the person it is for (frontend asked in FOR_FRONTEND.md to show origin → forwarder → you → target).
+- **59960457 — false-start first line:** a first line cut off by „…" and carried on („ვაკეში… არა, …") is not posted.
+- Prompt write 111 (live 10:22Z): battery C5 line in request_main — the owner's named route („ask X in my name") is carried out even when a direct path exists.
+
 ### 6 Nov, 10:15Z — the tester's night battery (6 Nov file): 8 server fixes built (Misho's „დაიწყე ყველა"), ship tonight 19:00Z unless Misho says now
 
 Checked against the traces first; branch `claude/wizardly-johnson-a6orxq`, verify green. DONE WHEN for each = the battery case re-run on fresh fictional seats, 3/3.
