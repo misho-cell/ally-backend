@@ -26,6 +26,12 @@ export interface PreviousPerson {
 export interface ChainPosition {
   readonly previous: PreviousPerson | null;
   readonly next: readonly RouteRow[];
+  /**
+   * Lika's manual test (6 Nov): Giorgi got Lika's request passed on by Tornike and
+   * read „Lika → you → Irakli". When a request came through someone, `previous` is
+   * the one who passed it on and `origin` is the person it is for.
+   */
+  readonly origin?: PreviousPerson;
 }
 
 export const NOT_IN_A_CHAIN: ChainPosition = { previous: null, next: [] };
@@ -72,6 +78,8 @@ interface IntroducedHere {
   readonly id: number;
   readonly requester_id: number;
   readonly requester_name: string | null;
+  readonly forwarder_id: number | null;
+  readonly forwarder_name: string | null;
   readonly name: string | null;
   readonly status: string;
   readonly target_name: string;
@@ -83,6 +91,10 @@ async function introducedHere(userId: number, threadId: number): Promise<Introdu
   const result = await query<IntroducedHere>(
     `SELECT ir.id, ir.requester_user_id AS requester_id,
             ${nameAsSavedBySql('ir.mediator_user_id', 'ir.requester_user_id')} AS requester_name,
+            ir.forwarded_by_user_id AS forwarder_id,
+            CASE WHEN ir.forwarded_by_user_id IS NULL THEN NULL
+                 ELSE ${nameAsSavedBySql('ir.mediator_user_id', 'ir.forwarded_by_user_id')}
+            END AS forwarder_name,
             NULL::text AS name, ir.status, ir.target_name,
             COALESCE(ir.responded_at, ir.created_at) AS updated_at
        FROM introduction_requests ir
@@ -113,9 +125,12 @@ export async function chainPositionOf(userId: number, threadId: number): Promise
     summary: null,
     target_name: null,
   };
+  const requester = { name: intro.requester_name, member_id: intro.requester_id };
+  if (intro.forwarder_id === null) return { previous: requester, next: [toTarget] };
   return {
-    previous: { name: intro.requester_name, member_id: intro.requester_id },
+    previous: { name: intro.forwarder_name, member_id: intro.forwarder_id },
     next: [toTarget],
+    origin: requester,
   };
 }
 
