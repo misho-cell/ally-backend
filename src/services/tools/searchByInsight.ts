@@ -10,6 +10,7 @@ import {
   fetchAccountStates,
   isMemberPhone,
   isSubscriberPhone,
+  netaiNotUsedYet,
   accountStateFor,
 } from './membership';
 import { vetoedPhonesFor } from '../factCorrections.service';
@@ -860,6 +861,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       is_member: isMemberPhone(accountStates, s.hit.contact_id),
       account_state: accountStateFor(accountStates, s.hit.contact_id),
       netai_subscriber: isSubscriberPhone(accountStates, s.hit.contact_id),
+      ...netaiNotUsedYet(accountStates, s.hit.contact_id),
       ...(inBook !== null && { in_your_contacts: inBook.has(normalizePhone(s.hit.contact_id)) }),
     }));
 

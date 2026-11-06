@@ -146,3 +146,25 @@ export function isMemberPhone(details: Map<string, AccountDetails>, phone: strin
 export function isSubscriberPhone(details: Map<string, AccountDetails>, phone: string): boolean {
   return accountDetailsFor(details, phone).netai_subscriber;
 }
+
+/**
+ * Lika's manual test (6 Nov): Tiko had a Netai account and a trial and had only
+ * not typed yet; the search said is_member false, and the reply told the owner
+ * „ის ჯერ Netai-ზე არ არის". Not a member yet (nobody's assistant asks through
+ * her), but on Netai: a request reaches her. The row says so in words.
+ */
+export const HAS_NETAI_NOT_USED_YET =
+  'Has Netai but has not written in it yet: say „Netai აქვს, ჯერ არ გამოუყენებია", never that ' +
+  'they are not on Netai. A request or introduction reaches them; their assistant answers once ' +
+  'they open it.';
+
+/** The note for an account that has Netai and has not used it yet; nothing otherwise. */
+export function netaiNotUsedYet(
+  details: Map<string, AccountDetails>,
+  phone: string,
+): { readonly netai_note?: string } {
+  const account = accountDetailsFor(details, phone);
+  return account.state !== 'netai_user' && account.netai_subscriber
+    ? { netai_note: HAS_NETAI_NOT_USED_YET }
+    : {};
+}

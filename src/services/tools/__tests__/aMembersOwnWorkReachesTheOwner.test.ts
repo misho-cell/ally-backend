@@ -20,6 +20,7 @@ jest.mock('../membership', () => ({
   accountStateFor: jest.fn(() => 'netai_user'),
   isMemberPhone: jest.fn(() => true),
   isSubscriberPhone: jest.fn(() => false),
+  netaiNotUsedYet: jest.fn(() => ({})),
 }));
 
 import { query } from '../../../db/postgres/client';
