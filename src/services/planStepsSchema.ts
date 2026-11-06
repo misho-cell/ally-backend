@@ -33,7 +33,9 @@ const STEP_ITEM = {
     what: { type: 'string', description: 'What this step asks or looks for, in a few words.' },
     on_silence: {
       type: 'object',
-      description: 'When nobody answers this step within after_days, go to next_step.',
+      description:
+        'When nobody answers this step within after_days, go to next_step. Leave it out on the ' +
+        'last step: there is no later step to go to.',
       properties: {
         after_days: { type: 'integer', minimum: MIN_SILENCE_DAYS, maximum: MAX_SILENCE_DAYS },
         next_step: NEXT_STEP,
@@ -42,7 +44,9 @@ const STEP_ITEM = {
     },
     on_no: {
       type: 'object',
-      description: 'When the person says no, go to next_step.',
+      description:
+        'When the person says no, go to next_step. Leave it out on the last step: there is no ' +
+        'later step to go to.',
       properties: { next_step: NEXT_STEP },
       required: ['next_step'],
     },

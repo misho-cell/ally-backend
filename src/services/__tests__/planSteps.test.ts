@@ -211,3 +211,15 @@ describe('the steps line on the plan card', () => {
     expect(planStepsLine({ people_to_involve: people }, 'ka')).toBeNull();
   });
 });
+
+/** Ops' daily check (6 Nov 18:45Z): the last step's on_no pointed back at itself. */
+describe('a rule on the last step', () => {
+  it('is refused with the way out: leave it out there', () => {
+    const out = parseSteps(
+      [{ id: 's1', action: 'search', what: 'web', on_no: { next_step: 's1' } }],
+      { peoplePhones: [] },
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error).toContain('leave on_no out there');
+  });
+});
