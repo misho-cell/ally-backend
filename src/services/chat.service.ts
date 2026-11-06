@@ -211,6 +211,8 @@ import {
   pendingIntroInMediatorThread,
   settleTargetAnswer,
   requestAskedInThread,
+  requestPassedOnTo,
+  passedOnAnswer,
 } from './introduction.service';
 import {
   buildTwoItemsSection,
@@ -10896,7 +10898,16 @@ async function executeToolCall(
       }
       // #5249: in a request's own chat the answer is that request's, whatever id was passed.
       // #8912: the server writes no close line for a chat answer; the reply says what was done.
-      return answer(askedHere ?? asked);
+      const requestId = askedHere ?? asked;
+      // Lika's manual test (6 Nov): a go-between who passed the request on said no yes of
+      // their own; a yes after it is recorded as what it was — passed on.
+      if (redirect === undefined && input['accepted'] === true) {
+        const passedTo = await requestPassedOnTo(userId, requestId);
+        if (passedTo !== null) {
+          return respondToIntroduction(userId, requestId, false, passedOnAnswer(passedTo));
+        }
+      }
+      return answer(requestId);
     }
     case 'get_intro_status': {
       /**
