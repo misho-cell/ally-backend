@@ -739,6 +739,27 @@ export const INSTRUCTION_EVENT: Readonly<Record<RunLanguage, string>> = {
 };
 
 /**
+ * The tester's prompt check (5 Nov, C1): the plan turn was told to „end by asking whether to
+ * start", and probe 80785 ended „დავიწყო ასე?" — the ending the prompt forbids. The closing
+ * question names the first person and what will be asked, as the prompt's own example does.
+ */
+export const PLAN_ENDING_RULE: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    'ბოლოს ერთი კითხვა, რომელიც ასახელებს პირველ ადამიანს და რას ჰკითხავ („ნიკას ასისტენტს ' +
+    'ვკითხო, ხომ არ იცნობს კარგ ბუღალტერს?“) — არასდროს „დავიწყო?“; ღილაკები არ არის, ' +
+    'present_choices არ გამოიძახო.',
+  en:
+    'End with one question that names the first person and what you will ask — never a bare ' +
+    '"shall I start?" (there are no buttons; do not call present_choices).',
+  ru:
+    'В конце один вопрос, где названы первый человек и о чём ты спросишь — никогда не голое ' +
+    '«начинаем?» (кнопок нет, не вызывай present_choices).',
+  es:
+    'Termina con una pregunta que nombre a la primera persona y lo que le preguntarás — nunca un ' +
+    'simple «¿empiezo?» (no hay botones; no llames a present_choices).',
+};
+
+/**
  * ⚠️ ROW 287 — SEARCHES WERE BEING OFFERED FOR APPROVAL.
  *
  * The plan asked the owner's yes for „your contacts" and „the second circle",
@@ -753,8 +774,8 @@ export const PLAN_PROPOSAL_EVENT: Readonly<Record<RunLanguage, string>> = {
     'წრე, ვები — ახლავე, თანხმობის გარეშე: ძებნა არავის სწერს და დასტურს არ საჭიროებს. მერე ' +
     'შეადგინე გეგმა ნაპოვნით და დადე propose_task_plan-ით: ' +
     'ვინ წყვეტს ამას (რამდენიმე თუა — ყველა), რომელი გზებით მივალთ (მფლობელის ქსელი, მეორე წრე, ვები), ' +
-    'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს და სთხოვე დასტური — ' +
-    'ბოლოს სიტყვით ჰკითხე, დავიწყოთ თუ არა — ღილაკები არ არის, present_choices არ გამოიძახო. ' +
+    'ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მერე მოკლედ აჩვენე მფლობელს. ' +
+    `${PLAN_ENDING_RULE.ka} ` +
     'დასტური მხოლოდ იმაზეა, რაც გადის: ვის მივწერთ, ვის გავაცნობთ, ვის მოვიწვევთ — ძებნა მას ' +
     'არ სთხოვო. არავის არ მისწერო, სანამ გეგმა არ დამტკიცდება. ' +
     'თუ მფლობელმა თავად თქვა, რომ არავის არ მივწეროთ („არავის არ მისწერო", „მე თვითონ ' +
@@ -767,8 +788,9 @@ export const PLAN_PROPOSAL_EVENT: Readonly<Record<RunLanguage, string>> = {
     'yes. Then draw up the plan from what you found and submit it with ' +
     'propose_task_plan: who decides this (if several — all of them), which paths we take (the ' +
     'owner’s network, the second circle, the web), whom we will ask by name, and the sign that it ' +
-    'is done. Then show the owner briefly and ask for confirmation — end by asking in words ' +
-    'whether to start (there are no buttons; do not call present_choices). The yes is ONLY for what goes out — whom we write ' +
+    'is done. Then show the owner briefly. ' +
+    `${PLAN_ENDING_RULE.en} ` +
+    'The yes is ONLY for what goes out — whom we write ' +
     'to, introduce or invite; never offer a search for approval. Write to nobody until the plan ' +
     'is approved. If the owner said themselves that we are to write to nobody ("do not contact ' +
     'anyone", "I will call them myself") — people_to_involve stays empty in the very first plan. ' +
@@ -779,8 +801,8 @@ export const PLAN_PROPOSAL_EVENT: Readonly<Record<RunLanguage, string>> = {
     'веб — сейчас, без согласия: поиск никому не пишет и подтверждения не требует. Потом составь ' +
     'план из найденного и отправь его через propose_task_plan: ' +
     'кто это решает (если несколько — все), какими путями идём (сеть владельца, второй круг, веб), ' +
-    'кого спросим поимённо, признак завершения. Затем коротко покажи владельцу и попроси ' +
-    'подтверждение — в конце спроси словами, начинать ли (кнопок нет, не вызывай present_choices). ' +
+    'кого спросим поимённо, признак завершения. Затем коротко покажи владельцу. ' +
+    `${PLAN_ENDING_RULE.ru} ` +
     'Подтверждение нужно ТОЛЬКО для того, что уходит наружу — кому пишем, кого знакомим, кого ' +
     'приглашаем; поиск на подтверждение не предлагай. Никому не пиши, пока план не утверждён. Если владелец сам сказал никому не ' +
     'писать («никому не пиши», «я сам напишу/позвоню») — people_to_involve остаётся пустым в самом ' +
@@ -792,8 +814,9 @@ export const PLAN_PROPOSAL_EVENT: Readonly<Record<RunLanguage, string>> = {
     'ni necesita un sí. Luego redacta el plan con lo encontrado y envíalo con ' +
     'propose_task_plan: quién decide esto (si son varios — todos), por qué caminos vamos (la red ' +
     'del propietario, el segundo círculo, la web), a quién preguntaremos por nombre, y la señal de ' +
-    'que está resuelto. Luego muéstraselo brevemente al propietario y pide confirmación — termina ' +
-    'preguntando con palabras si empezamos (no hay botones; no llames a present_choices). El sí es SOLO para lo que ' +
+    'que está resuelto. Luego muéstraselo brevemente al propietario. ' +
+    `${PLAN_ENDING_RULE.es} ` +
+    'El sí es SOLO para lo que ' +
     'sale — a quién escribimos, presentamos o invitamos; nunca ofrezcas una búsqueda para ' +
     'aprobar. No escribas a nadie hasta que el plan esté aprobado. Si el propietario dijo él mismo que no ' +
     'escribamos a nadie («no contactes a nadie», «yo mismo les escribo/llamo») — people_to_involve ' +
@@ -818,8 +841,9 @@ export const PLAN_FROM_FINDINGS_EVENT: Readonly<Record<RunLanguage, string>> = {
     'ნაპოვნი წინა პასუხში უკვე წაიკითხა. თავიდან ნუ მოძებნი და ნაპოვნს ნუ გაიმეორებ. ' +
     'შეადგინე გეგმა იმ ნაპოვნიდან და დადე propose_task_plan-ით: ვინ წყვეტს ამას, რომელი ' +
     'გზებით მივალთ, ვის ვკითხავთ სახელებით, დასრულების ნიშანი. მფლობელს ორ-სამ წინადადებაში ' +
-    'უთხარი მხოლოდ გეგმა — ვის ვკითხავთ და რატომ — და ბოლოს სიტყვით ჰკითხე, ' +
-    'დავიწყოთ თუ არა (ღილაკები არ არის, present_choices არ გამოიძახო). დასტური მხოლოდ იმაზეა, რაც გადის. არავის არ მისწერო, ' +
+    'უთხარი მხოლოდ გეგმა — ვის ვკითხავთ და რატომ. ' +
+    `${PLAN_ENDING_RULE.ka} ` +
+    'დასტური მხოლოდ იმაზეა, რაც გადის. არავის არ მისწერო, ' +
     'სანამ გეგმა არ დამტკიცდება. თუ მფლობელმა თქვა, რომ არავის არ მივწეროთ — ' +
     'people_to_involve ცარიელი რჩება.',
   en:
@@ -827,8 +851,9 @@ export const PLAN_FROM_FINDINGS_EVENT: Readonly<Record<RunLanguage, string>> = {
     'owner has read the findings in the previous reply. Do not search again and do not repeat ' +
     'the findings. Draw up the plan from those findings and submit it with propose_task_plan: ' +
     'who decides this, which paths we take, whom we will ask by name, and the sign that it is ' +
-    'done. Tell the owner only the plan, in two or three sentences — whom we would ask and why ' +
-    '— and end by asking in words whether to start (no buttons; do not call present_choices). The yes is ' +
+    'done. Tell the owner only the plan, in two or three sentences — whom we would ask and why. ' +
+    `${PLAN_ENDING_RULE.en} ` +
+    'The yes is ' +
     'only for what goes out. Write to nobody until the plan is approved. If the owner said to ' +
     'write to nobody, people_to_involve stays empty.',
   ru:
@@ -836,8 +861,9 @@ export const PLAN_FROM_FINDINGS_EVENT: Readonly<Record<RunLanguage, string>> = {
     'найденное в предыдущем ответе. Не ищи заново и не повторяй найденное. Составь план из ' +
     'этого найденного и отправь через propose_task_plan: кто это решает, какими путями идём, ' +
     'кого спросим поимённо, признак завершения. Владельцу скажи только план, в двух-трёх ' +
-    'предложениях — кого спросим и почему — и в конце спроси словами, ' +
-    'начинать ли (кнопок нет, не вызывай present_choices). Подтверждение нужно только для того, что уходит наружу. Никому ' +
+    'предложениях — кого спросим и почему. ' +
+    `${PLAN_ENDING_RULE.ru} ` +
+    'Подтверждение нужно только для того, что уходит наружу. Никому ' +
     'не пиши, пока план не утверждён. Если владелец сказал никому не писать — people_to_involve ' +
     'остаётся пустым.',
   es:
@@ -845,8 +871,9 @@ export const PLAN_FROM_FINDINGS_EVENT: Readonly<Record<RunLanguage, string>> = {
     'propietario leyó lo encontrado en la respuesta anterior. No vuelvas a buscar ni repitas lo ' +
     'encontrado. Redacta el plan con eso y envíalo con propose_task_plan: quién decide esto, ' +
     'por qué caminos vamos, a quién preguntaremos por nombre, y la señal de que está resuelto. ' +
-    'Dile al propietario solo el plan, en dos o tres frases — a quién preguntaríamos y por qué ' +
-    '— y termina preguntando con palabras si empezamos (no hay botones; no llames a present_choices). El sí es solo ' +
+    'Dile al propietario solo el plan, en dos o tres frases — a quién preguntaríamos y por qué. ' +
+    `${PLAN_ENDING_RULE.es} ` +
+    'El sí es solo ' +
     'para lo que sale. No escribas a nadie hasta que el plan esté aprobado. Si el propietario ' +
     'dijo que no escribamos a nadie, people_to_involve queda vacío.',
 };

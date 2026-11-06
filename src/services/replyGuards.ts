@@ -1,5 +1,6 @@
 import { ClaimKind, claimsOfKind, makesClaim, ReplyClaims } from './replyClaims.service';
 import { RunLanguage } from './runLanguage';
+import { PLAN_ENDING_RULE } from './taskEngine.events';
 
 // A run must end on an answer, not an announcement. These are the tails the
 // battery kept catching as "half-finished narration marked final" (thread 5942
@@ -374,18 +375,11 @@ export function promisesToWriteToSomeone(text: string): boolean {
   return PROMISES_TO_WRITE_RE.test(text);
 }
 
-/**
- * Tester 77492 (#6304, 0/6): these notes still asked for „ვამტკიცებ" / „შევცვალოთ"
- * buttons, against the no-buttons rule (#8054), and the run stalled between the
- * two. The owner answers a plan in words.
- */
-const NO_BUTTONS_KA = 'ღილაკები არ არის: present_choices არ გამოიძახო. ';
-
 export const PROMISED_ACTION_NUDGE =
   '(სისტემური შენიშვნა: შენ დაწერე, რომ ვინმეს ჰკითხავ ან მისწერ, მაგრამ ამ გაშვებაში არაფერი ' +
   'გაგზავნილა და ამ მიზანს გეგმა არ აქვს. თუ ამ ადამიანს უნდა მივწეროთ — ახლავე გამოიძახე ' +
-  'propose_task_plan, ის people_to_involve-ში ჩაწერე და სიტყვით ჰკითხე, დავიწყოთ თუ არა. ' +
-  NO_BUTTONS_KA +
+  'propose_task_plan, ის people_to_involve-ში ჩაწერე. ' +
+  `${PLAN_ENDING_RULE.ka} ` +
   'თუ არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. მფლობელს შენი წინა ' +
   'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.' +
   'ვისზეც წერ, სახელით დაასახელე — „ეს ორი" ან „ისინი" მფლობელისთვის არაფერს ნიშნავს.)';
@@ -421,8 +415,8 @@ export function farFindUnplannedNudge(names: readonly string[]): string {
     'ჯერ არ აქვს და ამ გაშვებაში არაფერი გაგზავნილა. ' +
     'ახლავე გამოიძახე find_warm_path მისი ' +
     'phone-ით, მერე propose_task_plan — people_to_involve-ში ჯაჭვის პირველი რგოლი (შენი ' +
-    'კონტაქტი), გზაში კი ის, ვისთან მიდის — და სიტყვით ჰკითხე, დავიწყოთ თუ არა. ' +
-    NO_BUTTONS_KA +
+    'კონტაქტი), გზაში კი ის, ვისთან მიდის. ' +
+    `${PLAN_ENDING_RULE.ka} ` +
     'თუ ერთ სახელს რამდენიმე ადამიანი შეესაბამა, ჯერ ჰკითხე მფლობელს, რომელს გულისხმობს. ' +
     'საჯარო სიები ამ ადამიანის შემდეგ, არა მის ნაცვლად. მფლობელს შენი წინა ' +
     'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)'
@@ -438,8 +432,8 @@ export const PROMISED_ACTION_NO_GOAL_NUDGE =
   '(სისტემური შენიშვნა: შენ დაწერე, რომ ვინმეს ჰკითხავ ან მისწერ, მაგრამ ამ გაშვებაში არაფერი ' +
   'გაგზავნილა და ამ საუბარში მიზანი არ არის. თუ მფლობელმა ამ ადამიანისთვის მიწერა ითხოვა — ' +
   'ახლავე გახსენი მიზანი create_task-ით, მერე გამოიძახე propose_task_plan, ის ' +
-  'people_to_involve-ში ჩაწერე და სიტყვით ჰკითხე, დავიწყოთ თუ არა. ' +
-  NO_BUTTONS_KA +
+  'people_to_involve-ში ჩაწერე. ' +
+  `${PLAN_ENDING_RULE.ka} ` +
   'თუ არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. მფლობელს შენი წინა ტექსტი არ უნახავს: ' +
   'პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.' +
   'ვისზეც წერ, სახელით დაასახელე — „ეს ორი" ან „ისინი" მფლობელისთვის არაფერს ნიშნავს.)';
