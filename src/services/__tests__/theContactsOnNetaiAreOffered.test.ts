@@ -4,6 +4,7 @@ import {
   factChangeThatCounts,
   factCheckIsDue,
   lookupOfNamedPeople,
+  worksAGoal,
   replyOffersAMember,
   skippedThese,
 } from '../chat.service';
@@ -122,5 +123,16 @@ describe('the fact check', () => {
     expect(chat).toContain('noteFactHeld(runId, askPhone);');
     expect(chat).toContain('forgetFactHolds(runId);');
     expect(factCheckIsDue(undefined, 'x')).toBe(true);
+  });
+});
+
+/** Giorgi's review (case 20): a list someone asked for is not a goal to offer members for. */
+describe('the members note', () => {
+  it('belongs to a goal’s work only', () => {
+    expect(worksAGoal('task_step', [])).toBe(true);
+    expect(worksAGoal('regular', ['create_task'])).toBe(true);
+    expect(worksAGoal('regular', ['search_by_tag'])).toBe(false);
+    expect(worksAGoal('quick_answer', [])).toBe(false);
+    expect(chat).toContain('worksAGoal(runModes.get(runId), toolNamesUsed) &&');
   });
 });

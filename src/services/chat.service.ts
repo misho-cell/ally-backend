@@ -6599,6 +6599,16 @@ export function forgetFactHolds(runId: string): void {
   for (const key of runFactHeldOnce) if (key.startsWith(`${runId}:`)) runFactHeldOnce.delete(key);
 }
 
+/**
+ * Giorgi's review (case 20, Misho's go 6 Nov): the owner asked for the names of an
+ * organisation's members, and the members note pushed the reply to offer „I'll
+ * talk to three assistants". Offering members to ask belongs to a goal's work —
+ * a run on a goal, or one that saved a goal now — not to a list someone asked for.
+ */
+export function worksAGoal(mode: string | undefined, toolNamesUsed: readonly string[]): boolean {
+  return mode === 'task_step' || toolNamesUsed.includes('create_task');
+}
+
 /** The searches that look for people by a need, not by a name. */
 const NEED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'search_by_tag',
@@ -16230,6 +16240,7 @@ async function runToolLoop(
   const membersSkipped =
     readersOwnRequest &&
     !lookupOfNamedPeople(toolNamesUsed) &&
+    worksAGoal(runModes.get(runId), toolNamesUsed) &&
     !ownerAbsent &&
     !repeatsAnOpenGoal &&
     skippedTheMembersFound(runId, finalText, toolNamesUsed) &&
