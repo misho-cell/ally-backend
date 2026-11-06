@@ -6533,14 +6533,27 @@ function sentenceOffersAMember(reply: string, names: readonly string[]): boolean
   });
 }
 
+/**
+ * The tools after which the members were already weighed: an ask or an
+ * introduction went, or a plan was proposed. The tester's prompt check (5 Nov,
+ * C3): probe 80785 proposed a plan naming a member, the reading of the reply's
+ * words missed the name, and the note forced a second model call and a second
+ * message. A plan is the model's own choice of whom to ask — structure, not words.
+ */
+const MEMBERS_WEIGHED_BY: ReadonlySet<string> = new Set([
+  'ask_contact',
+  'request_introduction',
+  'propose_task_plan',
+]);
+
 /** #960: these members on Netai were there to offer, none was asked, and the reply names none. */
-function skippedThese(
+export function skippedThese(
   names: readonly string[],
   finalText: string,
   toolNamesUsed: readonly string[],
 ): boolean {
   if (names.length === 0) return false;
-  if (toolNamesUsed.some((t) => t === 'ask_contact' || t === 'request_introduction')) return false;
+  if (toolNamesUsed.some((t) => MEMBERS_WEIGHED_BY.has(t))) return false;
   // A short question back („which city?") is a fair answer before any offer.
   const trimmed = finalText.trim();
   if (trimmed.length < SHORT_QUESTION_BACK_CHARS && /[?？]$/u.test(trimmed)) return false;
