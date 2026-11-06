@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 6 Nov, 10:15Z — the tester's night battery (6 Nov file): 8 server fixes built (Misho's „დაიწყე ყველა"), ship tonight 19:00Z unless Misho says now
+
+Checked against the traces first; branch `claude/wizardly-johnson-a6orxq`, verify green. DONE WHEN for each = the battery case re-run on fresh fictional seats, 3/3.
+- **f2d2fb79 — C1, C3, C6, C7 contact:** when an introduction has no phonebook number and the go-between typed a number or e-mail, the owner reads whose contact it is and who wrote it (tel/WhatsApp or mailto); the go-between is told it was passed on; the goal's run is told the owner has it. No „ask him yourself". A member target is still asked first (#8945).
+- **928bdb84 — C4:** while a target question is open, the target's own words („კი, სიამოვნებით გავიცნობ") are read by a small model as yes / no / unclear; a yes records the answer, tells the owner and opens the meeting chat (#8878). Unclear → ordinary run as before.
+- **6bc56459 — C1, C2, C7 note:** the answer-event note no longer says „offer the introduction" / „what the owner should do": on_named: introduce under an approved plan → request_introduction at once; otherwise one question naming who and through whom.
+- **5f48911b — C6:** a late name after a no is read on its own; the next-step reply is no longer dropped as quiet-after-decline.
+- **b5324345 — C7 duplicate:** a Georgian name written in Latin letters counts as named, so no server plan sentence is added beside the model's question.
+- **c23af675 — C2 name:** a registered name sharing no word with the owner's clean label („Netai Test 152" vs „Nino Abashidze") gives way to the label.
+- **9504b305 — C8:** a run that only looked people up by name gets no members note (no goal/plan on a lookup, one question).
+- **21175a38 — C5:** in a go-between's chat the fact check no longer refuses an ask as „for somebody else". The C5 prompt line (the owner's named route wins) waits on Misho's yes.
+- Not ours / by design: „Netai Test 151/152" in routes and members among the „outside" numbers are test-world data; quick-answer mode on a first message is by design.
+
 ### 6 Nov, 08:50Z — Tornike's prompt check: the five server items built (Misho's go, 6 Nov), ship tonight 19:00Z
 
 Misho said go for the must-do and should-do items. Branch `claude/wizardly-johnson-a6orxq`, verify green; to main in tonight's batch. **Prompt items A1, A2, A4 are LIVE since 08:08Z** (Misho's „კი, სამივე ჩასვი"; admin write 110, undo = 6 Nov snapshot): A2 — no „ვის დავუკავშირდე პირველად?", options only when the owner asked to choose; A1 — a name given leads to an introduction by itself only under an approved plan with on_named: introduce, otherwise one question naming who and through whom; A4 — plan steps run one at a time, in order. DONE WHEN (fictional seats, 3/3 each): a plan never asks „who first?"; a helper naming someone with no approved plan → one question „X-მ Y დაასახელა — Y-ის გაცნობა X-ის გავლით ვთხოვო?", no refused introduction; a stepped plan writes to its second person only after the first step's answer, no or silence days.
