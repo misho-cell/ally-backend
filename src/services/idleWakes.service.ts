@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { planHasSteps, PlanWithSteps } from './planSteps';
 
 /**
  * #8625 (the tester's DR12): plans waiting since 30 Oct
@@ -66,6 +67,20 @@ export function idleDecision(state: IdleState, now: Date): IdleDecision {
       : { kind: IdleWake.CloseQuestion, at: after(now, QUIET_DAYS) };
   }
   return { kind: IdleWake.NotYet, at: after(state.remindedAt ?? now, QUIET_DAYS) };
+}
+
+/**
+ * The tester's prompt check (5 Nov, B „weekly"): an approved plan with steps has
+ * its own clock — each step's on_silence days, moved by the silence sweep — and
+ * the prompt's UPDATES line for a quiet week. The idle rule's day-1/4/7 wakes
+ * were a second sender, and its seven-day „do the next step now" could run a
+ * step before its own silence days were over. Such a plan keeps one clock: its own.
+ */
+export function idleRuleApplies(
+  plan: PlanWithSteps | null | undefined,
+  planApprovedAt: Date | string | null,
+): boolean {
+  return planApprovedAt === null || !planHasSteps(plan);
 }
 
 /** The goal's idle state, read from the conversation and its asks. Null when unreadable. */

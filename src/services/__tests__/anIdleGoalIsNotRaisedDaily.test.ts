@@ -1,6 +1,9 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
-import { IdleWake, idleDecision } from '../idleWakes.service';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { IdleWake, idleDecision, idleRuleApplies } from '../idleWakes.service';
+import { LEGACY_STEP } from '../planSteps';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-11-10T12:00:00Z');
@@ -47,5 +50,29 @@ describe('an idle goal is reminded at 1 and 4 days, asked at 7, then quiet (#862
   it('starts the count again when a person has written since the last reminder', () => {
     const d = idleDecision({ lastHumanAt: ago(1.2), reminders: 3, remindedAt: ago(3) }, NOW);
     expect(d.kind).toBe(IdleWake.Reminder);
+  });
+});
+
+/**
+ * The tester's prompt check (5 Nov): an approved plan with steps has its own
+ * clock (on_silence days) — the idle wakes were a second sender for it.
+ */
+describe('an approved plan with steps keeps its own clock', () => {
+  const APPROVED = '2026-11-01T10:00:00Z';
+  const steps = { steps: [LEGACY_STEP] };
+
+  it('is left out of the idle rule', () => {
+    expect(idleRuleApplies(steps, APPROVED)).toBe(false);
+  });
+
+  it('applies to a plan still waiting for its yes and to an old plan without steps', () => {
+    expect(idleRuleApplies(steps, null)).toBe(true);
+    expect(idleRuleApplies({}, APPROVED)).toBe(true);
+    expect(idleRuleApplies(null, APPROVED)).toBe(true);
+  });
+
+  it('is what the engine asks before it reads the idle state', () => {
+    const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
+    expect(engine).toContain('idleRuleApplies(task.plan, task.plan_approved_at)');
   });
 });

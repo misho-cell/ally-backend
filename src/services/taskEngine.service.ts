@@ -5,6 +5,7 @@ import {
   IdleWake,
   idleDecision,
   idleState,
+  idleRuleApplies,
   noteIdleReminder,
   setIdleWake,
 } from './idleWakes.service';
@@ -1115,7 +1116,10 @@ async function tick(): Promise<void> {
     await clearTaskWake(task.id);
     // #8625: a goal nobody has written in for two days is reminded once, asked at five
     // days whether to close, and then left quiet — not re-raised at every daily wake.
-    const idle = await idleWakeFor(task.id);
+    // An approved plan with steps runs on its own silence days instead (idleRuleApplies).
+    const idle = idleRuleApplies(task.plan, task.plan_approved_at)
+      ? await idleWakeFor(task.id)
+      : null;
     if (idle?.decision.kind === IdleWake.NotYet && idle.decision.at !== null) {
       await setIdleWake(task.id, idle.decision.at);
       continue;
