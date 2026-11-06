@@ -36,7 +36,13 @@ import { recommendedByLine, recommenderFor } from './recommendedBy';
 import { query } from '../db/postgres/client';
 import { getTaskById, wakeTaskNoLaterThan } from './taskStore.service';
 import { WakeOrigin } from './quietWakeGuard';
-import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from './taskPlans.service';
+import {
+  acceptedIntroductionPhones,
+  addOwnersPersonToPlan,
+  planAllows,
+  planInForce,
+  TaskPlan,
+} from './taskPlans.service';
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
 import { phoneDigits } from './phone';
@@ -1916,7 +1922,12 @@ async function createAskNow(
         'სხვა გზით. მფლობელს უთხარი, რომ ეს მისი გეგმის წესია და სხვა ადამიანი შესთავაზე.',
     };
   }
-  if (
+  // Misho, 6 Nov (his student search): „ქეთის მიწერე" was refused as outside the plan —
+  // the owner's name for her and her saved label did not match word for word. In the
+  // owner's own turn his instruction is the yes, and it adds the person to the plan.
+  if (!verdict.allowed && parentAskId === undefined && ownerAskedNow === true) {
+    await addOwnersPersonToPlan(taskId, toName, contactPhone);
+  } else if (
     !verdict.allowed &&
     parentAskId === undefined &&
     !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone)) &&

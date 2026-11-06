@@ -1502,3 +1502,40 @@ function sameText(a: string, b: string): boolean {
   const fold = (t: string): string => t.trim().toLowerCase().replace(/\s+/g, ' ');
   return fold(a) === fold(b);
 }
+
+/** The route name under which a person the owner named himself joins the plan. */
+export const OWNERS_WORD_ROUTE = 'მფლობელის სიტყვით';
+const ADD_PERSON_TIMEOUT_MS = 3_000;
+
+/**
+ * Misho, 6 Nov (his student search): „ქეთის მიწერე" — the owner's own instruction
+ * is the yes, and the person joins the plan by it, with no second question. Added
+ * once (by phone), to the plan in force; a goal without a plan is left as it is.
+ * A failure is logged and never stops the ask: the instruction already stands.
+ */
+export async function addOwnersPersonToPlan(
+  taskId: number,
+  name: string,
+  phone: string,
+): Promise<void> {
+  const person: PlanPerson = { name, phone, route: OWNERS_WORD_ROUTE };
+  try {
+    await query(
+      `UPDATE tasks
+          SET plan = jsonb_set(plan, '{people_to_involve}',
+                COALESCE(plan->'people_to_involve', '[]'::jsonb) || jsonb_build_array($2::jsonb))
+        WHERE id = $1 AND plan IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM jsonb_array_elements(COALESCE(plan->'people_to_involve', '[]'::jsonb)) p
+             WHERE regexp_replace(p->>'phone', '\\D', '', 'g') = regexp_replace($3, '\\D', '', 'g'))`,
+      [taskId, JSON.stringify(person), phone],
+      ADD_PERSON_TIMEOUT_MS,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[plan] task ${taskId}: the owner's person was not added:`,
+      (err as Error).message,
+    );
+  }
+}
