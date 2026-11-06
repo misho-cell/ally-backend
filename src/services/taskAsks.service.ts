@@ -3493,14 +3493,20 @@ export function passedOnNote(answers: readonly ArrivedAnswer[]): string {
 
 /**
  * Tester 39832 (#1554): the helper sent a contact's number, it arrived — and
- * the asker's next reply offered an introduction to that same person. He
- * already has the number; the next step is his own call.
+ * the asker's next reply offered an introduction to that same person. The
+ * number makes that introduction needless.
+ *
+ * The tester's prompt check (5 Nov, C2): this note also said „he will call them
+ * himself", and the run handed the job back to the owner — against the prompt's
+ * THE RESULT (finish the job yourself, never a task for him). The note now says
+ * only what the number changes; the next step stays the plan's.
  */
 export function sharedNumberNote(answers: readonly ArrivedAnswer[]): string {
   if (!answers.some((a) => a.answer.includes(ALLOW_OPEN))) return '';
   return (
-    ' პასუხში ნომერია: მფლობელს ის უკვე აქვს და თავად დაუკავშირდება. ამ ადამიანთან გაცნობა ' +
-    'აღარ შესთავაზო და მისი ნომერი აღარ მოითხოვო.'
+    ' პასუხში ნომერია და ის მფლობელს უკვე გადაეცა: ამ ადამიანზე გაცნობა აღარ ითხოვო და მისი ' +
+    'ნომერი აღარ მოითხოვო. არ დაწერო, რომ მფლობელი თავად დაუკავშირდება — შემდეგი ნაბიჯი გეგმის ' +
+    'მიხედვით შენია (THE RESULT).'
   );
 }
 
