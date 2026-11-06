@@ -52,6 +52,8 @@ import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
 import {
+  FactChange,
+  FactChanged,
   factChangedIn,
   factChangedRefusal,
   ownersLineQuoted,
@@ -6560,6 +6562,21 @@ export function skippedThese(
   return !replyOffersAMember(finalText, names);
 }
 
+/**
+ * The tester's battery (6 Nov, C5): in a go-between's chat the owner carries
+ * someone else's request („ნანას თხოვე ჩემი სახელით, რომ გიგის თხოვოს…"), and
+ * the fact check refused the ask four times as „for somebody else" — which is
+ * what a go-between's ask always is. There, only a changed time or detail counts.
+ */
+export function factChangeThatCounts(
+  changed: FactChanged | null,
+  mode: string | undefined,
+): FactChanged | null {
+  if (changed === null) return null;
+  const onSomeoneElsesBehalf = GO_BETWEEN_MODES.has(mode ?? '');
+  return onSomeoneElsesBehalf && changed.change === FactChange.Beneficiary ? null : changed;
+}
+
 /** The searches that look for people by a need, not by a name. */
 const NEED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'search_by_tag',
@@ -11320,7 +11337,10 @@ async function executeToolCall(
         console.log(`[own-part] run ${runId} task ${taskId}: another person's part held back`);
         return { sent: false, reason: 'other_part', error: OTHER_PART_REFUSAL };
       }
-      const changed = await factChangedIn(question, ownerLines, { userId, runId, threadId });
+      const changed = factChangeThatCounts(
+        await factChangedIn(question, ownerLines, { userId, runId, threadId }),
+        runId === undefined ? undefined : runModes.get(runId),
+      );
       if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {
         // eslint-disable-next-line no-console
         console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, the owner quoted`);

@@ -86,7 +86,7 @@ describe('what the model is told', () => {
   it('is checked before the ask goes out', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const handler = chat.slice(chat.indexOf("case 'ask_contact': {"));
-    const checkAt = handler.indexOf('const changed = await factChangedIn(question, ownerLines, {');
+    const checkAt = handler.indexOf('await factChangedIn(question, ownerLines, {');
     expect(checkAt).toBeGreaterThan(0);
     expect(checkAt).toBeLessThan(handler.indexOf('await createAsk('));
     expect(chat).toContain('FACTS: keep every fact exactly as the owner wrote it');

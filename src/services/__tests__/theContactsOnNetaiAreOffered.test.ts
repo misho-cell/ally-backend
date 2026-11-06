@@ -1,6 +1,12 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { lookupOfNamedPeople, replyOffersAMember, skippedThese } from '../chat.service';
+import {
+  factChangeThatCounts,
+  lookupOfNamedPeople,
+  replyOffersAMember,
+  skippedThese,
+} from '../chat.service';
+import { FactChange } from '../factKeeping';
 import { MEMBERS_SKIPPED_NUDGE } from '../replyGuards';
 
 /**
@@ -89,5 +95,22 @@ describe('a run that only looked people up by name', () => {
     expect(lookupOfNamedPeople(['search_contact_by_name', 'search_second_degree'])).toBe(false);
     expect(lookupOfNamedPeople(['search_by_tag'])).toBe(false);
     expect(chat).toContain('!lookupOfNamedPeople(toolNamesUsed) &&');
+  });
+});
+
+/** The tester's battery (6 Nov, C5): a go-between's ask is for someone else by design. */
+describe('the fact check in a go-between’s chat', () => {
+  const beneficiary = { change: FactChange.Beneficiary, word: 'ერეკლე' };
+  const time = { change: FactChange.Time, word: 'შარშან' };
+
+  it('lets „for somebody else" pass there, and nowhere else', () => {
+    expect(factChangeThatCounts(beneficiary, 'request_thread')).toBeNull();
+    expect(factChangeThatCounts(beneficiary, 'incoming_ask')).toBeNull();
+    expect(factChangeThatCounts(beneficiary, 'task_step')).toBe(beneficiary);
+  });
+
+  it('still counts a changed time or detail there', () => {
+    expect(factChangeThatCounts(time, 'request_thread')).toBe(time);
+    expect(factChangeThatCounts(null, 'request_thread')).toBeNull();
   });
 });
