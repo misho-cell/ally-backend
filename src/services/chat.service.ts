@@ -341,6 +341,7 @@ import {
 import { PLAN_STEPS_SCHEMA_PROPERTIES } from './planStepsSchema';
 import { whereWeAreSection } from './whereWeAre.service';
 import { INVITE_ON_THE_OWNERS_WORD } from './replyGuards';
+import { PLAN_ENDING_RULE } from './taskEngine.events';
 import { ASK_KIND_FIELD, askKindFrom } from './askKind';
 import { DELEGATED_FIELD_SCHEMA, recordDelegation } from './planDelegation';
 import { deleteAnswerRule, listAnswerRules } from './answerRules.service';
@@ -14287,8 +14288,9 @@ export function createTaskFollowUp(movedTo: number | undefined): Record<string, 
   if (movedTo === undefined) {
     return {
       next:
-        'Now, in THIS run, call propose_task_plan for this task_id and end with one question in ' +
-        'words; there are no buttons (#8054). Do not end your turn with the goal saved ' +
+        'Now, in THIS run, call propose_task_plan for this task_id. ' +
+        `${PLAN_ENDING_RULE.en} ` +
+        'Do not end your turn with the goal saved ' +
         'and no plan on screen: that costs the user a second answer a few seconds later, ' +
         'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
         '— your own message must not repeat it, in any form. Write nobody and start nothing ' +
