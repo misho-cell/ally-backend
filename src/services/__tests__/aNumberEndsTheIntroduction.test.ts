@@ -10,8 +10,16 @@ describe('a number that arrived ends the introduction offer', () => {
     const note = sharedNumberNote([
       { answer: `Dato: ${ALLOW_OPEN}995599000111${ALLOW_CLOSE}`, fromName: 'გია' },
     ]);
-    expect(note).toContain('გაცნობა აღარ შესთავაზო');
+    expect(note).toContain('გაცნობა აღარ ითხოვო');
     expect(note).not.toContain('995599000111');
+  });
+
+  it('leaves the next step to the plan, never to the owner (prompt check C2)', () => {
+    const note = sharedNumberNote([
+      { answer: `Dato: ${ALLOW_OPEN}x${ALLOW_CLOSE}`, fromName: 'გია' },
+    ]);
+    expect(note).not.toContain('და თავად დაუკავშირდება');
+    expect(note).toContain('შემდეგი ნაბიჯი გეგმის მიხედვით შენია');
   });
 
   it('says nothing for an ordinary answer', () => {
