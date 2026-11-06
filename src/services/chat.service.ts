@@ -6566,17 +6566,37 @@ export function skippedThese(
 
 /**
  * The tester's battery (6 Nov, C5): in a go-between's chat the owner carries
- * someone else's request („ნანას თხოვე ჩემი სახელით, რომ გიგის თხოვოს…"), and
- * the fact check refused the ask four times as „for somebody else" — which is
- * what a go-between's ask always is. There, only a changed time or detail counts.
+ * someone else's request, and the fact check refused the ask four times as „for
+ * somebody else". Ops' daily check (6 Nov 18:45Z): in the owner's own goals too
+ * it read first-person words („დამირეკე", „ხომ არ იცი", a person's own name) as a
+ * third party — 10 conversations refused in a day, none sent after, real accounts
+ * among them (Misho, 6 Nov: „დანარჩენები გააკეთე ყველა"). The „for somebody else"
+ * kind no longer counts anywhere; a changed time or detail still does.
  */
-export function factChangeThatCounts(
-  changed: FactChanged | null,
-  mode: string | undefined,
-): FactChanged | null {
+export function factChangeThatCounts(changed: FactChanged | null): FactChanged | null {
   if (changed === null) return null;
-  const onSomeoneElsesBehalf = GO_BETWEEN_MODES.has(mode ?? '');
-  return onSomeoneElsesBehalf && changed.change === FactChange.Beneficiary ? null : changed;
+  return changed.change === FactChange.Beneficiary ? null : changed;
+}
+
+/**
+ * Ops' daily check (6 Nov 18:45Z): one real conversation was refused 8 times in a
+ * row and nothing was sent. A question to one person is held back once per run;
+ * the rewrite after it goes.
+ */
+const runFactHeldOnce = new Set<string>();
+
+export function factCheckIsDue(runId: string | undefined, phone: string): boolean {
+  if (runId === undefined) return true;
+  return !runFactHeldOnce.has(`${runId}:${phoneDigits(phone)}`);
+}
+
+function noteFactHeld(runId: string | undefined, phone: string): void {
+  if (runId === undefined) return;
+  runFactHeldOnce.add(`${runId}:${phoneDigits(phone)}`);
+}
+
+export function forgetFactHolds(runId: string): void {
+  for (const key of runFactHeldOnce) if (key.startsWith(`${runId}:`)) runFactHeldOnce.delete(key);
 }
 
 /** The searches that look for people by a need, not by a name. */
@@ -10254,6 +10274,7 @@ function clearRunState(runId: string): void {
   runGrantedTheGoal.delete(runId);
   runThankedAHelper.delete(runId);
   runPostponedAnAnswer.delete(runId);
+  forgetFactHolds(runId);
 }
 
 /**
@@ -11349,19 +11370,23 @@ async function executeToolCall(
         console.log(`[own-part] run ${runId} task ${taskId}: another person's part held back`);
         return { sent: false, reason: 'other_part', error: OTHER_PART_REFUSAL };
       }
-      const changed = factChangeThatCounts(
-        await factChangedIn(question, ownerLines, { userId, runId, threadId }),
-        runId === undefined ? undefined : runModes.get(runId),
-      );
-      if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {
-        // eslint-disable-next-line no-console
-        console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, the owner quoted`);
-        return { sent: false, reason: 'owner_quoted', error: OWNERS_LINE_QUOTED_REFUSAL };
-      }
-      if (changed !== null) {
-        // eslint-disable-next-line no-console
-        console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, ${changed.change}`);
-        return { sent: false, reason: 'fact_changed', error: factChangedRefusal(changed) };
+      const askPhone = String(input['phone'] ?? '');
+      if (factCheckIsDue(runId, askPhone)) {
+        const changed = factChangeThatCounts(
+          await factChangedIn(question, ownerLines, { userId, runId, threadId }),
+        );
+        if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {
+          noteFactHeld(runId, askPhone);
+          // eslint-disable-next-line no-console
+          console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, the owner quoted`);
+          return { sent: false, reason: 'owner_quoted', error: OWNERS_LINE_QUOTED_REFUSAL };
+        }
+        if (changed !== null) {
+          noteFactHeld(runId, askPhone);
+          // eslint-disable-next-line no-console
+          console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, ${changed.change}`);
+          return { sent: false, reason: 'fact_changed', error: factChangedRefusal(changed) };
+        }
       }
       await grantFromTheOwnersInstruction(userId, task, threadId, ownerAbsent, runId);
       const authored = authoredChoices(runId, input['choices']);
