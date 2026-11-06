@@ -30,3 +30,15 @@ describe('a request that continues the conversation', () => {
     );
   });
 });
+
+/**
+ * Giorgi's review (case 46): Iro named Omiko herself, and the request in the
+ * same thread asked her whether she knows Omiko.
+ */
+describe('a follow-up request to the go-between who named the person', () => {
+  it('asks her to connect, never whether she knows them', () => {
+    const follow = incomingRequestFollowUp('ka', 'ლია', 'ომიკო', false);
+    expect(follow).toBe('ლია ახლა გთხოვს, დააკავშირო ომიკოსთან. დაეხმარები? 🤝');
+    expect(follow).not.toContain('იცნობ');
+  });
+});
