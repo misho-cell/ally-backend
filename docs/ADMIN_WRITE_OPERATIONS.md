@@ -6780,3 +6780,12 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** `PUT /admin/prompt-blocks/core_shared` with `content` only. After „… — never a delay, a fault, „ვერ მოხერხდა“ or an apology." one passage: when a search ends without a warm way in, try one other way in the same run (the role that handles the need, or the owner's network for people who know such a person), give both results, and close with one question — is this enough, or try another direction; searching needs no yes, writing still does.
 - **Checked before the write:** the live block equals write 110's text; the anchor occurs once. Size 19,775 → 20,399.
 - **UNDO:** put back the content from `docs/prompt_live_6nov/core_shared_after110.md` with the same route.
+
+## 114 · GIORGI'S REVIEW: SIX PROMPT LINES IN core_shared, task_main, task_rules (Misho, his chat, 6 Nov: „სანამ ამ ოთხზე შევთანხმდები გიორგისთან დანარჩენები გააკეთე ყველა", on the list I gave him)
+- **What:** `PUT /admin/prompt-blocks/:name` with `content` only.
+  - core_shared, after „only talk, until he asks for action.": being asked questions about himself is talk (save the answers, no goal/plan/search); a request for a list is answered with the list (cases 8, 20).
+  - core_shared, after „Facts about Netai itself only from get_netai_info.": „what can you do" opens with finding people through his contacts and theirs; the upload link from get_contacts_upload_link when contacts are missing; one clause on why being on Netai matters (cases 45, 28, 2).
+  - task_main ANSWERS: a no to an extra offer stops only that offer; approved steps go on (case 30).
+  - task_rules STEP 5: each person with a few words why, and how many more fit (cases 34, 2).
+- **Checked before the write:** each anchor occurs once in the live text read at 20:4xZ. Sizes: core_shared 20,399 → 21,155; task_main 7,063 → 7,177; task_rules 10,839 → 10,945.
+- **UNDO:** put back `docs/prompt_live_6nov/<name>_before114.md` for each of the three with the same route.
