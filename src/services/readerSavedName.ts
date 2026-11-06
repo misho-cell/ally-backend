@@ -67,7 +67,29 @@ export function isCleanNameFor(label: string, registeredName: string): boolean {
     .trim()
     .split(/\s+/u)
     .filter((w) => w !== '');
-  return registeredWords.length < 2 || sameNameBySound(label, registeredName);
+  return (
+    registeredWords.length < 2 ||
+    sameNameBySound(label, registeredName) ||
+    sharesNoWordWith(label, registeredName)
+  );
+}
+
+/**
+ * The tester's battery (6 Nov, C2): the owner saved a member as „Nino Abashidze",
+ * whose account is registered as „Netai Test 152", and the owner read „ახლა ვწერ
+ * ასისტენტებს: Netai Test 152" — a name that means nothing to him. A registered
+ * name sharing no word with the clean label is another name for the same person,
+ * not a misspelling of it (#7631's wrong surname still shares the first name).
+ */
+function sharesNoWordWith(label: string, registeredName: string): boolean {
+  const labelWords = new Set(
+    nameKey(label)
+      .split(' ')
+      .filter((w) => w !== ''),
+  );
+  return !nameKey(registeredName)
+    .split(' ')
+    .some((w) => w !== '' && labelWords.has(w));
 }
 
 /**
