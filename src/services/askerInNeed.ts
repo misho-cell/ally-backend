@@ -75,6 +75,22 @@ export function withAskerAsTheOneInNeed(
 }
 
 /**
+ * The tester's battery (6 Nov, C7): the plan named „ლევან კობალია" and the reply
+ * wrote „Levan Kobalia"; only Latin readers were spelt in Georgian, so the reply
+ * read as naming nobody and the server added its own plan sentence beside the
+ * model's question. A capitalised Latin name in the text is read in Georgian too.
+ */
+const LATIN_NAME_IN_TEXT_RE = /[A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’-]+)?/gu;
+
+function latinNamesIn(text: string): string[] {
+  return text.match(LATIN_NAME_IN_TEXT_RE) ?? [];
+}
+
+function georgianNamed(latinName: string, georgianPattern: string): boolean {
+  return new RegExp(georgianPattern, 'u').test(georgianScriptName(latinName));
+}
+
+/**
  * Tester 82998 (thread 80293, after 0259286c): the model asked „იცნობ კარგ
  * ელექტრიკოსს, ვისი რეკომენდაციაც შეგიძლია?" and the editor sent the reader
  * „ლაშა დოლიძეს იცნობ კარგ ელექტრიკოსს?" — the owner's „ask Lasha" glued in
@@ -86,6 +102,7 @@ export function namesTheReader(text: string, readerName: string | null): boolean
   if (name === '') return false;
   const georgian = georgianReaderPattern(name);
   if (georgian !== null && new RegExp(georgian, 'u').test(text)) return true;
+  if (georgian !== null && latinNamesIn(text).some((n) => georgianNamed(n, georgian))) return true;
   const base = nameBase(name);
   return base.length >= MIN_STEM && new RegExp(`\\b${escapeRe(base)}\\b`, 'iu').test(text);
 }

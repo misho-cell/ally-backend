@@ -26,3 +26,18 @@ describe('the ask editor never writes the reader into their own question', () =>
     expect(asks).toContain('editAddsTheReader(relayed.text, editorsDraft.question, toName)');
   });
 });
+
+/**
+ * The tester's battery (6 Nov, C7): the plan's „ლევან კობალია" written as
+ * „Levan Kobalia" in the reply still names him, so no plan sentence is added.
+ */
+describe('a Georgian reader written in Latin letters', () => {
+  it('is named', () => {
+    expect(namesTheReader('კი, Levan Kobalia-ს ასისტენტს ვკითხავ?', 'ლევან კობალია')).toBe(true);
+    expect(namesTheReader('Nino Abashidze გეტყვის.', 'ნინო აბაშიძე')).toBe(true);
+  });
+
+  it('is not named by another Latin name', () => {
+    expect(namesTheReader('ვებზე ვნახე Mem Karides.', 'ლევან კობალია')).toBe(false);
+  });
+});
