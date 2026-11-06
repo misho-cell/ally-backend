@@ -207,8 +207,10 @@ export function incomingRequestFollowUp(
     default:
       return direct
         ? `**${geoName(requesterName, 'dat')}** ახლა პირდაპირ შენი გაცნობა უნდა. დათანხმდები?`
-        : // #6351 retest (the tester's 69804): the request inside an open thread is Giorgi's text too.
-          georgianIntroductionAsk(requesterName, targetName);
+        : // Giorgi's review (case 46, Misho's go 6 Nov): inside the thread where the go-between
+          // has just answered, she named this person herself — never „იცნობ თუ არა …?" again.
+          `${georgianScriptName(requesterName)} ახლა გთხოვს, დააკავშირო ` +
+            `${geoName(georgianScriptName(targetName), 'gen')}თან. დაეხმარები? 🤝`;
   }
 }
 
