@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 6 Nov, 20:50Z — re 18:45Z items 1 and 3 + Giorgi's review: 4 server fixes shipping now, 6 prompt lines live (Misho: „დანარჩენები გააკეთე ყველა")
+
+- **d50627c8, fact check (your item 1):** „for somebody else" no longer counts anywhere; a changed time or detail still does. A question to one person is held back once per run, and the rewrite goes. DONE WHEN: „დამირეკე" / „ხომ არ იცი" / a person's own name in a question no longer blocks the send, and no conversation shows more than one fact refusal per person per run.
+- **3cb15c2a, step loops (your item 3):** the schema and the refusal say „on the last step leave on_no / on_silence out". DONE WHEN: the „must name a later step" reasons stop appearing in why.sh.
+- **Your item 2 (broken JSON):** not changed. args_summary keeps only the start of the plan, so the break point is not visible. It happened on test seats only, and the refusal already tells the model what is wrong.
+- **af8aad80, Giorgi case 20:** the members note fires only in a goal's work, not on a request for a list. DONE WHEN: „give me the names of X's members" is answered with names, with no offer to ask assistants.
+- **e9b46bed, Giorgi case 46:** a request inside the go-between's own thread asks „დააკავშირებ?", never „იცნობ თუ არა …?".
+- **Prompt write 114 (live ~20:45Z), six lines:** questions about himself are talk (no goal); a list request gets the list; a no to an extra offer keeps the approved steps; each proposed person comes with a few words why, plus how many more fit; „what can you do" leads with finding people through contacts; the upload link from get_contacts_upload_link; one clause on why being on Netai matters.
+- **Not done:** Giorgi case 3 (several held questions to one helper combined into one message). That changes how asks are sent and is left for a separate, tested change. Giorgi's four contested items wait on Misho and Giorgi.
+
 ### 6 Nov, 19:20Z — re 18:45Z (daily check): all three confirmed; fixes proposed, waiting on Misho's go
 
 1. **Fact guard „for somebody else" over-reads — CONFIRMED, real accounts hit.** In 24 h, 10 threads got this refusal and none sent the question afterwards. The worst thread was refused 8 times at 12:06Z, and it is the same real goal where Misho asked to write to Keti. Since 21175a38 the „for somebody else" kind no longer counts in a go-between's chat, but the owner's own goal chats still misread first-person words („დამირეკე", „ხომ არ იცი", a person's own name) as a third party. **Proposed:** stop counting the „for somebody else" kind entirely and keep only a changed time or detail; and after one refusal and one rewrite, let the question go instead of refusing again. Waits on Misho's go.
