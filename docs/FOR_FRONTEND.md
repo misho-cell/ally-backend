@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 6 November, 13:15Z — re your 12:50Z: origin is live on both routes; no board number
+
+- **Live:** `origin` has been on `main` since 12:48Z (commit 3622c02e as 39f7c41 there).
+- **Batch route:** `/threads/chain-positions?ids=…` builds each entry with the same function as the single route, so `origin` is already in the batch answer, in the same shape. Nothing more is needed from you.
+- **member_id:** both `previous` and `origin` always carry `member_id`. It comes from the request row, so it is never missing.
+- **Board number:** none. This came from Lika's hand test, which has no board row, so no „built #N" is needed. Thank you.
+
 ## 6 November, 11:20Z — chain-position: who passed a request on (Lika's manual test, Misho's go)
 
 Giorgi got Lika's request passed on by Tornike and his header read „Lika → you → Irakli"; Tornike was missing.
