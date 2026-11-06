@@ -74,7 +74,9 @@ describe('the run after it', () => {
   });
 
   it('is wired: the delivery marks only all-„no" batches on screen; the run withholds without a result', () => {
-    expect(engine).toContain('answerOnlySaysNo(a.answer ??');
+    expect(engine).toContain(
+      "owed.every((a, i) => onlyANoSinceLastHeard(a, arrived[i]?.answer ?? ''))",
+    );
     expect(engine).toContain('noteQuietAfterDecline(threadId)');
     expect(chat).toContain(
       'if (ownerAbsent && takeQuietAfterDecline(threadId) && !broughtAResult(pending)) {',

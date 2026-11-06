@@ -726,6 +726,21 @@ export async function conversationIsBusy(
   return result.rows[0]?.status === 'working';
 }
 
+/**
+ * The tester's battery (6 Nov, C6): Gela said „არავის ვიცნობ", then a minute
+ * later named his father. The late part was read together with the first no,
+ * the whole answer still read as „only no", and the next-step reply was dropped
+ * as quiet-after-decline — nine minutes of silence. Only what the owner has not
+ * heard yet is read; a decline button counts only when nothing came after it.
+ */
+export function onlyANoSinceLastHeard(
+  ask: { readonly answer: string | null; readonly declined?: boolean | null },
+  unheard: string,
+): boolean {
+  const nothingAdded = unheard === (ask.answer ?? '');
+  return answerOnlySaysNo(unheard, ask.declined === true && nothingAdded);
+}
+
 async function deliverOwedAnswers(taskId: number): Promise<number> {
   const owed = await listUnwokenAnswersForTask(taskId, MAX_ANSWERS_PER_WAKE);
   if (owed.length === 0) return 0;
@@ -748,7 +763,7 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
   if (
     onScreen &&
     threadId !== null &&
-    owed.every((a) => answerOnlySaysNo(a.answer ?? '', a.declined === true))
+    owed.every((a, i) => onlyANoSinceLastHeard(a, arrived[i]?.answer ?? ''))
   ) {
     noteQuietAfterDecline(threadId);
   } else if (threadId !== null) {
