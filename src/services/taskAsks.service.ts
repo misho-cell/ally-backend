@@ -3357,12 +3357,25 @@ const MEETING_UNDER_CARD =
   'სრულად უთხარი მფლობელს — ვისთან, როდის, სად და რა პირობით, „იმავე მისამართი" საუბრიდან ' +
   'ზუსტ მისამართად გახსენი.';
 
+/**
+ * The tester's battery (6 Nov, C1, C2, C7): these notes told the run to „offer"
+ * the introduction to the owner, against a plan step that says on_named:
+ * introduce — the run asked „გნებავს …?" where the plan had already said yes.
+ * The next step is the plan's rule, as the prompt's ANSWERS says (6 Nov, A1).
+ */
+const INTRODUCTION_BY_THE_PLAN =
+  'თუ დამტკიცებული გეგმის ეს ნაბიჯი ამბობს on_named: introduce — ახლავე request_introduction, ' +
+  'შუამავალი ის, ვინც დაასახელა ან დათანხმდა, მფლობელის კითხვის გარეშე; თუ არა — მფლობელს ' +
+  'ერთხელ ჰკითხე, ერთი წინადადებით, ვის და ვისი გავლით („X-მა Y დაასახელა — Y-ის გაცნობა X-ის ' +
+  'გავლით ვთხოვო?“).';
+
 const AGREED_UNDER_CARD =
   'თუ ბარათზე რომელიმე პასუხი დათანხმებაა დაკავშირებაზე — ეს ეტაპია „დათანხმდა", არა ' +
   '„დაკავშირდნენ": არასდროს თქვა „დაგაკავშირეთ", „შედგა" ან „დაკავშირდით", და ნუ ჰკითხავ, ' +
   'მოგვარდა თუ არა. ვინ დათანხმდა და ვისთან — ბარათზე უკვე წერია, ნუ გაიმეორებ. შენი ერთი ' +
-  'წინადადება შემდეგი ნაბიჯია: ერთი ღილაკით შესთავაზე, რომ დათანხმებულს გაცნობა სთხოვო ' +
-  '(request_introduction, შუამავალი — ის, ვინც დათანხმდა). შემდეგ set_task_wake 24 საათზე.';
+  'წინადადება შემდეგი ნაბიჯია: ' +
+  INTRODUCTION_BY_THE_PLAN +
+  ' შემდეგ set_task_wake 24 საათზე.';
 
 /**
  * The wake event when the answer came back through a bridge (D254).
@@ -3441,7 +3454,7 @@ export function buildShownRelayAnswerWakeEvent(
  */
 const NO_NUMBER_FROM_THE_HELPER =
   'თუ პასუხში ადამიანი თავის კონტაქტს ასახელებს, მას მისი გვარი ან ნომერი ნუ ჰკითხავ — ' +
-  'მფლობელს შესთავაზე, რომ მან გააცნოს. ';
+  `გზა მასთან გაცნობაა ამ ადამიანის გავლით: ${INTRODUCTION_BY_THE_PLAN} `;
 const NO_SEARCH_AGAIN =
   'რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — თქვი მხოლოდ შემდეგი ნაბიჯი. ' +
   NO_NUMBER_FROM_THE_HELPER;
@@ -3586,7 +3599,7 @@ export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): s
     `${blocks}\n` +
     `სერვერმა ეს პასუხები ${ALREADY_ON_CARD} — ბარათად, შენი პასუხის ზემოთ, ვინ რა ` +
     'უპასუხა. პასუხის სიტყვები არ გაიმეორო: არ ჩამოთვალო, არ დააციტირო, არ გადმოსცე. თქვი ' +
-    'მხოლოდ ის, რა უნდა გააკეთოს მფლობელმა შემდეგ — ერთი წინადადებით; თუ რომელიმე პასუხი ' +
+    'მხოლოდ შემდეგი ნაბიჯი — რას აკეთებ შენ, ერთი წინადადებით; თუ რომელიმე პასუხი ' +
     'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება.' +
     ownerWordsAnswerNote() +
     ' არასდროს თქვა, რომ ვინმეს ' +
