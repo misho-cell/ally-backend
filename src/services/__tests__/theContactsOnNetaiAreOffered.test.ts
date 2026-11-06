@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
   factChangeThatCounts,
+  factCheckIsDue,
   lookupOfNamedPeople,
   replyOffersAMember,
   skippedThese,
@@ -98,19 +99,28 @@ describe('a run that only looked people up by name', () => {
   });
 });
 
-/** The tester's battery (6 Nov, C5): a go-between's ask is for someone else by design. */
-describe('the fact check in a go-between’s chat', () => {
-  const beneficiary = { change: FactChange.Beneficiary, word: 'ერეკლე' };
+/**
+ * The tester's battery (6 Nov, C5) and ops' daily check (6 Nov 18:45Z): „for
+ * somebody else" misread first-person words and refused real people's questions.
+ */
+describe('the fact check', () => {
+  const beneficiary = { change: FactChange.Beneficiary, word: 'დამირეკე' };
   const time = { change: FactChange.Time, word: 'შარშან' };
 
-  it('lets „for somebody else" pass there, and nowhere else', () => {
-    expect(factChangeThatCounts(beneficiary, 'request_thread')).toBeNull();
-    expect(factChangeThatCounts(beneficiary, 'incoming_ask')).toBeNull();
-    expect(factChangeThatCounts(beneficiary, 'task_step')).toBe(beneficiary);
+  it('no longer counts „for somebody else", anywhere', () => {
+    expect(factChangeThatCounts(beneficiary)).toBeNull();
   });
 
-  it('still counts a changed time or detail there', () => {
-    expect(factChangeThatCounts(time, 'request_thread')).toBe(time);
-    expect(factChangeThatCounts(null, 'request_thread')).toBeNull();
+  it('still counts a changed time or detail', () => {
+    expect(factChangeThatCounts(time)).toBe(time);
+    expect(factChangeThatCounts(null)).toBeNull();
+  });
+
+  it('holds a question to one person back once per run, then lets the rewrite go', () => {
+    expect(factCheckIsDue('run-1', '+995 555 00 01 11')).toBe(true);
+    expect(chat).toContain('if (factCheckIsDue(runId, askPhone)) {');
+    expect(chat).toContain('noteFactHeld(runId, askPhone);');
+    expect(chat).toContain('forgetFactHolds(runId);');
+    expect(factCheckIsDue(undefined, 'x')).toBe(true);
   });
 });
