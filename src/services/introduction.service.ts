@@ -40,6 +40,7 @@ import { askThreadStatusAfterRequest } from './sharedRequestThread.service';
 import { scrubText } from './privacyScrub';
 import { mediatorsLinesSinceAsked } from './introResponse';
 import { typedContactIn, typedContactLine, typedContactMediatorLine } from './introTypedContact';
+import { readTargetAnswer } from './targetAnswerReader';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
@@ -1077,12 +1078,43 @@ const REQUEST_ROW_COLUMNS = `ir.id, ir.request_ref, ir.requester_user_id, ir.med
  * this line is no answer, or no question waits on this thread for this person.
  * Closed once: a second tap finds nothing open.
  */
+const TARGET_QUESTION_QUERY_TIMEOUT_MS = 3_000;
+
+/** A target question on this thread still waits for its answer (#8945). */
+async function targetQuestionIsOpen(threadId: number, targetUserId: string): Promise<boolean> {
+  const open = await query<{ id: number }>(
+    `SELECT ir.id FROM introduction_requests ir
+      WHERE ir.target_thread_id = $1 AND ir.target_answered_at IS NULL AND ir.status = 'accepted'
+        AND ir.target_asked_at IS NOT NULL
+        AND EXISTS (SELECT 1 FROM threads t WHERE t.id = $1 AND t.user_id = $2::int)
+      LIMIT 1`,
+    [threadId, targetUserId],
+    TARGET_QUESTION_QUERY_TIMEOUT_MS,
+  );
+  return open.rows.length > 0;
+}
+
+/**
+ * The target's answer: a button or a plain yes at once; any other line, while the
+ * question is open, read by its meaning (the tester's battery, 6 Nov, C4).
+ */
+async function targetAnswerIn(
+  targetUserId: string,
+  threadId: number,
+  line: string,
+): Promise<TargetAnswer | null> {
+  const plain = targetAnswerOf(line);
+  if (plain !== null) return plain;
+  if (!(await targetQuestionIsOpen(threadId, targetUserId))) return null;
+  return readTargetAnswer(line, { userId: targetUserId, threadId });
+}
+
 export async function settleTargetAnswer(
   targetUserId: string,
   threadId: number,
   line: string,
 ): Promise<string | null> {
-  const answer = targetAnswerOf(line);
+  const answer = await targetAnswerIn(targetUserId, threadId, line);
   if (answer === null) return null;
   const closed = await query<RequestRow>(
     `UPDATE introduction_requests ir
