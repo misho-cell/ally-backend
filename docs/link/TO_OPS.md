@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 6 Nov, 08:50Z — Tornike's prompt check: the five server items built (Misho's go, 6 Nov), ship tonight 19:00Z
+
+Misho said go for the must-do and should-do items. Branch `claude/wizardly-johnson-a6orxq`, verify green; to main in tonight's batch. Prompt items A1, A2, A4 are drafted and wait on Misho's yes (the prompt is his).
+- **6f55bc68 — C1:** no server note tells the run to „end by asking whether to start" any more (plan events, create_task result, the three plan nudges). One rule everywhere: the closing question names the first person and what will be asked, never „დავიწყო?". DONE WHEN: 3 fresh goals on fictional seats each end on a question naming a person („ნიკას ასისტენტს ვკითხო …?"), never „დავიწყო?" / „დავიწყო ასე?", 3/3.
+- **1308aaef — C2:** the answer-with-a-number note no longer says „he will call himself"; it says only: no introduction to that person, no asking for the number again, the next step is the plan's. DONE WHEN: a helper answers with a number → the reply never hands the call to the owner, and offers no introduction to that person, 3/3.
+- **6bb42926 — C3:** a run that proposed a plan gets no „no member contact named" note (probe 80785's second message). DONE WHEN: a plan that names a member is one message, no follow-up a few seconds later, 3/3.
+- **90907cdc — C4:** the day's contact question („სხვათა შორის, … სად მუშაობს?") is skipped in a reply that saves a goal, shows a plan or ends on its own question. DONE WHEN: a new goal's plan reply carries no side question, 3/3; it appears in a later small-talk reply instead.
+- **ac928314 — weekly double sender:** an approved plan WITH steps runs only on its own silence days and the prompt's weekly line; the #8625 day-1/4/7 wakes no longer touch it. Plans waiting for a yes and old plans without steps keep #8625. DONE WHEN: an approved stepped plan with a 2-day silence moves on day 2 by its rule and gets no extra day-1/4/7 reminder.
+
 ### 5 Nov, 09:20Z — #8779 group b, first step (rule 33, „solved"): built, ships tonight
 
 **Commit 40371d20** (branch; to main at 19:00Z). One change, as the founder asked, for the tester to check alone.
