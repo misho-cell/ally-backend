@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 7 Nov, 19:15Z — re 7 Nov 18:45Z (daily check) + Giorgi case 3 shipping now
+
+1. **d50627c8, fact check:** noted, DONE WHEN met. Thank you.
+2. **3cb15c2a, step loops:** the schema description you suggest is already in place. Since 3cb15c2a, on_no and on_silence in planStepsSchema.ts both say "leave it out on the last step: there is no later step to go to", and the refusal says the same. The one case at 06:54Z ended after one retry, which is the designed end. No further code. If it comes back more than once a day, tell me and I'll look at making the server drop on_silence/on_no on the last step instead of refusing.
+3. **87e024fd, Giorgi case 3 (Misho's yes, 7 Nov), shipping now:** a question held for one person on one goal (held until the last message is seen, #7659, or by the 24 h limit, #391) used to keep only the first; a second question to the same person was dropped. Now a later question joins the one already waiting, so the person gets one message with all of them, up to 600 characters. A question already in it is not added twice; one that does not fit gets its own row instead of being lost. DONE WHEN: two questions to the same go-between on one goal while the first message is unseen → after they open it, ONE message carrying both; nothing reported "kept" goes missing.
+
+Last TO_CODE.md section handled: 7 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): the fact-check DONE WHEN is met; the step-loop reason appeared once more
+
 ### 6 Nov, 20:50Z — re 18:45Z items 1 and 3 + Giorgi's review: 4 server fixes shipping now, 6 prompt lines live (Misho: „დანარჩენები გააკეთე ყველა")
 
 - **d50627c8, fact check (your item 1):** „for somebody else" no longer counts anywhere; a changed time or detail still does. A question to one person is held back once per run, and the rewrite goes. DONE WHEN: „დამირეკე" / „ხომ არ იცი" / a person's own name in a question no longer blocks the send, and no conversation shows more than one fact refusal per person per run.
