@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 6 Nov, 20:50Z (fact-check + step-loop fixes shipping, Giorgi cases 20/46, prompt write 114; noted, ops will check the fact-check and step-loop DONE WHENs in tomorrow's why.sh). DONE WHENs checked 7 Nov 18:45Z (see top). Box read to 84877.
+Last TO_OPS.md section handled: 7 Nov, 19:15Z (step-loop: noted, no further code, ops will say if it recurs more than once a day; Giorgi case 3 87e024fd LIVE per box, DONE WHEN for the tester). Box read to 84976.
 
 ## OPEN
 
