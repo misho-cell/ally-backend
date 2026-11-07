@@ -30,6 +30,7 @@ import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
 import { firstNamesInBothScripts, plainWordForms } from './firstNameNamed';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
+import { MAX_QUESTION_CHARS } from './heldQuestionJoin';
 import { AskKind, askKindFrom } from './askKind';
 import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './bridgePicker';
 import { recommendedByLine, recommenderFor } from './recommendedBy';
@@ -269,8 +270,6 @@ const MAX_ASKS_PER_SENDER_PER_DAY = Number(process.env.MAX_ASKS_PER_SENDER_PER_D
 const MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY = Number(
   process.env.MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY ?? 2,
 );
-const MAX_QUESTION_CHARS = 600;
-
 export interface TaskAsk {
   id: number;
   task_id: number;

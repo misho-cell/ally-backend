@@ -40,6 +40,8 @@ function held(overrides: Partial<HeldAsk> = {}): HeldAsk {
  */
 describe('a question held by the recipient’s limit', () => {
   it('is recorded once per goal and person, with the plan’s phone id and its reopening', async () => {
+    // Nothing waiting to join (Giorgi's case 3), so the question gets its own row.
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
     mockQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
     const at = new Date('2026-10-02T09:16:00Z');
     await holdAsk({
@@ -50,7 +52,7 @@ describe('a question held by the recipient’s limit', () => {
       question: 'იცნობ კარგ ბუღალტერს?',
       reopensAt: at,
     });
-    const [sql, params, timeout] = mockQuery.mock.calls[0];
+    const [sql, params, timeout] = mockQuery.mock.calls[1];
     expect(String(sql)).toContain('WHERE NOT EXISTS');
     expect(params).toEqual([
       11815,
