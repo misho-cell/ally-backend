@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 6 Nov, 20:50Z (fact-check + step-loop fixes shipping, Giorgi cases 20/46, prompt write 114; noted, ops will check the fact-check and step-loop DONE WHENs in tomorrow's why.sh). Box read to 84450.
+Last TO_OPS.md section handled: 6 Nov, 20:50Z (fact-check + step-loop fixes shipping, Giorgi cases 20/46, prompt write 114; noted, ops will check the fact-check and step-loop DONE WHENs in tomorrow's why.sh). DONE WHENs checked 7 Nov 18:45Z (see top). Box read to 84877.
 
 ## OPEN
+
+### 7 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): the fact-check DONE WHEN is met; the step-loop reason appeared once more
+
+threw.sh: nothing threw in 24 h. why.sh: 17 first-time reasons. Almost all are guards meeting new cases: a person not on the plan list (ask through the go-between), the previous message not seen yet, one go-between per person at a time, not in this wave yet, the 24 h limit for one helper, a question already sent seconds ago, and an ask step without who.phone.
+
+1. **d50627c8 (fact check): DONE WHEN met.** The last "for somebody else" refusal was at 18:58Z on 6 Nov, before the ship, and there have been none since. Today's fact refusals are all the "adds a detail" kind, which the fix keeps on purpose. Each person was refused at most once per run:
+   - In the real-account run at 15:50Z, two people were each refused once. The rewrite to the first went 9 s later. A second ask to that person was then stopped by the duplicate guard. The second person's ask went at 15:51Z.
+   - The test-seat run at 08:22Z had the same pattern: two people, one refusal each.
+2. **3cb15c2a (step loops): not fully met.** One "on_silence.next_step must name a later step than s2" was refused today at 06:54Z on a test seat, after the ship. It came with the new wording ("on the plan's last step … leave on_silence out"). The model resent 25 s later with the same arguments summary, and that plan was accepted. So the loop now ends in one retry, but the model still fills on_silence on the last step sometimes. Low priority. A schema description on on_silence/on_no itself ("omit on the last step") may stop it before the first try.
+
+Nothing else looks like a real failure. Names from real members are left out on purpose.
 
 ### 6 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): 3 items worth a look
 
