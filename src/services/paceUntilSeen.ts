@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { HELD_QUESTION_SEPARATOR, MAX_QUESTION_CHARS } from './heldQuestionJoin';
 
 /**
  * #7659 (founder's case register, L95/L96/L103/L104/L106, 22–25 Oct): several
@@ -55,7 +56,11 @@ export function previousAskUnseenNote(toName: string): string {
 const HOLD_QUERY_TIMEOUT_MS = 4_000;
 const RELEASED_PER_READ = 5;
 
-/** Keeps a held question for this pair, once per goal while one waits. */
+/**
+ * Keeps a held question for this pair. Giorgi's review, case 3: a later
+ * question to the same person on the same goal joins the one already waiting,
+ * so they get one message instead of several (heldQuestionJoin).
+ */
 export async function keepHeldAsk(
   taskId: number,
   fromUserId: string,
@@ -63,14 +68,35 @@ export async function keepHeldAsk(
   contactPhone: string,
   question: string,
 ): Promise<void> {
+  if (await joinWaitingQuestion(taskId, toUserId, question)) return;
   await query(
     `INSERT INTO pace_held_asks (task_id, from_user_id, to_user_id, contact_phone, question)
      SELECT $1, $2::int, $3, $4, $5
       WHERE NOT EXISTS (SELECT 1 FROM pace_held_asks
-                         WHERE task_id = $1 AND to_user_id = $3 AND released_at IS NULL)`,
+                         WHERE task_id = $1 AND to_user_id = $3 AND released_at IS NULL
+                           AND strpos(question, $5::text) > 0)`,
     [taskId, fromUserId, toUserId, contactPhone, question],
     HOLD_QUERY_TIMEOUT_MS,
   );
+}
+
+/** Adds the question to the newest one waiting for this pair; false when it cannot join. */
+async function joinWaitingQuestion(
+  taskId: number,
+  toUserId: number,
+  question: string,
+): Promise<boolean> {
+  const result = await query(
+    `UPDATE pace_held_asks SET question = question || $3::text || $4::text
+      WHERE id = (SELECT id FROM pace_held_asks
+                   WHERE task_id = $1 AND to_user_id = $2 AND released_at IS NULL
+                   ORDER BY id DESC LIMIT 1)
+        AND strpos(question, $4::text) = 0
+        AND char_length(question) + char_length($3::text) + char_length($4::text) <= $5::int`,
+    [taskId, toUserId, HELD_QUESTION_SEPARATOR, question, MAX_QUESTION_CHARS],
+    HOLD_QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
 }
 
 export interface HeldAsk {

@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { HELD_QUESTION_SEPARATOR, MAX_QUESTION_CHARS } from './heldQuestionJoin';
 
 /**
  * The tester's 983: a question an APPROVED plan was going to send, held only
@@ -32,14 +33,20 @@ export interface HoldAskInput {
   readonly eveningCardId?: number | null;
 }
 
-/** Records one held question, once per goal and person. */
+/**
+ * Records one held question per goal and person. Giorgi's review, case 3: a
+ * later question to the same person joins the one already held for the same
+ * send (heldQuestionJoin), so the reopening sends them as one message.
+ */
 export async function holdAsk(input: HoldAskInput): Promise<void> {
+  if (await joinHeldQuestion(input)) return;
   await query(
     `INSERT INTO held_asks (task_id, to_user_id, contact_name, contact_phone, question, reopens_at,
                             wave_no, evening_card_id)
      SELECT $1, $2, $3, $4, $5, $6, $7, $8
       WHERE NOT EXISTS (SELECT 1 FROM held_asks
-                         WHERE task_id = $1 AND to_user_id = $2 AND released_at IS NULL)`,
+                         WHERE task_id = $1 AND to_user_id = $2 AND released_at IS NULL
+                           AND strpos(question, $5::text) > 0)`,
     [
       input.taskId,
       input.toUserId,
@@ -52,6 +59,29 @@ export async function holdAsk(input: HoldAskInput): Promise<void> {
     ],
     QUERY_TIMEOUT_MS,
   );
+}
+
+/** Adds the question to the newest one held for this person and send; false when it cannot join. */
+async function joinHeldQuestion(input: HoldAskInput): Promise<boolean> {
+  const result = await query(
+    `UPDATE held_asks SET question = question || $4::text || $5::text
+      WHERE id = (SELECT id FROM held_asks
+                   WHERE task_id = $1 AND to_user_id = $2 AND released_at IS NULL
+                     AND evening_card_id IS NOT DISTINCT FROM $3::bigint
+                   ORDER BY id DESC LIMIT 1)
+        AND strpos(question, $5::text) = 0
+        AND char_length(question) + char_length($4::text) + char_length($5::text) <= $6::int`,
+    [
+      input.taskId,
+      input.toUserId,
+      input.eveningCardId ?? null,
+      HELD_QUESTION_SEPARATOR,
+      input.question,
+      MAX_QUESTION_CHARS,
+    ],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
 }
 
 /** The held questions whose window has reopened, marked as released so each goes once. */
