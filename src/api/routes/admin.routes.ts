@@ -220,7 +220,7 @@ import {
 } from '../../services/promptBlocks.service';
 import { buildPromptPreview, PromptPreview } from '../../services/chat.service';
 import { getTaskById } from '../../services/taskStore.service';
-import { wakeTask } from '../../services/taskEngine.service';
+import { startDayOne, wakeTask } from '../../services/taskEngine.service';
 import { WakeOrigin } from '../../services/quietWakeGuard';
 import {
   getThreadMessages,
@@ -2020,6 +2020,41 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[admin wake]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * Tornike's 8 Nov report, #1: an approved plan whose day one was lost (held in
+ * the quiet hours, then given up) runs it now, through day one's own checks —
+ * still open, not already done, no change asked for — so it writes exactly
+ * what the approval would have written, and nothing when that is already done.
+ */
+adminRouter.post(
+  '/tasks/:id/day-one',
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  async (req: Request, res: Response<ApiResponse<{ started: boolean }>>) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be a positive integer' });
+      return;
+    }
+    try {
+      const task = await getTaskById(Number(req.params.id));
+      if (!task) {
+        res.status(404).json({ success: false, error: 'დავალება ვერ მოიძებნა' });
+        return;
+      }
+      if (task.status !== 'open' || task.plan_approved_at === null) {
+        res.status(409).json({ success: false, error: 'დავალება ღია და დამტკიცებული არ არის' });
+        return;
+      }
+      startDayOne(task.id, 0);
+      res.status(200).json({ success: true, data: { started: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[admin day-one]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
