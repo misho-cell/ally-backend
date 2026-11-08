@@ -1681,6 +1681,10 @@ async function createAskNow(
       task,
       contactPhone,
       async () =>
+        // Tornike's 8 Nov report, #4 (Misho, 6 Nov: 12 refusals in his own chat):
+        // the waves pace Netai's own work. In the owner's own turn, on his word,
+        // they give way — as the per-person daily limit does (#7628).
+        ownerAskedNow === true ||
         introAccepted ||
         (await ownerJustNamedThisPerson()) ||
         (await ownerAskedForEveryone({
