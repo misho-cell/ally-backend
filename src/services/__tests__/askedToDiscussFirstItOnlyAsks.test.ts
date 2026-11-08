@@ -6,6 +6,7 @@ import { query } from '../../db/postgres/client';
 import {
   DISCUSS_MAX_TOKENS,
   DISCUSS_TURN_NOTE,
+  DISCUSSION_TOOLS,
   setDiscussion,
   threadInDiscussion,
 } from '../discussFirst';
@@ -54,7 +55,14 @@ describe('the mode the model sets', () => {
 
 describe('what a discussion turn is', () => {
   it('holds only set_discussion and asks questions, never leads or a plan', () => {
-    expect(DISCUSS_TURN_NOTE).toContain('This turn holds one tool only, set_discussion');
+    // Tester's report 8 Nov, G10: the two tools that save what he says about himself stay.
+    expect(DISCUSS_TURN_NOTE).toContain('This turn holds only set_discussion and the two tools');
+    expect(DISCUSS_TURN_NOTE).toContain('Save what he answers about himself');
+    expect([...DISCUSSION_TOOLS].sort()).toEqual([
+      'save_private_context',
+      'set_discussion',
+      'update_user_profile',
+    ]);
     expect(DISCUSS_TURN_NOTE).toContain('no search, no plan, no leads');
     expect(DISCUSS_TURN_NOTE).toContain('Do not tell them what their business is');
     // The tester's 1095 (32605, 32607): a filled profile was read back as „tell me about your winery".
@@ -68,7 +76,7 @@ describe('what a discussion turn is', () => {
       'const discussing = !ownerAbsent && !otherTap && (await threadInDiscussion(threadId));',
     );
     expect(chat).toContain('...(discussing && { maxTokens: DISCUSS_MAX_TOKENS }),');
-    expect(chat).toContain('(runInDiscussion.has(runId) && name !== SET_DISCUSSION_TOOL_NAME))');
+    expect(chat).toContain('(runInDiscussion.has(runId) && !DISCUSSION_TOOLS.has(name)))');
     expect(chat).toContain('if (await threadInDiscussion(threadId)) {');
     expect(chat).not.toContain('discussionHolds');
   });

@@ -14,7 +14,7 @@ describe('the tool list stays whole from one message to the next', () => {
     expect(chat).toContain('if (heldThisTurn.size > 0) runHeldTools.set(runId, heldThisTurn);');
     expect(chat).toContain('(runHeldTools.get(runId)?.has(name) ||');
     // #67 / #8779 group 4: a discussion turn holds every tool but set_discussion, the same way.
-    expect(chat).toContain('(runInDiscussion.has(runId) && name !== SET_DISCUSSION_TOOL_NAME))');
+    expect(chat).toContain('(runInDiscussion.has(runId) && !DISCUSSION_TOOLS.has(name)))');
     expect(chat).toContain('return { error: TOOL_HELD_THIS_TURN };');
   });
 

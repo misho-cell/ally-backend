@@ -19,6 +19,7 @@ const ABOUT_ME_TIMEOUT_MS = 5_000;
 const MAX_OWN_NUMBERS = 5;
 const MAX_PUBLIC_FACTS = 40;
 const MAX_OWN_ANSWERS = 20;
+const MAX_PRIVATE_NOTES = 20;
 const MAX_SAVED_AS = 10;
 const MIN_SAVERS_FOR_A_LABEL = 2;
 const MAX_SAVER_WORDS = 200;
@@ -36,14 +37,31 @@ export interface OwnAnswer {
   readonly answer_en: string | null;
 }
 
+export interface PrivateNote {
+  readonly key: string;
+  readonly value: string;
+}
+
 export interface AboutMe {
   readonly name: string | null;
   readonly own_numbers: readonly string[];
   readonly my_profile: Readonly<Record<string, string>>;
   readonly what_others_see: readonly PublicFact[];
   readonly my_answers: readonly OwnAnswer[];
+  /** Tester's report 8 Nov, G10: what he told Netai only for itself — his own, so he sees it. */
+  readonly my_private_notes: readonly PrivateNote[];
   readonly names_others_saved_you_as: readonly string[];
   readonly trades_others_know_you_for: readonly string[];
+}
+
+async function ownPrivateNotes(userId: string): Promise<PrivateNote[]> {
+  const result = await query<PrivateNote>(
+    `SELECT key, value FROM user_private_context WHERE user_id = $1 ORDER BY updated_at DESC
+      LIMIT $2`,
+    [userId, MAX_PRIVATE_NOTES],
+    ABOUT_ME_TIMEOUT_MS,
+  );
+  return result.rows;
 }
 
 async function ownName(userId: string): Promise<string | null> {
@@ -171,11 +189,12 @@ async function wordsOthersPut(numbers: readonly string[], userId: string): Promi
 }
 
 export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
-  const [name, numbers, profile, answers] = await Promise.all([
+  const [name, numbers, profile, answers, privateNotes] = await Promise.all([
     ownName(userId),
     ownNumbers(userId),
     getUserProfile(userId),
     ownAnswers(userId),
+    ownPrivateNotes(userId),
   ]);
   const [othersSee, savedAs, othersWords] = await Promise.all([
     publicFactsAbout(numbers),
@@ -188,6 +207,7 @@ export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
     my_profile: profile,
     what_others_see: othersSee,
     my_answers: answers,
+    my_private_notes: privateNotes,
     names_others_saved_you_as: savedAs,
     trades_others_know_you_for: tradesKnownFor(othersWords),
   };

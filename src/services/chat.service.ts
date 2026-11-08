@@ -62,10 +62,11 @@ import {
 import {
   DISCUSS_MAX_TOKENS,
   DISCUSS_TURN_NOTE,
+  DISCUSSION_TOOLS,
   setDiscussion,
   threadInDiscussion,
 } from './discussFirst';
-import { SET_DISCUSSION_TOOL, SET_DISCUSSION_TOOL_NAME } from './tools/setDiscussion';
+import { SET_DISCUSSION_TOOL } from './tools/setDiscussion';
 import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withoutOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
@@ -10518,7 +10519,7 @@ async function executeToolCall(
   if (
     runId !== undefined &&
     (runHeldTools.get(runId)?.has(name) ||
-      (runInDiscussion.has(runId) && name !== SET_DISCUSSION_TOOL_NAME))
+      (runInDiscussion.has(runId) && !DISCUSSION_TOOLS.has(name)))
   ) {
     // eslint-disable-next-line no-console
     console.log(`[tools] run ${runId}: ${name} held for this turn`);

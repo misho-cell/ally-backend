@@ -1,3 +1,4 @@
+import { SET_DISCUSSION_TOOL_NAME } from './tools/setDiscussion';
 import { query } from '../db/postgres/client';
 
 /**
@@ -18,10 +19,23 @@ import { query } from '../db/postgres/client';
  */
 const DISCUSSION_QUERY_TIMEOUT_MS = 5_000;
 
+/**
+ * Tester's report 8 Nov, G10: „ask me questions about my service" — the run
+ * saved the answers and the server refused both saves as held tools, so „what
+ * do you know about me?" found nothing. A discussion turn may save what the
+ * owner says about himself; it still opens no goal, plan or search.
+ */
+export const DISCUSSION_TOOLS: ReadonlySet<string> = new Set([
+  SET_DISCUSSION_TOOL_NAME,
+  'update_user_profile',
+  'save_private_context',
+]);
+
 export const DISCUSS_TURN_NOTE =
   '\n\n## This turn\nThe owner asked to discuss first and be asked questions before any ' +
-  'action. This turn holds one tool only, set_discussion: no search, no plan, no leads, no ' +
-  'list of people. Do not tell them what their business is — not even from their saved ' +
+  'action. This turn holds only set_discussion and the two tools that save what he tells you ' +
+  'about himself (update_user_profile, save_private_context): no search, no plan, no leads, no ' +
+  'list of people. Save what he answers about himself and his work. Do not tell them what their business is — not even from their saved ' +
   'profile or an earlier conversation; let them tell you. Answer what they said in a sentence ' +
   'or two, then ask one or two short questions that help you understand their business and ' +
   'what they want. When they now ask you to act, call set_discussion with discuss: false.';
