@@ -391,6 +391,39 @@ export async function moveWakeAfterAnswer(
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * Misho's yes, 8 Nov: how many wakes are due, counted up to `cap` — enough to
+ * tell a backlog from an ordinary minute without counting thousands of rows.
+ */
+export async function countDueTasks(cap: number): Promise<number> {
+  const result = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM (
+       SELECT 1 FROM tasks
+        WHERE status = 'open' AND next_wake_at IS NOT NULL AND next_wake_at <= NOW()
+          AND plan_change_requested_at IS NULL
+        LIMIT $1) due`,
+    [cap],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.n ?? 0;
+}
+
+/**
+ * A tick takes its due goals on a lease: their wake moves `minutes` on, so a
+ * tick that starts while this one is still working cannot take them again.
+ * Each goal's own wake is set as before once it is worked; a lease that is
+ * never worked (the process stopped) simply comes due again.
+ */
+export async function leaseTaskWakes(taskIds: readonly number[], minutes: number): Promise<void> {
+  if (taskIds.length === 0) return;
+  await query(
+    `UPDATE tasks SET next_wake_at = NOW() + make_interval(mins => $2)
+      WHERE id = ANY($1::int[])`,
+    [taskIds, minutes],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
 /** Open tasks whose wake time has arrived — the ticker's worklist. */
 export async function getDueTasks(limit: number): Promise<Array<Task & { user_id: string }>> {
   const result = await query<Task & { user_id: string }>(
