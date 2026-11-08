@@ -34,6 +34,7 @@ import { fetchExclusionsForPhones, ContactExclusion } from './contactExclusions'
 import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 import { isSearchTimeout, searchDidNotFinish } from './searchDidNotFinish';
+import { tagMeaningWords } from './tagMeaningWords';
 
 const FUZZY_THRESHOLD = 0.45;
 /**
@@ -822,7 +823,34 @@ async function splitCorrected<T extends { phone?: unknown; name?: unknown }>(
   return { current, noLonger };
 }
 
+/** A search that ran and matched nothing — not one that failed to finish. */
+function matchedNothing(result: object): boolean {
+  const r = result as { found?: unknown; reason?: unknown };
+  return r.found === false && r.reason === undefined;
+}
+
+const MATCHED_AS_NOTE =
+  'Nothing was saved under the words searched; these people are saved under a word of the ' +
+  'same meaning (matched_as). Say which word they were found under.';
+
+/**
+ * Tester's report 8 Nov, C6/C7: a Georgian search found nobody saved under an English label
+ * of the same meaning. When nothing matched, the labels the query's meaning goes by are
+ * searched too (tagMeaningWords), first hit wins.
+ */
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
+  const first = await searchByTagOnce(userId, tagQuery);
+  if (!matchedNothing(first)) return first;
+  for (const word of await tagMeaningWords(userId, tagQuery)) {
+    const again = await searchByTagOnce(userId, word);
+    if ((again as { found?: unknown }).found === true) {
+      return { ...again, query: tagQuery, matched_as: word, matched_as_note: MATCHED_AS_NOTE };
+    }
+  }
+  return first;
+}
+
+async function searchByTagOnce(userId: string, tagQuery: string): Promise<object> {
   try {
     const blockedPhones = await getExcludedPhones(userId, tagQuery);
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
