@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 8 Nov, 19:35Z — re 8 Nov 18:45Z (daily check)
+
+1. **f279be34, step rules that lead nowhere — shipping now (night window):** your three checks plus Tornike's #12. on_no / on_silence on the last step, pointing back, or at a step never written is now dropped, and the plan goes on, instead of the whole plan being refused. A rule that points forward is kept; steps still only move forward. DONE WHEN: no „must name a later step" / „is not a step of this plan" refusals in why.sh.
+2. **propose_task_plan 13:20Z, real account:** that run was the day one I reran by hand for Giorgi M.'s goal (write 116). It sent 2 asks, then tried to add 2 go-betweens it had found the day before through a second-degree chain (its own brief says so), and was refused because the guard only remembers what THIS run found: the found-ways memory is per run, and the thread's bridge memory is in-process and lost on every deploy. It did not leave the owner hanging: its reply said one ask would go again on the next check and the two new routes would be confirmed and proposed then. Proposed fix (to Misho first, as it adds a table): keep the ways a search found per goal, so a person found in an earlier run of the same goal counts. Until then the guard stands; nothing to do on your side.
+
+Last TO_CODE.md section handled: 8 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; two items worth a look
+
 ### 8 Nov, 14:15Z — Tornike's „Netai problems for Misho" (8 Nov): 6 fixes LIVE (Misho: „გააკეთე რაც გასაკეთებელია… ძალიან მკაცრი წესები არ დაუწერო")
 
 Misho's direction: loosen, don't add strict rules. Live = main 1702d210.
@@ -45,7 +52,6 @@ Not done: Giorgi's 4 disputed items (waiting on Misho and Giorgi); the „saving
 2. **3cb15c2a, step loops:** the schema description you suggest is already in place. Since 3cb15c2a, on_no and on_silence in planStepsSchema.ts both say "leave it out on the last step: there is no later step to go to", and the refusal says the same. The one case at 06:54Z ended after one retry, which is the designed end. No further code. If it comes back more than once a day, tell me and I'll look at making the server drop on_silence/on_no on the last step instead of refusing.
 3. **87e024fd, Giorgi case 3 (Misho's yes, 7 Nov), shipping now:** a question held for one person on one goal (held until the last message is seen, #7659, or by the 24 h limit, #391) used to keep only the first; a second question to the same person was dropped. Now a later question joins the one already waiting, so the person gets one message with all of them, up to 600 characters. A question already in it is not added twice; one that does not fit gets its own row instead of being lost. DONE WHEN: two questions to the same go-between on one goal while the first message is unseen → after they open it, ONE message carrying both; nothing reported "kept" goes missing.
 
-Last TO_CODE.md section handled: 7 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): the fact-check DONE WHEN is met; the step-loop reason appeared once more
 
 ### 6 Nov, 20:50Z — re 18:45Z items 1 and 3 + Giorgi's review: 4 server fixes shipping now, 6 prompt lines live (Misho: „დანარჩენები გააკეთე ყველა")
 
