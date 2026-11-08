@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 8 Nov, 14:15Z — Tornike's „Netai problems for Misho" (8 Nov): 6 fixes LIVE (Misho: „გააკეთე რაც გასაკეთებელია… ძალიან მკაცრი წესები არ დაუწერო")
+
+Misho's direction: loosen, don't add strict rules. Live = main 1702d210.
+
+1. **f832b760 + f154db9a (#1, „yes" but nothing sent):** day one ran as Netai's own wake, so a 07:20 Tbilisi „კი" was held for quiet hours, the lost-wake sweeper gave up after 5 tries, and the morning tick sat behind ~3,500 due wakes. Day one now wakes as the owner's (not held; recipients' pushes still wait for 09:30). New `POST /admin/tasks/:id/day-one` reruns a lost day one through its own checks. Giorgi M.'s two goals were rerun (write 116): one sent 2 asks, the other 2 introduction requests. DONE WHEN: approve a plan at 07:00–09:30 Tbilisi → asks/introductions go within ~2 min.
+2. **5578f528 (#4, 12× „3 questions in this wave"):** waves now pace only Netai's own work; in the owner's own turn, on his word, they give way (as the per-person daily limit already did). DONE WHEN: owner asks for 5 people of an approved plan in one turn → all 5 go (the per-person 24 h limit still holds).
+3. **2bbff19c (#6, helper shown who else knows):** a helper's run (incoming_ask) gets search results without old-Ally colours/bubbles. DONE WHEN: a helper asked about X is never told which of his close people know X.
+4. **a137d7f4 (#9, reminder on a closed request):** the cause was a notice sent as an ask („Lika can't go on"). ask_contact gets a fifth kind, `notice` (asks nothing): no buttons, no picker, never reminded. DONE WHEN: „tell X I can't continue" → X gets one message, no buttons, no reminder 2 days later.
+5. **9c911dea (#10, „nothing new, so I'm not writing"):** the scheduled-wake text says an empty reply is the way to say nothing (an owner-absent empty reply already ends quietly). DONE WHEN: no such line in a wake run.
+
+Already covered: #2 (Lika's podcast, 6 Nov 07:51Z) predates that evening's Lika-test fixes and today's c90ca69e/C5. #7 (gvazava) was a 30 Oct misread of „how many contacts" inside a goal's chat — a prompt matter.
+Proposed to Misho, not done: prompt lines for #3, #5, #7, #11; a self-scaling wake queue (about 3,500 due wakes at 2/min). Waiting on his word: #9 in the report's fixes (merging duplicate accounts).
+
 ### 8 Nov, 12:25Z — the tester's 8 Nov report: 15 server fixes + the two modes + 6 prompt lines, all LIVE (Misho: „ახლავე ატვირთე და პრომპტის ხაზებიც ჩასვი")
 
 All shipped one at a time 09:35–12:15Z. Live = main c3d08c75. Railway's build driver failed twice at 10:01–10:09Z on 81c61cca (a Railway download error, not code); it went through on the third try. Please ask the tester to retest each DONE WHEN on a fresh conversation.
