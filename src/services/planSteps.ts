@@ -153,23 +153,35 @@ function silenceDaysError(id: string, days: unknown): string | null {
     : `step ${id}: on_silence.after_days must be a whole number from ${MIN_SILENCE_DAYS} to ${MAX_SILENCE_DAYS}`;
 }
 
-/** A next_step must name a LATER step: steps only move forward, so a plan always ends. */
-function forwardError(
-  id: string,
-  field: string,
-  next: string,
-  order: ReadonlyMap<string, number>,
-): string | null {
-  const from = order.get(id) ?? 0;
+/** A next_step names a LATER step of this plan: steps only move forward, so a plan always ends. */
+function pointsForward(id: string, next: string, order: ReadonlyMap<string, number>): boolean {
   const to = order.get(next);
-  if (to === undefined)
-    return `step ${id}: ${field}.next_step "${next}" is not a step of this plan`;
-  // Ops' daily check (6 Nov 18:45Z): the model filled on_no / on_silence on the LAST step,
-  // where no later step exists, and pointed it back at itself.
-  return to > from
-    ? null
-    : `step ${id}: ${field}.next_step must name a later step than ${id}. On the plan's last ` +
-        `step there is no later step: leave ${field} out there.`;
+  return to !== undefined && to > (order.get(id) ?? 0);
+}
+
+/**
+ * Ops' daily checks (6, 7 and 8 Nov) and Tornike's 8 Nov report, #12: the model
+ * put on_no / on_silence on the plan's last step, or pointed one at a step it
+ * never wrote, and the whole plan was refused for it. Such a rule leads nowhere,
+ * so it is dropped and the plan goes on; the steps still only move forward.
+ */
+function withoutDeadEnds(draft: DraftStep, order: ReadonlyMap<string, number>): DraftStep {
+  const { step } = draft;
+  const keepSilence =
+    step.on_silence !== undefined && pointsForward(step.id, step.on_silence.next_step, order);
+  const keepNo = step.on_no !== undefined && pointsForward(step.id, step.on_no.next_step, order);
+  if (keepSilence === (step.on_silence !== undefined) && keepNo === (step.on_no !== undefined)) {
+    return draft;
+  }
+  const { on_silence: silence, on_no: no, ...rest } = step;
+  return {
+    ...draft,
+    step: {
+      ...rest,
+      ...(keepSilence && silence !== undefined && { on_silence: silence }),
+      ...(keepNo && no !== undefined && { on_no: no }),
+    },
+  };
 }
 
 function personError(step: PlanStep, peopleDigits: ReadonlySet<string>): string | null {
@@ -183,21 +195,11 @@ function personError(step: PlanStep, peopleDigits: ReadonlySet<string>): string 
     : `step ${step.id}: ${step.who?.name ?? 'this person'} is not in people_to_involve — add them there too, with the same phone`;
 }
 
-function stepError(
-  draft: DraftStep,
-  order: ReadonlyMap<string, number>,
-  people: ReadonlySet<string>,
-): string | null {
+function stepError(draft: DraftStep, people: ReadonlySet<string>): string | null {
   const { step } = draft;
   if (step.on_silence !== undefined) {
     const days = silenceDaysError(step.id, draft.silenceDays);
     if (days !== null) return days;
-    const silence = forwardError(step.id, 'on_silence', step.on_silence.next_step, order);
-    if (silence !== null) return silence;
-  }
-  if (step.on_no !== undefined) {
-    const no = forwardError(step.id, 'on_no', step.on_no.next_step, order);
-    if (no !== null) return no;
   }
   return personError(step, people);
 }
@@ -240,11 +242,12 @@ export function parseSteps(raw: unknown, context: StepsContext): StepsOutcome {
   if (!drafts.ok) return drafts;
   const order = new Map(drafts.value.map((d, index) => [d.step.id, index]));
   const people = new Set(context.peoplePhones.map(phoneDigits).filter((d) => d !== ''));
-  for (const draft of drafts.value) {
-    const error = stepError(draft, order, people);
+  const kept = drafts.value.map((draft) => withoutDeadEnds(draft, order));
+  for (const draft of kept) {
+    const error = stepError(draft, people);
     if (error !== null) return { ok: false, error };
   }
-  return { ok: true, value: drafts.value.map(withSilenceDays) };
+  return { ok: true, value: kept.map(withSilenceDays) };
 }
 
 /** True only for a plan the model wrote steps for. */
