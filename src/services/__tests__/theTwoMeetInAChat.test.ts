@@ -21,7 +21,7 @@ jest.mock('../askTranslation.service', () => ({
 import { query } from '../../db/postgres/client';
 import { createThread, saveThreadMessage } from '../threads.service';
 import { openMeetingChat, relayInMeetingChat } from '../meetingChat.service';
-import { askerGreeting, meetingOpening, relayedLine } from '../meetingChat';
+import { askerGreeting, meetingOpening, relayedLine, targetGreeting } from '../meetingChat';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockCreate = createThread as jest.MockedFunction<typeof createThread>;
@@ -73,7 +73,9 @@ describe('#8878: after the double yes the two meet in a chat', () => {
     expect(targetLines[0]).toContain('**ერეკლე**');
     expect(targetLines[1]).toContain('იპოთეკაზე რჩევა სჭირდება');
     const askerLines = mockSave.mock.calls.filter((c) => c[1] === ASKER).map((c) => c[3]);
-    expect(askerLines[1]).toContain('**გიგი:**');
+    // Tester's report 8 Nov, C4: the assistant says who agreed; nothing is written in Gigi's name.
+    expect(askerLines[1]).toContain('გიგი გაცნობას დათანხმდა.');
+    expect(askerLines[1]).not.toContain('**გიგი:**');
     const insert = mockQuery.mock.calls.find((c) =>
       String(c[0]).includes('INSERT INTO meeting_chats'),
     );
@@ -120,6 +122,12 @@ describe('#8878: after the double yes the two meet in a chat', () => {
       'This chat is between you and **Gigi** — Tornike introduced you. What you write here reaches Gigi.',
     );
     expect(askerGreeting('en', 'Erekle', 'Tornike', null)).not.toContain('ask you about');
+    // Tester's report 8 Nov, C4: nothing is written in a person's name that they never typed.
+    expect(askerGreeting('ka', 'ერეკლე', 'თორნიკე', 'ბუღალტერი')).toBe(
+      'ერეკლე შენთან თორნიკის გავლით დაგიკავშირდა. რაზეა საქმე: ბუღალტერი',
+    );
+    expect(targetGreeting('ka', 'ზურა', 'ირაკლი')).toBe('ზურა გაცნობას დათანხმდა.');
+    expect(targetGreeting('en', 'Zura', 'Irakli')).not.toContain('**');
     expect(relayedLine('A', '  hi  ')).toBe('**A:** hi');
   });
 });
