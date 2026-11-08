@@ -1629,6 +1629,8 @@ export async function incomingRequestLine(
   direct: boolean,
   /** 5347: the link whose assistant passed the owner's request on; null when asked first-hand. */
   forwarderName: string | null = null,
+  /** Tester's report 8 Nov: the target is saved in this go-between's own phonebook. */
+  knowsTarget = false,
 ): Promise<RequestOpening> {
   // The MEDIATOR's own language — their sidebar, their message. Georgian for
   // somebody who has never written anything here, which is what this always
@@ -1652,6 +1654,7 @@ export async function incomingRequestLine(
           targetName,
           relayed?.text ?? message,
           direct,
+          knowsTarget,
         )
       : forwardedRequestOpening(
           language,
@@ -1659,6 +1662,7 @@ export async function incomingRequestLine(
           requesterName,
           targetName,
           relayed?.text ?? message,
+          knowsTarget,
         );
   return { language, text };
 }
@@ -1680,6 +1684,42 @@ export async function outgoingRequestLine(
   };
 }
 
+const SAME_NUMBER_DIGITS = 9;
+const TIE_READ_TIMEOUT_MS = 3_000;
+
+/**
+ * Tester's report 8 Nov, C4/C5: whether the request's target is saved in the go-between's
+ * own phonebook (by the number's last nine digits). A failed read is no known tie, and the
+ * card asks „do you know…" as before.
+ */
+export async function goBetweenHasTheTarget(
+  mediatorUserId: number,
+  introRequestId: number,
+): Promise<boolean> {
+  try {
+    const result = await query<{ known: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM introduction_requests ir
+           JOIN "UserAlias" ua ON ua."contactId" = $2::int
+          WHERE ir.id = $1 AND ir.target_phone IS NOT NULL
+            AND length(regexp_replace(ir.target_phone, '\\D', '', 'g')) >= $3
+            AND right(regexp_replace(ua.phone, '\\D', '', 'g'), $3)
+              = right(regexp_replace(ir.target_phone, '\\D', '', 'g'), $3)
+       ) AS known`,
+      [introRequestId, mediatorUserId, SAME_NUMBER_DIGITS],
+      TIE_READ_TIMEOUT_MS,
+    );
+    return result.rows[0]?.known === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[intro] could not read whether the go-between has the target:',
+      (err as Error).message,
+    );
+    return false;
+  }
+}
+
 export async function createIncomingRequestThread(
   mediatorUserId: number,
   introRequestId: number,
@@ -1696,6 +1736,7 @@ export async function createIncomingRequestThread(
     message,
     direct,
     forwarderName,
+    !direct && (await goBetweenHasTheTarget(mediatorUserId, introRequestId)),
   );
   const title = incomingRequestTitle(opening.language, requesterName, targetName, direct);
   // The mediator must answer this request — the thread is born a task awaiting them.
