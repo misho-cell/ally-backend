@@ -298,7 +298,7 @@ import {
 } from './taskAsks.service';
 import { askThreadForName, askThreadsForName } from './askThreadByName';
 import { laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
-import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+import { mediatorsOwnWords, ownersRecentLines, replyTheOwnerAnswered } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { factsAboutMe, removeFactAboutMe, RemoveOutcome } from './factsAboutMe.service';
@@ -13685,6 +13685,7 @@ async function introductionHasTheYes(
     approvedPlanNamesTheGoBetween,
     ownerSpokeSinceTheAnswer: threadId == null ? false : await ownerSpokeSinceTheAnswer(threadId),
     ownerLines: threadId == null ? [] : await ownersRecentLines(threadId),
+    replyTheOwnerAnswered: threadId == null ? '' : await replyTheOwnerAnswered(threadId),
     mediatorName: String(input['mediator_name'] ?? ''),
     targetName,
   });

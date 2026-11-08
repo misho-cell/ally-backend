@@ -8,6 +8,7 @@ const none: IntroGateFacts = {
   approvedPlanNamesTheGoBetween: false,
   ownerSpokeSinceTheAnswer: false,
   ownerLines: ['კარგი ელექტრიკოსი მჭირდება ვაკეში'],
+  replyTheOwnerAnswered: '',
   mediatorName: 'ლიკა ოსეფაშვილი',
   targetName: 'გიორგი ბერიძე',
 };
@@ -51,8 +52,27 @@ describe('#8946: an introduction goes only on the owner’s word', () => {
     ).toBe(true);
   });
 
-  it('goes when the owner named the person to be met, in any case ending', () => {
-    expect(introductionMayGo({ ...none, ownerLines: ['გიორგი ბერიძეს გამაცანი'] })).toBe(true);
+  it('goes when the owner named the person to be met and the go-between, in any case ending', () => {
+    expect(
+      introductionMayGo({ ...none, ownerLines: ['ლიკას სთხოვე, გიორგი ბერიძეს გამაცნოს'] }),
+    ).toBe(true);
+  });
+
+  /** Tester's report 8 Nov, C4: „I want to meet Zura" sent the request through Irakli at once. */
+  it('is held when the owner named only the person to be met, not the route', () => {
+    expect(introductionMayGo({ ...none, ownerLines: ['გიორგი ბერიძის გაცნობა მინდა'] })).toBe(
+      false,
+    );
+  });
+
+  it('goes on the owner’s yes to a reply that showed the route', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        ownerLines: ['კი', 'გიორგი ბერიძის გაცნობა მინდა'],
+        replyTheOwnerAnswered: 'გიორგი ბერიძეს ლიკა ოსეფაშვილი იცნობს. ლიკას ვთხოვო გაცნობა?',
+      }),
+    ).toBe(true);
   });
 
   it('matches a go-between saved in Latin letters against the owner’s Georgian line', () => {
