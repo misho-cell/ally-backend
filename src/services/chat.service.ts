@@ -6608,6 +6608,13 @@ export function forgetFactHolds(runId: string): void {
  * talk to three assistants". Offering members to ask belongs to a goal's work —
  * a run on a goal, or one that saved a goal now — not to a list someone asked for.
  */
+/** A run that proposed a plan and approved none: what it says it will do is the proposal. */
+export function onlyProposedAPlan(toolNamesUsed: readonly string[]): boolean {
+  return (
+    toolNamesUsed.includes('propose_task_plan') && !toolNamesUsed.includes('approve_task_plan')
+  );
+}
+
 export function worksAGoal(mode: string | undefined, toolNamesUsed: readonly string[]): boolean {
   return mode === 'task_step' || toolNamesUsed.includes('create_task');
 }
@@ -16169,6 +16176,9 @@ async function runToolLoop(
     !runAskSent.has(runId) &&
     !runIntroSent.has(runId) &&
     !runRelaySent.has(runId) &&
+    // Tester's report 8 Nov, C6: a run that only proposed a plan describes what it will do;
+    // the forced rewrite turned its „shall I start with Gela?" into the banned „დავიწყო?".
+    !onlyProposedAPlan(toolNamesUsed) &&
     (claimsAnAskWasSent(claims) || saysItSendsNowWithoutApproval(runId, claims)) &&
     (await goalSentNothing(threadId));
   // #7229: a send claimed in a run whose every ask was refused — the goal may have sent before.
