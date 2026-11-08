@@ -6801,3 +6801,8 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Checked before the write:** each anchor occurs once in the live text read at 09:2xZ, 8 Nov. Sizes: core_shared 21,155 → 21,472; task_main 7,177 → 7,178; task_rules 10,945 → 11,514; request_main 3,089 → 3,219.
 - **Order:** the task_rules STEP 5 line names set_work_mode, which exists only once the two-modes commit is live — this block is written after that deploy, not before.
 - **UNDO:** put back `docs/prompt_live_8nov/<name>_before115.md` for each of the four with the same route.
+
+## 116 · TORNIKE'S 8 NOV REPORT #1: DAY ONE RUN AGAIN FOR TWO GOALS THE QUIET HOURS LOST (Misho, his chat, 8 Nov: „გააკეთე რაც გასაკეთებელია", on my proposal to fix it and start the stuck goals)
+- **What:** `POST /admin/tasks/:id/day-one` (f154db9a) for the two goals Giorgi M. approved at 07:21 and 07:26 Tbilisi on 8 Nov, whose day one the quiet hours held and the sweeper then gave up on (f832b760 fixes the cause). It runs day one through its own checks (open, not already done, no change asked for) and writes to the plan's people exactly what the approval would have.
+- **Checked before:** both open, approved, no change asked, no ask on either goal; the owner's last line is his „კი".
+- **UNDO:** none for a message once delivered. A wrong send is withdrawn with the goal's own cancel (`cancelAsksForTask`), which tells each person it is no longer needed.
