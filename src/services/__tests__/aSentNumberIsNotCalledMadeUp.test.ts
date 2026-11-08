@@ -37,3 +37,22 @@ describe('a number the server handed over', () => {
     expect(note.es).toContain('es correcto');
   });
 });
+
+/** Tester's report 8 Nov, C2: after Lasha's e-mail reached the owner, the run still „waited". */
+describe('a handover to someone not on Netai', () => {
+  it('says there is nothing to wait for, never that the target has not answered', () => {
+    const note = introOutcomeEvent(
+      'ლაშა',
+      true,
+      'handed_over_off_netai',
+      'გიორგი',
+      false,
+      { answer: null, mediatorInPlan: false },
+      true,
+    );
+    expect(note.ka).toContain('ამ გზაზე აღარაფერს ველოდებით');
+    expect(note.ka).not.toContain('ჯერ არაფერი უპასუხია');
+    expect(note.en).toContain('nothing left to wait for');
+    expect(note.ka).toContain('ნომერი ან');
+  });
+});

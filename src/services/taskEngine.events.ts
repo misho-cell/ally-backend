@@ -237,11 +237,35 @@ export type IntroContactOutcome =
  * WHOM, and the model filled in the wrong person. On a mediated request the
  * event now opens with who answered, and that the target has not.
  */
+/**
+ * Tester's report 8 Nov, C2: Lasha is not on Netai, Giorgi typed his e-mail and
+ * it reached the owner — and the run still wrote „waiting for the bank's side",
+ * because this line said Lasha „has not answered anything". A target off Netai
+ * never answers through Netai; their contact went to the owner, so this route
+ * has nothing left to wait for.
+ */
+const HANDED_OVER_OFF_NETAI = (m: string, t: string): Readonly<Record<RunLanguage, string>> => ({
+  ka:
+    `შუამავალი ${m} დათანხმდა და ${t}-ის კონტაქტი მფლობელს უკვე გადაეცა; ${t} Netai-ზე არ ` +
+    'არის, ამ გზაზე აღარაფერს ველოდებით — არ თქვა „ველოდები“. ',
+  en:
+    `The mediator, ${m}, agreed and ${t}'s contact has been handed to the owner; ${t} is not on ` +
+    'Netai, so there is nothing left to wait for on this route — never say you are waiting. ',
+  ru:
+    `Посредник ${m} согласился, и контакт ${t} уже передан владельцу; ${t} нет в Netai, на этом ` +
+    'пути больше нечего ждать — не говори, что ждёшь. ',
+  es:
+    `El intermediario, ${m}, aceptó y el contacto de ${t} ya se entregó al dueño; ${t} no está en ` +
+    'Netai, así que en esta vía no queda nada que esperar: nunca digas que esperas. ',
+});
+
 function mediatorAnswered(
   mediatorName: string,
   targetName: string,
   accepted: boolean,
+  targetOffNetai = false,
 ): Readonly<Record<RunLanguage, string>> {
+  if (accepted && targetOffNetai) return HANDED_OVER_OFF_NETAI(mediatorName, targetName);
   return accepted
     ? {
         ka:
@@ -336,13 +360,13 @@ const IF_THEY_SUGGESTED_SOMEONE: Readonly<Record<RunLanguage, string>> = {
  */
 const OFF_NETAI_BODY: Readonly<Record<RunLanguage, (target: string) => string>> = {
   ka: (t) =>
-    ` ${t} Netai-ზე არ არის — Netai-ით მასთან არხი არ არსებობს. მფლობელმა მისი ნომერი უკვე ` +
-    'მიიღო ერთ შეტყობინებაში — ის სერვერმა გაუგზავნა და სწორია; არასდროს თქვა, რომ ის ' +
+    ` ${t} Netai-ზე არ არის — Netai-ით მასთან არხი არ არსებობს. მფლობელმა მისი კონტაქტი (ნომერი ან ` +
+    'ელფოსტა) უკვე მიიღო ერთ შეტყობინებაში — ის სერვერმა გაუგზავნა და სწორია; არასდროს თქვა, რომ ის ' +
     'შენ მოიგონე ან არასწორია. მფლობელს ამ გაცნობაზე ახლა არაფერი მისწერო და ნუ შესთავაზებ, ' +
     'რომ მას რამეს გადასცემ.',
   en: (t) =>
     ` ${t} is not on Netai — there is no Netai channel to them. The owner has already been ` +
-    'given their number in one message — the server sent it and it is correct; never say you ' +
+    'given their contact (number or e-mail) in one message — the server sent it and it is correct; never say you ' +
     'made it up or that it is wrong. Write nothing more to the owner about this ' +
     'introduction now, and do not offer to pass anything on to them.',
   ru: (t) =>
@@ -387,7 +411,7 @@ export function introOutcomeEvent(
   const answered =
     mediatorName === null
       ? NOTHING_BY_LANGUAGE
-      : mediatorAnswered(mediatorName, targetName, accepted);
+      : mediatorAnswered(mediatorName, targetName, accepted, targetOffNetai);
   const suggestion =
     said.mediatorInPlan === true && mediatorName !== null
       ? ifTheySuggestedInPlan(mediatorName)
