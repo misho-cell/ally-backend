@@ -9,7 +9,12 @@ import {
   noteIdleReminder,
   setIdleWake,
 } from './idleWakes.service';
-import { planDayOneEvent, planStepNoteForAnswers, sweepSilentSteps } from './planAdvance.service';
+import {
+  PLAN_RAN_OUT_EVENT,
+  planDayOneEvent,
+  planStepNoteForAnswers,
+  sweepSilentSteps,
+} from './planAdvance.service';
 import { withStepNote } from './planAdvance';
 import { nightlyReviewEvent, silentDayEvent } from './planNightly';
 import { planHasSteps } from './planSteps';
@@ -758,11 +763,18 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
   );
   // Row 322(a): on the owner's screen first; the model's turn comes after.
   const onScreen = await answersAreOnScreen(owed, arrived);
+  // Autonomy stage 2, K3: the plan step's own rule rides under the answers.
+  const stepNote = await planStepNoteForAnswers(
+    taskId,
+    owed.map((a) => ({ id: a.id, declined: a.declined === true })),
+  );
   // 1489 (Misho, გ): after only „no"s the goal carries on quietly; it writes only with a result.
+  // Tester's report 8 Nov, C6: not when the no used up the plan — the run proposes the next way.
   const threadId = owed[0].task_thread_id;
   if (
     onScreen &&
     threadId !== null &&
+    stepNote !== PLAN_RAN_OUT_EVENT &&
     owed.every((a, i) => onlyANoSinceLastHeard(a, arrived[i]?.answer ?? ''))
   ) {
     noteQuietAfterDecline(threadId);
@@ -771,11 +783,6 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
     clearQuietAfterDecline(threadId);
   }
   const wakeBeforeRun = await nextWakeText(taskId);
-  // Autonomy stage 2, K3: the plan step's own rule rides under the answers.
-  const stepNote = await planStepNoteForAnswers(
-    taskId,
-    owed.map((a) => ({ id: a.id, declined: a.declined === true })),
-  );
   const woken = onScreen
     ? await wakeTask(
         taskId,
