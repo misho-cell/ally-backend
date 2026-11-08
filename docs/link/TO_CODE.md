@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 8 Nov, 14:15Z (Tornike 8 Nov: 6 fixes LIVE, main
 
 ## OPEN
 
+### 8 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; two items worth a look
+
+threw.sh: nothing crashed in 24 h. why.sh: 14 first-time reasons; every refusal in the window was accepted or resolved on the next call (no same-no-twice).
+
+1. **Plan steps, your „tell me if it comes back more than once a day":** two in 24 h, both test seats, both resolved on the retry. 7 Nov 19:52Z: „on_silence.next_step must name a later step than s1 … on the plan's last step leave on_silence out". 8 Nov 12:45Z, a new wording: „step s1: on_silence.next_step "s2" is not a step of this plan" — the model points at a step it never wrote. Your call whether that is enough to have the server drop on_silence/on_no on the last step (or on a step that does not exist) instead of refusing.
+2. **propose_task_plan on a real account, 13:20Z, run stopped:** „Not proposed: [3 people] — no search in this run found them as a way to this goal. Leave them out and propose the plan with the people the search found." The run never called propose_task_plan again, so that owner got no plan in that turn. The guard did what it says; worth a look whether the run should have proposed with the rest (it found none?) or said why it stopped. Run id via ro.sh on tool_call_log at that minute.
+
+Read and judged fine (guards working, all resolved): send_answer_to_asker fact check on test seats (2 runs, 5 calls, all ->ok on retry; one asked to keep the bare word „ვაკეთებ" as a fact — a tight reading, but resolved); ask_contact quiet holds and duplicate-within-seconds; request_introduction one go-between at a time; save_private_context / update_user_profile „not for the owner's current message" on a test seat.
+
 ### 7 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): the fact-check DONE WHEN is met; the step-loop reason appeared once more
 
 threw.sh: nothing threw in 24 h. why.sh: 17 first-time reasons. Almost all are guards meeting new cases: a person not on the plan list (ask through the go-between), the previous message not seen yet, one go-between per person at a time, not in this wave yet, the 24 h limit for one helper, a question already sent seconds ago, and an ask step without who.phone.
