@@ -6789,3 +6789,15 @@ question, and „everything" here answered the texts on the table; it is asked a
   - task_rules STEP 5: each person with a few words why, and how many more fit (cases 34, 2).
 - **Checked before the write:** each anchor occurs once in the live text read at 20:4xZ. Sizes: core_shared 20,399 → 21,155; task_main 7,063 → 7,177; task_rules 10,839 → 10,945.
 - **UNDO:** put back `docs/prompt_live_6nov/<name>_before114.md` for each of the three with the same route.
+
+## 115 · THE TESTER'S 8 NOV REPORT AND THE TWO MODES: SIX PROMPT LINES IN core_shared, task_main, task_rules, request_main (Misho, his chat, 8 Nov: „ორი რეჟიმი რაც არის შენს რეკომენდაციებს ვეთანხმები", then „კი, დაიწყე ყველა", on the list I gave him)
+- **What:** `PUT /admin/prompt-blocks/:name` with `content` only.
+  - core_shared, after „a missing reason is never a reason to ask.": a meeting with no subject („საქმიანი შეხვედრა") carries his whole words, or one question what it is about (C4).
+  - core_shared, after „ask his yes before his name is given.": „ჩემს ერთ ადამიანს" only when he asked to stay unnamed (C4).
+  - task_main ANSWERS: on_named now introduces under an approved plan unless the step says ask — the same rule as the server (23aa0610, in this batch); also written after the deploy.
+  - task_rules STEP 2 search: before „nobody in your network", search_by_tag on his own labels, Georgian and English (C6/C7).
+  - task_rules STEP 5: the two ways offered once at a new goal's first plan; set_work_mode free when he chooses it (Misho's two modes).
+  - request_main: „pass it on" is never accepted in his name (C5).
+- **Checked before the write:** each anchor occurs once in the live text read at 09:2xZ, 8 Nov. Sizes: core_shared 21,155 → 21,472; task_main 7,177 → 7,178; task_rules 10,945 → 11,514; request_main 3,089 → 3,219.
+- **Order:** the task_rules STEP 5 line names set_work_mode, which exists only once the two-modes commit is live — this block is written after that deploy, not before.
+- **UNDO:** put back `docs/prompt_live_8nov/<name>_before115.md` for each of the four with the same route.
