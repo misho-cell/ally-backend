@@ -483,7 +483,11 @@ describe('every wire that quotes a person translates for the reader', () => {
   it('the outcome: the answer is never quoted, so nothing is translated for it', () => {
     const source = read('introduction.service.ts');
     expect(source).not.toContain("await relayedForReader(said, language, 'answer')");
-    expect(source).toContain("answer: answer === '' ? null : scrubText(answer)");
+    // Tester's report 8 Nov, C6: scrubbed, with a handed-over number said to be sent.
+    expect(source).toContain(
+      "answer: answer === '' ? null : answerForTheRun(answer, contactOutcome)",
+    );
+    expect(source).toContain('const scrubbed = scrubText(answer);');
   });
 
   /**

@@ -37,7 +37,7 @@ import {
   RequestThread,
 } from './requestThreadSide';
 import { askThreadStatusAfterRequest } from './sharedRequestThread.service';
-import { scrubText } from './privacyScrub';
+import { REDACTED, scrubText } from './privacyScrub';
 import { goBetweensLinesSinceAsked } from './introResponse';
 import { typedContactIn, typedContactLine, typedContactMediatorLine } from './introTypedContact';
 import { readTargetAnswer } from './targetAnswerReader';
@@ -1505,6 +1505,21 @@ async function answeringMediatorName(req: RequestRow): Promise<string | null> {
   return result.rows[0]?.name?.trim() || null;
 }
 
+/**
+ * Tester's report 8 Nov, C6: the go-between's „here is my father's number: …"
+ * reached the run as „[hidden]", while the number itself stood in the owner's
+ * chat. The run decided it had invented the number and told the owner a correct
+ * number was „wrong and made up". When the server has handed the contact over,
+ * the hidden number says so.
+ */
+export const NUMBER_ALREADY_SENT = '[ნომერი — სერვერმა მფლობელს უკვე გაუგზავნა, ის სწორია]';
+
+export function answerForTheRun(answer: string, outcome: IntroContactOutcome): string {
+  const scrubbed = scrubText(answer);
+  const sent = outcome === 'handed_over' || outcome === 'handed_over_off_netai';
+  return sent ? scrubbed.split(REDACTED).join(NUMBER_ALREADY_SENT) : scrubbed;
+}
+
 async function wakeRequestersGoal(
   req: RequestRow,
   accepted: boolean,
@@ -1531,7 +1546,7 @@ async function wakeRequestersGoal(
         mediatorName,
         shownInGoalThread,
         {
-          answer: answer === '' ? null : scrubText(answer),
+          answer: answer === '' ? null : answerForTheRun(answer, contactOutcome),
           // K9 audit B6: a mediator the approved plan asks — acting on their suggestion is the plan's.
           mediatorInPlan:
             req.mediator_user_id !== null &&

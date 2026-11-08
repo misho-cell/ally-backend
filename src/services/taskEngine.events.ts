@@ -337,19 +337,23 @@ const IF_THEY_SUGGESTED_SOMEONE: Readonly<Record<RunLanguage, string>> = {
 const OFF_NETAI_BODY: Readonly<Record<RunLanguage, (target: string) => string>> = {
   ka: (t) =>
     ` ${t} Netai-ზე არ არის — Netai-ით მასთან არხი არ არსებობს. მფლობელმა მისი ნომერი უკვე ` +
-    'მიიღო ერთ შეტყობინებაში. მფლობელს ამ გაცნობაზე ახლა არაფერი მისწერო და ნუ შესთავაზებ, ' +
+    'მიიღო ერთ შეტყობინებაში — ის სერვერმა გაუგზავნა და სწორია; არასდროს თქვა, რომ ის ' +
+    'შენ მოიგონე ან არასწორია. მფლობელს ამ გაცნობაზე ახლა არაფერი მისწერო და ნუ შესთავაზებ, ' +
     'რომ მას რამეს გადასცემ.',
   en: (t) =>
     ` ${t} is not on Netai — there is no Netai channel to them. The owner has already been ` +
-    'given their number in one message. Write nothing more to the owner about this ' +
+    'given their number in one message — the server sent it and it is correct; never say you ' +
+    'made it up or that it is wrong. Write nothing more to the owner about this ' +
     'introduction now, and do not offer to pass anything on to them.',
   ru: (t) =>
     ` ${t} нет в Netai — канала через Netai к нему нет. Владелец уже получил его номер одним ` +
-    'сообщением. Сейчас ничего больше не пиши владельцу об этом знакомстве и не предлагай ' +
+    'сообщением — его отправил сервер, и он верный; никогда не говори, что ты его выдумал ' +
+    'или что он неверный. Сейчас ничего больше не пиши владельцу об этом знакомстве и не предлагай ' +
     'ничего ему передать.',
   es: (t) =>
     ` ${t} no está en Netai: no hay canal de Netai hacia esa persona. El dueño ya recibió su ` +
-    'número en un mensaje. No escribas nada más al dueño sobre esta presentación ahora ni ' +
+    'número en un mensaje: lo envió el servidor y es correcto; nunca digas que lo inventaste ' +
+    'ni que es incorrecto. No escribas nada más al dueño sobre esta presentación ahora ni ' +
     'ofrezcas transmitirle nada.',
 };
 
