@@ -13371,19 +13371,43 @@ async function processToolBlocks(
    * same step" is a fact about the turn.
    */
   const approvingThisTurn = toolBlocks.some((b) => b.name === 'approve_task_plan');
-  const results = await Promise.all(
-    toolBlocks.map((block) =>
-      approvingThisTurn && block.name === 'present_choices'
-        ? Promise.resolve(choicesRefusedBesideAnApproval(block, userId, threadId, runId))
-        : runOneToolBlockOrSayWhy(userId, threadId, runId, block, ownerAbsent),
-    ),
-  );
+  const runBlock = (block: Anthropic.ToolUseBlock): Promise<Anthropic.ToolResultBlockParam> =>
+    approvingThisTurn && block.name === 'present_choices'
+      ? Promise.resolve(choicesRefusedBesideAnApproval(block, userId, threadId, runId))
+      : runOneToolBlockOrSayWhy(userId, threadId, runId, block, ownerAbsent);
+  const results = await runAnswersAfterTheRest(toolBlocks, runBlock);
   for (const [i, block] of toolBlocks.entries()) {
     const caption = heldSendCaptions.get(block.id);
     if (caption !== undefined && toolResultSucceeded(results[i])) {
       showCaption(userId, threadId, runId, caption);
     }
   }
+  return results;
+}
+
+/**
+ * Tester's report 8 Nov, C5: „I don't have the number — ask Nana" came out as a
+ * pass-on to Nana and a yes to Erekle in ONE turn. They ran together, the yes
+ * looked for a pass-on not yet written, and Erekle got the owner's own number.
+ * An answer to an introduction runs only after the turn's other calls are done,
+ * so it sees what they did. Results keep the order the calls came in.
+ */
+const RUNS_AFTER_THE_REST: ReadonlySet<string> = new Set(['respond_to_introduction']);
+
+export async function runAnswersAfterTheRest<B extends { readonly name: string }, R>(
+  blocks: readonly B[],
+  run: (block: B) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(blocks.length);
+  const first = blocks
+    .map((b, i) => ({ b, i }))
+    .filter(({ b }) => !RUNS_AFTER_THE_REST.has(b.name));
+  const after = blocks.map((b, i) => ({ b, i })).filter(({ b }) => RUNS_AFTER_THE_REST.has(b.name));
+  const firstResults = await Promise.all(first.map(({ b }) => run(b)));
+  first.forEach(({ i }, k) => {
+    results[i] = firstResults[k] as R;
+  });
+  for (const { b, i } of after) results[i] = await run(b);
   return results;
 }
 

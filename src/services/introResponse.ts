@@ -101,3 +101,38 @@ export async function mediatorsLinesSinceAsked(
     return null;
   }
 }
+
+export interface AskedRequest {
+  readonly id: number;
+  readonly mediator_user_id: number | null;
+  readonly mediator_thread_id: number | null;
+  readonly created_at: Date | string | null;
+}
+
+/**
+ * Tester's report 8 Nov, C5: Nana typed Gigi's new number in the request's own
+ * card thread, and it was never read — `mediator_thread_id` is set only when a
+ * request continues an earlier ask, so a fresh card had no thread here. The
+ * card thread is the one linked to the request and owned by the go-between.
+ */
+export async function goBetweensLinesSinceAsked(req: AskedRequest): Promise<string | null> {
+  const threadId = req.mediator_thread_id ?? (await cardThreadOf(req));
+  return mediatorsLinesSinceAsked(threadId, req.created_at);
+}
+
+async function cardThreadOf(req: AskedRequest): Promise<number | null> {
+  if (req.mediator_user_id === null) return null;
+  try {
+    const result = await query<{ id: number }>(
+      `SELECT id FROM threads WHERE introduction_request_id = $1 AND user_id = $2
+        ORDER BY id DESC LIMIT 1`,
+      [req.id, req.mediator_user_id],
+      OWN_LINES_TIMEOUT_MS,
+    );
+    return result.rows[0]?.id ?? null;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[intro] could not find the go-between's card thread:", (err as Error).message);
+    return null;
+  }
+}
