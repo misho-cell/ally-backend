@@ -43,22 +43,26 @@ export function meetingOpening(language: RunLanguage, other: string, between: st
   return (WHAT_THIS_CHAT_IS[language] ?? WHAT_THIS_CHAT_IS.ka)(other, between);
 }
 
-/** The asker's assistant greets the target, in the asker's name, with the need. */
+/**
+ * Tester's report 8 Nov, C4: the shared chat opened with „Zura: Hello! Thanks
+ * to Irakli… write to me" — words Zura never typed — and „Tornike: Hello…" on
+ * Zura's side. Nobody's words are written in their name: each opening line is
+ * the assistant's own, saying what happened.
+ */
 const ASKER_GREETS: Readonly<
   Record<RunLanguage, (asker: string, between: string, need: string | null) => string>
 > = {
   ka: (asker, between, need) =>
-    `**${asker}:** გამარჯობა! მადლობა ${geoName(between, 'dat')} — სასიამოვნოა.` +
-    (need ? ` მინდა გკითხო: ${need}` : ''),
+    `${asker} შენთან ${geoName(between, 'gen')} გავლით დაგიკავშირდა.` +
+    (need ? ` რაზეა საქმე: ${need}` : ''),
   en: (asker, between, need) =>
-    `**${asker}:** Hello! Thanks to ${between} — nice to meet you.` +
-    (need ? ` I wanted to ask you about: ${need}` : ''),
+    `${asker} asked to be introduced to you through ${between}.` +
+    (need ? ` What it is about: ${need}` : ''),
   ru: (asker, between, need) =>
-    `**${asker}:** Привет! Спасибо ${between} — приятно познакомиться.` +
-    (need ? ` Хотел спросить: ${need}` : ''),
+    `${asker} попросил познакомить вас через ${between}.` + (need ? ` О чём речь: ${need}` : ''),
   es: (asker, between, need) =>
-    `**${asker}:** ¡Hola! Gracias a ${between} — encantado.` +
-    (need ? ` Quería preguntarte: ${need}` : ''),
+    `${asker} pidió que os presentaran a través de ${between}.` +
+    (need ? ` De qué se trata: ${need}` : ''),
 };
 
 export function askerGreeting(
@@ -70,15 +74,12 @@ export function askerGreeting(
   return (ASKER_GREETS[language] ?? ASKER_GREETS.ka)(asker, between, need);
 }
 
-/** The target's assistant greets back, in the target's name. */
+/** On the asker's side: that the target said yes — in the assistant's words, not theirs. */
 const TARGET_GREETS: Readonly<Record<RunLanguage, Line2>> = {
-  ka: (target, between) =>
-    `**${target}:** გამარჯობა! მადლობა ${geoName(between, 'dat')}, სასიამოვნოა. მომწერე, რით დაგეხმარო.`,
-  en: (target, between) =>
-    `**${target}:** Hello! Thanks to ${between}, nice to meet you. Write to me here.`,
-  ru: (target, between) =>
-    `**${target}:** Привет! Спасибо ${between}, приятно познакомиться. Пиши мне здесь.`,
-  es: (target, between) => `**${target}:** ¡Hola! Gracias a ${between}, encantado. Escríbeme aquí.`,
+  ka: (target) => `${target} გაცნობას დათანხმდა.`,
+  en: (target) => `${target} agreed to the introduction.`,
+  ru: (target) => `${target} согласился на знакомство.`,
+  es: (target) => `${target} aceptó la presentación.`,
 };
 
 export function targetGreeting(language: RunLanguage, target: string, between: string): string {
