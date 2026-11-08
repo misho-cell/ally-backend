@@ -66,13 +66,6 @@ describe('parseSteps', () => {
     ['not a list', { action: 'ask' }, 'list'],
     ['an unknown action', [{ action: 'call' }], 'action must be one of'],
     [
-      'a step that points back',
-      [ASK_BEKA, { ...WEB, on_no: { next_step: 's2' } }, ASK_ANA],
-      'later step',
-    ],
-    ['a step that points to itself', [{ ...WEB, on_no: { next_step: 's3' } }], 'later step'],
-    ['a step that points nowhere', [{ ...WEB, on_no: { next_step: 's9' } }], 'not a step'],
-    [
       'silence of zero days',
       [{ ...ASK_ANA, on_silence: { after_days: 0, next_step: 's2' } }, ASK_BEKA],
       'after_days',
@@ -212,14 +205,51 @@ describe('the steps line on the plan card', () => {
   });
 });
 
-/** Ops' daily check (6 Nov 18:45Z): the last step's on_no pointed back at itself. */
-describe('a rule on the last step', () => {
-  it('is refused with the way out: leave it out there', () => {
-    const out = parseSteps(
+/**
+ * Ops' daily checks (6, 7, 8 Nov) and Tornike's 8 Nov report, #12: a rule that
+ * leads nowhere — on the last step, pointing back, or at a step never written —
+ * is dropped, and the plan goes on. Steps still only move forward.
+ */
+describe('a rule that leads nowhere', () => {
+  it.each([
+    [
+      'on the last step, at itself',
       [{ id: 's1', action: 'search', what: 'web', on_no: { next_step: 's1' } }],
+    ],
+    [
+      'pointing back',
+      [
+        { id: 's1', action: 'web' },
+        { id: 's2', action: 'search', on_no: { next_step: 's1' } },
+      ],
+    ],
+    ['at a step never written', [{ id: 's1', action: 'web', on_no: { next_step: 's9' } }]],
+  ])('%s is dropped and the plan goes on', (_label, steps) => {
+    const out = parseSteps(steps, { peoplePhones: [] });
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.value.every((step) => step.on_no === undefined)).toBe(true);
+  });
+
+  it('drops a silence rule that leads nowhere, keeping the step', () => {
+    const out = parseSteps(
+      [{ id: 's1', action: 'web', on_silence: { after_days: 2, next_step: 's2' } }],
       { peoplePhones: [] },
     );
-    expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.error).toContain('leave on_no out there');
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.value).toHaveLength(1);
+      expect(out.value[0].on_silence).toBeUndefined();
+    }
+  });
+
+  it('keeps a rule that points forward', () => {
+    const out = parseSteps(
+      [
+        { id: 's1', action: 'web', on_no: { next_step: 's2' } },
+        { id: 's2', action: 'search' },
+      ],
+      { peoplePhones: [] },
+    );
+    expect(out.ok && out.value[0].on_no).toEqual({ next_step: 's2' });
   });
 });
