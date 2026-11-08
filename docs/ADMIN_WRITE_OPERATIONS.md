@@ -6806,3 +6806,11 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** `POST /admin/tasks/:id/day-one` (f154db9a) for the two goals Giorgi M. approved at 07:21 and 07:26 Tbilisi on 8 Nov, whose day one the quiet hours held and the sweeper then gave up on (f832b760 fixes the cause). It runs day one through its own checks (open, not already done, no change asked for) and writes to the plan's people exactly what the approval would have.
 - **Checked before:** both open, approved, no change asked, no ask on either goal; the owner's last line is his „კი".
 - **UNDO:** none for a message once delivered. A wrong send is withdrawn with the goal's own cancel (`cancelAsksForTask`), which tells each person it is no longer needed.
+
+## 117 · TORNIKE'S 8 NOV REPORT: FOUR PROMPT LINES, READ BY MEANING (Misho, his chat, 8 Nov: „1 და 2 ორივე გააკეთე", after asking whether they are exact words or meaning — meaning)
+- **What:** `PUT /admin/prompt-blocks/:name` with `content` only.
+  - core_shared, after „Never say how another person saved someone in their phonebook.": „how many contacts do I have", in any words and any conversation, is the whole phonebook (get_contact_count), never a plan's people (#7).
+  - task_rules, after „A web profile with the same name is a different person until a saved fact links them.": „that is someone else", in any words, is settled for the conversation; no partial numbers (#3).
+  - task_rules, after the search_by_tag line of write 115: a label is a clue, offered only when its meaning fits; a nickname label gives way to the registered name (#5); a number of people asked for is brought before „shall I go on" (#11).
+- **Checked before the write:** each anchor occurs once in the live text read at 21:2xZ, 8 Nov. Sizes: core_shared 21,472 → 21,628; task_rules 11,514 → 12,042.
+- **UNDO:** put back `docs/prompt_live_8nov/<name>_before117.md` for each of the two with the same route.
