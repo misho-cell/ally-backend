@@ -5975,7 +5975,9 @@ async function buildAgentSystemPrompt(
    */
   const contactQuestionEarly = dailyContactQuestionSection(userId, threadId, presence);
   const noContactsEarly =
-    !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
+    // Tester's report 8 Nov, G28: the goal now opens inside the run, so the first line of a
+    // need has no bound goal yet — the note rides the conversation's first owner line anyway.
+    !ownerAbsent && threadId !== undefined && forcedMode === undefined
       ? noContactsYetSection(userId, threadId)
       : Promise.resolve('');
   contactQuestionEarly.catch(() => undefined);

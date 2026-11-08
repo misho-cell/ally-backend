@@ -16,6 +16,7 @@ describe('a goal run with no phonebook', () => {
     await expect(noContactsYetSection('179367', 44100)).resolves.toBe(NO_CONTACTS_YET_SECTION);
     expect(mockQuery.mock.calls[0][1]).toEqual(['179367', 44100, 1]);
     expect(NO_CONTACTS_YET_SECTION).toContain('ეს მხოლოდ ერთხელ თქვი.');
+    expect(NO_CONTACTS_YET_SECTION).toContain('get_contacts_upload_link');
   });
 
   it('gets nothing otherwise, or when the read fails', async () => {
@@ -26,11 +27,9 @@ describe('a goal run with no phonebook', () => {
     await expect(noContactsYetSection('501', 1)).resolves.toBe('');
   });
 
-  it('is asked only for the owner, on a goal', () => {
+  it('is asked only for the owner, on any conversation’s first line (tester’s report 8 Nov, G28)', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      '!ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined',
-    );
+    expect(chat).toContain('!ownerAbsent && threadId !== undefined && forcedMode === undefined');
     expect(chat).toMatch(/contactQuestion \+\s+contactsReminder \+\s+noContacts \+/u);
   });
 });

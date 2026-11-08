@@ -6,7 +6,8 @@ import { query } from '../db/postgres/client';
  * „which city?", never saying the one true thing — the contacts are not in yet.
  * The goal opens before the run, so the run is a goal step, not onboarding.
  * A goal run for an owner with no phonebook row gets one line, on the
- * conversation's first owner line only, so it is said once.
+ * conversation's first owner line only, so it is said once. Tester's report
+ * 8 Nov, G28: on any conversation's first line, goal or not, with the upload link.
  */
 const NO_CONTACTS_READ_TIMEOUT_MS = 3_000;
 const FIRST_OWNER_LINES = 1;
@@ -14,7 +15,8 @@ const FIRST_OWNER_LINES = 1;
 export const NO_CONTACTS_YET_SECTION =
   '\n\n## კონტაქტები ჯერ არ არის (2707)\n' +
   'ამ მფლობელს კონტაქტები ჯერ არ აუტვირთავს. პასუხის დასაწყისში ერთი წინადადებით უთხარი, ' +
-  'რომ მისი კონტაქტები ჯერ არ ჩანს, და სთხოვე ატვირთოს — ასე მის ნაცნობებშიც მოვძებნი. ' +
+  'რომ მისი კონტაქტები ჯერ არ ჩანს, და იმავე პასუხში მიეცი ატვირთვის ბმული ' +
+  'get_contacts_upload_link-იდან — ასე მის ნაცნობებშიც მოძებნი. ' +
   'მერე დაეხმარე იმით, რაც გაქვს. ეს მხოლოდ ერთხელ თქვი.';
 
 export async function noContactsYetSection(userId: string, threadId: number): Promise<string> {
