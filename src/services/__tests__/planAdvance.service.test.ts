@@ -11,6 +11,7 @@ import { query } from '../../db/postgres/client';
 import { PlanStep, StepAction } from '../planSteps';
 import {
   MAX_SILENT_STEPS_PER_SWEEP,
+  PLAN_RAN_OUT_EVENT,
   notePlanAskSent,
   notePlanNamed,
   planStepNoteForAnswers,
@@ -145,6 +146,15 @@ describe('arrived answers', () => {
       '(Step 1 got a no.) Step 2 has started: ask — ბექა. The plan is approved — do it now, ' +
         'without asking the owner.',
     );
+  });
+
+  /** Tester's report 8 Nov, C6: a no on the last step left the goal silent. */
+  it('a no on the last step says the plan ran out and asks for the next way', async () => {
+    database({ current: 's2', stepOfAsk: 's2' });
+    const note = await planStepNoteForAnswers(7001, [{ id: 43, declined: true }]);
+    expect(note).toBe(PLAN_RAN_OUT_EVENT);
+    expect(note?.en).toContain('propose_task_plan');
+    expect(movedTo()).toEqual([]);
   });
 
   it('a no already acted on (a retried wake) names the current step without moving again', async () => {

@@ -78,6 +78,8 @@ describe('the run after it', () => {
       "owed.every((a, i) => onlyANoSinceLastHeard(a, arrived[i]?.answer ?? ''))",
     );
     expect(engine).toContain('noteQuietAfterDecline(threadId)');
+    // Tester's report 8 Nov, C6: a no that used up the approved plan is not withheld.
+    expect(engine).toContain('stepNote !== PLAN_RAN_OUT_EVENT &&');
     expect(chat).toContain(
       'if (ownerAbsent && takeQuietAfterDecline(threadId) && !broughtAResult(pending)) {',
     );

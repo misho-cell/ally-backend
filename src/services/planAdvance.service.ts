@@ -149,6 +149,31 @@ async function recordAnswers(
   return outcomes;
 }
 
+/**
+ * Tester's report 8 Nov, C6: Gela said no on the plan's only step and the goal
+ * went silent — no next step, no note, and the run's „I'll look for someone
+ * else" was dropped by the quiet-after-a-no rule. A no that leaves the approved
+ * plan with nowhere to go says so, and the run proposes the next way.
+ */
+export const PLAN_RAN_OUT_EVENT: StepEventText = {
+  ka:
+    'გეგმის ბოლო ნაბიჯზე უარი მოვიდა — დამტკიცებული გეგმა ამოიწურა. მფლობელს ერთი ხაზით ' +
+    'უთხარი და იმავე პასუხში propose_task_plan-ით შესთავაზე შემდეგი გზა: სხვა ადამიანი მის ' +
+    'ქსელში, მეორე წრე ან ვები. არ გაჩერდე.',
+  en:
+    "A no came on the plan's last step — the approved plan has run out. Tell the owner in one " +
+    'line and, in the same reply, propose the next way with propose_task_plan: another person ' +
+    'in his network, the second circle or the web. Do not stop.',
+  ru:
+    'На последнем шаге плана пришёл отказ — утверждённый план исчерпан. Скажи владельцу одной ' +
+    'строкой и в том же ответе предложи следующий путь через propose_task_plan: другой человек ' +
+    'из его сети, второй круг или веб. Не останавливайся.',
+  es:
+    'Llegó un no en el último paso del plan: el plan aprobado se agotó. Díselo al dueño en una ' +
+    'línea y, en la misma respuesta, propón el siguiente camino con propose_task_plan: otra ' +
+    'persona de su red, el segundo círculo o la web. No te detengas.',
+};
+
 /** A no on the current step moves the plan by its on_no rule; a no already acted on is named again. */
 async function afterDecline(
   taskId: number,
@@ -159,7 +184,8 @@ async function afterDecline(
   const onCurrent = declined.find((o) => o.stepId === state.current);
   if (onCurrent !== undefined) {
     const next = stepAfter(state.plan, onCurrent.stepId, StepEnd.Declined);
-    if (next === null || !isForward(state.plan, state.current, next.id)) return null;
+    if (next === null) return PLAN_RAN_OUT_EVENT;
+    if (!isForward(state.plan, state.current, next.id)) return null;
     await moveToStep(taskId, next.id);
     return stepStartedEvent(state.plan, next, { stepId: onCurrent.stepId, end: StepEnd.Declined });
   }
