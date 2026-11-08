@@ -3373,11 +3373,19 @@ const MEETING_UNDER_CARD =
  * introduce — the run asked „გნებავს …?" where the plan had already said yes.
  * The next step is the plan's rule, as the prompt's ANSWERS says (6 Nov, A1).
  */
+/**
+ * Tester's report 8 Nov („the second yes is inconsistent"): the run asked the
+ * owner again whenever the model had left on_named out of the step — C1, C3 and
+ * C7 asked, C2 did not, for plans that looked the same to the owner. An approved
+ * plan is the owner's yes to the introduction too (Misho, 5 Nov; whereWeAre says
+ * so), unless its step says on_named: ask.
+ */
 const INTRODUCTION_BY_THE_PLAN =
-  'თუ დამტკიცებული გეგმის ეს ნაბიჯი ამბობს on_named: introduce — ახლავე request_introduction, ' +
-  'შუამავალი ის, ვინც დაასახელა ან დათანხმდა, მფლობელის კითხვის გარეშე; თუ არა — მფლობელს ' +
-  'ერთხელ ჰკითხე, ერთი წინადადებით, ვის და ვისი გავლით („X-მა Y დაასახელა — Y-ის გაცნობა X-ის ' +
-  'გავლით ვთხოვო?“).';
+  'თუ გეგმა დამტკიცებულია და მისი ეს ნაბიჯი არ ამბობს on_named: ask — ახლავე ' +
+  'request_introduction, შუამავალი ის, ვინც დაასახელა ან დათანხმდა, მფლობელის კითხვის გარეშე: ' +
+  'დამტკიცება უკვე თანხმობაა. თუ ნაბიჯი ამბობს on_named: ask, ან დამტკიცებული გეგმა არ არის — ' +
+  'მფლობელს ერთხელ ჰკითხე, ერთი წინადადებით, ვის და ვისი გავლით („X-მა Y დაასახელა — Y-ის ' +
+  'გაცნობა X-ის გავლით ვთხოვო?“).';
 
 const AGREED_UNDER_CARD =
   'თუ ბარათზე რომელიმე პასუხი დათანხმებაა დაკავშირებაზე — ეს ეტაპია „დათანხმდა", არა ' +

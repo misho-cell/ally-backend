@@ -54,7 +54,8 @@ const STEP_ITEM = {
       type: 'object',
       description:
         'When the answer names somebody: introduce (ask for the introduction through this ' +
-        'person) or ask them. This is part of the plan the owner approves.',
+        'person) or ask them. This is part of the plan the owner approves. Left out, the ' +
+        'approved plan introduces: set ask only when the owner wants to decide each introduction.',
       properties: { action: { type: 'string', enum: Object.values(NamedAction) } },
       required: ['action'],
     },
