@@ -67,6 +67,14 @@ import {
   threadInDiscussion,
 } from './discussFirst';
 import { SET_DISCUSSION_TOOL } from './tools/setDiscussion';
+import { SET_WORK_MODE_TOOL, SET_WORK_MODE_TOOL_NAME } from './tools/setWorkMode';
+import {
+  FREE_MODE_APPROVED_NOTE,
+  WorkMode,
+  goalWorkMode,
+  setGoalWorkMode,
+  workModeFrom,
+} from './workMode';
 import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withoutOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
@@ -330,6 +338,7 @@ import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
+  type PlanApproval,
   planInForce,
   proposeTaskPlan,
   renderPlan,
@@ -3622,6 +3631,72 @@ export function planProposedResult(
         instead: noApprovalNeeded(unreachable.invitees, unreachable.toWake ?? []),
       }
     : base;
+}
+
+/**
+ * What follows an approval — the owner's (approve_task_plan) or a free-mode goal's
+ * standing yes (Misho, 8 Nov): mark the run, start day one once, and tell the run
+ * what is true.
+ */
+async function startApprovedPlan(
+  taskId: number,
+  approval: PlanApproval,
+  runId: string | undefined,
+): Promise<Record<string, unknown>> {
+  if (runId) runPlanApprovedInRun.add(runId);
+  // Dynamic import — the engine imports this module, so a static one would
+  // be a cycle. One import, both things taken from it.
+  const engine = await import('./taskEngine.service');
+  const said = approvalResult(approval, new Date(), engine.DAY_ONE_WINDOW_MS);
+  if (!approval.alreadyInForce) {
+    // Behind the reply (Ticket 12 Tasks 2 and 5): the user hears „I am on
+    // it" first, the asks go out after. ONCE per approval: a plan already
+    // in force had its day one started by the approval that put it there.
+    engine.startDayOne(taskId);
+  }
+  /**
+   * Row 209 — the run that merely FINDS the plan approved is walled too.
+   *
+   * Day one is the only path that writes to the plan's people from here,
+   * and the guard holding that line keys off this run having approved.
+   * Goal 5580 is why: the second run's approval failed, so it was never
+   * marked, so ask_contact let it through and two people were written to
+   * twice while day one wrote to them again. Whether this run performed
+   * the approval or found it already done, those people are day one's.
+   *
+   * Only while day one is actually still coming — see approvalResult.
+   */
+  if (said.dayOneStillComing) noteApprovedAPlan(runId);
+  return {
+    approved: true,
+    version: approval.version,
+    summary: approval.summary,
+    already_approved: approval.alreadyInForce,
+    note: said.note,
+  };
+}
+
+/**
+ * Misho, 8 Nov: a goal in free mode carries the owner's standing yes, so a plan
+ * the run proposes is approved and started at once; a plan goal is untouched.
+ */
+async function approvedByFreeMode(
+  userId: string,
+  taskId: number,
+  runId: string | undefined,
+  proposed: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  if ((await goalWorkMode(taskId)) !== WorkMode.Free) return proposed;
+  // The yes here is the standing one the owner gave with set_work_mode, in his own turn.
+  const outcome = await approveTaskPlan(userId, taskId, 'free_mode', runLang(runId));
+  if (!outcome.ok) return proposed;
+  const started = await startApprovedPlan(taskId, outcome.value, runId);
+  return {
+    ...proposed,
+    approved: true,
+    free_mode: FREE_MODE_APPROVED_NOTE,
+    approval_note: started['note'],
+  };
 }
 
 /**
@@ -10702,6 +10777,12 @@ async function executeToolCall(
       if (set && !discuss && runId !== undefined) runInDiscussion.delete(runId);
       return { set, discuss };
     }
+    case 'set_work_mode': {
+      const mode = workModeFrom(input['mode']);
+      if (mode === null) return { set: false, error: 'Pass mode: "plan" or "free".' };
+      const set = await setGoalWorkMode(userId, Number(input['task_id']), mode);
+      return set ? { set, mode } : { set, error: 'No open goal of this owner with that id.' };
+    }
     case 'get_upcoming_birthdays':
       return { birthdays: await upcomingBirthdays(userId, input['days']) };
     case 'get_contact_count':
@@ -12276,9 +12357,13 @@ async function executeToolCall(
         unreachable,
       );
       // Row 279: the plan the model is handed is the one it shows, once.
-      return plainPlan !== null && !planIsOnScreen
-        ? { ...result, show_plan: planInYourReplyNote(runLang(runId)) }
-        : result;
+      const proposedResult =
+        plainPlan !== null && !planIsOnScreen
+          ? { ...result, show_plan: planInYourReplyNote(runLang(runId)) }
+          : result;
+      return unreachable.nobodyReachable
+        ? proposedResult
+        : approvedByFreeMode(userId, taskId, runId, proposedResult);
     }
     case 'approve_task_plan': {
       // Server-side gate, the same shape as send_answer_to_asker: without the
@@ -12312,37 +12397,7 @@ async function executeToolCall(
       );
       if (!outcome.ok) return { approved: false, error: outcome.error };
       await recordDelegation(userId, Number(input['task_id']), input['delegated']);
-      if (runId) runPlanApprovedInRun.add(runId);
-      // Dynamic import — the engine imports this module, so a static one would
-      // be a cycle. One import, both things taken from it.
-      const engine = await import('./taskEngine.service');
-      const said = approvalResult(outcome.value, new Date(), engine.DAY_ONE_WINDOW_MS);
-      if (!outcome.value.alreadyInForce) {
-        // Behind the reply (Ticket 12 Tasks 2 and 5): the user hears „I am on
-        // it" first, the asks go out after. ONCE per approval: a plan already
-        // in force had its day one started by the approval that put it there.
-        engine.startDayOne(Number(input['task_id']));
-      }
-      /**
-       * Row 209 — the run that merely FINDS the plan approved is walled too.
-       *
-       * Day one is the only path that writes to the plan's people from here,
-       * and the guard holding that line keys off this run having approved.
-       * Goal 5580 is why: the second run's approval failed, so it was never
-       * marked, so ask_contact let it through and two people were written to
-       * twice while day one wrote to them again. Whether this run performed
-       * the approval or found it already done, those people are day one's.
-       *
-       * Only while day one is actually still coming — see approvalResult.
-       */
-      if (said.dayOneStillComing) noteApprovedAPlan(runId);
-      return {
-        approved: true,
-        version: outcome.value.version,
-        summary: outcome.value.summary,
-        already_approved: outcome.value.alreadyInForce,
-        note: said.note,
-      };
+      return startApprovedPlan(Number(input['task_id']), outcome.value, runId);
     }
     case 'save_user_note': {
       const kind = input['kind'] as string;
@@ -17028,6 +17083,8 @@ export async function buildToolsForThread(
 export const OWNER_CONSENT_TOOL_NAMES: ReadonlySet<string> = new Set([
   'approve_task_plan',
   'grant_task_permission',
+  // Free mode is a standing yes: only the owner, in his own turn, gives it.
+  SET_WORK_MODE_TOOL_NAME,
 ]);
 
 /**
@@ -17100,6 +17157,8 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   GET_UPCOMING_BIRTHDAYS_TOOL,
   // #8779 group 4: the discuss-first mode is the model's reading (discussFirst.ts).
   SET_DISCUSSION_TOOL,
+  // Misho, 8 Nov: plan or free — the owner's choice, read by the model (workMode.ts).
+  SET_WORK_MODE_TOOL,
   CREATE_TASK_TOOL,
   GET_MY_TASKS_TOOL,
   UPDATE_TASK_TOOL,

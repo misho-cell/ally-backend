@@ -228,6 +228,7 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
                 CASE
                   WHEN t.plan_approved_via = 'admin' THEN 'ადმინიდან (' ||
                        COALESCE(t.plan_approved_by, 'უცნობი') || ')'
+                  WHEN t.plan_approved_via = 'free_mode' THEN 'თავისუფალი რეჟიმით'
                   WHEN t.plan_approved_by IS NOT NULL THEN 'მფლობელმა'
                   ELSE 'ვინ — არ არის ჩაწერილი'
                 END,

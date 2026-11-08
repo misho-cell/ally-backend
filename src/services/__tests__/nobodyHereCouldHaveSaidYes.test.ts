@@ -111,10 +111,12 @@ describe('the list is as wide as the thing it guards', () => {
     expect(missing).toEqual([]);
   });
 
-  it('is exactly those two today, so a silent widening is visible too', () => {
+  it('is exactly those three today, so a silent widening is visible too', () => {
     expect([...OWNER_CONSENT_TOOL_NAMES].sort()).toEqual([
       'approve_task_plan',
       'grant_task_permission',
+      // Misho, 8 Nov: free mode is the owner's standing yes on a goal.
+      'set_work_mode',
     ]);
   });
 });
