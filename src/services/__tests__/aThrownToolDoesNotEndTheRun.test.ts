@@ -52,7 +52,7 @@ describe('a tool that throws', () => {
 
   it('is the wire the turn actually uses', () => {
     expect(CHAT).toContain(
-      ': runOneToolBlockOrSayWhy(userId, threadId, runId, block, ownerAbsent),',
+      ': runOneToolBlockOrSayWhy(userId, threadId, runId, block, ownerAbsent);',
     );
   });
 

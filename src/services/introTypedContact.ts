@@ -11,7 +11,8 @@ import { RunLanguage } from './runLanguage';
  * found in the go-between's phonebook; what they typed was masked or dropped.
  * D587 / #6360 already hands over a number a helper typed with their own hand on
  * an ask — the introduction now follows the same rule. A member target is still
- * asked first (#8945): this is read only when no phonebook number exists.
+ * asked first (#8945). For a target off Netai it wins over a phonebook number
+ * (tester's report 8 Nov, C5: the go-between's new number was lost to the old one).
  */
 export enum TypedContactKind {
   Phone = 'phone',

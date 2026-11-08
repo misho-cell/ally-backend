@@ -45,12 +45,14 @@ describe('the contact a go-between typed', () => {
     expect(typedContactMediatorLine('ka', 'გიორგი', 'ნინო')).toContain('კონტაქტი, რომელიც დაწერე');
   });
 
-  it('is read only when no phonebook number exists, after the member target is asked (#8945)', () => {
+  /** Tester's report 8 Nov, C5: the typed contact wins over a phonebook number, read from the card thread. */
+  it('wins over a phonebook number for an off-Netai target, after the member target is asked (#8945)', () => {
     const src = readFileSync(join(__dirname, '..', 'introduction.service.ts'), 'utf8');
     const askFirst = src.indexOf('if (asked) return awaitingTheTarget(');
     const typed = src.indexOf('const typed = typedContactIn(');
     expect(askFirst).toBeGreaterThan(-1);
     expect(typed).toBeGreaterThan(askFirst);
-    expect(src.slice(typed - 200, typed)).toContain('if (targetPhone === null) {');
+    expect(src.slice(typed - 300, typed)).toContain('if (!targetWasTold) {');
+    expect(src.slice(typed, typed + 80)).toContain('goBetweensLinesSinceAsked(req)');
   });
 });

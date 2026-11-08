@@ -38,7 +38,7 @@ import {
 } from './requestThreadSide';
 import { askThreadStatusAfterRequest } from './sharedRequestThread.service';
 import { scrubText } from './privacyScrub';
-import { mediatorsLinesSinceAsked } from './introResponse';
+import { goBetweensLinesSinceAsked } from './introResponse';
 import { typedContactIn, typedContactLine, typedContactMediatorLine } from './introTypedContact';
 import { readTargetAnswer } from './targetAnswerReader';
 import { netaiMember } from './netaiMembership';
@@ -948,10 +948,10 @@ export async function deliverAcceptOutcome(
 
   const targetWasTold = targetUserId !== null;
   if (!targetWasTold) await learnGeorgianSpellings([mediatorName, req.target_name]);
-  if (targetPhone === null) {
-    const typed = typedContactIn(
-      await mediatorsLinesSinceAsked(req.mediator_thread_id, req.created_at),
-    );
+  // Tester's report 8 Nov, C5: what the go-between typed is the contact they gave
+  // now, so it wins over a number found in anybody's phonebook.
+  if (!targetWasTold) {
+    const typed = typedContactIn(await goBetweensLinesSinceAsked(req));
     if (typed !== null) {
       return {
         replacesOutcomeLine: true,
@@ -1516,7 +1516,7 @@ async function wakeRequestersGoal(
   if (req.requester_task_id === null) return;
   try {
     const mediatorName = await answeringMediatorName(req);
-    const ownLines = await mediatorsLinesSinceAsked(req.mediator_thread_id, req.created_at);
+    const ownLines = await goBetweensLinesSinceAsked(req);
     const answer = ownLines ?? response?.trim() ?? '';
     const [{ startIntroOutcome }, { introOutcomeEvent }] = await Promise.all([
       import('./taskEngine.service'),
