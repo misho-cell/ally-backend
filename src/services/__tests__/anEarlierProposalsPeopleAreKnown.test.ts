@@ -28,7 +28,7 @@ describe('the people of an earlier proposal are already known', () => {
   it('is what propose_task_plan checks new people against', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toMatch(
-      /input\['plan'\],\s+plansPeopleSoFar\(planTask\),\s+runWayInPhones\.get\(runId\),/,
+      /input\['plan'\],\s+plansPeopleSoFar\(planTask\),\s+withEarlierWays\(runWayInPhones\.get\(runId\), await waysFoundBefore\(threadId\)\),/,
     );
   });
 });

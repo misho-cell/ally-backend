@@ -68,6 +68,7 @@ import {
 } from './discussFirst';
 import { SET_DISCUSSION_TOOL } from './tools/setDiscussion';
 import { SET_WORK_MODE_TOOL, SET_WORK_MODE_TOOL_NAME } from './tools/setWorkMode';
+import { rememberWaysFound, waysFoundBefore, withEarlierWays } from './waysFound';
 import {
   FREE_MODE_APPROVED_NOTE,
   WorkMode,
@@ -12242,7 +12243,7 @@ async function executeToolCall(
               Number.isFinite(taskId) ? taskId : undefined,
               input['plan'],
               plansPeopleSoFar(planTask),
-              runWayInPhones.get(runId),
+              withEarlierWays(runWayInPhones.get(runId), await waysFoundBefore(threadId)),
             );
       if (unfound.length > 0) {
         return { proposed: false, reason: 'not_found_by_search', error: planNamesUnfound(unfound) };
@@ -13170,7 +13171,12 @@ async function runOneToolBlock(
   // 1690 (A7): the numbers a search showed, for the one confirm question after the reply.
   if (SEARCH_TOOLS.has(block.name)) noteSearchedPhones(runId, phonesIn(labelled));
   // #5446 (65719): every way in this run found — rows, their bridges, warm-path bridges.
-  if (WAY_IN_TOOLS.has(block.name)) noteWayInPhones(runId, wayInPhonesIn(labelled));
+  if (WAY_IN_TOOLS.has(block.name)) {
+    const ways = wayInPhonesIn(labelled);
+    noteWayInPhones(runId, ways);
+    // Misho's yes, 8 Nov: kept for this conversation, so a later run of the goal counts them.
+    if (threadId !== undefined) void rememberWaysFound(threadId, ways);
+  }
   noteRouteClosed(runId, block.name, rawResult);
   noteAskRefused(runId, block.name, rawResult);
   // 3169: the names it found, as saved, so the reply cannot respell them.
