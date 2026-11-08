@@ -118,6 +118,8 @@ export function isDisplayableTag(tag: string): boolean {
  * friends had saved Giga as „TBC credit risk", „Bank of Georgia since 2025"
  * and „left TBC now at BoG"; „where does Giga work now?" got „nothing on his
  * record" 0 of 4. Each label goes with how many saved it, never with who.
+ * Tester's report 8 Nov (Misho's yes): the run may use them to answer and to
+ * choose, and never tells the owner how other people saved anyone.
  */
 export function ownLabelsOnly(
   rows: ReadonlyArray<TagSummary & { own: boolean }>,

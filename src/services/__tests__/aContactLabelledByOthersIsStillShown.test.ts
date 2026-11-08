@@ -52,10 +52,13 @@ describe('a contact found only through other people’s labels', () => {
     expect(out.results[0]).toEqual(own(1));
   });
 
-  it('is named as the owner saved them, with what others have them as', () => {
+  /** Tester's report 8 Nov (Misho's yes): other people's labels find people and are never said. */
+  it('is named as the owner saved them, never with how others saved them', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('by `saved_as` exactly as the owner saved them');
-    expect(chat).toContain('say that other people have them saved as `others_saved_as`');
+    expect(chat).toContain('Never tell the owner how other people saved anyone');
+    expect(chat).not.toContain('say that other people have them saved as `others_saved_as`');
+    expect(chat).not.toContain('სხვებს იურისტად ჰყავთ ჩაწერილი');
     expect(chat).toContain('Never drop them');
   });
 });
