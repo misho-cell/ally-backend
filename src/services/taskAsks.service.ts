@@ -2810,7 +2810,7 @@ export async function recordAskAnswer(
     [row.id],
     ASK_QUERY_TIMEOUT_MS,
   );
-  // 1692 part 2: a first, real answer arms the owner's „how did it go?" (held until AV).
+  // 1692 part 2: a first, real answer arms the owner's „how did it go?" (two days later).
   const who = check.rows[0]?.from_name?.trim() ?? '';
   if (firstAnswer && !declined && who !== '') {
     void armAnswerDebrief(String(row.from_user_id), row.id, row.task_id, who).catch(

@@ -30,7 +30,7 @@ describe('the answer debrief', () => {
 
   it('carries exactly AV’s text', () => {
     expect(answerDebriefInstruction('ზურაბი', 17000)).toBe(
-      'ზურაბი answered your question 3 days ago. Ask the owner in one line how it worked out. If it ' +
+      'ზურაბი answered your question 2 days ago. Ask the owner in one line how it worked out. If it ' +
         'helped, record record_debrief_outcome (subject="relayed_ask", ref_id=17000, worked=true); if not, ' +
         'worked=false; if it is too early, not_yet=true.',
     );
