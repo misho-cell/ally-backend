@@ -955,8 +955,16 @@ async function sweepUnwokenAnswers(): Promise<void> {
  */
 const DEFAULT_NEXT_WAKE_HOURS = 24;
 
+/**
+ * Tornike's 8 Nov report, #10: wakes with nothing new posted „nothing has
+ * changed, so I'm not writing" to Lika. A run the server started ends quietly
+ * on an empty reply; the wake now says so, so nothing new is said by saying
+ * nothing.
+ */
 const SCHEDULED_WAKE_TEXT =
-  'დაგეგმილი შემოწმების დროა — გადახედე დავალებას და გადადგი შემდეგი ნაბიჯი.';
+  'დაგეგმილი შემოწმების დროა — გადახედე დავალებას და გადადგი შემდეგი ნაბიჯი. ' +
+  'თუ მფლობელისთვის ახალი არაფერია, პასუხი ცარიელი დატოვე — ის არაფერს დაინახავს; ' +
+  'არასდროს დაწერო, რომ არაფერს წერ.';
 
 /**
  * The tester's 983 and board #391: at a scheduled wake the server sends the
