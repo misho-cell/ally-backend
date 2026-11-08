@@ -54,15 +54,32 @@ export function incomingRequestTitle(
  * speaks — it tells the helper who reached it and asks for their answer, with
  * the names in Georgian script.
  */
-function georgianIntroductionAsk(requesterName: string, targetName: string): string {
+function georgianIntroductionAsk(
+  requesterName: string,
+  targetName: string,
+  knowsTarget: boolean,
+): string {
   const requester = georgianScriptName(requesterName);
   const first = georgianFirstName(requesterName);
   const target = georgianScriptName(targetName);
   return (
     `დამიკავშირდა ${geoName(requester, 'gen')} ასისტენტი, ${geoName(first, 'dat')} აინტერესებს, ` +
-    `იცნობ თუ არა ${geoName(target, 'dat')} და შეძლებ თუ არა დააკავშირო. ` +
-    'მითხარი შენი პოზიცია და მე გადავცემ.'
+    `${canYouConnect(target, knowsTarget)}. მითხარი შენი პოზიცია და მე გადავცემ.`
   );
+}
+
+/**
+ * Tester's report 8 Nov (Giorgi's point 18, C4 and C5): Irakli and Nana were
+ * asked „do you know Zura / Gigi?" about a person saved in their own phonebook.
+ * When the go-between is known to have the target saved, they are asked only
+ * whether they will connect them; „do you know" stays for an unconfirmed tie.
+ */
+function canYouConnect(target: string, knowsTarget: boolean, bold = false): string {
+  const mark = bold ? '**' : '';
+  const dat = `${mark}${geoName(target, 'dat')}${mark}`;
+  return knowsTarget
+    ? `შეძლებ თუ არა დააკავშირო ${mark}${geoName(target, 'gen')}თან${mark}, რომელიც შენს კონტაქტებშია`
+    : `იცნობ თუ არა ${dat} და შეძლებ თუ არა დააკავშირო`;
 }
 
 /**
@@ -78,6 +95,7 @@ export function incomingRequestOpening(
   targetName: string,
   message: string | null,
   direct: boolean,
+  knowsTarget = false,
 ): string {
   /**
    * The tester's 39469 (#1453's path, 5 Oct): the request said „<asker> asks
@@ -116,7 +134,7 @@ export function incomingRequestOpening(
         ? `გამარჯობა! **${geoName(requesterName, 'gen')} ასისტენტი** გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა.` +
             about('რაზეა საქმე:') +
             `\n\nდათანხმდები?`
-        : georgianIntroductionAsk(requesterName, targetName) + about('რაზეა საქმე:');
+        : georgianIntroductionAsk(requesterName, targetName, knowsTarget) + about('რაზეა საქმე:');
   }
 }
 
@@ -132,6 +150,7 @@ export function forwardedRequestOpening(
   requesterName: string,
   targetName: string,
   message: string | null,
+  knowsTarget = false,
 ): string {
   const about = (label: string): string => (message ? `\n\n${label} ${message}` : '');
   switch (language) {
@@ -160,7 +179,7 @@ export function forwardedRequestOpening(
       return (
         // #6634 / D590 (Giorgi, Misho's yes): the approved helper text, first person, no „…-ის სახელით".
         `დამიკავშირდა **${geoName(forwarderName, 'gen')} ასისტენტი**, ${geoName(requesterName, 'dat')} ` +
-        `აინტერესებს, იცნობ თუ არა **${geoName(targetName, 'dat')}** და შეძლებ თუ არა დააკავშირო.` +
+        `აინტერესებს, ${canYouConnect(targetName, knowsTarget, true)}.` +
         about('რაზეა საქმე:') +
         `\n\nდაეხმარები? 🤝`
       );
