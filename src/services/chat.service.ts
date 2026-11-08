@@ -6735,6 +6735,22 @@ function skippedTheMembersFound(
 
 /** #7327: chats where the reader answers someone else's request — a question or an introduction. */
 const GO_BETWEEN_MODES: ReadonlySet<string> = new Set(['incoming_ask', 'request_thread']);
+
+/**
+ * Tornike's 8 Nov report, #6: a helper answering one question was told which of
+ * his closest people hold the person close, by name. The colours and the
+ * bubble serve the owner's own search for a way in; a run that only answers
+ * someone else's question needs neither, so its results go without them.
+ */
+async function coloursForThisRun(
+  userId: string,
+  toolName: string,
+  executed: unknown,
+  runId: string | undefined,
+): Promise<unknown> {
+  if (runId !== undefined && runModes.get(runId) === 'incoming_ask') return executed;
+  return withOldAllyColours(userId, toolName, executed);
+}
 /** #8949: an answer in one go-between chat never settles another chat's request. */
 const NOT_THIS_CHATS_REQUEST_NOTE =
   'Not recorded: that introduction request belongs to another conversation, not this one. ' +
@@ -13141,7 +13157,7 @@ async function runOneToolBlock(
   } finally {
     leaveGate();
   }
-  const rawResult = await withOldAllyColours(userId, block.name, executed);
+  const rawResult = await coloursForThisRun(userId, block.name, executed, runId);
   // See runEmptySearches. An empty search result is handed back the list of
   // what this run has already asked for and not found, because without it each
   // attempt arrives with no memory of the last one.
