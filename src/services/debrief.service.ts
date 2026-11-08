@@ -19,6 +19,11 @@ const DEBRIEF_QUERY_TIMEOUT_MS = 8_000;
 // subject that moved on by itself is consumed silently, never asked about.
 export const DEBRIEF_KIND = 'debrief';
 const DEBRIEF_DELAY_DAYS = Number(process.env.DEBRIEF_DELAY_DAYS ?? 3);
+/**
+ * Tester's report 8 Nov (Giorgi's point 6; Misho's yes, 8 Nov): „did it work?" after a
+ * helper's answer came three days later — too late; a day is often too early.
+ */
+export const ANSWER_DEBRIEF_DELAY_DAYS = Number(process.env.ANSWER_DEBRIEF_DELAY_DAYS ?? 2);
 
 type DebriefArmKind = 'intro_request' | 'task_ask' | 'search' | 'answered_ask';
 
@@ -123,17 +128,15 @@ export async function armAskDebrief(
 /**
  * 1692 part 2 (A9): nothing asked the owner how an ANSWER worked out, so the
  * thank-you could only start when the owner said so unprompted. When a helper
- * answers, three days later the owner's assistant asks how it went.
- *
- * HELD (D44): the instruction is new model text — NIGHT_QUESTIONS AV. Until
- * Misho's yes nothing is armed.
+ * answers, two days later (8 Nov) the owner's assistant asks how it went.
+ * On since Misho's yes (§111.3, answerDebriefSwitch).
  */
 export { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
 
 /** NIGHT_QUESTIONS AV, the exact text proposed. */
 export function answerDebriefInstruction(who: string, askId: number): string {
   return (
-    `${who} answered your question ${DEBRIEF_DELAY_DAYS} days ago. Ask the owner in one line how it ` +
+    `${who} answered your question ${ANSWER_DEBRIEF_DELAY_DAYS} days ago. Ask the owner in one line how it ` +
     'worked out. If it helped, record record_debrief_outcome (subject="relayed_ask", ' +
     `ref_id=${askId}, worked=true); if not, worked=false; if it is too early, not_yet=true.`
   );
@@ -155,11 +158,11 @@ export async function armAnswerDebrief(
       about: 'answered_ask',
       ask_id: askId,
       who,
-      why: `${who} answered ${DEBRIEF_DELAY_DAYS} days ago and nobody has said how it went`,
+      why: `${who} answered ${ANSWER_DEBRIEF_DELAY_DAYS} days ago and nobody has said how it went`,
       technique_tag: null,
       instruction: answerDebriefInstruction(who, askId),
     },
-    DEBRIEF_DELAY_DAYS,
+    ANSWER_DEBRIEF_DELAY_DAYS,
   );
 }
 
