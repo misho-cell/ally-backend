@@ -1,4 +1,5 @@
 import { notePlanAskSent } from './planAdvance.service';
+import { FREE_MODE_DAY_IS_FULL, WorkMode, freeModeRoomFor, goalWorkMode } from './workMode';
 import { namedOnAnAskStep } from './planAdvance.service';
 import { netaiMember } from './netaiMembership';
 import {
@@ -326,7 +327,9 @@ export type AskRefusalReason =
    * to retell — the tester's 42120: „they're not someone to ask on this
    * topic, I already tried and they passed", about a question she never saw.
    */
-  | 'not_sent_this_time';
+  | 'not_sent_this_time'
+  /** Misho, 8 Nov: a free-mode goal wrote to its FREE_MODE_PEOPLE_PER_DAY new people today. */
+  | 'free_mode_day_full';
 
 /** 3268: what the run is told when the owner marked the person deceased or blocked them. */
 const RECIPIENT_EXCLUDED =
@@ -1276,6 +1279,12 @@ export async function createAsk(
   return oneAtATimeFor(args[2], () => createAskNow(...args));
 }
 
+/** True when a free-mode goal has no room today for this new person; a plan goal always has. */
+async function freeModeDayIsFull(taskId: number, toUserId: number): Promise<boolean> {
+  if ((await goalWorkMode(taskId)) !== WorkMode.Free) return false;
+  return !(await freeModeRoomFor(taskId, toUserId));
+}
+
 /** The plan wall's D316 exception: the owner's own instruction names this person. */
 async function ownerNamedThemOutsidePlan(
   threadId: number | undefined,
@@ -1800,6 +1809,16 @@ async function createAskNow(
 
   if (String(toUserId) === fromUserId) {
     return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
+  }
+
+  if (
+    parentAskId === undefined &&
+    fromOwnersLine !== true &&
+    (await freeModeDayIsFull(taskId, toUserId))
+  ) {
+    // eslint-disable-next-line no-console
+    console.log(`[ask] task ${taskId}: refused — free mode wrote to its day's people already`);
+    return { sent: false, reason: 'free_mode_day_full', error: FREE_MODE_DAY_IS_FULL };
   }
 
   // 4093: somebody who just said no to this asker gets nothing more from the

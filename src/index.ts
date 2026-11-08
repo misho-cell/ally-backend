@@ -51,6 +51,7 @@ import { startRunReaper } from './services/runReaper.service';
 import { startCutOffRunResume } from './services/cutOffRunResume.service';
 import { startHeldPushRelease } from './services/heldPushRelease.cron';
 import { startEveningCards } from './services/eveningCard.cron';
+import { startFreeReports } from './services/freeModeReport.cron';
 import { startOwnerReminders } from './services/ownerReminders.cron';
 import { startAnswerStats } from './services/answerStats.cron';
 import { startNeedsOffersMatcher } from './services/needsOffers.cron';
@@ -223,6 +224,8 @@ runMigrations()
     startHeldPushRelease();
     // #1850: the evening card — the day's other questions, once, at 19:00 local.
     startEveningCards();
+    // Misho, 8 Nov: a free-mode goal tells its owner once each evening whom it wrote to.
+    startFreeReports();
     // #502: the owner's own reminders, written into their conversation on time.
     startOwnerReminders();
     startAnswerStats();

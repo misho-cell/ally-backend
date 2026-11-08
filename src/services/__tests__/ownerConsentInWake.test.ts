@@ -78,12 +78,14 @@ describe('the tool list a wake run holds', () => {
     expect(toolsForRun(FULL, false).map((t) => t.name)).toContain('approve_task_plan');
   });
 
-  it('names exactly the two tools that record the owner speaking', () => {
+  it('names exactly the three tools that record the owner speaking', () => {
     // A closed set, written down: the next tool that records consent has to be
     // added here deliberately rather than inherited by accident.
     expect([...OWNER_CONSENT_TOOL_NAMES].sort()).toEqual([
       'approve_task_plan',
       'grant_task_permission',
+      // Misho, 8 Nov: free mode is the owner's standing yes on a goal.
+      'set_work_mode',
     ]);
   });
 });

@@ -696,7 +696,8 @@ async function withReachability(
  * may write to, and the yes on the plan is the yes on those people; a person
  * the plan does not name is refused by the ask path whatever this flag says.
  */
-export type ApprovalRoute = 'chat' | 'admin';
+/** 'free_mode': the goal's standing yes approved a plan the run proposed (Misho, 8 Nov). */
+export type ApprovalRoute = 'chat' | 'admin' | 'free_mode';
 
 /**
  * What an approval did, as opposed to what it found.

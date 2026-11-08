@@ -24,6 +24,8 @@ import * as path from 'path';
 // neither set fails the build — this still catches the exact
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
+  set_work_mode:
+    'Misho, 8 Nov: free mode is a standing yes, given only by the owner in his own in-app turn',
   set_discussion:
     '#8779 group 4 (5 Nov): the in-app discuss-first mode of one conversation, read in words',
   postpone_answer:
