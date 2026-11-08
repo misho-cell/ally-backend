@@ -1,4 +1,5 @@
 import { geoName } from './georgianCase';
+import { georgianScriptName } from './georgianScriptName';
 import { withoutLinks } from './answerFacts';
 
 // Ticket 6, task 22 (g)/(h): the run's FIXED strings — step lines, the
@@ -815,6 +816,13 @@ const NAMED_FIELDS: Readonly<Record<string, readonly [string, string?]>> = {
   search_by_insight: ['search_query'],
 };
 
+/** The tools whose caption names people, not search words. */
+const PERSON_NAMED_TOOLS: ReadonlySet<string> = new Set([
+  'request_introduction',
+  'relay_ask',
+  'ask_contact',
+]);
+
 export function namedStepCaption(
   tool: string,
   input: Readonly<Record<string, unknown>>,
@@ -826,7 +834,13 @@ export function namedStepCaption(
   const first = captionPart(input[fields[0]]);
   if (first === null) return null;
   const second = fields[1] === undefined ? null : captionPart(input[fields[1]]);
-  return build(first, second);
+  // Tester's report 8 Nov: „✉️ Gela Melia-ის ასისტენტს ვწერ…" — a person's name in Georgian
+  // text is shown in Georgian letters. Search words are shown as typed.
+  const named = lang === 'ka' && PERSON_NAMED_TOOLS.has(tool);
+  return build(
+    named ? georgianScriptName(first) : first,
+    named && second !== null ? georgianScriptName(second) : second,
+  );
 }
 
 /**

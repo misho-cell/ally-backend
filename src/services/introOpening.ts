@@ -178,8 +178,10 @@ export function forwardedRequestOpening(
     default:
       return (
         // #6634 / D590 (Giorgi, Misho's yes): the approved helper text, first person, no „…-ის სახელით".
-        `დამიკავშირდა **${geoName(forwarderName, 'gen')} ასისტენტი**, ${geoName(requesterName, 'dat')} ` +
-        `აინტერესებს, ${canYouConnect(targetName, knowsTarget, true)}.` +
+        // Tester's report 8 Nov: names in Georgian letters, as in the first-hand card.
+        `დამიკავშირდა **${geoName(georgianScriptName(forwarderName), 'gen')} ასისტენტი**, ` +
+        `${geoName(georgianScriptName(requesterName), 'dat')} აინტერესებს, ` +
+        `${canYouConnect(georgianScriptName(targetName), knowsTarget, true)}.` +
         about('რაზეა საქმე:') +
         `\n\nდაეხმარები? 🤝`
       );
@@ -193,8 +195,9 @@ export function forwardedRequestPush(
   targetName: string,
 ): string {
   return (
-    `დამიკავშირდა ${geoName(forwarderName, 'gen')} ასისტენტი, ${geoName(requesterName, 'dat')} ` +
-    `აინტერესებს, იცნობ თუ არა ${geoName(targetName, 'dat')} და შეძლებ თუ არა დააკავშირო. გახსენი Netai.`
+    `დამიკავშირდა ${geoName(georgianScriptName(forwarderName), 'gen')} ასისტენტი, ` +
+    `${geoName(georgianScriptName(requesterName), 'dat')} აინტერესებს, იცნობ თუ არა ` +
+    `${geoName(georgianScriptName(targetName), 'dat')} და შეძლებ თუ არა დააკავშირო. გახსენი Netai.`
   );
 }
 
