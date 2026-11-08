@@ -1369,6 +1369,8 @@ function wakeWhenFree(
    * the callers that keep no record pass nothing and behave as before.
    */
   onGaveUp?: () => Promise<void>,
+  /** #7234: who caused it; an owner-caused wake is not held for the morning. */
+  origin: WakeOrigin = WakeOrigin.Netai,
 ): void {
   if (attempt === 1) {
     void ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
@@ -1391,7 +1393,7 @@ function wakeWhenFree(
           return;
         }
         const text = typeof eventText === 'function' ? await eventText() : eventText;
-        const woken = await wakeTask(taskId, text);
+        const woken = await wakeTask(taskId, text, undefined, origin);
         if (woken === 'woken') {
           // eslint-disable-next-line no-console
           console.log(`[task-engine] task ${taskId}: woken (attempt ${attempt})`);
@@ -1423,6 +1425,7 @@ function wakeWhenFree(
             WAKE_RETRY_DELAY_MS,
             attempt + 1,
             onGaveUp,
+            origin,
           );
         } else {
           // eslint-disable-next-line no-console
@@ -1525,6 +1528,14 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
     delayMs,
     1,
     () => finishWake(taskId, DAY_ONE_WAKE),
+    /**
+     * Tornike's 8 Nov report, #1: day one follows the owner's own yes, so it is
+     * his wake, not Netai's. Held as Netai's in the quiet hours, a 07:20 yes
+     * waited for a morning tick that sat behind the whole wake queue, and the
+     * people he approved were never written to. Recipients keep their own
+     * quiet hours: their pushes still wait for 09:30.
+     */
+    WakeOrigin.Owner,
   );
 }
 
