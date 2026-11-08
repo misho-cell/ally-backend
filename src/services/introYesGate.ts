@@ -9,7 +9,10 @@ import { ownerNamedAGoBetween } from './severalRoutes';
  * at once — the owner had named Ana to be ASKED, never anybody to be met.
  *
  * An introduction is the owner's yes to meeting a person, so it goes only when:
- *  - the owner named the person to be met (target) in this conversation, or
+ *  - the owner named the person to be met (target) AND the go-between — either
+ *    in his own lines or in the reply he was answering (tester's report 8 Nov,
+ *    C4: „I want to meet Zura" sent the request through Irakli, a go-between
+ *    the owner had never heard of), or
  *  - an approved plan carries this very introduction (its route names the
  *    target), or
  *  - an approved plan asks this go-between (the owner's delegation, Misho
@@ -29,6 +32,8 @@ export interface IntroGateFacts {
   readonly ownerSpokeSinceTheAnswer: boolean;
   /** The owner's own lines in this conversation lately, oldest first. */
   readonly ownerLines: readonly string[];
+  /** The assistant's reply the owner's latest line answered ('' when none). */
+  readonly replyTheOwnerAnswered: string;
   readonly mediatorName: string;
   readonly targetName: string;
 }
@@ -49,7 +54,10 @@ function namedIn(lines: readonly string[], name: string): boolean {
 export function introductionMayGo(facts: IntroGateFacts): boolean {
   if (facts.passesARequestOn || facts.approvedPlanIntroducesThem) return true;
   if (facts.approvedPlanNamesTheGoBetween) return true;
-  if (namedIn(facts.ownerLines, facts.targetName)) return true;
+  const routeKnown =
+    namedIn(facts.ownerLines, facts.mediatorName) ||
+    namedIn([facts.replyTheOwnerAnswered], facts.mediatorName);
+  if (namedIn(facts.ownerLines, facts.targetName) && routeKnown) return true;
   return facts.ownerSpokeSinceTheAnswer && namedIn(facts.ownerLines, facts.mediatorName);
 }
 

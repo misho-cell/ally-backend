@@ -51,6 +51,31 @@ export async function ownersRecentLines(threadId: number): Promise<string[]> {
   }
 }
 
+/**
+ * Tester's report 8 Nov, C4: the reply the owner was answering — the latest
+ * assistant line before the owner's own latest line — so a „კი" counts as a
+ * yes to the route that reply showed. Empty when there is none or it is unreadable.
+ */
+export async function replyTheOwnerAnswered(threadId: number): Promise<string> {
+  try {
+    const result = await query<{ content: string | null }>(
+      `SELECT a.content FROM conversations a
+        WHERE a.thread_id = $1 AND a.role = 'assistant' AND a.kind = 'message'
+          AND a.created_at < (SELECT MAX(created_at) FROM conversations
+                               WHERE thread_id = $1 AND role = 'user' AND kind = 'message')
+        ORDER BY a.created_at DESC
+        LIMIT 1`,
+      [threadId],
+      OWN_LINES_TIMEOUT_MS,
+    );
+    return (result.rows[0]?.content ?? '').trim();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[intro] could not read the reply the owner answered:', (err as Error).message);
+    return '';
+  }
+}
+
 export async function mediatorsLinesSinceAsked(
   threadId: number | null,
   askedAt: Date | string | null,
