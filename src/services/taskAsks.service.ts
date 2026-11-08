@@ -2310,7 +2310,9 @@ async function createAskNow(
   const pickerNeed =
     ownerNamedHelper && searchedNeed !== undefined ? { need: searchedNeed.need } : searchedNeed;
   const askKind = kind ?? AskKind.Open;
-  const pickerAllowed = !sameThread && askKind !== AskKind.Intro;
+  // A notice asks nothing: no people to pick, no buttons (Tornike's 8 Nov report, #9).
+  const isNotice = askKind === AskKind.Notice;
+  const pickerAllowed = !sameThread && askKind !== AskKind.Intro && !isNotice;
   const questionNeed = needFromQuestion(safeQuestion);
   const picker = !pickerAllowed
     ? null
@@ -2322,7 +2324,7 @@ async function createAskNow(
   // helper's mouth („20 ლარი ღირს"). An open question's answer is the helper's to type: only
   // the server's own buttons go with it — her own people, or „later".
   const openQuestion = askKind === AskKind.Open;
-  const ownButtons = openQuestion ? undefined : authored;
+  const ownButtons = openQuestion || isNotice ? undefined : authored;
   const draftChoices =
     ownButtons === undefined
       ? choicesFromLabels(picker ? picker.choices : askChoicesFor(askKind, language))
@@ -5010,6 +5012,8 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
      WHERE id IN (
        SELECT id FROM task_asks
        WHERE status = 'sent' AND reminded_at IS NULL
+         -- Tornike's 8 Nov report, #9: a notice asked nothing, so nobody owes it an answer.
+         AND ask_kind IS DISTINCT FROM 'notice'
          -- 4093: no reminder to somebody who has just said no to this asker.
          AND NOT EXISTS (
            SELECT 1 FROM task_asks d

@@ -98,8 +98,9 @@ describe('the buttons under it', () => {
     }
   });
 
-  it('every kind keeps „later", last', () => {
-    for (const kind of Object.values(AskKind)) {
+  it('every kind that asks something keeps „later", last', () => {
+    // A notice asks nothing, so it has no buttons at all (Tornike's 8 Nov report, #9).
+    for (const kind of Object.values(AskKind).filter((k) => k !== AskKind.Notice)) {
       const choices = askChoicesFor(kind, 'ru');
       expect(choices[choices.length - 1]).toBe(laterChoice('ru'));
     }
@@ -107,6 +108,8 @@ describe('the buttons under it', () => {
 
   it('an introduction request carries no pick-list under it', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('const pickerAllowed = !sameThread && askKind !== AskKind.Intro;');
+    expect(asks).toContain(
+      'const pickerAllowed = !sameThread && askKind !== AskKind.Intro && !isNotice;',
+    );
   });
 });

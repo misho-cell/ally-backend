@@ -39,7 +39,9 @@ describe('the reader’s own people beside the model’s buttons', () => {
 
   it('is built whether or not the model wrote buttons, never under an introduction', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('const pickerAllowed = !sameThread && askKind !== AskKind.Intro;');
+    expect(asks).toContain(
+      'const pickerAllowed = !sameThread && askKind !== AskKind.Intro && !isNotice;',
+    );
     expect(asks).toContain(
       'ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))',
     );
