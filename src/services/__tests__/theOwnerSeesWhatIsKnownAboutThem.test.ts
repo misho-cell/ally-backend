@@ -42,6 +42,7 @@ describe('whatNetaiKnowsAboutMe', () => {
       my_profile: { profession: 'იურისტი' },
       what_others_see: [{ field_type: 'occupation', value: 'იურისტი' }],
       my_answers: [],
+      my_private_notes: [],
       names_others_saved_you_as: [],
       trades_others_know_you_for: [],
     });
@@ -49,6 +50,19 @@ describe('whatNetaiKnowsAboutMe', () => {
     expect(sql).toContain('is_public = true AND retracted_at IS NULL');
     expect(sql).not.toContain('submitted_by_user_id');
     expect(params).toEqual([['+995599000111'], 40]);
+  });
+
+  /** Tester's report 8 Nov, G10: what he told Netai only for itself is his, and shown. */
+  it('says back his private notes, newest first', async () => {
+    answer({
+      'FROM "User"': [{ name: 'გიორგი' }],
+      'FROM user_private_context': [{ key: 'სამიზნე_კლიენტები', value: 'B2B ლოჯისტიკა' }],
+    });
+    const me = await whatNetaiKnowsAboutMe('501');
+    expect(me.my_private_notes).toEqual([{ key: 'სამიზნე_კლიენტები', value: 'B2B ლოჯისტიკა' }]);
+    const [sql, params] = callFor('FROM user_private_context');
+    expect(sql).toContain('WHERE user_id = $1 ORDER BY updated_at DESC');
+    expect(params).toEqual(['501', 20]);
   });
 
   it('reads no facts when he has no number', async () => {
