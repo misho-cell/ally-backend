@@ -22,6 +22,12 @@ export enum AskKind {
   Open = 'open',
   /** „Are you free tomorrow?" — yes / no. */
   YesNo = 'yes_no',
+  /**
+   * Tornike's 8 Nov report, #9: a message that asks nothing — the owner tells
+   * them something (a thanks, news, that a request is off). No reply buttons,
+   * and never a „still waiting for your answer" reminder.
+   */
+  Notice = 'notice',
 }
 
 const ASK_KINDS: readonly string[] = Object.values(AskKind);
@@ -38,6 +44,7 @@ export const ASK_KIND_FIELD = {
     'What kind of question this is, for the reader’s reply buttons: intro (asks them to ' +
     'introduce the owner to someone — wherever in the message that is asked), know (whether ' +
     'they know a person or a lead), help (asks them to help with something), yes_no (a plain ' +
-    'yes/no question), open (who / what / when… — no fixed answer). Leave it out if unsure: ' +
-    'open fits any question.',
+    'yes/no question), open (who / what / when… — no fixed answer), notice (asks nothing: the ' +
+    'owner only tells them something — a thanks, news, that a request is off). Leave it out if ' +
+    'unsure: open fits any question.',
 } as const;

@@ -466,6 +466,8 @@ export function askChoicesFor(kind: AskKind, language: RunLanguage): readonly st
       return [PLAIN_YES, PLAIN_NO, LATER_CHOICE].map(pick);
     case AskKind.Open:
       return [pick(LATER_CHOICE)];
+    case AskKind.Notice:
+      return [];
     default:
       return [YES_CHOICE, DECLINE_CHOICE, KEEP_IN_MIND_CHOICE, LATER_CHOICE].map(pick);
   }
