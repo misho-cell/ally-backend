@@ -61,7 +61,9 @@ import { userLanguage } from './threads.service';
 import {
   getTaskById,
   goalHasActedOutward,
+  countDueTasks,
   getDueTasks,
+  leaseTaskWakes,
   getStaleOpenTasks,
   getGoalsUnansweredForADay,
   markQuestionDefaulted,
@@ -199,6 +201,19 @@ const MAX_NIGHTLY_REVIEWS = 10;
 // How many due tasks one tick advances — engine runs share the model budget
 // with live users and must trickle, not burst.
 const MAX_WAKES_PER_TICK = 2;
+/**
+ * Misho's yes, 8 Nov: about 3,500 wakes were due at two a minute, so a goal's
+ * scheduled check came days late. When more than BACKLOG_WAKES are due, a tick
+ * takes up to BACKLOG_WAKES_PER_TICK; when the backlog is gone, two again.
+ */
+const BACKLOG_WAKES = 100;
+const BACKLOG_WAKES_PER_TICK = 10;
+const WAKE_LEASE_MINUTES = 30;
+
+/** How many due goals this tick takes: two, or more while a backlog waits. */
+export function wakesThisTick(due: number): number {
+  return due > BACKLOG_WAKES ? BACKLOG_WAKES_PER_TICK : MAX_WAKES_PER_TICK;
+}
 const PUSH_PREVIEW_MAX_CHARS = 120;
 
 // A task advances one step at a time: never two concurrent runs on one task.
@@ -1139,7 +1154,11 @@ async function tick(): Promise<void> {
     // eslint-disable-next-line no-console
     console.error('[task-engine] plan-step silence sweep failed:', (err as Error).message),
   );
-  const due = await getDueTasks(MAX_WAKES_PER_TICK);
+  const due = await getDueTasks(wakesThisTick(await countDueTasks(BACKLOG_WAKES + 1)));
+  await leaseTaskWakes(
+    due.map((task) => task.id),
+    WAKE_LEASE_MINUTES,
+  );
   for (const task of due) {
     // Clear FIRST so a failing run doesn't hot-loop every tick; the model
     // re-schedules with set_task_wake when it still needs a revisit.
