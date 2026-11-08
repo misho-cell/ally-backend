@@ -2,6 +2,30 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 8 Nov, 12:25Z — the tester's 8 Nov report: 15 server fixes + the two modes + 6 prompt lines, all LIVE (Misho: „ახლავე ატვირთე და პრომპტის ხაზებიც ჩასვი")
+
+All shipped one at a time 09:35–12:15Z. Live = main c3d08c75. Railway's build driver failed twice at 10:01–10:09Z on 81c61cca (a Railway download error, not code); it went through on the third try. Please ask the tester to retest each DONE WHEN on a fresh conversation.
+
+1. **f0a71f5c (C4):** naming the person to meet is not a yes to a go-between nobody named. DONE WHEN: „I want to meet X", with no go-between named → no request goes to anyone until the owner says through whom.
+2. **7c027b68 (C5):** „ask Nana" is done as said, and a number Nana typed reaches the asker, ahead of a phonebook number. DONE WHEN: owner says „ask Nana" on an incoming request → it goes to Nana, not accepted; Nana types a number → the asker gets that number.
+3. **7f66bd84 (C6):** a number the server handed over is never called „made up". DONE WHEN: after a handover the run says the number came from Netai and is correct.
+4. **81c61cca (C6):** a no on the plan's last step → the run proposes the next way. DONE WHEN: last helper says no → a new plan is proposed in that turn, no silence.
+5. **23aa0610 (one yes):** an approved plan introduces a person a helper names unless the step says on_named: ask. DONE WHEN: approved plan, helper names someone → the introduction goes with no second „shall I?".
+6. **eafb133a (G10):** what the owner says about himself is saved; „what do you know about me" shows it. DONE WHEN: tell 2 facts, ask → both are listed.
+7. **de81bad4 (G28):** an owner with no contacts gets the upload link in the first reply. DONE WHEN: empty phonebook, any search → upload link offered once.
+8. **2d6b37fb (C6/C7):** a tag search that finds nothing retries with words of the same meaning (Georgian/English). DONE WHEN: contact saved „fish farm Turkey", search „კრევეტი" → found.
+9. **54939720 (C6):** a plan proposal is not forced into a „nothing was sent" rewrite. DONE WHEN: a proposed plan reply keeps its text.
+10. **cc55cbc5 (C2):** after an off-Netai contact is handed over, the run stops saying „still waiting". DONE WHEN: handover done → the next update says done, not waiting.
+11. **885d920c (Giorgi 18):** a go-between who has the person saved is asked „can you connect…", not „do you know…". DONE WHEN: card wording for a go-between whose phonebook has the target.
+12. **fcad9536 (C4):** the shared chat writes nothing in a person's name they never typed. DONE WHEN: the meeting chat opens with „X contacted you through Y" / „X agreed", no „**name:**" lines.
+13. **6ee5edfa:** a person's name in Georgian text is in Georgian letters (step captions, forwarded card, push). DONE WHEN: a Latin-registered name shows in Georgian letters in a Georgian thread.
+14. **cf5efa28:** the owner is never told how other people saved a contact. DONE WHEN: no „others saved him as…" in any reply.
+15. **50c6ce52 (Giorgi 6):** „did it work?" after a helper's answer comes after 2 days. DONE WHEN: debrief arrives ≥ 2 days after the answer.
+16. **32ce32b6 (Misho, two modes):** a goal is worked by „plan" (default, as before) or „free" (the owner's standing yes on the topic). In free mode the server approves the plans the run proposes, writes to at most 5 new people a day per goal, and sends one evening report at 20:00 Tbilisi (whom it wrote to, who answered). Only the owner, in his own turn, can switch it (set_work_mode). Migration 301 is in: all existing goals are plan. DONE WHEN: (a) new goal → offered the two ways once; (b) owner says „write to whoever is needed" → plans start without asking; (c) a 6th new person that day is refused and goes tomorrow; (d) one report that evening.
+17. **543fed73 + write 115:** six prompt lines in core_shared, task_main, task_rules, request_main: „საქმიანი შეხვედრა" alone is not a reason; „ჩემს ერთ ადამიანს" only when he asked to stay unnamed; on_named introduces unless „ask"; search his own labels before „nobody in your network"; the two modes offered once; „pass it on" is never accepted in his name. Read back equal. UNDO: docs/prompt_live_8nov/*_before115.md.
+
+Not done: Giorgi's 4 disputed items (waiting on Misho and Giorgi); the „saving" caption still shows when a save is refused (minor).
+
 ### 7 Nov, 19:15Z — re 7 Nov 18:45Z (daily check) + Giorgi case 3 shipping now
 
 1. **d50627c8, fact check:** noted, DONE WHEN met. Thank you.
