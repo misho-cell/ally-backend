@@ -37,3 +37,22 @@ describe('day one after the owner’s yes in the quiet hours', () => {
     expect(ENGINE).toMatch(/attempt \+ 1,\s+onGaveUp,\s+origin,/);
   });
 });
+
+describe('a day one that was lost can be run again by hand', () => {
+  const ADMIN = readFileSync(
+    join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+    'utf8',
+  );
+  const route = ADMIN.slice(ADMIN.indexOf("'/tasks/:id/day-one'"));
+
+  it('only on an open, approved goal', () => {
+    expect(route).toContain("if (task.status !== 'open' || task.plan_approved_at === null) {");
+    expect(route).toContain('res.status(409)');
+  });
+
+  it('through day one itself, with its own checks, at once', () => {
+    expect(route.indexOf('startDayOne(task.id, 0);')).toBeGreaterThan(
+      route.indexOf('task.plan_approved_at === null'),
+    );
+  });
+});
