@@ -13424,7 +13424,7 @@ async function processToolBlocks(
         // 3368: every tool leaves a step, so every run that used one has steps.
         genericStepCaption(runLang(runId)));
     if (progressMsg && shown) {
-      if (SEND_STEP_TOOLS.has(block.name)) heldSendCaptions.set(block.id, progressMsg);
+      if (captionWaitsForResult(block.name)) heldSendCaptions.set(block.id, progressMsg);
       else showCaption(userId, threadId, runId, progressMsg);
     }
   }
@@ -13515,6 +13515,21 @@ const SEND_STEP_TOOLS: ReadonlySet<string> = new Set([
   'relay_ask',
 ]);
 
+/**
+ * Tornike's 8 Nov report (the „saving" caption under a refused save): a step that
+ * saves something is announced, like a send, only once it has been kept.
+ */
+const SAVE_STEP_TOOLS: ReadonlySet<string> = new Set([
+  'save_contact_fact',
+  'save_contact_insight',
+  'update_user_profile',
+  'save_private_context',
+]);
+
+function captionWaitsForResult(toolName: string): boolean {
+  return SEND_STEP_TOOLS.has(toolName) || SAVE_STEP_TOOLS.has(toolName);
+}
+
 /** True when a tool's result carries no refusal or error. */
 export function toolResultSucceeded(result: Anthropic.ToolResultBlockParam): boolean {
   if (result.is_error === true || typeof result.content !== 'string') return false;
@@ -13524,7 +13539,8 @@ export function toolResultSucceeded(result: Anthropic.ToolResultBlockParam): boo
       parsed !== null &&
       typeof parsed === 'object' &&
       !('error' in parsed) &&
-      (parsed as { sent?: unknown }).sent !== false
+      (parsed as { sent?: unknown }).sent !== false &&
+      (parsed as { saved?: unknown }).saved !== false
     );
   } catch {
     return false;
