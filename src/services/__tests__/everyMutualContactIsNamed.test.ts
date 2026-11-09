@@ -113,11 +113,12 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
       ],
     };
     const found = [{ name: 'Zura Kvaratskhelia', viaPhones: ['+995500000003'] }];
-    const text = await mutualGroupsFor('171', plan, found, 'ka', true);
+    const text = await mutualGroupsFor('171', plan, found, 'ka');
     expect(text).toContain('ვკითხავ: ლიკა, ბესო');
     expect(text).toContain('მოგიმზადებ: ლადო');
     // Giorgi's template: one reason sentence, for the first bridge.
-    expect(text).toContain('ლიკა ზურაბ კვარაცხელიას იცნობს.');
+    // Giorgi, 9 Nov: no second knows-line under a heading that already says it.
+    expect(text).not.toContain('ლიკა ზურაბ კვარაცხელიას იცნობს.');
   });
 
   it('keeps the plan’s own go-betweens even when the search found nobody', async () => {
@@ -233,11 +234,11 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
       ],
     };
     const found = [{ name: 'მერაბ ჩიქოვანი', viaPhones: ['+995500000001', '+995500000002'] }];
-    const text = await mutualGroupsFor('171', plan, found, 'ka', true);
+    const text = await mutualGroupsFor('171', plan, found, 'ka');
     expect(text).toContain('მერაბ ჩიქოვანს იცნობენ შენი ეს ნაცნობები:');
     // #7789 (2): in Georgian the names are spelt in Georgian letters.
     expect(text).toContain('ვკითხავ: ეკა შარაშიძე, ლუკა გელოვანი');
-    expect(text).toContain('ეკა შარაშიძე მერაბ ჩიქოვანს იცნობს.');
+    expect(text).not.toContain('ეკა შარაშიძე მერაბ ჩიქოვანს იცნობს.');
   });
 
   it('draws nothing when the go-betweens lead to two different people', async () => {
@@ -269,12 +270,11 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
       { name: 'გია', viaPhones: ['+995500000001'], sought: 'არქიტექტორი' },
       { name: 'ზურა', viaPhones: ['+995500000002'], sought: 'არქიტექტორი' },
     ];
-    const text = await mutualGroupsFor('171', plan, found, 'ka', true);
+    const text = await mutualGroupsFor('171', plan, found, 'ka');
     expect(text).toBe(
       'არქიტექტორს იცნობენ შენი ეს ნაცნობები:\n' +
         '• Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ: ბესო\n' +
-        '• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: ნინო\n' +
-        'ბესო არქიტექტორს იცნობს.',
+        '• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: ნინო',
     );
   });
 
@@ -290,6 +290,6 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
   it('is put above the introduction plan’s sentence', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('`${plan.mutualGroups}\\n\\n${body}`');
-    expect(chat).toContain('introSentence === null,');
+    expect(chat).not.toContain('introSentence === null,');
   });
 });

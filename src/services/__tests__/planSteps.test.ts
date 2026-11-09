@@ -191,13 +191,16 @@ describe('the steps line on the plan card', () => {
     expect(line).toContain('2. ask;');
   });
 
-  it('counts the steps past the fifth', () => {
+  // Giorgi, 9 Nov: and-two-more hid who they were; every step is named.
+  it('names every step, past the fifth too', () => {
     const many = Array.from({ length: 7 }, (_, i) => ({
       id: `w${i}`,
       action: StepAction.Web,
       ask_owner: false,
     }));
-    expect(planStepsLine({ steps: many, people_to_involve: [] }, 'en')).toContain('and 2 more');
+    const line = planStepsLine({ steps: many, people_to_involve: [] }, 'en') ?? '';
+    expect(line).toContain('7. search the web.');
+    expect(line).not.toContain('more');
   });
 
   it('adds nothing for an old plan', () => {

@@ -2,7 +2,7 @@ import { georgianScriptName, namePartOfLabel } from './georgianScriptName';
 import { query } from '../db/postgres/client';
 import { excludedHolderPhones } from './excludedHolders.service';
 import { geoName } from './georgianCase';
-import { FoundThroughBridge, knowsLine } from './introTargetSentence';
+import { FoundThroughBridge } from './introTargetSentence';
 import { labelNamedIn, latinLabelNamedInGeorgian } from './namedLabel';
 import { sameNameBySound } from './sameNameBySound';
 import { phoneDigits } from './phone';
@@ -409,17 +409,17 @@ function knownDigits(
 
 /**
  * Every contact of the owner's this run found knowing the plan's one target,
- * grouped — the plan's own go-betweens always among them. With `withReason`
- * (the plan sentence carries no „who knows whom" line, as when two
- * go-betweens are planned), the first one's „<X> <Y>-ს იცნობს." follows the
- * groups: Giorgi's template, one reason sentence for the first bridge.
+ * grouped — the plan's own go-betweens always among them.
+ *
+ * Giorgi, 9 Nov: the „<X> <Y>-ს იცნობს." line that followed the groups named
+ * one of them again, right under a heading that already says they all know the
+ * person — „why only Tornike?". It is gone; the groups say it once.
  */
 export async function mutualGroupsFor(
   userId: string,
   planInput: unknown,
   found: readonly FoundThroughBridge[],
   language: RunLanguage,
-  withReason = false,
 ): Promise<string | null> {
   const reach = planReach(planInput, found);
   if (reach === null || WORDS[language] === undefined) return null;
@@ -440,17 +440,7 @@ export async function mutualGroupsFor(
     const names = namesAsShown(labels, states, await membersOwnNames(states), language);
     const heading =
       (await goBetweensLabelFor(planned, targetDigits(planInput, foundTargets))) ?? target;
-    const groups = mutualGroupsText(heading, contactsOnce(digits, names, states), language);
-    const first = names.get(planned.find((d) => names.has(d)) ?? '');
-    const reason =
-      withReason && language === 'ka' && first !== undefined
-        ? knowsLine({
-            via: shownName(first, language),
-            to: shownName(target, language),
-            knowsThem: true,
-          })
-        : null;
-    return groups === null || reason === null ? groups : `${groups}\n${reason}`;
+    return mutualGroupsText(heading, contactsOnce(digits, names, states), language);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[mutual-groups] not read:', (err as Error).message);
