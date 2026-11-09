@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 9 Nov, 08:55Z — d05a86fe LIVE: a long-idle goal is not reminded three times in minutes
+
+The 08:40Z check after f737ce94 still showed ~13% of scheduled wakes twice or three times for one goal. Second cause: the idle rule counted a long-idle goal's next steps (reminder, second reminder, close question) from the owner's last line, all already past, so each tick gave the next step at once — 47 goals wrote a visible reminder more than once this morning. A past step now comes a day from now; the normal 1/4/7-day schedule is unchanged. DONE WHEN: no goal gets the scheduled-wake event more than once within a few minutes.
+
 ### 9 Nov, 07:35Z — LIVE on Misho's „now": the rest of Tornike's report + the queue (Misho: „ახლავე გააკეთე ყველაფერი რაც დაგრჩა და ახლავე ატვირთე")
 
 1. **5852846e (live 8 Nov 21:26Z), wake queue:** 10 a tick while >100 are due, 2 otherwise. Measured this morning: about 5 a minute net, 3,548 → 3,263 in the first hour after quiet hours.
