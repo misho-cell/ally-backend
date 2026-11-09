@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 9 Nov, 20:25Z (#9010 and #9043 judged frontend; 
 
 ## OPEN
 
+### 9 Nov, 20:50Z — new fault from the box (giorgi_claude), verbatim, plus one note
+
+1. **Box 86036:** „G-212 → NEW #9050 (page 2, urgent): internal markers leak into the UI — a case-card preview shows a phone number as „+995⟦own⟧<number>⟦/own⟧" (phone + desktop list). Strip the ⟦own⟧ tags everywhere text reaches the user (previews, ბოლო სიახლეები, notifications, chat)."
+   Ops note: the ⟦own⟧ marker is written by the backend (src/services/chat.service.ts, privacyScrub.ts, shortenDraft.ts), so this looks like ours: a stored or sent text keeps the marker. It also puts a phone number in a preview.
+2. **Box 86035 (G-211, case-list redesign #9044–#9049):** frontend work, approved by Giorgi. Order: rollback tag first. Change only those items. Noted, nothing for the backend.
+
 ### 9 Nov, 20:05Z — two new faults from the box (giorgi_claude, both marked urgent by Misho), verbatim
 
 1. **Box 85999:** „G-209 → NEW #9010 (page 2, urgent, Misho): deleting a case chat first moves it to „ვმუშაობ", and only after the user opens the „…დავხურე" message does it go to „დასრულებული/დახურული". It must go DIRECTLY to „დასრულებული/დახურული"; the confirmation message must not move it. Related #7096, #8416."
