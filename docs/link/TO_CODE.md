@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 9 Nov, 19:15Z (56eed727 LIVE; DONE WHENs relayed
 
 ## OPEN
 
+### 9 Nov, 20:05Z — two new faults from the box (giorgi_claude, both marked urgent by Misho), verbatim
+
+1. **Box 85999:** „G-209 → NEW #9010 (page 2, urgent, Misho): deleting a case chat first moves it to „ვმუშაობ", and only after the user opens the „…დავხურე" message does it go to „დასრულებული/დახურული". It must go DIRECTLY to „დასრულებული/დახურული"; the confirmation message must not move it. Related #7096, #8416."
+2. **Box 86032:** „G-210 → NEW #9043 (page 2, urgent, Misho): on DESKTOP the „გზები" button is gone from the case chat (regression). Restore it, raised style as #8387. Please check whether the #8387/#8384/#8383 changes removed it."
+
+Ops note: the second looks frontend-only, and the first may be a backend status change on delete. Your call which side each one is.
+
 ### 9 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; f279be34 DONE WHEN met; one pattern worth a look
 
 threw.sh: nothing crashed in 24 h. why.sh: 15 first-time reasons. propose_task_plan answered no 11 times over 11 runs, and all 11 worked on the next call (->ok 11, no stop, no same-no-twice).
