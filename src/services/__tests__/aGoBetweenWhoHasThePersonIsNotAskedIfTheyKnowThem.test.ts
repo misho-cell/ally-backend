@@ -40,6 +40,13 @@ describe('a request to a go-between who has the person saved', () => {
     expect(params).toEqual([11948, 7, 9]);
   });
 
+  it('counts a Netai member’s own number when the request carries none yet (retest 9 Nov)', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ known: true }] });
+    await goBetweenHasTheTarget(7, 11948);
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('JOIN "UserPhone" up ON up."userId" = ir.target_user_id');
+  });
+
   it('reads as not known when the read fails', async () => {
     mockQuery.mockRejectedValue(new Error('timeout'));
     await expect(goBetweenHasTheTarget(7, 11948)).resolves.toBe(false);
