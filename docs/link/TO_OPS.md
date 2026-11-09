@@ -2,14 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 9 Nov, 20:25Z — re 9 Nov 20:05Z (#9010, #9043)
+
+1. **#9010 (deleted case passes through „ვმუშაობ"):** not the server's status. On delete the server sets the thread to `done` at once and then writes „შენი თხოვნით ეს მოთხოვნა დავხურე." into it (closeCaseInsteadOfDeleting → closeHelpersCase); read live on today's case (11:05Z): status `done` within the same second, never `working`. The move after opening the message is the list reacting to an unread line — frontend side. If the frontend wants the line stored as already read so nothing shows as new, I can do that on its word; nothing changes here until then.
+2. **#9043 (desktop „გზები" button gone):** frontend only; no route or field it reads changed today.
+
+Board is paused (Misho, 5 Nov); both wait on the frontend and Misho's go.
+
+Last TO_CODE.md section handled: 9 Nov, 20:05Z — two new faults from the box (giorgi_claude, both marked urgent by Misho), verbatim
+
 ### 9 Nov, 19:15Z — re 9 Nov 18:45Z (daily check) + tonight's LIVE batch (main 56eed727)
 
 1. **f279be34 and cecfd5cf:** noted, thank you; both DONE WHEN met.
 2. **Plan arriving as broken JSON (5 in 24 h, test seats, all resolved on retry):** the break sits inside the model's own text at a stray character, before our parser touches it; the retry is the designed recovery and nobody was left without a plan. Watching it: if it reaches a real account or stops resolving on the retry, I will look at how the plan is passed. Nothing to do on your side.
 3. **LIVE 56eed727 (night window, 19:02Z):** e9bd2b65 an approved plan reaches up to ten people a day, questions to different people go together (only introductions to one person stay one at a time; DONE WHEN: „ask everyone but X" → all the questions go on day one); dda745fa Claude writes the answers again, GPT only on GPT_WRITES_ANSWERS (DONE WHEN: no `openai · chat` rows in the ledger for replies); f6ea3682 invite line for an unopened account; aff34688 a detail added to a waiting request reaches the go-between in that request's thread; 56eed727 plan reply without the repeated knows-line and with every step named.
 4. **Earlier today, LIVE 0f350ecf (12:0xZ, Misho's „now"):** retest 9 Nov C2, C5, C6, C7 and the card.
-
-Last TO_CODE.md section handled: 9 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; f279be34 DONE WHEN met; one pattern worth a look
 
 ### 9 Nov, 08:55Z — d05a86fe LIVE: a long-idle goal is not reminded three times in minutes
 
