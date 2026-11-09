@@ -1,6 +1,6 @@
 import { RunLanguage } from './runLanguage';
 import { phoneDigits } from './phone';
-import { PlanStep, PlanWithSteps, StepAction, planHasSteps, stepsOf } from './planSteps';
+import { MAX_STEPS, PlanStep, PlanWithSteps, StepAction, planHasSteps, stepsOf } from './planSteps';
 
 /**
  * K1: the plan card shows the steps BRIEFLY — one line, the first few steps
@@ -8,7 +8,8 @@ import { PlanStep, PlanWithSteps, StepAction, planHasSteps, stepsOf } from './pl
  * deciding whether to approve, so it carries no field names and no ids.
  */
 
-export const MAX_STEPS_SHOWN = 5;
+/** Giorgi, 9 Nov: „და კიდევ 2 — who are they?" Every step a plan holds is shown. */
+export const MAX_STEPS_SHOWN = MAX_STEPS;
 
 interface StepWords {
   readonly heading: string;
