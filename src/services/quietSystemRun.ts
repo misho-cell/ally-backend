@@ -57,6 +57,7 @@ export function endsQuietly(
  * reminder. Such a run now ends with one plain line. A run that only kept the
  * goal's books stays quiet.
  */
+const PLAN_TOOL = 'propose_task_plan';
 const WORK_WORTH_A_LINE: ReadonlySet<string> = new Set([
   'search_by_tag',
   'search_by_insight',
@@ -67,7 +68,7 @@ const WORK_WORTH_A_LINE: ReadonlySet<string> = new Set([
   'find_warm_path',
   'web_search',
   'fetch_page',
-  'propose_task_plan',
+  PLAN_TOOL,
 ]);
 
 export function didWorkWorthALine(runTurns: readonly TurnLike[]): boolean {
@@ -77,6 +78,26 @@ export function didWorkWorthALine(runTurns: readonly TurnLike[]): boolean {
       typeof turn.content !== 'string' &&
       turn.content.some(
         (block) => block.type === 'tool_use' && WORK_WORTH_A_LINE.has(block.name ?? ''),
+      ),
+  );
+}
+
+/**
+ * Retest 9 Nov (C6): after Gela's „no" the goal's run searched again and on the web,
+ * found three places, and planned them — a plan that writes to nobody. Its reply was
+ * dropped as #925's „a plan turn with nothing to say", and the owner heard nothing.
+ * A run that looked for something has something to say.
+ */
+export function searchedThisRun(runTurns: readonly TurnLike[]): boolean {
+  return runTurns.some(
+    (turn) =>
+      turn.role === 'assistant' &&
+      typeof turn.content !== 'string' &&
+      turn.content.some(
+        (block) =>
+          block.type === 'tool_use' &&
+          block.name !== PLAN_TOOL &&
+          WORK_WORTH_A_LINE.has(block.name ?? ''),
       ),
   );
 }
