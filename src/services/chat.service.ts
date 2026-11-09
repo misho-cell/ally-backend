@@ -9442,6 +9442,10 @@ function searchTermOf(input: Record<string, unknown>): string {
  */
 
 /** Did this search find anybody? Empty and „not found" are the same answer. */
+const FOUND_IN_LABELS_NOTE =
+  'Nobody’s saved notes matched; these people are found under the owner’s own labels ' +
+  'for them. Say what they are saved under.';
+
 function foundNobody(raw: unknown): boolean {
   if (raw === null || typeof raw !== 'object') return false;
   const r = raw as { found?: unknown; results?: unknown; count?: unknown; reason?: unknown };
@@ -10743,7 +10747,21 @@ async function executeToolCall(
           },
         ),
       ]);
-      return withOffers(insight, offers);
+      const answered = withOffers(insight, offers);
+      if (!foundNobody(answered) || typeof insightQuery !== 'string') return answered;
+      // Retest 9 Nov (C7): the notes held nobody, and the owner's own labels were never
+      // read — Levan is saved as „fish farm". They are read here, by meaning too.
+      const labelled = await runLoggedSearch(
+        userId,
+        'tag',
+        insightQuery,
+        searchByTag,
+        runId,
+        threadId,
+      );
+      return foundNobody(labelled)
+        ? answered
+        : { ...labelled, found_in: 'owner_labels', found_in_note: FOUND_IN_LABELS_NOTE };
     }
     case 'search_second_degree': {
       const searched = runLoggedSearch(
