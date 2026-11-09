@@ -21,6 +21,7 @@ import {
 import {
   scrubMechanicalForStorage,
   stripAllowedSpans,
+  withoutAllowMarkers,
   informalGeorgianForDisplay,
   stripEmDashesForDisplay,
   stripRedactionArtifactsForDisplay,
@@ -561,7 +562,7 @@ function cleanPreview(row: ThreadRow): ThreadRow {
   return {
     ...row,
     last_message: informalGeorgianForDisplay(
-      stripEmDashesForDisplay(scrubMechanicalForStorage(row.last_message)),
+      stripEmDashesForDisplay(scrubMechanicalForStorage(withoutAllowMarkers(row.last_message))),
     ),
   };
 }

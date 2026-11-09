@@ -4,6 +4,7 @@ import { mirrorToWhatsapp } from './whatsappMirror.service';
 import { randomBytes } from 'crypto';
 import webpush, { PushSubscription } from 'web-push';
 import { query } from '../db/postgres/client';
+import { withoutAllowMarkers } from './privacyScrub';
 import { duePushes, holdPush, releaseHeld } from './heldPushes.service';
 import { isQuietHour, nextQuietEnd, pushTimeZone, validTimeZone } from './pushQuietHours';
 import { connectedDevices, deviceKey, hasActiveConnection } from './sse.service';
@@ -406,9 +407,15 @@ async function onlyWhatsappNotifies(userId: number): Promise<boolean> {
 
 export async function sendPushNotification(
   userId: string,
-  payload: NotificationPayload,
+  raw: NotificationPayload,
   options: PushOptions = {},
 ): Promise<void> {
+  // #9050 (Giorgi, 9 Nov): no own-number markers on a lock screen or in WhatsApp.
+  const payload: NotificationPayload = {
+    ...raw,
+    title: withoutAllowMarkers(raw.title),
+    body: withoutAllowMarkers(raw.body),
+  };
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     // eslint-disable-next-line no-console
     console.error('[push] VAPID keys missing — push disabled');
