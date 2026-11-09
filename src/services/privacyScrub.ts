@@ -374,6 +374,18 @@ export function stripAllowedSpans(text: string): string {
   return text.split(ALLOW_OPEN).join('').split(ALLOW_CLOSE).join('');
 }
 
+/** A marker cut short at the end of a clipped text (a preview of N characters). */
+const CUT_MARKER_AT_END_RE = /⟦\/?o?w?n?$/u;
+
+/**
+ * Giorgi, 9 Nov (#9050): a case card's preview read „+995⟦own⟧…⟦/own⟧" — the list
+ * and the push read the stored text, and only the chat removed the markers. Every
+ * surface that shows stored text removes them the same way, a clipped one too.
+ */
+export function withoutAllowMarkers(text: string): string {
+  return stripAllowedSpans(text).replace(CUT_MARKER_AT_END_RE, '');
+}
+
 // "[hidden]" is plumbing, not prose: tool results reach the model already
 // scrubbed, and the model sometimes copies the placeholder into its reply —
 // "ილია წულაია ([hidden]): …" rendered to a user (ticket 6 item 13). At the
