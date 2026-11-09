@@ -9,8 +9,10 @@ const mockGpt = jest.fn();
 jest.mock('../../config/openai', () => ({
   openaiClient: () => ({ chat: { completions: { create: (...a: unknown[]) => mockGpt(...a) } } }),
 }));
+const mockGptWrites = jest.fn().mockReturnValue(true);
 jest.mock('../finalAnswer.service', () => ({
   finalAnswerModel: () => 'gpt-test',
+  gptWritesTheAnswer: () => mockGptWrites(),
   toLedgerUsage: () => ({ input_tokens: 1, output_tokens: 1 }),
 }));
 const mockRecord = jest.fn().mockResolvedValue(undefined);
@@ -29,6 +31,7 @@ const GOOD = 'შენ ეძებ კედლის მლესავ ო�
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockGptWrites.mockReturnValue(true);
   mockQuery
     .mockResolvedValueOnce({ rows: [{ title: 'საჭიროა კედლის მლესავი' }] })
     .mockResolvedValueOnce({ rows: [{ role: 'user', content: 'კედლის მლესავი მჭირდება' }] })
@@ -36,6 +39,15 @@ beforeEach(() => {
 });
 
 describe('the case description (Misho, 29 Oct)', () => {
+  // Misho, 9 Nov: Claude's Georgian is good enough — Claude writes it unless GPT is switched on.
+  it('is written by Claude when GPT is not switched on', async () => {
+    mockGptWrites.mockReturnValue(false);
+    mockClaude.mockResolvedValue({ content: [{ type: 'text', text: GOOD }], usage: {} });
+    await refreshCaseDescription('7', 9, true);
+    expect(mockGpt).not.toHaveBeenCalled();
+    expect(mockClaude).toHaveBeenCalled();
+  });
+
   it('is written by the chat’s GPT model and booked as OpenAI', async () => {
     mockGpt.mockResolvedValue({ choices: [{ message: { content: GOOD } }], usage: {} });
     expect(await refreshCaseDescription('7', 9, true)).toBe(true);

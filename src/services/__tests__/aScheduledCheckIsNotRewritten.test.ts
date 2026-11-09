@@ -7,14 +7,18 @@ import { join } from 'path';
  * stood every time — the owner never saw a difference, the call only cost.
  */
 const savedModel = process.env.CHAT_FINAL_ANSWER_MODEL;
+const savedSwitch = process.env.GPT_WRITES_ANSWERS;
 
 afterAll(() => {
   if (savedModel === undefined) delete process.env.CHAT_FINAL_ANSWER_MODEL;
   else process.env.CHAT_FINAL_ANSWER_MODEL = savedModel;
+  if (savedSwitch === undefined) delete process.env.GPT_WRITES_ANSWERS;
+  else process.env.GPT_WRITES_ANSWERS = savedSwitch;
 });
 
-async function writerFor(ownerAbsent: boolean): Promise<string> {
+async function writerFor(ownerAbsent: boolean, gptWrites = 'true'): Promise<string> {
   process.env.CHAT_FINAL_ANSWER_MODEL = 'big-writer';
+  process.env.GPT_WRITES_ANSWERS = gptWrites;
   jest.resetModules();
   return (await import('../finalAnswer.service')).finalWriterForRun(ownerAbsent);
 }
@@ -26,6 +30,11 @@ describe('the final writer of a run nobody started', () => {
 
   it('is unchanged when the owner wrote', async () => {
     await expect(writerFor(false)).resolves.toBe('big-writer');
+  });
+
+  // Misho, 9 Nov: Claude writes the answer; GPT only when the switch brings it back.
+  it('is nobody unless GPT_WRITES_ANSWERS is on, whatever model is configured', async () => {
+    await expect(writerFor(false, '')).resolves.toBe('');
   });
 
   it('is what the run loop asks', () => {

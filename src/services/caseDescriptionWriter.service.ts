@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import { openaiClient } from '../config/openai';
 import { recordClaudeUsage } from './costLedger.service';
-import { finalAnswerModel, toLedgerUsage } from './finalAnswer.service';
+import { finalAnswerModel, gptWritesTheAnswer, toLedgerUsage } from './finalAnswer.service';
 import { detectRunLanguage, RunLanguage } from './runLanguage';
 import { emitThreadUpdated } from './sse.service';
 import {
@@ -87,7 +87,7 @@ async function describeWithGpt(
   threadId: number,
   facts: CaseFacts,
 ): Promise<string | null> {
-  const model = finalAnswerModel();
+  const model = gptWritesTheAnswer() ? finalAnswerModel() : '';
   const client = openaiClient();
   if (model === '' || client === null) return null;
   try {

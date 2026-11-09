@@ -47,7 +47,18 @@ export function finalAnswerModel(): string {
  * flag being off already gives, so every caller knows what to do with it.
  */
 export function finalWriterForRun(ownerAbsent: boolean): string {
-  return ownerAbsent ? '' : finalAnswerModel();
+  return ownerAbsent || !gptWritesTheAnswer() ? '' : finalAnswerModel();
+}
+
+/**
+ * Misho, 9 Nov: „Claude's Georgian has clearly improved — move it back to Claude
+ * and we'll test." GPT no longer rewrites what the person reads (the chat's
+ * answer, a case's description); Claude's own words stand. CHAT_FINAL_ANSWER_MODEL
+ * stays set for what else uses it (the web search), so this is its own switch:
+ * GPT_WRITES_ANSWERS=true brings the rewrite back without a release.
+ */
+export function gptWritesTheAnswer(): boolean {
+  return process.env.GPT_WRITES_ANSWERS?.trim() === 'true';
 }
 
 const MAX_TOKENS = 8192;
@@ -363,7 +374,7 @@ export async function writeFinalAnswer(
   /** Row 155: the conversation's language, for the script checks. */
   language = 'ka',
   /** D627: a smaller writer for small talk; the ordinary one by default. */
-  model: string = finalAnswerModel(),
+  model: string = gptWritesTheAnswer() ? finalAnswerModel() : '',
 ): Promise<FinalAnswer | null> {
   if (model === '') return null;
   const client = openaiClient();
