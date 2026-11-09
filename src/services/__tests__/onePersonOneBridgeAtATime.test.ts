@@ -25,7 +25,15 @@ describe('one person, one bridge at a time', () => {
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain("ir.status = 'pending'");
     expect(sql).toContain('ir.mediator_user_id <> $2::int');
-    expect(params).toEqual(['2978', 1036, 526, 'ბესო ორთოიძე', 24]);
+    expect(params).toEqual(['2978', 1036, 526, 'ბესო ორთოიძე', 24, null]);
+  });
+
+  it('does not count the request the passer-on is handing over (retest 9 Nov, C5)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    await bridgeAlreadyAsked({ ...target, forwarderUserId: 77 });
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('ir.mediator_user_id <> $6::int');
+    expect(params[5]).toBe(77);
   });
 
   it('lets the request go when no other bridge is waiting', async () => {

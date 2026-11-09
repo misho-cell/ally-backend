@@ -20,6 +20,11 @@ interface BridgeTarget {
   readonly mediatorUserId: number;
   readonly targetUserId: number | null;
   readonly targetName: string;
+  /**
+   * Retest 9 Nov (C5): the link passing the owner's request on. His own
+   * request is not a second route to the person — he is handing it over.
+   */
+  readonly forwarderUserId?: number;
 }
 
 /** Another bridge already asked about this person, still unanswered inside the day; else null. */
@@ -31,6 +36,7 @@ export async function bridgeAlreadyAsked(target: BridgeTarget): Promise<PendingB
        LEFT JOIN "User" u ON u.id = ir.mediator_user_id
       WHERE ir.requester_user_id = $1
         AND ir.mediator_user_id IS NOT NULL AND ir.mediator_user_id <> $2::int
+        AND ($6::int IS NULL OR ir.mediator_user_id <> $6::int)
         AND ir.status = 'pending'
         AND ir.created_at > NOW() - make_interval(hours => $5)
         AND (($3::int IS NOT NULL AND ir.target_user_id = $3::int)
@@ -43,6 +49,7 @@ export async function bridgeAlreadyAsked(target: BridgeTarget): Promise<PendingB
       target.targetUserId,
       target.targetName,
       NEXT_BRIDGE_AFTER_HOURS,
+      target.forwarderUserId ?? null,
     ],
     QUERY_TIMEOUT_MS,
   );

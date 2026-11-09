@@ -588,6 +588,9 @@ async function requestIntroductionInner(
       mediatorUserId,
       targetUserId: safeTargetUserId ?? null,
       targetName,
+      ...(context.forwardedBy === undefined
+        ? {}
+        : { forwarderUserId: Number(context.forwardedBy) }),
     });
     if (pending !== null) {
       return {
