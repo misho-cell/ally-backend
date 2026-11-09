@@ -23,6 +23,8 @@ import {
   waveRoomFor,
   WAVE_ORDER_GATE_ON,
   waveSize,
+  WAVE_SIZE_REAL_WORK,
+  WAVE_SIZE_SMALL,
   widenWaveOnSilence,
   type WaveSnapshot,
 } from '../askWaves.service';
@@ -40,7 +42,13 @@ const person = (n: number): PlanPerson => ({
   phone: `+99559900000${n}`,
   route: 'network',
 });
-const EIGHT = [1, 2, 3, 4, 5, 6, 7, 8].map(person);
+// Misho, 9 Nov: ten a day — the plan holds two full waves and two more people.
+const S = WAVE_SIZE_SMALL;
+const EIGHT = Array.from({ length: 2 * S + 2 }, (_, i) => person(i + 1));
+const names = (from: number, to: number): string =>
+  EIGHT.slice(from, to)
+    .map((p) => p.name)
+    .join(', ');
 const TASK = {
   id: 7,
   plan: { solved_when: 'x', routes: [], people_to_involve: EIGHT, never_contact: [] },
@@ -73,27 +81,23 @@ const digitsOf = (n: number): string => `99559900000${n}`;
 beforeEach(() => mockQuery.mockReset());
 
 describe('the size of a wave', () => {
-  it('is three for a favour and five for real work', () => {
-    expect(waveSize({})).toBe(3);
-    expect(waveSize({ real_work: true })).toBe(5);
+  it('reaches at least ten people a day, favour or real work (Misho, 9 Nov)', () => {
+    expect(waveSize({})).toBe(WAVE_SIZE_SMALL);
+    expect(waveSize({ real_work: true })).toBe(WAVE_SIZE_REAL_WORK);
+    expect(Math.min(WAVE_SIZE_SMALL, WAVE_SIZE_REAL_WORK)).toBeGreaterThanOrEqual(10);
   });
 
   it('takes the plan’s people in order, skipping everyone already asked', () => {
     const asked = new Set([digitsOf(1), digitsOf(3)]);
-    expect(notYetAsked(EIGHT, asked).map((p) => p.name)).toEqual([
-      'Person 2',
-      'Person 4',
-      'Person 5',
-      'Person 6',
-      'Person 7',
-      'Person 8',
-    ]);
+    expect(notYetAsked(EIGHT, asked).map((p) => p.name)).toEqual(
+      EIGHT.filter((_, i) => i !== 0 && i !== 2).map((p) => p.name),
+    );
   });
 });
 
 describe('the first wave', () => {
-  it('lets exactly three of eight go, and refuses the fourth', async () => {
-    for (const sent of [0, 1, 2]) {
+  it('lets exactly one wave go, and refuses the next person', async () => {
+    for (const sent of Array.from({ length: S }, (_, i) => i)) {
       waveReads(
         1,
         Array.from({ length: sent }, () => ({ status: 'sent' })),
@@ -106,20 +110,20 @@ describe('the first wave', () => {
     }
     waveReads(
       1,
-      [{ status: 'sent' }, { status: 'sent' }, { status: 'sent' }],
-      [1, 2, 3].map(digitsOf),
+      Array.from({ length: S }, () => ({ status: 'sent' })),
+      Array.from({ length: S }, (_, i) => digitsOf(i + 1)),
     );
-    const fourth = await waveRoomFor(TASK, EIGHT[3].phone, async () => false);
+    const fourth = await waveRoomFor(TASK, EIGHT[S].phone, async () => false);
     expect(fourth.allowed).toBe(false);
   });
 
   it('never holds back the person the owner named himself (D625)', async () => {
     waveReads(
       1,
-      [{ status: 'sent' }, { status: 'sent' }, { status: 'sent' }],
-      [1, 2, 3].map(digitsOf),
+      Array.from({ length: S }, () => ({ status: 'sent' })),
+      Array.from({ length: S }, (_, i) => digitsOf(i + 1)),
     );
-    await expect(waveRoomFor(TASK, EIGHT[5].phone, async () => true)).resolves.toEqual({
+    await expect(waveRoomFor(TASK, EIGHT[S + 1].phone, async () => true)).resolves.toEqual({
       allowed: true,
       wave: 1,
     });
@@ -136,12 +140,12 @@ describe('the first wave', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('tells the run the three names and the owner’s one line', async () => {
+  it('tells the run the wave’s names and the owner’s one line', async () => {
     waveReads(1, [], []);
     const note = nextWaveNote(await readWave(TASK));
-    expect(note).toContain('Person 1, Person 2, Person 3');
-    expect(note).toContain('„ახლა ვწერ ასისტენტებს: Person 1, Person 2, Person 3"');
-    expect(note).not.toContain('Person 4');
+    expect(note).toContain(names(0, S));
+    expect(note).toContain(`„ახლა ვწერ ასისტენტებს: ${names(0, S)}"`);
+    expect(note).not.toContain(`${EIGHT[S].name},`);
   });
 });
 
@@ -212,11 +216,15 @@ describe('the next wave', () => {
     await expect(widenWaveOnSilence(TASK)).resolves.toBe(true);
   });
 
-  it('names the next three for wave two', async () => {
-    waveReads(2, [], [1, 2, 3].map(digitsOf));
+  it('names the next people for wave two', async () => {
+    waveReads(
+      2,
+      [],
+      Array.from({ length: S }, (_, i) => digitsOf(i + 1)),
+    );
     const note = nextWaveNote(await readWave(TASK));
     expect(note).toContain('ტალღა 2');
-    expect(note).toContain('Person 4, Person 5, Person 6');
+    expect(note).toContain(names(S, 2 * S));
   });
 });
 
@@ -258,14 +266,14 @@ describe('the order gate (BD)', () => {
 
   it('refuses a person out of order while the wave has room, naming who goes first', async () => {
     waveReads(1, [], []);
-    const room = await waveRoomFor(TASK, EIGHT[4].phone, async () => false);
+    const room = await waveRoomFor(TASK, EIGHT[S + 1].phone, async () => false);
     expect(room.allowed).toBe(false);
     expect(room.allowed ? '' : room.error).toContain('Person 1, Person 2, Person 3');
   });
 
   it('lets the person the owner named go out of order (D625)', async () => {
     waveReads(1, [], []);
-    await expect(waveRoomFor(TASK, EIGHT[4].phone, async () => true)).resolves.toEqual({
+    await expect(waveRoomFor(TASK, EIGHT[S + 1].phone, async () => true)).resolves.toEqual({
       allowed: true,
       wave: 1,
     });

@@ -5,6 +5,7 @@ import { georgianScriptName } from './georgianScriptName';
 import { ownerNamedAGoBetween } from './severalRoutes';
 import { phoneDigits } from './phone';
 import {
+  asksAlongside,
   StepEnd,
   isForward,
   stepAfter,
@@ -329,7 +330,8 @@ export async function planDayOneEvent(taskId: number): Promise<StepEventText | n
     const first = stepsOf(state.plan)[0];
     if (state.current === null) await moveToStep(taskId, first.id);
     const current = stepById(state.plan, state.current) ?? first;
-    return stepStartedEvent(state.plan, current);
+    const at = stepsOf(state.plan).findIndex((s) => s.id === current.id);
+    return stepStartedEvent(state.plan, current, undefined, asksAlongside(state.plan, at));
   } catch (err) {
     logFailure('day one', taskId, err);
     return null;

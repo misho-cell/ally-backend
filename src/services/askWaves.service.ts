@@ -1,7 +1,6 @@
 import { query } from '../db/postgres/client';
 import { askStateOf, isOpenAskState } from './askState';
 import { phoneDigits } from './phone';
-import { routeIntroductions } from './planClosedRoute';
 import { inWaveOrder, ownerGoalWords } from './waveOrder';
 import { planInForce, type PlanPerson, type StoredPlan } from './taskPlans.service';
 import type { Task } from './taskStore.service';
@@ -23,40 +22,33 @@ import { planStepRoom } from './planAdvance.service';
  * goal already asked, in A8's order (waveOrder.ts: the owner-named person, the
  * pre-match word, the answer rate, then the plan's order).
  */
-export const WAVE_SIZE_SMALL = 3;
-export const WAVE_SIZE_REAL_WORK = 5;
+/**
+ * Misho, 9 Nov („დღეში მინიმუმ 10"): Giorgi asked for four or five people and one
+ * went. An approved plan reaches up to ten people a day, small favour or real work.
+ */
+export const WAVE_SIZE_SMALL = 10;
+export const WAVE_SIZE_REAL_WORK = 10;
 /** Same span as the silent-day sweep (taskEngine SILENT_DAY_HOURS). */
 export const NEXT_WAVE_AFTER_HOURS = 24;
 
 const QUERY_TIMEOUT_MS = 5_000;
 
-/**
- * #7630 (Misho, 26 Oct: „ერთთან"; tester 76702: 0/3): an approved plan with
- * three bridges to one person sent all three at once, because the wave held
- * three. When two or more of the plan's introductions lead to the same person,
- * the wave holds one: the next bridge is asked after the first declines or a
- * day passes (the wave's own rules). The plan card still names every bridge.
- */
+/** #8845: a plan that works its routes to one person in order asks one at a time. */
 export const WAVE_SIZE_ONE_BRIDGE = 1;
-
-export function bridgesToOnePerson(plan: unknown): boolean {
-  const seen = new Set<string>();
-  for (const intro of routeIntroductions(plan)) {
-    const target = intro.toPhone !== undefined ? phoneDigits(intro.toPhone) : '';
-    const key = target !== '' ? target : intro.toName.trim().toLowerCase();
-    if (seen.has(key)) return true;
-    seen.add(key);
-  }
-  return false;
-}
 
 /** #8845: the plan works several routes to one person, one after another. */
 export function worksRoutesInOrder(plan: Pick<StoredPlan, 'route_order'>): boolean {
   return (plan.route_order?.length ?? 0) >= 2;
 }
 
+/**
+ * Misho, 9 Nov: two bridges to one person held the WHOLE plan to one ask, so the
+ * people asked about something else waited too. The bridges to that one person
+ * still go one at a time — request_introduction refuses a second while the first
+ * is open (oneBridgeAtATime.ts) — and everyone else goes in the day's wave.
+ */
 export function waveSize(plan: Pick<StoredPlan, 'real_work' | 'route_order'>): number {
-  if (worksRoutesInOrder(plan) || bridgesToOnePerson(plan)) return WAVE_SIZE_ONE_BRIDGE;
+  if (worksRoutesInOrder(plan)) return WAVE_SIZE_ONE_BRIDGE;
   return plan.real_work === true ? WAVE_SIZE_REAL_WORK : WAVE_SIZE_SMALL;
 }
 

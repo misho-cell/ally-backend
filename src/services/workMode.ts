@@ -17,7 +17,8 @@ export enum WorkMode {
   Free = 'free',
 }
 
-export const FREE_MODE_PEOPLE_PER_DAY = 5;
+/** Misho, 9 Nov: at least ten people a day. */
+export const FREE_MODE_PEOPLE_PER_DAY = 10;
 const WORK_MODE_TIMEOUT_MS = 3_000;
 export const LOCAL_ZONE = 'Asia/Tbilisi';
 
