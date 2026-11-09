@@ -409,33 +409,32 @@ export async function countDueTasks(cap: number): Promise<number> {
 }
 
 /**
- * A tick takes its due goals on a lease: their wake moves `minutes` on, so a
- * tick that starts while this one is still working cannot take them again.
- * Each goal's own wake is set as before once it is worked; a lease that is
- * never worked (the process stopped) simply comes due again.
+ * Open tasks whose wake time has arrived — the ticker's worklist, taken on a
+ * lease in the same statement: their wake moves `leaseMinutes` on as they are
+ * read, and rows another tick is taking are skipped. Ticks overlap (each wake
+ * waits for its run), and two ticks reading the same list before either marked
+ * it woke about one goal in five twice (Misho's queue check, 9 Nov). Each goal's
+ * own wake is set as before once it is worked; a lease never worked comes due
+ * again.
  */
-export async function leaseTaskWakes(taskIds: readonly number[], minutes: number): Promise<void> {
-  if (taskIds.length === 0) return;
-  await query(
-    `UPDATE tasks SET next_wake_at = NOW() + make_interval(mins => $2)
-      WHERE id = ANY($1::int[])`,
-    [taskIds, minutes],
-    QUERY_TIMEOUT_MS,
-  );
-}
-
-/** Open tasks whose wake time has arrived — the ticker's worklist. */
-export async function getDueTasks(limit: number): Promise<Array<Task & { user_id: string }>> {
+export async function getDueTasks(
+  limit: number,
+  leaseMinutes: number,
+): Promise<Array<Task & { user_id: string }>> {
   const result = await query<Task & { user_id: string }>(
-    `SELECT user_id, ${TASK_COLUMNS} FROM tasks
-     WHERE status = 'open' AND next_wake_at IS NOT NULL AND next_wake_at <= NOW()
-       -- Row 238 (D119): the owner has asked for a change and not yet given a
-       -- new yes. The plan stays approved and what is in flight keeps running;
-       -- this is the AUTOMATIC next wave, and it waits.
-       AND plan_change_requested_at IS NULL
-     ORDER BY next_wake_at ASC
-     LIMIT $1`,
-    [limit],
+    `UPDATE tasks SET next_wake_at = NOW() + make_interval(mins => $2)
+      WHERE id IN (
+        SELECT id FROM tasks
+         WHERE status = 'open' AND next_wake_at IS NOT NULL AND next_wake_at <= NOW()
+           -- Row 238 (D119): the owner has asked for a change and not yet given a
+           -- new yes. The plan stays approved and what is in flight keeps running;
+           -- this is the AUTOMATIC next wave, and it waits.
+           AND plan_change_requested_at IS NULL
+         ORDER BY next_wake_at ASC
+         LIMIT $1
+         FOR UPDATE SKIP LOCKED)
+      RETURNING ${TASK_COLUMNS}`,
+    [limit, leaseMinutes],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;

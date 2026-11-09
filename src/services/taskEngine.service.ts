@@ -63,7 +63,6 @@ import {
   goalHasActedOutward,
   countDueTasks,
   getDueTasks,
-  leaseTaskWakes,
   getStaleOpenTasks,
   getGoalsUnansweredForADay,
   markQuestionDefaulted,
@@ -1154,9 +1153,8 @@ async function tick(): Promise<void> {
     // eslint-disable-next-line no-console
     console.error('[task-engine] plan-step silence sweep failed:', (err as Error).message),
   );
-  const due = await getDueTasks(wakesThisTick(await countDueTasks(BACKLOG_WAKES + 1)));
-  await leaseTaskWakes(
-    due.map((task) => task.id),
+  const due = await getDueTasks(
+    wakesThisTick(await countDueTasks(BACKLOG_WAKES + 1)),
     WAKE_LEASE_MINUTES,
   );
   for (const task of due) {
