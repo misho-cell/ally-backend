@@ -45,6 +45,7 @@ import {
   aLookedAgainLineTellsSomething,
   broughtAResult,
   didWorkWorthALine,
+  searchedThisRun,
   endsQuietly,
   takeQuietAfterDecline,
 } from './quietSystemRun';
@@ -18852,7 +18853,7 @@ export async function processChat(
   effectiveFinal =
     planToNobody === null
       ? withPlanInReply(runId, effectiveFinal, choices)
-      : ownerAbsent && !(await lastAnswerAskedSomething(threadId))
+      : ownerAbsent && !searchedThisRun(pending) && !(await lastAnswerAskedSomething(threadId))
         ? ''
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);

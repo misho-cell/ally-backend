@@ -62,8 +62,9 @@ describe('the run that proposed it', () => {
     expect(chat).toContain(': withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);');
     // #925: the engine's plan turn that saved such a plan writes no second message —
     // 48092: unless the answer before it only offered buttons and so had said nothing.
+    // Retest 9 Nov (C6): and unless the run looked for something.
     expect(chat).toContain(
-      ": ownerAbsent && !(await lastAnswerAskedSomething(threadId))\n        ? ''",
+      ": ownerAbsent && !searchedThisRun(pending) && !(await lastAnswerAskedSomething(threadId))\n        ? ''",
     );
     const at = chat.indexOf('async function lastAnswerAskedSomething(');
     const fn = chat.slice(at, at + 900);
