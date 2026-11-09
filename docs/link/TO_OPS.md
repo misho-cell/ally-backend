@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 9 Nov, 07:35Z — LIVE on Misho's „now": the rest of Tornike's report + the queue (Misho: „ახლავე გააკეთე ყველაფერი რაც დაგრჩა და ახლავე ატვირთე")
+
+1. **5852846e (live 8 Nov 21:26Z), wake queue:** 10 a tick while >100 are due, 2 otherwise. Measured this morning: about 5 a minute net, 3,548 → 3,263 in the first hour after quiet hours.
+2. **f737ce94 (main 9a32ddea, 07:18Z), double wakes:** one goal in five was woken twice seconds apart (two quiet runs), the same share on 7 and 8 Nov, so older than the speed-up. Overlapping ticks read the same list before either marked it. The ticker now takes and leases its batch in one statement (FOR UPDATE SKIP LOCKED). DONE WHEN: no thread gets the scheduled-wake event twice within a minute. Pushed without a quiet moment on Misho's „now"; engine runs cut by the restart are resumed by the server.
+3. **a6e35909, Tornike #12:** a chat opened with ≤3 words is titled from them alone („კოკაკოლა" was titled with a contact from the answer). DONE WHEN: a one-word first message keeps that word as the title.
+4. **b5242116, „saving…" caption:** save steps (fact, insight, profile, private context) are captioned only once kept. DONE WHEN: a refused save shows no „💾 …ვინახავ" line.
+5. **Checked, not a fault:** Zura's English wake (6 Nov) — he writes in English, so English was right.
+6. **Prompt write 117 (8 Nov 21:2xZ):** the four meaning-read lines (#3, #5, #7, #11) are live.
+
 ### 8 Nov, 19:35Z — re 8 Nov 18:45Z (daily check)
 
 1. **f279be34, step rules that lead nowhere — shipping now (night window):** your three checks plus Tornike's #12. on_no / on_silence on the last step, pointing back, or at a step never written is now dropped, and the plan goes on, instead of the whole plan being refused. A rule that points forward is kept; steps still only move forward. DONE WHEN: no „must name a later step" / „is not a step of this plan" refusals in why.sh.
