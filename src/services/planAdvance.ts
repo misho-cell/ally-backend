@@ -82,6 +82,7 @@ interface AdvanceWords {
   readonly resultCheck: string;
   readonly named: Readonly<Record<NamedAction, string>>;
   readonly nextIs: (n: number, body: string) => string;
+  readonly alsoNow: (bodies: string) => string;
 }
 
 const ADVANCE_WORDS: Readonly<Record<RunLanguage, AdvanceWords>> = {
@@ -109,6 +110,7 @@ const ADVANCE_WORDS: Readonly<Record<RunLanguage, AdvanceWords>> = {
         'თუ პასუხი ვინმეს ასახელებს — გეგმით მას ეკითხები, მფლობელის კითხვის გარეშე.',
     },
     nextIs: (n, body) => `თუ არა — შემდეგი ნაბიჯი ${n}: ${body}.`,
+    alsoNow: (bodies) => `ამავე დროს ეს კითხვებიც ახლა გადის, სხვა ნაბიჯს არ ელოდება: ${bodies}.`,
   },
   en: {
     started: (n, body) => `Step ${n} has started: ${body}.`,
@@ -134,6 +136,7 @@ const ADVANCE_WORDS: Readonly<Record<RunLanguage, AdvanceWords>> = {
         'If the answer names somebody — the plan says ask them, without asking the owner.',
     },
     nextIs: (n, body) => `If not — the next step is ${n}: ${body}.`,
+    alsoNow: (bodies) => `These questions go now too; they wait for no other step: ${bodies}.`,
   },
   ru: {
     started: (n, body) => `Шаг ${n} начался: ${body}.`,
@@ -159,6 +162,7 @@ const ADVANCE_WORDS: Readonly<Record<RunLanguage, AdvanceWords>> = {
         'Если в ответе кто-то назван — по плану спроси его, не спрашивая владельца.',
     },
     nextIs: (n, body) => `Если нет — следующий шаг ${n}: ${body}.`,
+    alsoNow: (bodies) => `Эти вопросы тоже уходят сейчас, не дожидаясь другого шага: ${bodies}.`,
   },
   es: {
     started: (n, body) => `Ha empezado el paso ${n}: ${body}.`,
@@ -184,6 +188,7 @@ const ADVANCE_WORDS: Readonly<Record<RunLanguage, AdvanceWords>> = {
         'Si la respuesta nombra a alguien — el plan dice preguntarle, sin preguntar al dueño.',
     },
     nextIs: (n, body) => `Si no — el siguiente paso es ${n}: ${body}.`,
+    alsoNow: (bodies) => `Estas preguntas también salen ahora, sin esperar otro paso: ${bodies}.`,
   },
 };
 
@@ -207,6 +212,7 @@ export function stepStartedEvent(
   plan: PlanWithSteps,
   step: PlanStep,
   after?: { readonly stepId: string; readonly end: StepEnd },
+  alongside: readonly PlanStep[] = [],
 ): Record<RunLanguage, string> {
   const n = stepNumber(plan, step.id);
   return perLanguage((words) =>
@@ -214,6 +220,9 @@ export function stepStartedEvent(
       after === undefined ? '' : words.because[after.end](stepNumber(plan, after.stepId)),
       words.started(n, stepBody(step, words)),
       step.ask_owner ? words.ownersWord : words.onYourOwn,
+      alongside.length === 0
+        ? ''
+        : words.alsoNow(alongside.map((s) => stepBody(s, words)).join('; ')),
     ]
       .filter((part) => part !== '')
       .join(' '),
@@ -286,7 +295,23 @@ export function stepRoom(
   const done = currentHeard || (current !== null && !PERSON_ACTIONS.has(current.action));
   const upTo = reachableUpTo(steps, at, done);
   if (steps.some((s, i) => i <= upTo && stepAsksPhone(s, phone))) return { allowed: true };
+  if (asksAlongside(plan, at).some((s) => stepAsksPhone(s, phone))) return { allowed: true };
   return { allowed: false, now: steps[Math.max(0, at)] ?? null };
+}
+
+/**
+ * Misho, 9 Nov: Giorgi's plan asked four people what they knew, each step after
+ * the last one's no — one question went, the rest would have waited days. A
+ * question to one person waits for no other step: every later „ask" step with a
+ * person goes with the current one. Introductions keep the plan's order (one
+ * bridge to a person at a time), and a step marked for the owner's word waits
+ * for it. Structure only: no words are read.
+ */
+export function asksAlongside(plan: PlanWithSteps, currentIndex: number): PlanStep[] {
+  return stepsOf(plan).filter(
+    (s, i) =>
+      i > currentIndex && s.action === StepAction.Ask && s.who?.phone !== undefined && !s.ask_owner,
+  );
 }
 
 /** The refusal the run reads when it reaches past the plan's current step. */

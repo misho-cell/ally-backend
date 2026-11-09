@@ -9,7 +9,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { query } from '../../db/postgres/client';
 import { PlanStep, StepAction } from '../planSteps';
-import { notThisStepYetLine, stepRoom } from '../planAdvance';
+import { asksAlongside, notThisStepYetLine, stepRoom, stepStartedEvent } from '../planAdvance';
 import { planStepRoom } from '../planAdvance.service';
 import { readWave, waveRoomFor } from '../askWaves.service';
 import { Task } from '../taskStore.service';
@@ -22,17 +22,23 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 const ANA = '+995500000001';
 const BEKA = '+995500000002';
 const GELA = '+995500000003';
-const ask = (id: string, phone: string, name: string): PlanStep => ({
+// Misho, 9 Nov: questions to different people go together (asksAlongside); the
+// order below is the introductions' — one bridge to a person at a time.
+const intro = (id: string, phone: string, name: string): PlanStep => ({
   id,
-  action: StepAction.Ask,
+  action: StepAction.Introduce,
   who: { phone, name },
   ask_owner: false,
 });
+const ask = (id: string, phone: string, name: string): PlanStep => ({
+  ...intro(id, phone, name),
+  action: StepAction.Ask,
+});
 const STEPS: PlanStep[] = [
-  ask('s1', ANA, 'ანა'),
+  intro('s1', ANA, 'ანა'),
   { id: 's2', action: StepAction.Web, ask_owner: false },
-  ask('s3', BEKA, 'ბექა'),
-  ask('s4', GELA, 'გელა'),
+  intro('s3', BEKA, 'ბექა'),
+  intro('s4', GELA, 'გელა'),
 ];
 const PLAN = { steps: STEPS };
 
@@ -59,8 +65,33 @@ describe('stepRoom', () => {
 
   it('tells the run whose step it is now, and not to ask the owner', () => {
     const line = notThisStepYetLine(PLAN, STEPS[0]);
-    expect(line).toContain('ახლა ნაბიჯი 1: კითხვა — ანა.');
+    expect(line).toContain('ახლა ნაბიჯი 1: გაცნობის თხოვნა — ანა.');
     expect(line).toContain('მფლობელს ამაზე არაფერს ეკითხები');
+  });
+});
+
+describe('questions to different people (Misho, 9 Nov)', () => {
+  const ASKS = {
+    steps: [
+      intro('s1', ANA, 'ანა'),
+      ask('s2', BEKA, 'ბექა'),
+      { ...ask('s3', GELA, 'გელა'), ask_owner: true },
+    ],
+  };
+
+  it('go with the current step instead of waiting for it', () => {
+    expect(stepRoom(ASKS, 's1', false, BEKA)).toEqual({ allowed: true });
+    expect(asksAlongside(ASKS, 0).map((s) => s.id)).toEqual(['s2']);
+  });
+
+  it('still wait when the plan marked them for the owner’s word', () => {
+    expect(stepRoom(ASKS, 's1', false, GELA).allowed).toBe(false);
+  });
+
+  it('are named in the step event, so the run sends them now', () => {
+    const event = stepStartedEvent(ASKS, ASKS.steps[0], undefined, asksAlongside(ASKS, 0));
+    expect(event.ka).toContain('ამავე დროს ეს კითხვებიც ახლა გადის');
+    expect(event.ka).toContain('ბექა');
   });
 });
 
