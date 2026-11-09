@@ -47,6 +47,20 @@ export interface IdleDecision {
 
 const after = (from: Date, days: number): Date => new Date(from.getTime() + days * DAY_MS);
 
+/**
+ * Misho's queue check, 9 Nov: a goal idle for weeks counted its next steps from
+ * the owner's last line, all already past — so one wake gave the first reminder,
+ * the next tick the second, the next the close question, minutes apart. A next
+ * step that is already past comes a day from now, not at once.
+ */
+const STEP_GAP_DAYS = FIRST_REMINDER_DAYS;
+
+const nextStep = (from: Date, days: number, now: Date): Date => {
+  const due = after(from, days);
+  const soonest = after(now, STEP_GAP_DAYS);
+  return due > soonest ? due : soonest;
+};
+
 /** Pure: what a due scheduled wake does with a goal in this state. */
 export function idleDecision(state: IdleState, now: Date): IdleDecision {
   const idleDays = (now.getTime() - state.lastHumanAt.getTime()) / DAY_MS;
@@ -54,12 +68,12 @@ export function idleDecision(state: IdleState, now: Date): IdleDecision {
   const stale = state.remindedAt === null || state.remindedAt < state.lastHumanAt;
   const reminders = stale ? 0 : state.reminders;
   if (reminders === 0) {
-    return { kind: IdleWake.Reminder, at: after(state.lastHumanAt, SECOND_REMINDER_DAYS) };
+    return { kind: IdleWake.Reminder, at: nextStep(state.lastHumanAt, SECOND_REMINDER_DAYS, now) };
   }
   if (reminders === 1) {
     return idleDays < SECOND_REMINDER_DAYS
       ? { kind: IdleWake.NotYet, at: after(state.lastHumanAt, SECOND_REMINDER_DAYS) }
-      : { kind: IdleWake.Reminder, at: after(state.lastHumanAt, CLOSE_QUESTION_DAYS) };
+      : { kind: IdleWake.Reminder, at: nextStep(state.lastHumanAt, CLOSE_QUESTION_DAYS, now) };
   }
   if (reminders === 2) {
     return idleDays < CLOSE_QUESTION_DAYS
