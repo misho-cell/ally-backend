@@ -11399,7 +11399,7 @@ async function executeToolCall(
         // The delayed engine turn stays as the fallback and already checks
         // `plan_proposed IS NULL` before it fires, so doing it here simply
         // means there is nothing left for it to do.
-        ...createTaskFollowUp(movedTo),
+        ...createTaskFollowUp(movedTo, !ownerAbsent),
       };
     }
     case 'ask_contact': {
@@ -14521,7 +14521,23 @@ export const __startOpeningSearchesForTest = startOpeningSearches;
  *
  * Exported for its own test: the two branches must not drift back together.
  */
-export function createTaskFollowUp(movedTo: number | undefined): Record<string, unknown> {
+/**
+ * Retest 9 Nov (C2): the owner answered „კი, მიდი" to „shall I ask Giorgi …?", the run
+ * opened a goal, read „write nobody until the plan is approved" here, proposed a plan and
+ * told him the question could not be sent. In his own turn, his yes to one ask he was
+ * offered IS the approval for that ask (the send path already takes it, ownerAskedNow);
+ * the model reads whether that is what he said.
+ */
+const OWNERS_YES_IS_THE_APPROVAL =
+  'One thing is yours to read: if the owner’s message just now is his yes to one ask you ' +
+  'offered him (a person and what to ask them), that yes already approves that ask — send ' +
+  'it now under this task_id, then propose the plan for the rest. Never tell him it cannot ' +
+  'be sent. Otherwise write nobody and start nothing until the plan is approved.';
+
+export function createTaskFollowUp(
+  movedTo: number | undefined,
+  ownerHere = false,
+): Record<string, unknown> {
   if (movedTo === undefined) {
     return {
       next:
@@ -14530,8 +14546,10 @@ export function createTaskFollowUp(movedTo: number | undefined): Record<string, 
         'Do not end your turn with the goal saved ' +
         'and no plan on screen: that costs the user a second answer a few seconds later, ' +
         'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
-        '— your own message must not repeat it, in any form. Write nobody and start nothing ' +
-        'until the plan is approved.',
+        '— your own message must not repeat it, in any form. ' +
+        (ownerHere
+          ? OWNERS_YES_IS_THE_APPROVAL
+          : 'Write nobody and start nothing until the plan is approved.'),
     };
   }
   return {
