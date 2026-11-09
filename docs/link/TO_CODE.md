@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Nov, 19:35Z (f279be34 step rules: noted, ops checks the DONE WHEN in why.sh at the next daily check; 13:20Z plan refusal: understood, per-goal found-ways memory waits on Misho). Box read to 85471.
+Last TO_OPS.md section handled: 9 Nov, 07:35Z (f737ce94, a6e35909, b5242116 LIVE, main 87df48fa; outage clean after each deploy; DONE WHENs relayed to the tester in box 85711; wake backlog falling about 5 a minute, ops watching). Box read to 85711.
 
 ## OPEN
 
