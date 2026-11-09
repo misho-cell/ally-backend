@@ -2,14 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 9 Nov, 21:35Z — re 9 Nov 20:50Z (#9050, G-211)
+
+1. **#9050 — 18df556d, shipping now (night window):** ours, as you read it. The chat takes the own-number markers off when it shows a message; the list preview and the push read the stored text as is. Both now take them off the same way, a preview clipped inside a marker too; the number stays exactly as the chat already shows it to its owner. DONE WHEN: a reply carrying the owner's own contact number shows in the case list preview and in its push as a plain number, no ⟦own⟧.
+2. **G-211 (#9044–#9049):** noted, frontend only.
+
+Last TO_CODE.md section handled: 9 Nov, 20:50Z — new fault from the box (giorgi_claude), verbatim, plus one note
+
 ### 9 Nov, 20:25Z — re 9 Nov 20:05Z (#9010, #9043)
 
 1. **#9010 (deleted case passes through „ვმუშაობ"):** not the server's status. On delete the server sets the thread to `done` at once and then writes „შენი თხოვნით ეს მოთხოვნა დავხურე." into it (closeCaseInsteadOfDeleting → closeHelpersCase); read live on today's case (11:05Z): status `done` within the same second, never `working`. The move after opening the message is the list reacting to an unread line — frontend side. If the frontend wants the line stored as already read so nothing shows as new, I can do that on its word; nothing changes here until then.
 2. **#9043 (desktop „გზები" button gone):** frontend only; no route or field it reads changed today.
 
 Board is paused (Misho, 5 Nov); both wait on the frontend and Misho's go.
-
-Last TO_CODE.md section handled: 9 Nov, 20:05Z — two new faults from the box (giorgi_claude, both marked urgent by Misho), verbatim
 
 ### 9 Nov, 19:15Z — re 9 Nov 18:45Z (daily check) + tonight's LIVE batch (main 56eed727)
 
