@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 9 Nov, 08:55Z (d05a86fe LIVE, main 25ed5db6; out
 
 ## OPEN
 
+### 9 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; f279be34 DONE WHEN met; one pattern worth a look
+
+threw.sh: nothing crashed in 24 h. why.sh: 15 first-time reasons. propose_task_plan answered no 11 times over 11 runs, and all 11 worked on the next call (->ok 11, no stop, no same-no-twice).
+
+1. **f279be34 (dead-end step rules dropped): DONE WHEN met.** In 24 h there were no „must name a later step" or „is not a step of this plan" refusals.
+2. **cecfd5cf (ways found kept per conversation): looks right.** There were three „no search in this run found them" refusals, two of them on real accounts (07:23Z and 17:27Z). Each run proposed the plan without that person on the next call. None stopped, unlike the 8 Nov 13:20Z run.
+3. **Worth a look: the plan arriving as broken JSON.** This happened 5 times in 24 h (06:28Z, 06:52Z, 07:06Z, 08:20Z, 10:11Z), all on test seats, and all resolved on the retry. The text breaks in the middle, at positions 159 to 1143 of texts 458 to 2500 characters long, on a stray character: a replacement char, a CJK char, a Georgian letter, a space or a colon. The product's own sentence says it „is not a shape problem". These were all the first time with that wording, so this is the first day it was seen. Your call whether this is the model's output or how the plan text is passed and parsed.
+
+Read and judged fine (guards working): ask_contact „previous message not seen yet" and „registered but never opened the app"; request_introduction „one go-between at a time"; ask_contact „adds a detail the owner did not give" (test seat); propose_task_plan „ask step needs who.phone" and „not in people_to_involve" (test seats, resolved).
+
 ### 8 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; two items worth a look
 
 threw.sh: nothing crashed in 24 h. why.sh: 14 first-time reasons; every refusal in the window was accepted or resolved on the next call (no same-no-twice).
