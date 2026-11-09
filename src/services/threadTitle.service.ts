@@ -151,6 +151,24 @@ export function needsRealTitle(currentTitle: string | null): boolean {
 }
 
 /**
+ * Tornike's 8 Nov report, #12: one word, „კოკაკოლა", was titled „კოკა ტოპურია" —
+ * a contact the answer listed. A first message of a few words already is its own
+ * subject, so the title is made from it alone and the answer is not shown; a
+ * longer message still goes with the answer, which tells what it was about.
+ */
+const SHORT_FIRST_MESSAGE_WORDS = 3;
+
+export function titleExchange(firstMessage: string, finalReply?: string): string {
+  const words = firstMessage
+    .trim()
+    .split(/\s+/u)
+    .filter((w) => w !== '').length;
+  return finalReply && words > SHORT_FIRST_MESSAGE_WORDS
+    ? `USER: ${firstMessage.slice(0, TITLE_INPUT_MAX_CHARS)}\nASSISTANT: ${finalReply.slice(0, TITLE_INPUT_MAX_CHARS)}`
+    : firstMessage.slice(0, TITLE_INPUT_MAX_CHARS);
+}
+
+/**
  * Replace the provisional first-message-slice title with a model-written 2–4
  * word one, then broadcast it (thread_updated) so every device renames the
  * thread live. Fire-and-forget by design: any failure leaves the provisional
@@ -168,9 +186,7 @@ export async function generateThreadTitle(
 ): Promise<void> {
   try {
     const { default: anthropic } = await import('../config/anthropic');
-    const exchange = finalReply
-      ? `USER: ${firstMessage.slice(0, TITLE_INPUT_MAX_CHARS)}\nASSISTANT: ${finalReply.slice(0, TITLE_INPUT_MAX_CHARS)}`
-      : firstMessage.slice(0, TITLE_INPUT_MAX_CHARS);
+    const exchange = titleExchange(firstMessage, finalReply);
     const response = await anthropic.messages.create(
       {
         model: TITLE_MODEL,
