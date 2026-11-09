@@ -11483,6 +11483,7 @@ async function executeToolCall(
       const routed = await askOnAReachGoalAsIntroduction(userId, threadId, runId, task, input, {
         asked,
         ownerLines,
+        ownerAsked: !ownerAbsent,
       });
       if (routed !== null) return routed;
       const question = asked;
@@ -17957,7 +17958,11 @@ async function askOnAReachGoalAsIntroduction(
   runId: string | undefined,
   task: { id: number; task_type: string },
   input: Record<string, unknown>,
-  ask: { readonly asked: string; readonly ownerLines: readonly string[] },
+  ask: {
+    readonly asked: string;
+    readonly ownerLines: readonly string[];
+    readonly ownerAsked: boolean;
+  },
 ): Promise<Record<string, unknown> | null> {
   if (task.task_type !== 'reach' || typeof input['phone'] !== 'string') return null;
   const target = personToMeetFromLines(ask.ownerLines);
@@ -17973,7 +17978,7 @@ async function askOnAReachGoalAsIntroduction(
     undefined,
     'intro',
     false,
-    introContextFor(threadId, task.id),
+    { ...introContextFor(threadId, task.id), ownerAsked: ask.ownerAsked },
   )) as Record<string, unknown>;
   const sent = outcome.success === true;
   if (sent && runId) runIntroSent.add(runId);

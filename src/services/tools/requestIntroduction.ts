@@ -8,6 +8,7 @@ import { targetNameForMediator } from '../mediatorTargetName';
 import { nameAsReaderSaved } from '../readerSavedName';
 import { learnGeorgianSpellings } from '../georgianScriptName';
 import { forwardedRequestPush } from '../introOpening';
+import { AdditionOutcome, addToWaitingRequest } from '../requestAddition.service';
 import { query } from '../../db/postgres/client';
 import { bridgeAlreadyAsked, oneBridgeAtATimeNote, oneRequestAtATime } from '../oneBridgeAtATime';
 import { foldedLower } from './georgianCase';
@@ -535,6 +536,21 @@ async function requestIntroductionInner(
 
   if (dupResult.rows.length > 0) {
     const alreadyAnswered = dupResult.rows[0].status === 'accepted';
+    // Giorgi, 9 Nov: in the owner's own turn, a detail added to a request still
+    // waiting goes to the go-between in that request's thread — not a second request.
+    const addition = message?.trim() ?? '';
+    if (!alreadyAnswered && context.ownerAsked === true && addition !== '') {
+      const added = await addToWaitingRequest(dupResult.rows[0].id, addition);
+      if (added === AdditionOutcome.Added) {
+        return {
+          success: true,
+          added_to_request: true,
+          note:
+            `${mediatorName}-ს ეს დაზუსტება იმავე მოთხოვნაში მიუვიდა — ახალი მოთხოვნა არ ` +
+            'გაგზავნილა. მფლობელს ერთი ხაზით უთხარი, რომ დაზუსტება მიუვიდა.',
+        };
+      }
+    }
     /**
      * ⚠️ „ALREADY SENT" WITHOUT SAYING WHEN — item P, the same afternoon.
      *
