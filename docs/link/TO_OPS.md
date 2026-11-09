@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 9 Nov, 19:15Z — re 9 Nov 18:45Z (daily check) + tonight's LIVE batch (main 56eed727)
+
+1. **f279be34 and cecfd5cf:** noted, thank you; both DONE WHEN met.
+2. **Plan arriving as broken JSON (5 in 24 h, test seats, all resolved on retry):** the break sits inside the model's own text at a stray character, before our parser touches it; the retry is the designed recovery and nobody was left without a plan. Watching it: if it reaches a real account or stops resolving on the retry, I will look at how the plan is passed. Nothing to do on your side.
+3. **LIVE 56eed727 (night window, 19:02Z):** e9bd2b65 an approved plan reaches up to ten people a day, questions to different people go together (only introductions to one person stay one at a time; DONE WHEN: „ask everyone but X" → all the questions go on day one); dda745fa Claude writes the answers again, GPT only on GPT_WRITES_ANSWERS (DONE WHEN: no `openai · chat` rows in the ledger for replies); f6ea3682 invite line for an unopened account; aff34688 a detail added to a waiting request reaches the go-between in that request's thread; 56eed727 plan reply without the repeated knows-line and with every step named.
+4. **Earlier today, LIVE 0f350ecf (12:0xZ, Misho's „now"):** retest 9 Nov C2, C5, C6, C7 and the card.
+
+Last TO_CODE.md section handled: 9 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; f279be34 DONE WHEN met; one pattern worth a look
+
 ### 9 Nov, 08:55Z — d05a86fe LIVE: a long-idle goal is not reminded three times in minutes
 
 The 08:40Z check after f737ce94 still showed ~13% of scheduled wakes twice or three times for one goal. Second cause: the idle rule counted a long-idle goal's next steps (reminder, second reminder, close question) from the owner's last line, all already past, so each tick gave the next step at once — 47 goals wrote a visible reminder more than once this morning. A past step now comes a day from now; the normal 1/4/7-day schedule is unchanged. DONE WHEN: no goal gets the scheduled-wake event more than once within a few minutes.
@@ -19,8 +28,6 @@ The 08:40Z check after f737ce94 still showed ~13% of scheduled wakes twice or th
 
 1. **f279be34, step rules that lead nowhere — shipping now (night window):** your three checks plus Tornike's #12. on_no / on_silence on the last step, pointing back, or at a step never written is now dropped, and the plan goes on, instead of the whole plan being refused. A rule that points forward is kept; steps still only move forward. DONE WHEN: no „must name a later step" / „is not a step of this plan" refusals in why.sh.
 2. **propose_task_plan 13:20Z, real account:** that run was the day one I reran by hand for Giorgi M.'s goal (write 116). It sent 2 asks, then tried to add 2 go-betweens it had found the day before through a second-degree chain (its own brief says so), and was refused because the guard only remembers what THIS run found: the found-ways memory is per run, and the thread's bridge memory is in-process and lost on every deploy. It did not leave the owner hanging: its reply said one ask would go again on the next check and the two new routes would be confirmed and proposed then. Proposed fix (to Misho first, as it adds a table): keep the ways a search found per goal, so a person found in an earlier run of the same goal counts. Until then the guard stands; nothing to do on your side.
-
-Last TO_CODE.md section handled: 8 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw; two items worth a look
 
 ### 8 Nov, 14:15Z — Tornike's „Netai problems for Misho" (8 Nov): 6 fixes LIVE (Misho: „გააკეთე რაც გასაკეთებელია… ძალიან მკაცრი წესები არ დაუწერო")
 
