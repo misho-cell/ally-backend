@@ -1691,6 +1691,10 @@ const TIE_READ_TIMEOUT_MS = 3_000;
  * Tester's report 8 Nov, C4/C5: whether the request's target is saved in the go-between's
  * own phonebook (by the number's last nine digits). A failed read is no known tie, and the
  * card asks „do you know…" as before.
+ *
+ * Retest 9 Nov: a request for a Netai member carries no number until it is accepted, so
+ * round 1's card asked „იცნობ?" while round 2's (number given) did not. The member's own
+ * number counts too.
  */
 export async function goBetweenHasTheTarget(
   mediatorUserId: number,
@@ -1698,13 +1702,20 @@ export async function goBetweenHasTheTarget(
 ): Promise<boolean> {
   try {
     const result = await query<{ known: boolean }>(
-      `SELECT EXISTS (
-         SELECT 1 FROM introduction_requests ir
-           JOIN "UserAlias" ua ON ua."contactId" = $2::int
+      `WITH target AS (
+         SELECT ir.target_phone AS phone FROM introduction_requests ir
           WHERE ir.id = $1 AND ir.target_phone IS NOT NULL
-            AND length(regexp_replace(ir.target_phone, '\\D', '', 'g')) >= $3
+         UNION ALL
+         SELECT up.phone FROM introduction_requests ir
+           JOIN "UserPhone" up ON up."userId" = ir.target_user_id
+          WHERE ir.id = $1
+       )
+       SELECT EXISTS (
+         SELECT 1 FROM target t
+           JOIN "UserAlias" ua ON ua."contactId" = $2::int
+          WHERE length(regexp_replace(t.phone, '\\D', '', 'g')) >= $3
             AND right(regexp_replace(ua.phone, '\\D', '', 'g'), $3)
-              = right(regexp_replace(ir.target_phone, '\\D', '', 'g'), $3)
+              = right(regexp_replace(t.phone, '\\D', '', 'g'), $3)
        ) AS known`,
       [introRequestId, mediatorUserId, SAME_NUMBER_DIGITS],
       TIE_READ_TIMEOUT_MS,
