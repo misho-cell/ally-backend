@@ -10,13 +10,13 @@ jest.mock('../../db/postgres/client', () => ({
 jest.mock('../chat.service', () => ({ __esModule: true, processChat: jest.fn() }));
 
 import { wakesThisTick } from '../taskEngine.service';
-import { countDueTasks, leaseTaskWakes } from '../taskStore.service';
+import { countDueTasks, getDueTasks } from '../taskStore.service';
 
 /**
  * Misho's yes, 8 Nov: about 3,500 wakes were due at two a minute, so a goal's
  * scheduled check came days late. A tick takes ten while more than a hundred
- * wait, two otherwise; what it takes is leased so an overlapping tick cannot
- * take it again.
+ * wait, two otherwise; it takes and leases them in one statement, so an
+ * overlapping tick can never take the same goal (9 Nov: one in five were woken twice).
  */
 const ENGINE = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
 
@@ -39,25 +39,24 @@ describe('the wake queue', () => {
     expect(params).toEqual([101]);
   });
 
-  it('leases what a tick took, and leases nothing for nothing', async () => {
-    await leaseTaskWakes([], 30);
-    expect(mockQuery).not.toHaveBeenCalled();
-    mockQuery.mockResolvedValueOnce({ rowCount: 2 });
-    await leaseTaskWakes([7, 8], 30);
+  it('takes and leases its batch in one statement, so overlapping ticks never share a goal', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    await getDueTasks(10, 30);
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain('SET next_wake_at = NOW() + make_interval(mins => $2)');
-    expect(params).toEqual([[7, 8], 30]);
+    expect(sql).toContain('UPDATE tasks SET next_wake_at = NOW() + make_interval(mins => $2)');
+    expect(sql).toContain('FOR UPDATE SKIP LOCKED');
+    expect(sql).toContain('AND plan_change_requested_at IS NULL');
+    expect(sql).toContain('ORDER BY next_wake_at ASC');
+    expect(params).toEqual([10, 30]);
   });
 
   it('is sized and leased before the first goal is worked', () => {
     const tick = ENGINE.slice(ENGINE.indexOf('async function tick()'));
-    const sized = tick.indexOf(
-      'getDueTasks(wakesThisTick(await countDueTasks(BACKLOG_WAKES + 1)))',
+    const taken = tick.indexOf(
+      'getDueTasks(\n    wakesThisTick(await countDueTasks(BACKLOG_WAKES + 1)),\n    WAKE_LEASE_MINUTES,\n  );',
     );
-    const leased = tick.indexOf('await leaseTaskWakes(');
     const worked = tick.indexOf('for (const task of due) {');
-    expect(sized).toBeGreaterThan(-1);
-    expect(leased).toBeGreaterThan(sized);
-    expect(worked).toBeGreaterThan(leased);
+    expect(taken).toBeGreaterThan(-1);
+    expect(worked).toBeGreaterThan(taken);
   });
 });
