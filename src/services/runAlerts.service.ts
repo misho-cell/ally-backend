@@ -132,11 +132,11 @@ async function unanswered(): Promise<RunAlert[]> {
   const result = await query<RunAlert>(
     `SELECT 'unanswered' AS kind, x.id::text AS ref, x.user_id::int AS user_id, x.thread_id,
             NULL AS run_id,
-            'a typed message has had no reply for ' || $2 || ' minutes' AS detail,
+            'a typed message has had no reply for ' || $2::int || ' minutes' AS detail,
             ${SEAT_SQL} AS test_seat
        FROM conversations x
       WHERE x.created_at > NOW() - make_interval(mins => $1)
-        AND x.created_at < NOW() - make_interval(mins => $2)
+        AND x.created_at < NOW() - make_interval(mins => $2::int)
         AND x.role = 'user' AND x.kind = 'message' AND x.content <> ''
         AND NOT EXISTS (
               SELECT 1 FROM conversations r
