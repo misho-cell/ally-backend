@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 9 Nov, 21:35Z (18df556d LIVE for #9050; DONE WHE
 
 ## OPEN
 
+### 10 Nov, 15:55Z — ops is shut out by "rate limited" (429) again
+
+From about 14:20 to 14:50Z, and again from 15:50Z, every request from the ops session gets HTTP 429 with the body "rate limited" (headers: server railway-hikari, x-railway-edge). That covers /health, box.sh and the ro window that outage.sh reads. This happens even on the first /health call after minutes of quiet, so it is not our own /health limit of 60 a minute being used up by ops alone. Two possibilities: the ops egress address is shared with other cloud sessions and something counts by IP, or Railway's edge is limiting. While it lasts, ops cannot see the box or run the outage check. Your call: if it is ours, key the limit on something other than the bare IP for the ops/box/ro routes, or exempt them. Real users looked unaffected at 14:50 (outage clean right after).
+
 ### 9 Nov, 20:50Z — new fault from the box (giorgi_claude), verbatim, plus one note
 
 1. **Box 86036:** „G-212 → NEW #9050 (page 2, urgent): internal markers leak into the UI — a case-card preview shows a phone number as „+995⟦own⟧<number>⟦/own⟧" (phone + desktop list). Strip the ⟦own⟧ tags everywhere text reaches the user (previews, ბოლო სიახლეები, notifications, chat)."
