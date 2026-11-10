@@ -58,7 +58,7 @@ import {
 } from './engineWakes.service';
 import { offersTheFinishCard, processChat } from './chat.service';
 import { userLanguage } from './threads.service';
-import { holdTestSeatWakes, testSeatsOverBudget } from './testSeatWakes';
+import { holdTestSeatWakes, testSeatWakeHeld, testSeatsOverBudget } from './testSeatWakes';
 import {
   getTaskById,
   goalHasActedOutward,
@@ -360,6 +360,10 @@ export async function wakeTask(
     if (!task || task.status !== 'open' || task.thread_id === null) return 'stopped';
     const ownerId = String(task.user_id);
     if (await wakeWaitsForMorning(ownerId, origin)) return 'quiet';
+    // Misho, 10 Nov: a test seat nobody is testing, or past the day's budget, is not run on its own.
+    if (origin === WakeOrigin.Netai && (await heldAsAnIdleTestSeat(ownerId, task.thread_id))) {
+      return 'quiet';
+    }
     const thread = await getThread(task.thread_id, ownerId);
     if (!thread) return 'stopped';
     // #8020 (case 63857): a goal that ended up on a chat holding another
@@ -1196,6 +1200,17 @@ async function tick(): Promise<void> {
       // eslint-disable-next-line no-console
       console.error('[task-engine] default wake failed:', (err as Error).message),
     );
+  }
+}
+
+/** The test-seat check, never in a real owner's way: unreadable means not held. */
+async function heldAsAnIdleTestSeat(ownerId: string, threadId: number): Promise<boolean> {
+  try {
+    return await testSeatWakeHeld(ownerId, threadId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[task-engine] test-seat check failed:', (err as Error).message);
+    return false;
   }
 }
 
