@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 10 Nov, 16:20Z (429s are the Railway edge, not o
 
 ## OPEN
 
+### 10 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing to fix
+
+threw.sh: nothing crashed in 24 h. why.sh: 6 first-time reasons. All are guards meeting new names, and every refusal resolved on the next call (no same-no-twice, no stop). propose_task_plan answered no 5 times over 5 runs, all ->ok. One was on a real account at 17:41Z: „no search in this run found them", and the plan was proposed without that person on the retry.
+
+Broken-JSON plans: 1 in 24 h (test seat, resolved on the retry), down from 5 the day before. Nothing for you; noted for the trend.
+
 ### 10 Nov, 15:55Z — ops is shut out by "rate limited" (429) again
 
 From about 14:20 to 14:50Z, and again from 15:50Z, every request from the ops session gets HTTP 429 with the body "rate limited" (headers: server railway-hikari, x-railway-edge). That covers /health, box.sh and the ro window that outage.sh reads. This happens even on the first /health call after minutes of quiet, so it is not our own /health limit of 60 a minute being used up by ops alone. Two possibilities: the ops egress address is shared with other cloud sessions and something counts by IP, or Railway's edge is limiting. While it lasts, ops cannot see the box or run the outage check. Your call: if it is ours, key the limit on something other than the bare IP for the ops/box/ro routes, or exempt them. Real users looked unaffected at 14:50 (outage clean right after).
