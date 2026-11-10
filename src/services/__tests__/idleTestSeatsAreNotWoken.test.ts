@@ -9,6 +9,7 @@ import {
   TEST_SEAT_IDLE_HOURS,
   forgetBudgetReading,
   holdTestSeatWakes,
+  testSeatWakeHeld,
   testSeatsOverBudget,
 } from '../testSeatWakes';
 
@@ -47,5 +48,34 @@ describe('test seats’ scheduled checks', () => {
     expect(mockQuery).toHaveBeenCalledTimes(1);
     await testSeatsOverBudget(6 * 60_000);
     expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('a run the server starts on its own for a test seat', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    forgetBudgetReading();
+  });
+
+  it('is never held for a real owner', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ seat: false, recent: false }] });
+    await expect(testSeatWakeHeld('1', 2)).resolves.toBe(false);
+  });
+
+  it('is held when nobody typed in the conversation within the day', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ seat: true, recent: false }] });
+    await expect(testSeatWakeHeld('1', 2)).resolves.toBe(true);
+  });
+
+  it('runs while a tester is testing, until the day’s budget is spent', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ seat: true, recent: true }] })
+      .mockResolvedValueOnce({ rows: [{ usd: '1' }] });
+    await expect(testSeatWakeHeld('1', 2)).resolves.toBe(false);
+    forgetBudgetReading();
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ seat: true, recent: true }] })
+      .mockResolvedValueOnce({ rows: [{ usd: String(TEST_SEAT_DAILY_BUDGET_USD + 1) }] });
+    await expect(testSeatWakeHeld('1', 2)).resolves.toBe(true);
   });
 });

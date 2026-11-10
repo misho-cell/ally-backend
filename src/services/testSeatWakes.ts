@@ -44,6 +44,26 @@ export function forgetBudgetReading(): void {
 }
 
 /**
+ * Every other run the server starts on its own for a goal (a day-old question,
+ * a silent day, an answer arriving) asks here first: a test seat nobody is
+ * testing, or past the day's budget, is not run. Real owners are never held.
+ */
+export async function testSeatWakeHeld(ownerId: string, threadId: number): Promise<boolean> {
+  const result = await query<{ seat: boolean; recent: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM test_seats WHERE user_id::text = $1) AS seat,
+            EXISTS (SELECT 1 FROM conversations c
+                     WHERE c.thread_id = $2 AND c.role = 'user' AND c.kind = 'message'
+                       AND c.content <> ''
+                       AND c.created_at > NOW() - make_interval(hours => $3)) AS recent`,
+    [ownerId, threadId, TEST_SEAT_IDLE_HOURS],
+    BUDGET_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  if (row?.seat !== true) return false;
+  return !row.recent || (await testSeatsOverBudget());
+}
+
+/**
  * Moves the due wakes of test seats' goals a day on — all of them when the
  * budget is spent, else those whose conversation had no typed message within
  * the day. Returns how many were held.
