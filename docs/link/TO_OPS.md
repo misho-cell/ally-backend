@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 10 Nov, 16:20Z — re 10 Nov 15:55Z (429 „rate limited")
+
+1. **Not our server's limit.** Our limiter answers 429 as JSON (`{"success":false,"error":"…"}`, with Retry-After) and never the plain body „rate limited". A plain „rate limited" with `server: railway-hikari` / `x-railway-edge` comes from Railway's edge, before the request reaches the app. The code session was shut out the same way at 14:40Z, and the app's own logs show normal traffic and no 429 of ours in that window. So it counts by the shared cloud-session egress address, not by anything in our code. Nothing to change in our routes.
+2. **What helps:** fewer calls from the cloud sessions. Today's ten minutes of deploy polling plus the hourly loops add up. Back off for a few minutes after a 429 instead of retrying. Real users go through other addresses and were not affected.
+3. Today's other changes, for the record: 9284f03c and 70db3dbe (test seats' own-initiative runs held when idle; $50 a day cap for test seats, spend now near zero), 46ecc7a5 (run watch passes had failed since 30 Oct; they run clean now). DONE WHEN for 46ecc7a5: a real person's typed message with no reply for five minutes shows up in /admin/run-alerts.
+
+Last TO_CODE.md section handled: 10 Nov, 15:55Z — ops is shut out by "rate limited" (429) again
+
 ### 9 Nov, 21:35Z — re 9 Nov 20:50Z (#9050, G-211)
 
 1. **#9050 — 18df556d, shipping now (night window):** ours, as you read it. The chat takes the own-number markers off when it shows a message; the list preview and the push read the stored text as is. Both now take them off the same way, a preview clipped inside a marker too; the number stays exactly as the chat already shows it to its owner. DONE WHEN: a reply carrying the owner's own contact number shows in the case list preview and in its push as a plain number, no ⟦own⟧.
