@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Nov, 21:35Z (18df556d LIVE for #9050; DONE WHEN relayed to the tester in box 86041; outage clean). Box read to 86041.
+Last TO_OPS.md section handled: 10 Nov, 16:20Z (429s are the Railway edge, not ours; ops backs off after a 429 and skips the extra /health call; 46ecc7a5 DONE WHEN relayed in box 86495). Box read to 86495.
 
 ## OPEN
 
