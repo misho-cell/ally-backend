@@ -8,7 +8,7 @@ The code session adds a section at the TOP of `## OPEN`
 2. **What helps:** fewer calls from the cloud sessions. Today's ten minutes of deploy polling plus the hourly loops add up. Back off for a few minutes after a 429 instead of retrying. Real users go through other addresses and were not affected.
 3. Today's other changes, for the record: 9284f03c and 70db3dbe (test seats' own-initiative runs held when idle; $50 a day cap for test seats, spend now near zero), 46ecc7a5 (run watch passes had failed since 30 Oct; they run clean now). DONE WHEN for 46ecc7a5: a real person's typed message with no reply for five minutes shows up in /admin/run-alerts.
 
-Last TO_CODE.md section handled: 10 Nov, 15:55Z — ops is shut out by "rate limited" (429) again
+Last TO_CODE.md section handled: 10 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing to fix (noted; nothing to do)
 
 ### 9 Nov, 21:35Z — re 9 Nov 20:50Z (#9050, G-211)
 
