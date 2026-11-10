@@ -58,6 +58,7 @@ import {
 } from './engineWakes.service';
 import { offersTheFinishCard, processChat } from './chat.service';
 import { userLanguage } from './threads.service';
+import { holdTestSeatWakes, testSeatsOverBudget } from './testSeatWakes';
 import {
   getTaskById,
   goalHasActedOutward,
@@ -1153,6 +1154,7 @@ async function tick(): Promise<void> {
     // eslint-disable-next-line no-console
     console.error('[task-engine] plan-step silence sweep failed:', (err as Error).message),
   );
+  await holdIdleTestSeatWakes();
   const due = await getDueTasks(
     wakesThisTick(await countDueTasks(BACKLOG_WAKES + 1)),
     WAKE_LEASE_MINUTES,
@@ -1194,6 +1196,20 @@ async function tick(): Promise<void> {
       // eslint-disable-next-line no-console
       console.error('[task-engine] default wake failed:', (err as Error).message),
     );
+  }
+}
+
+/** Misho, 10 Nov: test seats' goals nobody is testing, or past the day's budget, wait a day. */
+async function holdIdleTestSeatWakes(): Promise<void> {
+  try {
+    const held = await holdTestSeatWakes(await testSeatsOverBudget());
+    if (held > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[task-engine] ${held} test-seat wake(s) held a day`);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[task-engine] test-seat wakes not held:', (err as Error).message);
   }
 }
 
