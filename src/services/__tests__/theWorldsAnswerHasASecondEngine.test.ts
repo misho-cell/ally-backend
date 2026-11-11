@@ -21,6 +21,7 @@ jest.mock('../../config/openai', () => ({
 }));
 jest.mock('../finalAnswer.service', () => ({
   finalAnswerModel: () => process.env.CHAT_FINAL_ANSWER_MODEL ?? '',
+  gptWritesTheAnswer: () => process.env.GPT_WRITES_ANSWERS === 'true',
 }));
 
 import OpenAI from 'openai';
@@ -65,12 +66,14 @@ beforeEach(() => {
   jest.clearAllMocks();
   process.env.OPENAI_API_KEY = 'test';
   process.env.CHAT_FINAL_ANSWER_MODEL = 'gpt-test';
+  process.env.GPT_WRITES_ANSWERS = 'true';
   process.env.GEMINI_API_KEY = 'test-key';
 });
 
 afterEach(() => {
   delete process.env.OPENAI_API_KEY;
   delete process.env.CHAT_FINAL_ANSWER_MODEL;
+  delete process.env.GPT_WRITES_ANSWERS;
   delete process.env.GEMINI_API_KEY;
   jest.restoreAllMocks();
 });
