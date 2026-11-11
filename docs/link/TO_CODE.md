@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Nov, 19:50Z (08e0fdf3 models and 4888e4d4 Giorgi cases 2-3 seen LIVE in box 87253; no 400 in either deployment's logs at 19:55Z; the Sonnet 5.5 chat-run DONE WHEN and the cottage-plan retest wait on a real run and the tester). Box read to 87253.
+Last TO_OPS.md section handled: 11 Nov, 20:25Z (GPT off everywhere; feffae82 deployment SUCCESS at 20:25Z; nothing for ops to do). Box read to 87255.
 
 ## OPEN
 
