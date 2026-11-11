@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import anthropic from '../config/anthropic';
 import { recordClaudeUsage } from './costLedger.service';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * Ticket 20 row 126, fourth pass — the opening web search gets a QUERY, not a
@@ -40,7 +41,7 @@ import { recordClaudeUsage } from './costLedger.service';
  * too. SEARCH_QUERY_MODEL may still name a Claude model; anything else in it
  * is ignored.
  */
-const DEFAULT_QUERY_MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_QUERY_MODEL = QUICK_MODEL;
 
 function queryModel(): string {
   const chosen = process.env.SEARCH_QUERY_MODEL?.trim() ?? '';
@@ -205,6 +206,7 @@ export async function distilSearchQuery(
     const response = await anthropic.messages.create(
       {
         model,
+        ...noThinkingFor(model),
         max_tokens: MAX_OUTPUT_TOKENS,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userPrompt(goalText) }],

@@ -34,7 +34,8 @@ describe('the reasoning summary and the kept prompt', () => {
   it('ride on the main model\u2019s calls only, never beside a forced tool', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('const tracedFully = await tracedInFull(ctx.userId);');
-    expect(chat).toContain('tracedFully && model === MODEL && opts.forceTool === undefined');
+    expect(chat).toContain('model !== MODEL || (opts.quickThought === true && model === MODEL)');
+    expect(chat).toContain(': tracedFully && opts.forceTool === undefined');
     expect(chat).toContain('if (tracedFully) void recordPromptSent(ctx.runId, systemPrompt);');
   });
 });

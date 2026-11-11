@@ -64,11 +64,11 @@ describe('the editor check', () => {
     answers({ ok: true });
     await editOutgoingAsk(DRAFT, CONTEXT);
     const [params, options] = mockCreate.mock.calls[0];
-    expect(params.model).toBe('claude-sonnet-5');
+    expect(params.model).toBe('claude-sonnet-5-5');
     expect(params.messages[0].content).toContain('ჰკითხე ნოდარს');
     expect(params.messages[0].content).toContain('მეყავს ნაცნობი გია');
     expect(options.timeout).toBe(15_000);
-    expect(params.tool_choice).toEqual({ type: 'tool', name: 'give_verdict' });
+    expect(params.tool_choice).toEqual({ type: 'auto' }); // Sonnet 5.5 refuses a forced tool; the brief asks for it
     expect(options.maxRetries).toBe(0);
   });
 

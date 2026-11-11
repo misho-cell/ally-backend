@@ -3,6 +3,7 @@ import { query } from '../db/postgres/client';
 import pool from '../db/postgres/client';
 import { getSession } from '../db/neo4j/client';
 import { recordClaudeUsage } from './costLedger.service';
+import { MAIN_MODEL, noThinkingFor } from './aiModels';
 
 const ADMIN_SYSTEM_PROMPT = `შენ ხარ Netai-ს AI ასისტენტის კონფიგურატორი.
 შენს მოსაუბრე ყოველთვის არის authenticated ადმინი.
@@ -159,7 +160,8 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
   ];
 
   let response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: MAIN_MODEL,
+    ...noThinkingFor(MAIN_MODEL),
     max_tokens: 4096,
     system: ADMIN_SYSTEM_PROMPT,
     tools: adminTools,
@@ -168,7 +170,7 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
   void recordClaudeUsage({
     userId: adminId,
     kind: 'admin_chat',
-    model: 'claude-sonnet-4-6',
+    model: MAIN_MODEL,
     usage: response.usage,
   }).catch(() => {});
 
@@ -190,7 +192,8 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
     messages.push({ role: 'user', content: toolResults });
 
     response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: MAIN_MODEL,
+      ...noThinkingFor(MAIN_MODEL),
       max_tokens: 4096,
       system: ADMIN_SYSTEM_PROMPT,
       tools: adminTools,
@@ -199,7 +202,7 @@ export async function processAdminChat(adminId: string, userMessage: string): Pr
     void recordClaudeUsage({
       userId: adminId,
       kind: 'admin_chat',
-      model: 'claude-sonnet-4-6',
+      model: MAIN_MODEL,
       usage: response.usage,
     }).catch(() => {});
   }

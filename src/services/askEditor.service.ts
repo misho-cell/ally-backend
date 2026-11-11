@@ -6,6 +6,7 @@ import { recordClaudeUsage } from './costLedger.service';
 import { RunLanguage } from './runLanguage';
 import { thirdPersonTurnedToYou } from './personFlip';
 import { rewriteChangedTheQuestion } from './rewriteTopic';
+import { MAIN_MODEL, noThinkingFor, oneToolChoice } from './aiModels';
 
 /**
  * D711 (the founder, 7 Oct): every question that goes to another person
@@ -68,7 +69,7 @@ function questionMarks(text: string): number {
  * the tester's 44207 — the small model's rewrite of a reason was „დავველაპარაკოს",
  * not a Georgian word. This text goes in front of a person doing somebody a favour.
  */
-export const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || 'claude-sonnet-5';
+export const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || MAIN_MODEL;
 
 export const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
   ka: 'Georgian',
@@ -226,10 +227,11 @@ export async function editOutgoingAsk(
     const response = await anthropic.messages.create(
       {
         model: EDITOR_MODEL,
+        ...noThinkingFor(EDITOR_MODEL),
         max_tokens: MAX_OUTPUT_TOKENS,
         system: editorBrief(context),
         tools: [VERDICT_TOOL],
-        tool_choice: { type: 'tool', name: VERDICT_TOOL.name },
+        tool_choice: oneToolChoice(EDITOR_MODEL, VERDICT_TOOL.name),
         messages: [{ role: 'user', content: editorInput(draft, context) }],
       },
       { timeout: EDIT_BUDGET_MS, maxRetries: 0 },
@@ -300,6 +302,7 @@ export async function reasonAboutAsker(reason: string, askerName: string): Promi
     const response = await anthropic.messages.create(
       {
         model: EDITOR_MODEL,
+        ...noThinkingFor(EDITOR_MODEL),
         max_tokens: MAX_OUTPUT_TOKENS,
         system: reasonBrief(askerName),
         messages: [{ role: 'user', content: said }],
@@ -367,6 +370,7 @@ export async function shortenedQuestion(question: string): Promise<string | null
     const response = await anthropic.messages.create(
       {
         model: EDITOR_MODEL,
+        ...noThinkingFor(EDITOR_MODEL),
         max_tokens: SHORTEN_MAX_TOKENS,
         system: SHORTEN_BRIEF,
         messages: [{ role: 'user', content: question }],

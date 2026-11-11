@@ -1,5 +1,6 @@
 import { recordClaudeUsage } from './costLedger.service';
 import { dictatesTheText, sentenceCarriedOver } from './sentenceCarriedOver';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * Board #100 (plate F1): when Netai worded a question for the owner it changed
@@ -16,7 +17,7 @@ import { dictatesTheText, sentenceCarriedOver } from './sentenceCarriedOver';
  * a detail the owner did not give. The word it names must stand in the question,
  * so it cannot invent one; on any failure nothing is held back.
  */
-const FACT_CHECK_MODEL = process.env.FACT_CHECK_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const FACT_CHECK_MODEL = process.env.FACT_CHECK_MODEL?.trim() || QUICK_MODEL;
 const FACT_CHECK_TIMEOUT_MS = 4_000;
 const FACT_CHECK_MAX_TOKENS = 120;
 const MAX_OWNER_CHARS = 3_000;
@@ -89,6 +90,7 @@ export async function factChangedIn(
     const response = await anthropic.messages.create(
       {
         model: FACT_CHECK_MODEL,
+        ...noThinkingFor(FACT_CHECK_MODEL),
         max_tokens: FACT_CHECK_MAX_TOKENS,
         system: FACT_PROMPT,
         messages: [

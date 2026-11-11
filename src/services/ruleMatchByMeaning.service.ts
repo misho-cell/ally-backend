@@ -1,4 +1,5 @@
 import { recordClaudeUsage } from './costLedger.service';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * D652 needs a saved rule to fire, and D648 took away the way it fired. The
@@ -15,7 +16,7 @@ import { recordClaudeUsage } from './costLedger.service';
  * doubt, and any failure is „none" — a question not answered automatically
  * goes to the person as an ordinary question, which is always safe.
  */
-const RULE_MATCH_MODEL = process.env.RULE_MATCH_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const RULE_MATCH_MODEL = process.env.RULE_MATCH_MODEL?.trim() || QUICK_MODEL;
 const RULE_MATCH_TIMEOUT_MS = 6_000;
 const RULE_MATCH_MAX_TOKENS = 10;
 const MAX_QUESTION_CHARS = 600;
@@ -75,6 +76,7 @@ export async function ruleCoveringByMeaning<T extends MatchableRule>(
     const response = await anthropic.messages.create(
       {
         model: RULE_MATCH_MODEL,
+        ...noThinkingFor(RULE_MATCH_MODEL),
         max_tokens: RULE_MATCH_MAX_TOKENS,
         system: MATCH_PROMPT,
         messages: [

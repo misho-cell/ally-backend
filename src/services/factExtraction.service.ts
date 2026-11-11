@@ -4,13 +4,14 @@ import { parseModelJson } from './modelJson';
 import { submitContactFact, FACT_FIELD_TYPES, FactConfidence } from './contactFacts.service';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { factForgottenRecently } from './forgetOnTheOwnersWord';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 // Engine T1 (ticket 6, 20 Aug spec): the live assistant saves a fact only
 // when it decides to call save_contact_fact mid-conversation — this sweep
 // is the backstop for everything it decides NOT to call in the moment.
 // Cheap tier, same choice as thread-title generation and note moderation
 // elsewhere in this codebase; overridable without a deploy.
-const EXTRACTION_MODEL = process.env.FACT_EXTRACTION_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const EXTRACTION_MODEL = process.env.FACT_EXTRACTION_MODEL?.trim() || QUICK_MODEL;
 const EXTRACTION_MAX_TOKENS = 600;
 const EXTRACTION_TIMEOUT_MS = 15_000;
 const EXTRACTION_INPUT_MAX_CHARS = 4_000;
@@ -335,6 +336,7 @@ export async function sweepFactsFromExchange(
     const response = await anthropic.messages.create(
       {
         model: EXTRACTION_MODEL,
+        ...noThinkingFor(EXTRACTION_MODEL),
         max_tokens: EXTRACTION_MAX_TOKENS,
         system: buildExtractionPrompt(),
         messages: [{ role: 'user', content: exchange }],

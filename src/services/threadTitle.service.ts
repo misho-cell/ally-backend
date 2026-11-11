@@ -3,11 +3,12 @@ import { recordClaudeUsage } from './costLedger.service';
 import { updateThreadShortTitles, updateThreadTitle, userLanguage } from './threads.service';
 import { parseShortTitles, SHORT_TITLES_ON, shortTitlesPrompt } from './shortTitles';
 import { emitThreadUpdated } from './sse.service';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 // Cheap tier is plenty for a 2–4 word title; overridable without a deploy.
 // Dated id on purpose — it is the key provider_prices is seeded under, so the
 // cost ledger prices the call instead of warning "missing price".
-const TITLE_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const TITLE_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || QUICK_MODEL;
 const TITLE_MAX_TOKENS = 30;
 const TITLE_TIMEOUT_MS = 10_000;
 /**
@@ -190,6 +191,7 @@ export async function generateThreadTitle(
     const response = await anthropic.messages.create(
       {
         model: TITLE_MODEL,
+        ...noThinkingFor(TITLE_MODEL),
         max_tokens: TITLE_MAX_TOKENS,
         system: buildTitlePrompt(detectTitleLanguage(firstMessage)),
         messages: [{ role: 'user', content: exchange }],
@@ -245,6 +247,7 @@ export async function writeShortTitles(
     const response = await anthropic.messages.create(
       {
         model: TITLE_MODEL,
+        ...noThinkingFor(TITLE_MODEL),
         max_tokens: SHORT_TITLES_MAX_TOKENS,
         system: shortTitlesPrompt(detectTitleLanguage(firstMessage)),
         messages: [{ role: 'user', content: title }],

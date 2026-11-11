@@ -1,8 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import anthropic from '../config/anthropic';
 import { recordClaudeUsage } from './costLedger.service';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
-const MODERATION_MODEL = 'claude-haiku-4-5-20251001';
+const MODERATION_MODEL = QUICK_MODEL;
 const MODERATION_TIMEOUT_MS = 10_000;
 /** „UNSAFE: harassment" needs a few more than „UNSAFE" did. */
 const MODERATION_MAX_TOKENS = 16;
@@ -75,6 +76,7 @@ async function moderationVote(text: string, userId: string | null): Promise<Mode
     const response = await anthropic.messages.create(
       {
         model: MODERATION_MODEL,
+        ...noThinkingFor(MODERATION_MODEL),
         max_tokens: MODERATION_MAX_TOKENS,
         system: MODERATION_SYSTEM,
         messages: [{ role: 'user', content: text }],

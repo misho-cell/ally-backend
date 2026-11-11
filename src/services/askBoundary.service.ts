@@ -6,6 +6,7 @@ import { recordClaudeUsage } from './costLedger.service';
 import { normalizeSearchToken } from './tools/normalizeSearchToken';
 import { georgianStem } from './tools/georgianStem';
 import { phoneDigits } from './phone';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * ROW 247 — „DO NOT ASK ME ABOUT PLUMBERS" HAS TO REACH OTHER PEOPLE'S
@@ -44,7 +45,7 @@ import { phoneDigits } from './phone';
 
 /** Small: this sits in front of a note somebody is waiting for a reply to. */
 const DETECT_BUDGET_MS = 6_000;
-const DETECT_MODEL = 'claude-haiku-4-5-20251001';
+const DETECT_MODEL = QUICK_MODEL;
 const DETECT_MAX_TOKENS = 200;
 
 /** A preference note is a sentence. Longer than this and it is something else. */
@@ -126,6 +127,7 @@ export async function detectAskBoundary(noteText: string): Promise<AskBoundary |
     const response = await anthropic.messages.create(
       {
         model: DETECT_MODEL,
+        ...noThinkingFor(DETECT_MODEL),
         max_tokens: DETECT_MAX_TOKENS,
         messages: [
           {
@@ -438,6 +440,7 @@ export async function questionUnderBoundary(
   const response = await anthropic.messages.create(
     {
       model: DETECT_MODEL,
+      ...noThinkingFor(DETECT_MODEL),
       max_tokens: COVER_MAX_TOKENS,
       messages: [
         {

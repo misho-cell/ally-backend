@@ -1,4 +1,5 @@
 import { recordClaudeUsage } from './costLedger.service';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * #8648 (way_in automatic search wastes the budget): the names looked up in the
@@ -9,7 +10,7 @@ import { recordClaudeUsage } from './costLedger.service';
  * returns only the real people, companies and businesses they name; a name it
  * returns that is not in a title is dropped, so it cannot invent one.
  */
-const WAY_IN_NAMES_MODEL = process.env.WAY_IN_NAMES_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const WAY_IN_NAMES_MODEL = process.env.WAY_IN_NAMES_MODEL?.trim() || QUICK_MODEL;
 const WAY_IN_NAMES_TIMEOUT_MS = 4_000;
 const WAY_IN_NAMES_MAX_TOKENS = 120;
 /** The titles read: the top of the result is where the businesses are. */
@@ -77,6 +78,7 @@ export async function wayInNamesFrom(
     const response = await anthropic.messages.create(
       {
         model: WAY_IN_NAMES_MODEL,
+        ...noThinkingFor(WAY_IN_NAMES_MODEL),
         max_tokens: WAY_IN_NAMES_MAX_TOKENS,
         system: NAMES_PROMPT,
         messages: [{ role: 'user', content: titles.join('\n') }],

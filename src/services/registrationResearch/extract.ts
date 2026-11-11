@@ -4,6 +4,7 @@ import { recordClaudeUsage } from '../costLedger.service';
 import { ListPerson } from '../listPeople.service';
 import { LIST_PEOPLE_BRIEF, listedPeopleIn } from './listedPeople';
 import { FoundFact, MAX_PAGE_CHARS, MAX_SNIPPET_CHARS } from './plan';
+import { MAIN_MODEL, noThinkingFor } from '../aiModels';
 
 /**
  * 4126 item 1: what the searches and pages say about the new user, turned into
@@ -24,7 +25,7 @@ export const REGISTRATION_EXTRACT_BRIEF =
   'there is one (YYYY-MM-DD). Reply with JSON only: {"same_person": true|false, "facts": ' +
   '[{"key": "...", "value": "...", "sources": ["https://..."], "date": "YYYY-MM-DD" | null}]}.';
 
-export const EXTRACT_MODEL = process.env.REGISTRATION_RESEARCH_MODEL?.trim() || 'claude-sonnet-5';
+export const EXTRACT_MODEL = process.env.REGISTRATION_RESEARCH_MODEL?.trim() || MAIN_MODEL;
 const EXTRACT_MAX_TOKENS = 2_000;
 const EXTRACT_BUDGET_MS = 60_000;
 
@@ -125,6 +126,7 @@ export async function extractResearch(
   const response = await anthropic.messages.create(
     {
       model: EXTRACT_MODEL,
+      ...noThinkingFor(EXTRACT_MODEL),
       max_tokens: EXTRACT_MAX_TOKENS,
       system: extractBrief(withListedPeople),
       messages: [{ role: 'user', content: extractInput(person, texts) }],

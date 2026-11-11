@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import anthropic from '../config/anthropic';
 import { recordClaudeUsage } from './costLedger.service';
 import { EDITOR_MODEL } from './askEditor.service';
+import { noThinkingFor, oneToolChoice } from './aiModels';
 
 /**
  * #374 way 3 (founder D836, Misho's yes 26 Oct): a person met in the street is
@@ -83,9 +84,10 @@ export async function readBusinessCard(
   const response = await anthropic.messages.create(
     {
       model: EDITOR_MODEL,
+      ...noThinkingFor(EDITOR_MODEL),
       max_tokens: MAX_READ_TOKENS,
       tools: [CARD_TOOL],
-      tool_choice: { type: 'tool', name: CARD_TOOL.name },
+      tool_choice: oneToolChoice(EDITOR_MODEL, CARD_TOOL.name),
       messages: [
         {
           role: 'user',

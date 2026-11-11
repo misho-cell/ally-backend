@@ -3,6 +3,7 @@ import anthropic from '../config/anthropic';
 import { EDITOR_MODEL, LANGUAGE_NAMES } from './askEditor.service';
 import { recordClaudeUsage } from './costLedger.service';
 import { RunLanguage } from './runLanguage';
+import { noThinkingFor } from './aiModels';
 
 /**
  * 1695 (A12, the intelligence research of 6 October, D679/D680): even a clear
@@ -89,6 +90,7 @@ export async function composePreparedAnswer(
     const response = await anthropic.messages.create(
       {
         model: EDITOR_MODEL,
+        ...noThinkingFor(EDITOR_MODEL),
         max_tokens: MAX_OUTPUT_TOKENS,
         system: preparedAnswerBrief(language),
         messages: [{ role: 'user', content: JSON.stringify({ question, facts }) }],

@@ -1,4 +1,5 @@
 import { recordClaudeUsage } from '../costLedger.service';
+import { QUICK_MODEL, noThinkingFor } from '../aiModels';
 
 /**
  * Tester's report 8 Nov, C6 and C7: the owner had Levan saved as „fish farm
@@ -12,7 +13,7 @@ import { recordClaudeUsage } from '../costLedger.service';
  * contacts under for it, in Georgian and in English; the search runs once more
  * on each. Any failure gives no words, and the empty result stands.
  */
-const TAG_WORDS_MODEL = process.env.TAG_WORDS_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const TAG_WORDS_MODEL = process.env.TAG_WORDS_MODEL?.trim() || QUICK_MODEL;
 const TAG_WORDS_TIMEOUT_MS = 4_000;
 const TAG_WORDS_MAX_TOKENS = 120;
 const MAX_QUERY_CHARS = 200;
@@ -62,6 +63,7 @@ export async function tagMeaningWords(userId: string, query: string): Promise<st
     const response = await anthropic.messages.create(
       {
         model: TAG_WORDS_MODEL,
+        ...noThinkingFor(TAG_WORDS_MODEL),
         max_tokens: TAG_WORDS_MAX_TOKENS,
         system: TAG_WORDS_PROMPT,
         messages: [{ role: 'user', content: `SEARCH: ${query.slice(0, MAX_QUERY_CHARS)}` }],

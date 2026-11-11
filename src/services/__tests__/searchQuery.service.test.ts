@@ -102,7 +102,7 @@ describe('distilSearchQuery', () => {
     expect(recordClaudeUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'search_query',
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-5-5',
         runId: 'run-1',
       }),
     );
@@ -169,7 +169,7 @@ describe('distilSearchQuery', () => {
 
     await distilSearchQuery(GOAL, CTX);
 
-    expect(mockCreate.mock.calls[0][0].model).toBe('claude-haiku-4-5-20251001');
+    expect(mockCreate.mock.calls[0][0].model).toBe('claude-haiku-5-5');
   });
 
   it('SEARCH_QUERY_MODEL may name another Claude model', async () => {
