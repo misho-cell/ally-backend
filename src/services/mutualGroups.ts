@@ -81,6 +81,12 @@ export interface MutualContact {
 
 interface GroupWords {
   readonly heading: (target: string) => string;
+  /**
+   * Giorgi, 9 Nov (case 2): for a KIND of help („a cottage in Bakuriani") the
+   * named-person heading said „<kind>-ს იცნობენ" — a claim nobody made. These
+   * are the contacts who may help with it.
+   */
+  readonly kindHeading: string;
   readonly onNetai: string;
   readonly notOnNetai: string;
 }
@@ -88,11 +94,13 @@ interface GroupWords {
 const WORDS: Readonly<Partial<Record<RunLanguage, GroupWords>>> = {
   ka: {
     heading: (target) => `${geoName(georgianScriptName(target), 'dat')} იცნობენ შენი ეს ნაცნობები:`,
+    kindHeading: 'ამაში შეიძლება დაგეხმარონ შენი ეს ნაცნობები:',
     onNetai: 'Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ',
     notOnNetai: 'Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ',
   },
   en: {
     heading: (target) => `These contacts of yours know ${target}:`,
+    kindHeading: 'These contacts of yours may be able to help with this:',
     onNetai: "On Netai — I'll ask their assistant directly",
     notOnNetai: 'Not on Netai — if you like, I will write the invitation for you',
   },
@@ -120,6 +128,7 @@ export function mutualGroupsText(
   target: string,
   contacts: readonly MutualContact[],
   language: RunLanguage,
+  ofKind = false,
 ): string | null {
   const words = WORDS[language];
   if (words === undefined || contacts.length === 0) return null;
@@ -129,7 +138,7 @@ export function mutualGroupsText(
       .map((c) => shownName(c.name, language))
       .join(NAME_SEPARATOR);
   const lines = [
-    words.heading(target),
+    ofKind ? words.kindHeading : words.heading(target),
     ...(names(true) !== '' ? [`• ${words.onNetai}: ${names(true)}`] : []),
     ...(names(false) !== '' ? [`• ${words.notOnNetai}: ${names(false)}`] : []),
   ];
@@ -393,18 +402,37 @@ function contactsOnce(
   return [...byPerson.values()];
 }
 
-/** The plan's go-betweens first, then everyone the run found knowing the target. */
-function knownDigits(
+/**
+ * The plan's go-betweens first, in the plan's order, then everyone else the
+ * run found leading to the target. Giorgi, 9 Nov (case 3): among those, the
+ * one holding the most matching contacts comes first.
+ */
+export function knownDigits(
   planned: readonly string[],
   foundTargets: readonly FoundThroughBridge[],
 ): string[] {
-  return [
+  const reaches = new Map<string, number>();
+  for (const person of foundTargets) {
+    for (const d of new Set(person.viaPhones.map(phoneDigits))) {
+      reaches.set(d, (reaches.get(d) ?? 0) + 1);
+    }
+  }
+  const all = [
     ...new Set(
       [...planned, ...foundTargets.flatMap((person) => person.viaPhones.map(phoneDigits))].filter(
         (d) => d !== '',
       ),
     ),
   ];
+  return all
+    .map((d, order) => ({ d, order, planned: planned.includes(d), count: reaches.get(d) ?? 0 }))
+    .sort(
+      (a, b) =>
+        Number(b.planned) - Number(a.planned) ||
+        (a.planned ? 0 : b.count - a.count) ||
+        a.order - b.order,
+    )
+    .map((row) => row.d);
 }
 
 /**
@@ -440,7 +468,12 @@ export async function mutualGroupsFor(
     const names = namesAsShown(labels, states, await membersOwnNames(states), language);
     const heading =
       (await goBetweensLabelFor(planned, targetDigits(planInput, foundTargets))) ?? target;
-    return mutualGroupsText(heading, contactsOnce(digits, names, states), language);
+    return mutualGroupsText(
+      heading,
+      contactsOnce(digits, names, states),
+      language,
+      reach.ofKind !== undefined,
+    );
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[mutual-groups] not read:', (err as Error).message);

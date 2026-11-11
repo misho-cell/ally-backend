@@ -188,7 +188,11 @@ describe('the steps line on the plan card', () => {
   it('never names a person the server took out of the plan', () => {
     const line = planStepsLine({ steps, people_to_involve: [{ phone: ANA }] }, 'en') ?? '';
     expect(line).not.toContain('ბექა');
-    expect(line).toContain('2. ask;');
+    // Giorgi, 9 Nov (case 2): the step to a person no longer shown is left out
+    // („2. ask;" said nothing), and the steps after it close up.
+    expect(line).toBe(
+      'Steps: 1. ask — ანა ტესტაძე; 2. search the web (I will wait for your word here).',
+    );
   });
 
   // Giorgi, 9 Nov: and-two-more hid who they were; every step is named.

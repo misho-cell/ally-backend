@@ -272,7 +272,7 @@ describe('#6304: the first proposal names every mutual contact, in two groups', 
     ];
     const text = await mutualGroupsFor('171', plan, found, 'ka');
     expect(text).toBe(
-      'არქიტექტორს იცნობენ შენი ეს ნაცნობები:\n' +
+      'ამაში შეიძლება დაგეხმარონ შენი ეს ნაცნობები:\n' +
         '• Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ: ბესო\n' +
         '• Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ: ნინო',
     );

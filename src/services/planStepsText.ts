@@ -98,7 +98,14 @@ export function planStepsLine(
   if (!planHasSteps(plan)) return null;
   const words = STEP_WORDS[language];
   const planPhones = new Set(plan.people_to_involve.map((p) => phoneDigits(p.phone)));
-  const steps = stepsOf(plan);
+  // Giorgi, 9 Nov (case 2): „2. ვკითხავ;" — asking nobody in particular says
+  // nothing. A step that writes to a person is shown only with that person.
+  const steps = stepsOf(plan).filter(
+    (step) =>
+      (step.action !== StepAction.Ask && step.action !== StepAction.Introduce) ||
+      shownName(step, planPhones) !== null,
+  );
+  if (steps.length === 0) return null;
   const shown = steps
     .slice(0, MAX_STEPS_SHOWN)
     .map((step, index) => stepText(step, index + 1, words, planPhones));
