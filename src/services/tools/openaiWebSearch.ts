@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { openaiClient } from '../../config/openai';
 import { ClaudeUsage } from '../costLedger.service';
-import { finalAnswerModel } from '../finalAnswer.service';
+import { finalAnswerModel, gptWritesTheAnswer } from '../finalAnswer.service';
 import { GeminiHit } from './geminiSearch';
 
 /**
@@ -48,9 +48,14 @@ export function responseUsage(usage: OpenAI.Responses.ResponseUsage | undefined)
   };
 }
 
-/** True when there is a GPT model and a key to search with. */
+/**
+ * True when GPT is switched on and there is a model and a key to search with.
+ * Misho, 11 Nov („ჯიპიტის ნაწილი სრულად ჩაგვეხსნა"): GPT is off everywhere;
+ * the web is searched by Gemini, and GPT_WRITES_ANSWERS=true brings this back
+ * with the rest of GPT, without a release.
+ */
 export function openaiWebSearchAvailable(): boolean {
-  return finalAnswerModel() !== '' && openaiClient() !== null;
+  return gptWritesTheAnswer() && finalAnswerModel() !== '' && openaiClient() !== null;
 }
 
 /** One web-searched answer; null when no GPT model or key is set. Throws when the call fails. */
