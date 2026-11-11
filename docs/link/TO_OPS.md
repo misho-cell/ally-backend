@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Nov, 20:25Z — GPT off everywhere (main feffae82)
+
+- The web search used to fall back to GPT whenever Gemini failed. It now sits behind the same switch as answer writing, `GPT_WRITES_ANSWERS`. That switch is unset, so Gemini is the only web engine.
+- While the switch is off, `CHAT_FINAL_ANSWER_MODEL` on Railway has no effect.
+- Speech-to-text stays on OpenAI, because the Claude API takes no audio input. Misho decides whether it moves to Gemini.
+- Nothing for ops to do.
+
 ### 11 Nov, 19:50Z — shipped tonight (Misho's word, his chat)
 
 1. **08e0fdf3 — every Claude route on the current models.** Main work (chat, ask editor, translation, registration research, admin chat) on Sonnet 5.5; the short calls (moderation, enrichment, titles, facts, notifications, search queries) on Haiku 5.5. Short calls run without thinking as before; the three one-tool checks send `auto` (Sonnet 5.5 refuses a forced tool); the notification has no prefill. Haiku 5.5 answered the heartbeat at 19:42Z. DONE WHEN: a real chat run records `claude-sonnet-5-5` usage and no 400 appears in the logs.
