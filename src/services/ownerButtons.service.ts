@@ -7,6 +7,7 @@ import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { recordClaudeUsage } from './costLedger.service';
 import { otherChoiceLabel } from './otherChoice';
 import { RunLanguage } from './runLanguage';
+import { noThinkingFor, oneToolChoice } from './aiModels';
 
 /**
  * 2579, first part (§105, Misho's yes on 8 October). The owner's buttons are
@@ -82,10 +83,11 @@ async function askTheEditor(
   const response = await anthropic.messages.create(
     {
       model: EDITOR_MODEL,
+      ...noThinkingFor(EDITOR_MODEL),
       max_tokens: MAX_OUTPUT_TOKENS,
       system: ownerButtonsBrief(language),
       tools: [VERDICT_TOOL],
-      tool_choice: { type: 'tool', name: VERDICT_TOOL.name },
+      tool_choice: oneToolChoice(EDITOR_MODEL, VERDICT_TOOL.name),
       messages: [
         {
           role: 'user',

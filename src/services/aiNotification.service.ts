@@ -10,11 +10,12 @@ import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
 import { saveServerLine } from './threads.service';
 import { emitMessageAppended } from './sse.service';
 import { randomUUID } from 'crypto';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /** #1816: where a tap on the engagement push lands — the owner's conversation. */
 export const AI_NOTIFICATION_PUSH_URL = '/chat';
 
-const NOTIFICATION_MODEL = 'claude-haiku-4-5-20251001';
+const NOTIFICATION_MODEL = QUICK_MODEL;
 const MAX_RECENT_MESSAGES = 12;
 const NUDGE_URL_TIMEOUT_MS = 3_000;
 const MAX_TOP_CONTACTS = 10;
@@ -223,6 +224,7 @@ async function generateNotificationContent(
 
   const response = await anthropic.messages.create({
     model: NOTIFICATION_MODEL,
+    ...noThinkingFor(NOTIFICATION_MODEL),
     max_tokens: 1024,
     system: `შენ აგენერირებ პერსონალიზებულ push notification-ს Netai-სთვის — კონტაქტების ქსელის აპლიკაცია.
 მთავარი მიზანი: მომხმარებელი გახსნის app-ს ამ notification-ის გამო.
@@ -247,12 +249,6 @@ async function generateNotificationContent(
             ? `მომხმარებლის კონტექსტი:\n\n${contextText}`
             : 'კონტექსტი ჯერ მწირია.',
       },
-      // Prefill the assistant turn with an opening brace so the model is
-      // forced to continue raw JSON (no markdown/prose preamble).
-      {
-        role: 'assistant',
-        content: '{',
-      },
     ],
   });
 
@@ -268,8 +264,9 @@ async function generateNotificationContent(
     .map((b) => b.text)
     .join('');
 
-  // The opening brace lives in the prefill, so prepend it before parsing.
-  const text = '{' + rawText;
+  // Misho, 11 Nov: the current models take no assistant prefill, so the reply
+  // carries its own braces; the JSON is read out of whatever surrounds it.
+  const text = rawText;
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Claude returned invalid JSON for notification');

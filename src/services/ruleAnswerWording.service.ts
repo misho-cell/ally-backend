@@ -2,6 +2,7 @@ import { missingFacts } from './answerFacts';
 import { sentenceCarriedOver } from './sentenceCarriedOver';
 import { recordClaudeUsage } from './costLedger.service';
 import { RunLanguage } from './runLanguage';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * D652 (the founder, box 37654, „a - 2"): a saved automatic answer is the
@@ -13,7 +14,7 @@ import { RunLanguage } from './runLanguage';
  * when the model cannot be reached — an answer late or lost is worse than an
  * answer in the helper's words.
  */
-const RULE_WORDING_MODEL = process.env.RULE_WORDING_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const RULE_WORDING_MODEL = process.env.RULE_WORDING_MODEL?.trim() || QUICK_MODEL;
 const RULE_WORDING_TIMEOUT_MS = 8_000;
 const RULE_WORDING_MAX_TOKENS = 400;
 const MAX_INPUT_CHARS = 1_000;
@@ -72,6 +73,7 @@ async function wordOnce(
   const response = await anthropic.messages.create(
     {
       model: RULE_WORDING_MODEL,
+      ...noThinkingFor(RULE_WORDING_MODEL),
       max_tokens: RULE_WORDING_MAX_TOKENS,
       system: wordingPrompt(language),
       messages: [

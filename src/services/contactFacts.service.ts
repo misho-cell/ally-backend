@@ -6,6 +6,7 @@ import { normalizePhone } from './phone';
 import { birthdayFromNote } from './birthdayLens.service';
 import { parseModelJson } from './modelJson';
 import anthropic from '../config/anthropic';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 // The four core, crowd-confirmable facts — one value per field per contact,
 // mapped into search-result enrichment (employer/jobPosition/city/industry).
@@ -83,7 +84,8 @@ export async function runSemanticMatching(
 ): Promise<SemanticResult> {
   const listed = values.map((v, i) => `${i}: "${v}"`).join(', ');
   const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: QUICK_MODEL,
+    ...noThinkingFor(QUICK_MODEL),
     max_tokens: 150,
     messages: [
       {
@@ -96,7 +98,7 @@ export async function runSemanticMatching(
   void recordClaudeUsage({
     userId: null,
     kind: 'fact_extraction',
-    model: 'claude-haiku-4-5-20251001',
+    model: QUICK_MODEL,
     usage: response.usage,
   }).catch(() => {});
 
@@ -339,7 +341,7 @@ async function insertFreeFormFact(
 // time. PUBLIC is reserved for purely factual, professional content; personal
 // judgments and sensitive material stay private. Fail-closed: any error or
 // ambiguity keeps the note private.
-const NOTE_MODERATION_MODEL = 'claude-haiku-4-5-20251001';
+const NOTE_MODERATION_MODEL = QUICK_MODEL;
 const NOTE_MODERATION_MAX_TOKENS = 60;
 
 /**
@@ -367,6 +369,7 @@ export async function moderateFactVisibility(
   try {
     const response = await anthropic.messages.create({
       model: NOTE_MODERATION_MODEL,
+      ...noThinkingFor(NOTE_MODERATION_MODEL),
       max_tokens: NOTE_MODERATION_MAX_TOKENS,
       messages: [
         {

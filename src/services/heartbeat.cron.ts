@@ -2,6 +2,7 @@ import anthropic from '../config/anthropic';
 import { query } from '../db/postgres/client';
 import { recordClaudeUsage } from './costLedger.service';
 import { noticeProviderRefusing, noticeProviderAnswering } from './outageDetect.service';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * THE POSITIVE PROBE — silence becomes evidence instead of the absence of it.
@@ -54,7 +55,7 @@ import { noticeProviderRefusing, noticeProviderAnswering } from './outageDetect.
  */
 
 /** Cheapest model in the price table; this asks it for one token. */
-const HEARTBEAT_MODEL = process.env.HEARTBEAT_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const HEARTBEAT_MODEL = process.env.HEARTBEAT_MODEL?.trim() || QUICK_MODEL;
 
 /** How often to look. Looking is free; only the call costs anything. */
 const CHECK_INTERVAL_MS = 10 * 60_000;
@@ -127,6 +128,7 @@ export async function beatOnce(): Promise<'sent' | 'not_needed' | 'failed'> {
     const response = await anthropic.messages.create(
       {
         model: HEARTBEAT_MODEL,
+        ...noThinkingFor(HEARTBEAT_MODEL),
         max_tokens: 1,
         messages: [{ role: 'user', content: 'ping' }],
       },

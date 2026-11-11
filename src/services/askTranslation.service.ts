@@ -4,6 +4,7 @@ import { ServerTextBlock, serverText } from './serverTextBlocks';
 import anthropic from '../config/anthropic';
 import { recordClaudeUsage } from './costLedger.service';
 import { detectRunLanguage, RunLanguage } from './runLanguage';
+import { MAIN_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * ROW 254 — A QUESTION REACHED ITS READER IN A LANGUAGE THEY HAD NOT WRITTEN A
@@ -95,7 +96,7 @@ const MAX_QUESTION_CHARS = 1_200;
  * on the deploy that carries it. The variable exists so the model can be
  * corrected without a release — NOT so the feature can be off.
  */
-const TRANSLATE_MODEL = process.env.ASK_TRANSLATION_MODEL?.trim() || 'claude-sonnet-5';
+const TRANSLATE_MODEL = process.env.ASK_TRANSLATION_MODEL?.trim() || MAIN_MODEL;
 
 const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
   ka: 'Georgian',
@@ -397,6 +398,7 @@ export async function relayedForReader(
     const response = await anthropic.messages.create(
       {
         model: TRANSLATE_MODEL,
+        ...noThinkingFor(TRANSLATE_MODEL),
         max_tokens: MAX_OUTPUT_TOKENS,
         system: brief(readerLanguage, what),
         messages: [{ role: 'user', content: text }],

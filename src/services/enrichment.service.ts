@@ -8,6 +8,7 @@ import { getSession } from '../db/neo4j/client';
 import anthropic from '../config/anthropic';
 import { getCompositeKeyForPhone, getCompositeKeysForPhones } from './neo4j.keys';
 import { phoneDigits } from './phone';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 const FAMILY_KEYWORDS_UNAMBIGUOUS = [
   'დედა',
@@ -73,7 +74,7 @@ const COUNTRY_CODES: Record<string, string> = {
 };
 
 const BIDIRECTIONALITY_BONUS = 0.1;
-const AI_MODEL = 'claude-haiku-4-5-20251001';
+const AI_MODEL = QUICK_MODEL;
 
 export interface RelationshipSignals {
   explicit_insight?: boolean;
@@ -500,6 +501,7 @@ async function runAiEnrichment(data: ContactRawData): Promise<AiEnrichmentResult
 
   const response = await anthropic.messages.create({
     model: AI_MODEL,
+    ...noThinkingFor(AI_MODEL),
     max_tokens: 200,
     messages: [{ role: 'user', content: buildEnrichmentPrompt(data) }],
   });

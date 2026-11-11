@@ -34,7 +34,7 @@ const USER_ID = '173985';
 const THREAD_ID = 4242;
 
 function modelWrites(json: Record<string, unknown>): void {
-  const rest = JSON.stringify(json).slice(1);
+  const rest = JSON.stringify(json);
   mockCreate.mockResolvedValue({ content: [{ type: 'text', text: rest }], usage: {} });
 }
 

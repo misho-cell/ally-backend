@@ -12,8 +12,9 @@ import {
   caseFactsText,
   cleanCaseDescription,
 } from './caseDescription';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
-const DESCRIPTION_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const DESCRIPTION_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || QUICK_MODEL;
 const DESCRIPTION_MAX_TOKENS = 220;
 const DESCRIPTION_TIMEOUT_MS = 15_000;
 /** Reasoning models spend part of the budget thinking before they write. */
@@ -130,6 +131,7 @@ async function describeWithClaude(
   const response = await anthropic.messages.create(
     {
       model: DESCRIPTION_MODEL,
+      ...noThinkingFor(DESCRIPTION_MODEL),
       max_tokens: DESCRIPTION_MAX_TOKENS,
       system: caseDescriptionPrompt(ownersLanguage(facts)),
       messages: [{ role: 'user', content: caseFactsText(facts) }],

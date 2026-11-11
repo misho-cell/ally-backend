@@ -28,8 +28,8 @@ import { sendAiNotification } from '../aiNotification.service';
 const USER_ID = '173985';
 
 function modelWrites(title: string, body: string): void {
-  // The prefill supplies the opening brace; the model continues from there.
-  const rest = JSON.stringify({ title, body }).slice(1);
+  // The current models take no prefill: the reply is the whole JSON.
+  const rest = JSON.stringify({ title, body });
   mockCreate.mockResolvedValue({ content: [{ type: 'text', text: rest }], usage: {} });
 }
 

@@ -10,6 +10,7 @@ import {
   WarRoomCard,
   withoutNumbers,
 } from './warRoomCards.service';
+import { noThinkingFor } from './aiModels';
 
 /**
  * #7591 WAR ROOM, step 5 (founder, 24 Oct): he leaves a quick instruction on a
@@ -55,6 +56,7 @@ async function writeDraftText(card: WarRoomCard): Promise<string | null> {
   const response = await anthropic.messages.create(
     {
       model: EDITOR_MODEL,
+      ...noThinkingFor(EDITOR_MODEL),
       max_tokens: MAX_DRAFT_TOKENS,
       system: draftBrief(language),
       messages: [{ role: 'user', content: draftInput(card) }],

@@ -1,4 +1,5 @@
 import { recordClaudeUsage } from './costLedger.service';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * #8779 c, claims (Misho's choice, 5 Nov: „პატარა მოდელი"): a reply may say
@@ -10,7 +11,7 @@ import { recordClaudeUsage } from './costLedger.service';
  * only checks structure — did the tool run — and a sentence the model returns
  * that is not in the reply word for word is dropped, so it cannot invent one.
  */
-const REPLY_CLAIMS_MODEL = process.env.REPLY_CLAIMS_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const REPLY_CLAIMS_MODEL = process.env.REPLY_CLAIMS_MODEL?.trim() || QUICK_MODEL;
 const REPLY_CLAIMS_TIMEOUT_MS = 4_000;
 const REPLY_CLAIMS_MAX_TOKENS = 600;
 const MAX_REPLY_CHARS = 4_000;
@@ -150,6 +151,7 @@ export async function readReplyClaims(
     const response = await anthropic.messages.create(
       {
         model: REPLY_CLAIMS_MODEL,
+        ...noThinkingFor(REPLY_CLAIMS_MODEL),
         max_tokens: REPLY_CLAIMS_MAX_TOKENS,
         system: CLAIMS_PROMPT,
         messages: [

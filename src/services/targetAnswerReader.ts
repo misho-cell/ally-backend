@@ -1,5 +1,6 @@
 import { recordClaudeUsage } from './costLedger.service';
 import { TargetAnswer } from './targetConsent';
+import { QUICK_MODEL, noThinkingFor } from './aiModels';
 
 /**
  * The tester's battery (6 Nov, C4): the target was asked whether to meet the
@@ -11,7 +12,7 @@ import { TargetAnswer } from './targetConsent';
  * checks only that the question is open. Any failure reads as no answer, and
  * the line goes on to the ordinary run as before.
  */
-const TARGET_ANSWER_MODEL = process.env.TARGET_ANSWER_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+const TARGET_ANSWER_MODEL = process.env.TARGET_ANSWER_MODEL?.trim() || QUICK_MODEL;
 const TARGET_ANSWER_TIMEOUT_MS = 4_000;
 const TARGET_ANSWER_MAX_TOKENS = 50;
 const MAX_LINE_CHARS = 1_000;
@@ -54,6 +55,7 @@ export async function readTargetAnswer(
     const response = await anthropic.messages.create(
       {
         model: TARGET_ANSWER_MODEL,
+        ...noThinkingFor(TARGET_ANSWER_MODEL),
         max_tokens: TARGET_ANSWER_MAX_TOKENS,
         system: TARGET_ANSWER_PROMPT,
         messages: [{ role: 'user', content: `REPLY:\n${line.slice(0, MAX_LINE_CHARS)}` }],
