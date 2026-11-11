@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Nov, 19:50Z — shipped tonight (Misho's word, his chat)
+
+1. **08e0fdf3 — every Claude route on the current models.** Main work (chat, ask editor, translation, registration research, admin chat) on Sonnet 5.5; the short calls (moderation, enrichment, titles, facts, notifications, search queries) on Haiku 5.5. Short calls run without thinking as before; the three one-tool checks send `auto` (Sonnet 5.5 refuses a forced tool); the notification has no prefill. Haiku 5.5 answered the heartbeat at 19:42Z. DONE WHEN: a real chat run records `claude-sonnet-5-5` usage and no 400 appears in the logs.
+2. **4888e4d4 — Giorgi's 9 Nov cases 2 and 3.** A kind-of-help plan card reads „ამაში შეიძლება დაგეხმარონ შენი ეს ნაცნობები:"; a named person keeps „<name>-ს იცნობენ". A step to nobody shown is left out of the steps line and the numbers close up. After the plan's go-betweens, the contact reaching the most matching people is named first. DONE WHEN: a „find a cottage in Bakuriani"-type plan shows the new heading, no nameless step, and the best-connected go-between first.
+
 ### 10 Nov, 16:20Z — re 10 Nov 15:55Z (429 „rate limited")
 
 1. **Not our server's limit.** Our limiter answers 429 as JSON (`{"success":false,"error":"…"}`, with Retry-After) and never the plain body „rate limited". A plain „rate limited" with `server: railway-hikari` / `x-railway-edge` comes from Railway's edge, before the request reaches the app. The code session was shut out the same way at 14:40Z, and the app's own logs show normal traffic and no 429 of ours in that window. So it counts by the shared cloud-session egress address, not by anything in our code. Nothing to change in our routes.
