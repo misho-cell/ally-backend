@@ -41,8 +41,9 @@ export async function targetNameForMediator(
     // #6601 / #6602 (Giorgi, 20 Oct): a go-between who has not saved the target
     // read the asker's own word for him („chemi") in the card and the message.
     // The name the target registered with comes before the asker's label.
+    const label = await mediatorsOwnLabel(mediatorUserId, phone);
     return (
-      (await mediatorsOwnLabel(mediatorUserId, phone)) ??
+      (label === null ? null : withoutTheLabelsTags(label, askersName)) ??
       (await registeredNameOf(phone)) ??
       askersName
     );
@@ -54,6 +55,20 @@ export async function targetNameForMediator(
     );
     return askersName;
   }
+}
+
+/**
+ * Lika's case 01 (12 Nov, B05): The go-between saved the target as „LIST. Nino
+ * Beridze. Ally. Force" and his card read „დააკავშირო LIST. Nino
+ * Beridze. Ally. Force-ისთან". When his label holds the asker's name whole,
+ * the rest of it is his own filing, not a name: the card reads the name alone.
+ * A label that does not hold it (3895: „ბექუნა ფოტოგრაფი") is his name for
+ * the person and is kept.
+ */
+export function withoutTheLabelsTags(label: string, askersName: string): string {
+  const name = askersName.trim();
+  if (name === '' || label.length <= name.length) return label;
+  return label.toLocaleLowerCase().includes(name.toLocaleLowerCase()) ? name : label;
 }
 
 /** Exactly one contact in this member's own book answers to the name. */

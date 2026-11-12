@@ -6,7 +6,7 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 jest.mock('../tools/nameMatch', () => ({ __esModule: true, findContactPhonesByName: jest.fn() }));
 
 import { query } from '../../db/postgres/client';
-import { targetNameForMediator } from '../mediatorTargetName';
+import { targetNameForMediator, withoutTheLabelsTags } from '../mediatorTargetName';
 import { findContactPhonesByName } from '../tools/nameMatch';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -123,5 +123,21 @@ describe('nameInBridgeBook, read for the number in either form', () => {
       "AND regexp_replace(ua.phone, '\\\\D', '', 'g') = regexp_replace($2, '\\\\D', '', 'g')",
     );
     expect(fn.slice(0, 1200)).not.toContain('AND ua.phone = $2');
+  });
+});
+
+describe('Lika’s case 01 (12 Nov, B05): the go-between’s filing around a name', () => {
+  it('reads the name alone when his label holds it whole', () => {
+    expect(withoutTheLabelsTags('LIST. Nino Beridze. Ally. Force', 'Nino Beridze')).toBe(
+      'Nino Beridze',
+    );
+  });
+
+  it('keeps his own name for the person when it does not hold the asker’s', () => {
+    expect(withoutTheLabelsTags('ბექუნა ფოტოგრაფი', 'ბექა მაისურაძე')).toBe('ბექუნა ფოტოგრაფი');
+  });
+
+  it('keeps a label that is the name itself', () => {
+    expect(withoutTheLabelsTags('Nino Beridze', 'nino beridze')).toBe('Nino Beridze');
   });
 });
