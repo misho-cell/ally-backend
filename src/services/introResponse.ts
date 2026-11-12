@@ -29,6 +29,8 @@ const OWN_LINES_LIMIT = 5;
 const OWN_LINES_MAX_CHARS = 600;
 const OWN_LINES_TIMEOUT_MS = 3_000;
 const INJECTED_NOTE_RE = /^\s*\((სისტემური|system note)/i;
+/** The thread a request's answerer reads it in. */
+const INCOMING_REQUEST_TYPE = 'incoming_request';
 
 /** The owner's own last few lines in a thread, newest first; empty when unreadable. */
 export async function ownersRecentLines(threadId: number): Promise<string[]> {
@@ -121,14 +123,23 @@ export async function goBetweensLinesSinceAsked(req: AskedRequest): Promise<stri
 }
 
 async function cardThreadOf(req: AskedRequest): Promise<number | null> {
-  if (req.mediator_user_id === null) return null;
   try {
-    const result = await query<{ id: number }>(
-      `SELECT id FROM threads WHERE introduction_request_id = $1 AND user_id = $2
-        ORDER BY id DESC LIMIT 1`,
-      [req.id, req.mediator_user_id],
-      OWN_LINES_TIMEOUT_MS,
-    );
+    // Lika's podcast test (12 Nov, E13): a direct request has no go-between —
+    // the person asked answers on their own card, the request's incoming thread.
+    const result =
+      req.mediator_user_id === null
+        ? await query<{ id: number }>(
+            `SELECT id FROM threads WHERE introduction_request_id = $1 AND type = $2
+              ORDER BY id DESC LIMIT 1`,
+            [req.id, INCOMING_REQUEST_TYPE],
+            OWN_LINES_TIMEOUT_MS,
+          )
+        : await query<{ id: number }>(
+            `SELECT id FROM threads WHERE introduction_request_id = $1 AND user_id = $2
+              ORDER BY id DESC LIMIT 1`,
+            [req.id, req.mediator_user_id],
+            OWN_LINES_TIMEOUT_MS,
+          );
     return result.rows[0]?.id ?? null;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -136,3 +147,56 @@ async function cardThreadOf(req: AskedRequest): Promise<number | null> {
     return null;
   }
 }
+
+/** How far back an accepted request still waits on the person it reaches. */
+const TARGET_WAIT_DAYS = 7;
+/** A number is the same number whatever its country code: its last nine digits. */
+const SAME_NUMBER_DIGITS = 9;
+
+/**
+ * Lika's podcast test (12 Nov, B03): the go-between said yes — „ask him first
+ * whether he wants to" — and the server asked the person in her name at once.
+ * Thirty-six seconds later her own assistant asked him the same thing in a
+ * second conversation; he answered there, so every answer went to her instead
+ * of to the asker, and the asker never heard back. While a request this member
+ * accepted still waits on the person it reaches, that person is not asked
+ * again from her side. Fails towards false: an unreadable state holds nothing.
+ */
+export async function serverAlreadyAskedThem(
+  mediatorUserId: string,
+  phone: unknown,
+): Promise<boolean> {
+  if (typeof phone !== 'string' || phone.replace(/\D/g, '').length < SAME_NUMBER_DIGITS) {
+    return false;
+  }
+  try {
+    const result = await query<{ waiting: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM introduction_requests ir
+          WHERE ir.mediator_user_id = $1::int
+            AND ir.status = 'accepted'
+            AND ir.target_asked_at IS NOT NULL
+            AND ir.target_answered_at IS NULL
+            AND ir.target_asked_at > NOW() - make_interval(days => $3)
+            AND right(regexp_replace(coalesce(ir.target_phone, ''), '\\D', '', 'g'), $4)
+              = right(regexp_replace($2, '\\D', '', 'g'), $4)
+       ) AS waiting`,
+      [mediatorUserId, phone, TARGET_WAIT_DAYS, SAME_NUMBER_DIGITS],
+      OWN_LINES_TIMEOUT_MS,
+    );
+    return result.rows[0]?.waiting === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[intro] could not read whether the target was already asked:',
+      (err as Error).message,
+    );
+    return false;
+  }
+}
+
+/** Model-facing: why the go-between's own ask to the person was not sent. */
+export const SERVER_ALREADY_ASKED_NOTE =
+  'Not sent: you accepted this introduction, and the server has already asked this person in ' +
+  'your name whether they want it. Their answer goes to the person who asked. Do not ask them ' +
+  'again and do not open a goal for it: tell the owner in one line that they have been asked.';

@@ -1207,6 +1207,60 @@ export async function settleTargetAnswer(
   return targetSettledLine(language, answer, asker);
 }
 
+/** How far back a question to the person reached still waits for their answer. */
+const WAITING_QUESTION_DAYS = 7;
+/** A number is the same number whatever its country code: its last nine digits. */
+const WAITING_NUMBER_DIGITS = 9;
+/** The plain yes a waiting question is answered with (plainYes.ts). */
+const PLAIN_YES = 'კი';
+
+/**
+ * Lika's podcast test (12 Nov, B02/B04): the person a request was meant to
+ * reach had the server's question waiting — „do you want to meet him?" — and
+ * wrote „connect me with him directly". The run opened a NEW request instead,
+ * so the asker was asked whether he wanted to meet the very person he had asked
+ * for, as a go-between, in a third conversation. Asking to meet somebody whose
+ * own request to meet you is waiting on your answer IS your yes to it: it is
+ * answered, and the two are connected the way that yes always connects them.
+ * Returns what to tell the owner, or null when no such question waits.
+ */
+export async function yesToTheirWaitingRequest(
+  targetUserId: string,
+  phones: readonly unknown[],
+): Promise<string | null> {
+  const keys = phones
+    .filter((p): p is string => typeof p === 'string')
+    .map((p) => p.replace(/\D/g, ''))
+    .filter((d) => d.length >= WAITING_NUMBER_DIGITS)
+    .map((d) => d.slice(-WAITING_NUMBER_DIGITS));
+  if (keys.length === 0) return null;
+  try {
+    const waiting = await query<{ thread_id: number }>(
+      `SELECT ir.target_thread_id AS thread_id
+         FROM introduction_requests ir
+         JOIN threads t ON t.id = ir.target_thread_id AND t.user_id = $1::int
+         JOIN "UserPhone" up ON up."userId" = ir.requester_user_id
+        WHERE ir.status = 'accepted' AND ir.target_answered_at IS NULL
+          AND ir.target_asked_at > NOW() - make_interval(days => $3)
+          AND right(regexp_replace(up.phone, '\\D', '', 'g'), $4) = ANY($2::text[])
+        ORDER BY ir.target_asked_at DESC
+        LIMIT 1`,
+      [targetUserId, keys, WAITING_QUESTION_DAYS, WAITING_NUMBER_DIGITS],
+      TARGET_QUESTION_QUERY_TIMEOUT_MS,
+    );
+    const threadId = waiting.rows[0]?.thread_id;
+    if (threadId === undefined) return null;
+    return await settleTargetAnswer(targetUserId, threadId, PLAIN_YES);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[intro] could not read a waiting request to this member:',
+      (err as Error).message,
+    );
+    return null;
+  }
+}
+
 /** The go-between's line: the target's answer, and that the two now share a chat (#8878). */
 async function mediatorHearsTheTarget(
   req: RequestRow,
@@ -1528,7 +1582,11 @@ async function wakeRequestersGoal(
   response: string | undefined,
   targetOffNetai = false,
 ): Promise<void> {
-  if (req.requester_task_id === null) return;
+  if (req.requester_task_id === null) {
+    // Not awaited: it is a whole run of the asker's own, and the answerer's run is waiting.
+    void tellTheAnswerWhereItWasAsked(req, accepted, response);
+    return;
+  }
   try {
     const mediatorName = await answeringMediatorName(req);
     const ownLines = await goBetweensLinesSinceAsked(req);
@@ -1559,6 +1617,36 @@ async function wakeRequestersGoal(
     // eslint-disable-next-line no-console
     console.error(
       `[intro] could not wake goal ${req.requester_task_id} for request ${req.id}:`,
+      (err as Error).message,
+    );
+  }
+}
+
+/**
+ * Lika's podcast test (12 Nov, E13): a request with no goal behind it — sent
+ * from another conversation — still tells its asker what the person wrote,
+ * in that conversation (introAnswerInChat.ts). Best-effort: the answer stands.
+ */
+async function tellTheAnswerWhereItWasAsked(
+  req: RequestRow,
+  accepted: boolean,
+  response: string | undefined,
+): Promise<void> {
+  try {
+    const answer = (await goBetweensLinesSinceAsked(req)) ?? response?.trim() ?? '';
+    const answeredBy = (await answeringMediatorName(req)) ?? req.target_name;
+    const { tellTheAnswerInTheChat } = await import('./introAnswerInChat');
+    await tellTheAnswerInTheChat({
+      requesterUserId: String(req.requester_user_id),
+      originThreadId: req.origin_thread_id,
+      answeredBy,
+      accepted,
+      answer,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[intro] could not tell the answer to request ${req.id} where it was asked:`,
       (err as Error).message,
     );
   }

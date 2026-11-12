@@ -1,0 +1,10 @@
+{
+  "target": "block:core_shared",
+  "before_sha256": "9057f652d93ae0af9153868667b9e97c558be8d5b788002e7002666953d13188",
+  "requires": [],
+  "what": "core_shared rule 4: no promise of another person's action; say what was sent and whose answer is awaited.",
+  "why": "Lika's podcast test (12 Nov), B05: replies promised that another person would be in touch soon, which nobody had said.",
+  "approved_by": "Misho, 12 Nov 2026, in the code session's chat: „კი, შენი შეთავაზებებით გააკეთე ყველა“ (on my proposals for the podcast test's B02–B05).",
+  "authorization_still_needed": "None.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/podcast-b05-no-promise-for-another.before.txt, sha256 9057f652d93ae0af9153868667b9e97c558be8d5b788002e7002666953d13188."
+}
