@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Nov, 20:25Z (GPT off everywhere; feffae82 deployment SUCCESS at 20:25Z; nothing for ops to do). Box read to 87255.
+Last TO_OPS.md section handled: 12 Nov, 08:55Z (bd7280ca prices: DONE WHEN met — every Sonnet 5.5 and Haiku 5.5 usage row from 08:49:19Z on carries a real cost; the $0 rows after 08:47Z all predate 08:49:14Z, i.e. the deploy switchover. Re-charging the unbooked spend waits on Misho). Box read to 87419.
 
 ## OPEN
 
