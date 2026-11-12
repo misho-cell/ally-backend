@@ -2746,6 +2746,43 @@ async function helpersOwnLines(askThreadId: number): Promise<string[]> {
   }
 }
 
+/** The most of the helper's own registered numbers read. */
+const OWN_NUMBERS_READ = 5;
+
+/**
+ * Lika's case 01 (12 Nov, B02): the helper wrote „ჩემი ნომერი მიეცი" — give
+ * him my number — without typing it. Their assistant put their own registered
+ * number in the answer, and it reached the asker as „[hidden]", twice, while
+ * both sides were told it had been sent. The helper's own number is theirs to
+ * hand over exactly as one they typed. A failed read hands nothing over.
+ */
+async function helpersOwnNumbers(askThreadId: number): Promise<string[]> {
+  try {
+    const numbers = await query<{ phone: string }>(
+      `SELECT up.phone FROM "UserPhone" up
+         JOIN threads t ON t.user_id = up."userId"
+        WHERE t.id = $1
+        ORDER BY up.phone LIMIT $2`,
+      [askThreadId, OWN_NUMBERS_READ],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return numbers.rows.map((n) => n.phone).filter((p): p is string => typeof p === 'string');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ask] thread ${askThreadId}: own numbers not read:`, (err as Error).message);
+    return [];
+  }
+}
+
+/** The numbers a helper may hand over on this thread: those they typed, and their own. */
+async function numbersTheHelperMayGive(askThreadId: number): Promise<string[]> {
+  const [lines, own] = await Promise.all([
+    helpersOwnLines(askThreadId),
+    helpersOwnNumbers(askThreadId),
+  ]);
+  return [...lines, ...own];
+}
+
 export async function recordAskAnswer(
   askThreadId: number,
   answerText: string,
@@ -2753,7 +2790,7 @@ export async function recordAskAnswer(
   cannotHelp = false,
 ): Promise<CapturedAnswer | null> {
   const trimmed = answerText.trim();
-  const typed = containsPhoneLike(trimmed) ? await helpersOwnLines(askThreadId) : [];
+  const typed = containsPhoneLike(trimmed) ? await numbersTheHelperMayGive(askThreadId) : [];
   const safe = scrubText(allowNumbersTheyTyped(trimmed, typed));
   if (!safe) return null;
   // Append-window rule (ticket 6 protocol run, task 46): later messages join
