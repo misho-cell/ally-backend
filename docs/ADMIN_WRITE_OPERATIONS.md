@@ -6821,3 +6821,10 @@ question, and „everything" here answered the texts on the table; it is asked a
   - `case01-b04-question-card-once`: task_main. After the answers-card rule, add that a question on the card gets one line (the person waits): no restating, no ask_owner_decision for it (B04).
 - **Checked before the write:** `prompt.sh check` passed every refusal for both (live text equals the before text, files committed). Sizes: request_main 3,219 → 3,426; task_main 7,178 → 7,381.
 - **UNDO:** put back each change's `.before.txt` (in `ops/prompt-changes/`) with the same route.
+
+## 119 · LIKA'S PODCAST TEST (12 NOV): TWO PROMPT LINES (Misho, his chat, 12 Nov: „კი, შენი შეთავაზებებით გააკეთე ყველა", on my proposals for B02–B05)
+- **What:** `./scripts/ops/prompt.sh apply` for two committed change files.
+  - `podcast-b03-server-asks-the-target`: request_main, after write 118's line. After the go-between accepts, the server asks the person reached at once; the run never asks them itself or opens a goal for it (B03).
+  - `podcast-b05-no-promise-for-another`: core_shared rule 4. Never promise what another person will do; say what was sent and whose answer is awaited (B05).
+- **Checked before the write:** `prompt.sh check` passes every refusal for both. Sizes: request_main 3,426 → 3,604; core_shared 21,628 → 21,756.
+- **UNDO:** put back each change's `.before.txt` (in `ops/prompt-changes/`) with the same route.
