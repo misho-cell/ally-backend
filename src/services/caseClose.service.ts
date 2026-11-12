@@ -5,7 +5,7 @@ import { dismissStoppedGoal, stopGoal } from './goalStop.service';
 import { pendingIntroInMediatorThread, resolveIntroductionRequest } from './introduction.service';
 import { getGoalOnThread } from './taskStore.service';
 import { setThreadStatus } from './threadStatus.service';
-import { Thread } from './threads.service';
+import { markThreadSeen, Thread } from './threads.service';
 
 /**
  * #6363 (a), RULE D588 (Giorgi, 19–20 Oct; Misho's yes 20 Oct): „წაშლა" on a
@@ -74,5 +74,10 @@ export async function closeCaseInsteadOfDeleting(
   } else {
     await closeHelpersCase(userId, thread.id);
   }
+  // #9010 (Giorgi, 9 Nov): the closing line is newer than the last visit, and the
+  // list keeps a case with an unseen answer among the open ones — so a deleted
+  // case stood in „ვმუშაობ" until it was opened. The person closed it themself:
+  // nothing in it is news to them.
+  await markThreadSeen(thread.id, userId);
   return CaseCloseOutcome.Closed;
 }

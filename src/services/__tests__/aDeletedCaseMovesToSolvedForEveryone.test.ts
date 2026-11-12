@@ -30,6 +30,11 @@ jest.mock('../threadStatus.service', () => ({
   setThreadStatus: (...a: unknown[]) => mockSetStatus(...a),
 }));
 
+const mockSeen = jest.fn();
+jest.mock('../threads.service', () => ({
+  markThreadSeen: (...a: unknown[]) => mockSeen(...a),
+}));
+
 import { CaseCloseOutcome, closeCaseInsteadOfDeleting } from '../caseClose.service';
 import { Thread } from '../threads.service';
 
@@ -40,6 +45,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   mockSetStatus.mockResolvedValue(undefined);
   mockSettle.mockResolvedValue(undefined);
+  mockSeen.mockResolvedValue(null);
 });
 
 /** #6363 (a), RULE D588 (Giorgi; Misho's yes 20 Oct): „წაშლა" on a case never erases it. */
@@ -67,9 +73,30 @@ describe('„წაშლა" on a case', () => {
     expect(mockSetStatus).toHaveBeenCalledWith('537', 61001, 'done');
   });
 
+  /**
+   * #9010 (Giorgi, 9 Nov): the closing line was newer than the last visit, so the
+   * list kept the case among the open ones („ვმუშაობ") until it was opened.
+   */
+  it('is seen by the person who closed it, after the closing line is written', async () => {
+    mockPending.mockResolvedValue(null);
+    await closeCaseInsteadOfDeleting('537', thread({ type: 'incoming_ask' }));
+    expect(mockSeen).toHaveBeenCalledWith(61001, '537');
+    expect(mockSeen.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockTellClosed.mock.invocationCallOrder[0] ?? Infinity,
+    );
+  });
+
+  it('is seen by the owner who closed their own case too', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ found: true }] });
+    mockGoal.mockResolvedValue({ id: 900, status: 'open' });
+    await closeCaseInsteadOfDeleting('7', thread({}));
+    expect(mockSeen).toHaveBeenCalledWith(61001, '7');
+  });
+
   it('leaves a plain chat with nobody else in it to be erased', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ found: false }] });
     expect(await closeCaseInsteadOfDeleting('7', thread({}))).toBe(CaseCloseOutcome.NotACase);
     expect(mockSetStatus).not.toHaveBeenCalled();
+    expect(mockSeen).not.toHaveBeenCalled();
   });
 });
