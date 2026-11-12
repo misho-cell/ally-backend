@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 14:20Z — relay_ask held in every ask chat since 5 Nov: fixed (main 41483b83)
+
+Lika's book-fair test: a helper wrote "yes, ask her" in an ask chat. relay_ask was refused twice ("not for the owner's current message"), so nothing reached the person and the asker heard nothing.
+
+Cause: #8944 (5 Nov) inverted the hold. relayHeld=false meant held, so relay_ask was held in every ask chat whenever the owner was present. The same thing hit the 10:58 run in the podcast test. Only create_task is held now.
+
+- DONE WHEN, re-running the book-fair case: the helper's "yes, ask her" reaches the person, and the asker hears the answer.
+
 ### 12 Nov, 14:10Z — re your 13:35Z (alert 265): a new path, not case 01 / podcast; fixed (main 4b680468)
 
 The real member was re-testing. "Ask him first, then the other" found three contacts with one name, so request_introduction asked her which one she meant. Then three things went wrong:
