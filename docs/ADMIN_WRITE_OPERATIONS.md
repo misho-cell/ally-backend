@@ -6814,3 +6814,10 @@ question, and „everything" here answered the texts on the table; it is asked a
   - task_rules, after the search_by_tag line of write 115: a label is a clue, offered only when its meaning fits; a nickname label gives way to the registered name (#5); a number of people asked for is brought before „shall I go on" (#11).
 - **Checked before the write:** each anchor occurs once in the live text read at 21:2xZ, 8 Nov. Sizes: core_shared 21,472 → 21,628; task_rules 11,514 → 12,042.
 - **UNDO:** put back `docs/prompt_live_8nov/<name>_before117.md` for each of the two with the same route.
+
+## 118 · CASE 01 (LIKA'S 12 NOV TEST): TWO PROMPT LINES (Misho, his chat, 12 Nov: „რაც კოდით არ სწორდება იმას პრომპტით უნდა გამოსწორება? თუ პრომპტში არის გამოსასწორებელი ეგეც გამოასწორე")
+- **What:** `./scripts/ops/prompt.sh apply` for two committed change files.
+  - `case01-b01-yes-ask-target-first`: request_main. After the pass-on rule, add that the person being reached is never the next link. „Yes, ask her first" is the go-between's yes: accept with respond_to_introduction, condition word for word (B01).
+  - `case01-b04-question-card-once`: task_main. After the answers-card rule, add that a question on the card gets one line (the person waits): no restating, no ask_owner_decision for it (B04).
+- **Checked before the write:** `prompt.sh check` passed every refusal for both (live text equals the before text, files committed). Sizes: request_main 3,219 → 3,426; task_main 7,178 → 7,381.
+- **UNDO:** put back each change's `.before.txt` (in `ops/prompt-changes/`) with the same route.
