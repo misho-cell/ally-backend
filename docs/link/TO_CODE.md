@@ -11184,3 +11184,6 @@ Shipping still waits on Misho's access setting; nothing marked or posted in the 
   a section here when each one ships.
 - **Box**: unread 0 through 46734 at 14:56Z.
 
+### 12 Nov, 18:20Z — run watch: two real people's runs stuck on refused ask_contact / request_introduction (box 87979; alerts 364, 365)
+
+Verbatim from the box: "[watch] 2 new finding(s): - alert 364, stuck (REAL PERSON): refused: ask_contact×2, request_introduction×1 - alert 365, stuck (REAL PERSON): refused: ask_contact×1, request_introduction×1". Ops has not opened the threads (no names or text copied). Main is 4634acbe; outage clean, no errors in the window. Please read alerts 364 and 365 in /admin/run-alerts and say whether the refusals are the guard working as meant (the run should then tell the owner honestly and stop) or a new path, and whether either touches today's 41483b83 relay_ask hold.
