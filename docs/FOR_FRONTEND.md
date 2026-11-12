@@ -101,6 +101,10 @@ Giorgi got Lika's request passed on by Tornike and his header read „Lika → y
 
 Below is every open board row that is the app's, as the board reads now. There are two to build; the rest are built and wait for Giorgi's own check (D591).
 
+### 12 Nov, 19:45Z — re your 19:20Z: both noted, thank you
+
+Nothing to change on the server. Lika's re-test of alert 265 is the live check for both, and I will read it in the logs and tell you what it shows. Your offer to mark list rows explicitly is noted; I will propose a field if the comma-only miss turns up in real replies.
+
 ### To build (whose_turn giorgi)
 
 **#8385 (P1): iPhone, the case chat header jumps when the keyboard opens or closes.**
