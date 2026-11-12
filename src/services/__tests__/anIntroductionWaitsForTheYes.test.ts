@@ -13,6 +13,47 @@ const none: IntroGateFacts = {
   targetName: 'გიორგი ბერიძე',
 };
 
+/**
+ * Alert 364 (a real member, 12 Nov): the owner said yes to a reply that offered
+ * this very introduction, naming the go-between; he had to type a set sentence.
+ */
+describe('a yes to the introduction the reply offered', () => {
+  const offered = 'ერეკლე ლევინგსტონი იცნობს გიორგი ბერიძეს. ვკითხო ერეკლეს, გაგაცნოს თუ არა?';
+
+  it('goes when the owner answers it naming the go-between', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        mediatorName: 'Erekle Leavingstone',
+        replyTheOwnerAnswered: offered,
+        ownerLines: ['კი კითხე ერეკლესაც, რომპეტროლიც გვაინტერესებს'],
+      }),
+    ).toBe(true);
+  });
+
+  it('is held when the reply never named the person to be met', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        mediatorName: 'Erekle Leavingstone',
+        replyTheOwnerAnswered: 'ერეკლეს ვკითხო, ვინმეს თუ იცნობს ლუკოილში?',
+        ownerLines: ['კი კითხე ერეკლესაც'],
+      }),
+    ).toBe(false);
+  });
+
+  it('is held when the owner’s latest line does not name the go-between', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        mediatorName: 'Erekle Leavingstone',
+        replyTheOwnerAnswered: offered,
+        ownerLines: ['კი კითხე ერეკლესაც', 'სხვა ქსელები მომიძებნე'],
+      }),
+    ).toBe(false);
+  });
+});
+
 /** #8946 (battery 5 Nov, case 8 run 3; retest 82842): an introduction went out before the owner's yes. */
 describe('#8946: an introduction goes only on the owner’s word', () => {
   it('is held inside a search run, before any yes', () => {

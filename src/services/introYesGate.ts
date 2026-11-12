@@ -1,4 +1,5 @@
 import { georgianScriptName } from './georgianScriptName';
+import { georgianToLatin } from './tools/transliterate';
 import { ownerNamedAGoBetween } from './severalRoutes';
 
 /**
@@ -43,7 +44,41 @@ function namedIn(lines: readonly string[], name: string): boolean {
   const trimmed = name.trim();
   if (trimmed === '') return false;
   const spellings = [trimmed, georgianScriptName(trimmed)];
-  return lines.some((line) => ownerNamedAGoBetween(line, spellings));
+  // Alert 364: „Erekle Leavingstone" has no sure Georgian spelling without the
+  // base, so „ერეკლესაც" never matched it. The line is read in Latin letters too.
+  return lines.some(
+    (line) => ownerNamedAGoBetween(line, spellings) || latinNameStartsAWord(line, trimmed),
+  );
+}
+
+const MIN_LATIN_NAME_WORD = 3;
+
+/** A Latin name word begins a word of the line read in Latin letters („ერეკლესაც" → erekle…). */
+function latinNameStartsAWord(line: string, name: string): boolean {
+  const words = georgianToLatin(line)
+    .toLowerCase()
+    .split(/[^a-z]+/u);
+  return name
+    .toLowerCase()
+    .split(/[^a-z]+/u)
+    .filter((part) => part.length >= MIN_LATIN_NAME_WORD)
+    .some((part) => words.some((word) => word.startsWith(part)));
+}
+
+/**
+ * Alert 364 (a real member, 12 Nov): the reply offered „ask Erekle whether Giorgi
+ * Maisuradze can introduce you?", the owner wrote „yes, ask Erekle", and the
+ * introduction was refused because the owner never typed the target's name; he
+ * had to write a set sentence before it went. A reply that named both people,
+ * answered by the owner naming the go-between, is his yes to that introduction.
+ */
+function ownerAnsweredTheProposal(facts: IntroGateFacts): boolean {
+  const reply = [facts.replyTheOwnerAnswered];
+  return (
+    namedIn(reply, facts.targetName) &&
+    namedIn(reply, facts.mediatorName) &&
+    namedIn(facts.ownerLines.slice(-1), facts.mediatorName)
+  );
 }
 
 /**
@@ -58,6 +93,7 @@ export function introductionMayGo(facts: IntroGateFacts): boolean {
     namedIn(facts.ownerLines, facts.mediatorName) ||
     namedIn([facts.replyTheOwnerAnswered], facts.mediatorName);
   if (namedIn(facts.ownerLines, facts.targetName) && routeKnown) return true;
+  if (ownerAnsweredTheProposal(facts)) return true;
   return facts.ownerSpokeSinceTheAnswer && namedIn(facts.ownerLines, facts.mediatorName);
 }
 
