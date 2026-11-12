@@ -1,0 +1,10 @@
+{
+  "target": "block:request_main",
+  "before_sha256": "5ce66b63de30d150d7ee1a3281c7591db3e599854e15f67c8747a57c427e344d",
+  "requires": [],
+  "what": "request_main: a go-between's yes conditioned on asking the target first is an accept, not a pass-on.",
+  "why": "Lika's case 01 (12 Nov), B01. The go-between wrote „yes, I can introduce, ask her first whether she wants to talk“. The model's logged reasoning read it as a pass-on under the rule above and would not accept; it called relay_ask (refused), the request stayed open, and the next line was then forced to a refusal (server half fixed in ac5ec8b5).",
+  "approved_by": "Misho, 12 Nov 2026, in the code session's chat: „რაც კოდით არ სწორდება იმას პრომპტით უნდა გამოსწორება? თუ პრომპტში არის გამოსასწორებელი ეგეც გამოასწორე“.",
+  "authorization_still_needed": "None.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/case01-b01-yes-ask-target-first.before.txt, sha256 5ce66b63de30d150d7ee1a3281c7591db3e599854e15f67c8747a57c427e344d."
+}

@@ -1,0 +1,10 @@
+{
+  "target": "block:task_main",
+  "before_sha256": "232836f4faacd4ad1b10824b43443bb0250f5c3666ace803abab8583dd8e78b0",
+  "requires": [],
+  "what": "task_main: when a helper's answer card carries a question for the owner, one line that the person waits; no restating, no ask_owner_decision for it.",
+  "why": "Lika's case 01 (12 Nov), B04. The helper's questions (which project, what role, how he found her) reached the asker three times: the server card, the model restating them, and an ask_owner_decision card with the same question.",
+  "approved_by": "Misho, 12 Nov 2026, in the code session's chat: „რაც კოდით არ სწორდება იმას პრომპტით უნდა გამოსწორება? თუ პრომპტში არის გამოსასწორებელი ეგეც გამოასწორე“.",
+  "authorization_still_needed": "None.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/case01-b04-question-card-once.before.txt, sha256 232836f4faacd4ad1b10824b43443bb0250f5c3666ace803abab8583dd8e78b0."
+}
