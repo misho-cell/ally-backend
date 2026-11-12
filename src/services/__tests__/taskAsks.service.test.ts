@@ -477,6 +477,37 @@ describe('createAsk', () => {
     expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია', false);
   });
 
+  /** Lika's podcast test (12 Nov, B06): „share my number with him, let him write on WhatsApp". */
+  describe('a number in the question', () => {
+    const OWN = '+995555000111';
+    const OTHER = '+995555000999';
+
+    function withSendersNumbers(): void {
+      routeAskQueries({ member: { userId: 7, name: 'გია' } });
+      const routed = mockQuery.getMockImplementation();
+      mockQuery.mockImplementation(((sql: string, params?: unknown[]) =>
+        sql.includes('ORDER BY phone LIMIT $2')
+          ? Promise.resolve(rows([{ phone: OWN }]))
+          : (routed as (s: string, p?: unknown[]) => unknown)(sql, params)) as never);
+    }
+
+    it('reaches the reader when it is the sender’s own', async () => {
+      withSendersNumbers();
+      await createAsk('42', 3, '+995599111222', `მომწერე WhatsApp-ზე: ${OWN}`);
+      const opening = mockSaveMessage.mock.calls[0][3] as string;
+      expect(opening).toContain(OWN);
+      expect(opening).not.toContain('[hidden]');
+    });
+
+    it('stays hidden when it is anybody else’s', async () => {
+      withSendersNumbers();
+      await createAsk('42', 3, '+995599111222', `დაურეკე ამ ნომერზე: ${OTHER}`);
+      const opening = mockSaveMessage.mock.calls[0][3] as string;
+      expect(opening).not.toContain(OTHER);
+      expect(opening).toContain('[hidden]');
+    });
+  });
+
   it('writes down the conversation the ask was sent FROM (ticket 9 task 20 d)', async () => {
     routeAskQueries({ member: { userId: 7, name: 'გია' } });
 

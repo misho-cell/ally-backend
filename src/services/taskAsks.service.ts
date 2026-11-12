@@ -1346,6 +1346,25 @@ export async function testSeatReachesARealPerson(
   }
 }
 
+/** The most of a sender's own registered numbers read. */
+const SENDERS_NUMBERS_READ = 5;
+
+/** The sender's own registered numbers; none on a failed read, so every number stays hidden. */
+async function sendersOwnNumbers(fromUserId: string): Promise<string[]> {
+  try {
+    const numbers = await query<{ phone: string }>(
+      'SELECT phone FROM "UserPhone" WHERE "userId" = $1::int ORDER BY phone LIMIT $2',
+      [fromUserId, SENDERS_NUMBERS_READ],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return numbers.rows.map((n) => n.phone).filter((p): p is string => typeof p === 'string');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ask] sender ${fromUserId}: own numbers not read:`, (err as Error).message);
+    return [];
+  }
+}
+
 async function createAskNow(
   fromUserId: string,
   taskId: number,
@@ -2268,8 +2287,12 @@ async function createAskNow(
   const shownName = unnamed ? anonymousAskerName(language) : senderName;
   const askerNames = [fromName.rows[0]?.name?.trim() ?? '', senderName];
 
-  // The question crosses accounts — scrub it.
-  const safeQuestion = scrubText(trimmed);
+  // The question crosses accounts — scrub it. Lika's podcast test (12 Nov, B06):
+  // „share my number with him, let him write on WhatsApp" — the sender's own
+  // number is theirs to give, so it passes; an unnamed ask keeps it hidden.
+  const ownNumbers =
+    !unnamed && containsPhoneLike(trimmed) ? await sendersOwnNumbers(fromUserId) : [];
+  const safeQuestion = scrubText(allowNumbersTheyTyped(trimmed, ownNumbers));
   // Two members of one network who never saved each other's number (Ticket
   // 10 Task 23, D121): the recipient's opening line says so (D57) — that is
   // what makes a stranger's question a colleague's rather than spam.

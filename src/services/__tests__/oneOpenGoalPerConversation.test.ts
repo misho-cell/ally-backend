@@ -11,9 +11,10 @@ describe('one open goal per conversation', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
   it('holds create_task only while the conversation has an open goal', () => {
-    const at = chat.indexOf('const createTaskHeld =');
+    const at = chat.indexOf('const threadHoldsAGoal =');
     expect(at).toBeGreaterThan(0);
     expect(chat.slice(at, at + 300)).toContain('await getOpenTaskByThread(thread.id)');
+    expect(chat).toContain('const createTaskHeld = !ownerAbsent && threadHoldsAGoal;');
     expect(chat).toContain('(!createTaskHeld || tool.name !== CREATE_TASK_TOOL_NAME) &&');
   });
 

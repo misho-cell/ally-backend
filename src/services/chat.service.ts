@@ -1725,7 +1725,8 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     'want to ASK — for someone found through search_second_degree that is the BRIDGE (a phone ' +
     'from via_contacts), never the second-degree person’s own phone: they are not your contact ' +
     'and are usually not a member. Never put phone numbers ' +
-    'inside the question text. FACTS: keep every fact exactly as the owner wrote it — who it ' +
+    "inside the question text, except the owner's own number when he asks you to share it " +
+    '(„give him my number"): it reaches them as written. FACTS: keep every fact exactly as the owner wrote it — who it ' +
     'is for, when, where, how much. Never add a reason, a beneficiary („for a friend") or a time ' +
     'of your own, and never change one („last year" stays last year); the server holds back a ' +
     'question that does. WORDING: the first words of the ask are the question itself, ' +
@@ -18400,13 +18401,13 @@ export async function processChat(
   // 3730 (2) / #8779 (ops 18:45Z): a conversation holds one open goal, so create_task is held
   // while it has one — a structural fact, not a reading of the owner's words. A follow-up
   // „ask X" in that goal is sent under it; propose_task_plan stays, a plan change is legal.
-  const createTaskHeld =
-    !ownerAbsent &&
+  const threadHoldsAGoal =
     (await getOpenTaskByThread(thread.id).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.warn('[create-task-held] open goal not read:', (err as Error).message);
       return null;
     })) !== null;
+  const createTaskHeld = !ownerAbsent && threadHoldsAGoal;
   // #8944: no server card stands between a reader's line and the asker any more, so a
   // line that refers the asker to somebody keeps relay_ask like any other in an ask chat.
   const relayHeld = ownerAbsent || thread.type !== 'incoming_ask';
@@ -19106,9 +19107,15 @@ export async function processChat(
    * it, beside its model call, and is awaited where it was awaited before. The
    * no-op catch only stops a failure counting as unhandled while the check runs —
    * it is still handled where it is awaited, exactly as before.
+   *
+   * Lika's podcast test (12 Nov, B01): two waiting requests about other people
+   * landed in the owner's podcast goal. A goal's conversation is that goal's
+   * alone; each request keeps its own conversation and the pending list.
    */
-  const requestsEarly = requestsToDeliver(userId, agentPrompt.deliverRequestsSeparately, () =>
-    getPendingRequestsForMediator(userId),
+  const requestsEarly = requestsToDeliver(
+    userId,
+    agentPrompt.deliverRequestsSeparately && !threadHoldsAGoal,
+    () => getPendingRequestsForMediator(userId),
   );
   requestsEarly.catch(() => undefined);
   const verdict = await verdictForShown(cleanedFinal, earlyVerdict, (text) =>
