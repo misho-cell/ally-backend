@@ -16391,6 +16391,11 @@ async function runToolLoop(
     // 4159 (conv 48452): the ask went out on a goal the run opened in another
     // conversation, so this one's goals hold nothing — but this run DID send.
     !runAskSent.has(runId) &&
+    // Lika's re-test (12 Nov, alert 265): an introduction this run sent or added a detail to
+    // IS the instruction carried out, and a run that put „which of these?" to the owner waits
+    // on the owner's pick. Either way the forced rewrite apologised for a fault that was none.
+    !runIntroSent.has(runId) &&
+    options === undefined &&
     // 1697: a closed route was refused on purpose; the reply proposes another way.
     !runRouteClosed.has(runId) &&
     // D795 (Misho's yes, 17 Oct; the tester's 64520): asking the owner for the one
