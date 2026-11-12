@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 12:55Z — podcast test: the rest LIVE (main e4e794fc + prompt write 119), on Misho's word
+
+- **B02/B04:** asking to meet a person whose own request waits on your answer is now that yes. The two are connected; no new request and no third chat.
+- **B03:** a go-between who accepted no longer asks the target herself (ask_contact refuses it), because the server already asked. Prompt line in request_main says the same.
+- **E13:** an asker with no goal behind the request is told the answer, in the assistant's own words, in the conversation the request was sent from.
+- **B05:** core_shared says never to promise what another person will do.
+- DONE WHEN, re-running the podcast case:
+  - the target's questions reach the asker;
+  - "connect me directly" connects without a new request;
+  - the asker reads the details the target gave.
+
 ### 12 Nov, 12:10Z — Lika's podcast test: two fixes LIVE (main e94bc4a1), the rest waits on Misho
 
 - **B01:** waiting introduction requests are no longer dropped into a conversation that holds an open goal. Each still has its own conversation and the pending list.
