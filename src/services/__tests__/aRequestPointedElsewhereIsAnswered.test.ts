@@ -70,6 +70,30 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
+  /** Lika's case 01 (12 Nov, B01): the go-between's yes, then „I told you, ask her" — recorded as a no. */
+  it('leaves a go-between who already said yes here to the run', async () => {
+    const earlier = ['კი, შემიძლია გაცნობა. ნინოს ჰკითხეთ, უნდა თუ არა გიორგისთან საუბარი'];
+    const followUp = 'ხო გითხარი ჰკითხე მეთქი, მეორედ რაღას მეკითხები';
+    pending(true);
+    await expect(answersTheRequestOnly('incoming_request', REQUEST_ID, followUp)).resolves.toBe(
+      true,
+    );
+    mockQuery.mockReset();
+    await expect(
+      answersTheRequestOnly('incoming_request', REQUEST_ID, followUp, earlier),
+    ).resolves.toBe(false);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('still answers a redirect when nothing earlier here was a yes', async () => {
+    pending(true);
+    await expect(
+      answersTheRequestOnly('incoming_request', REQUEST_ID, POINTED_ELSEWHERE[0], [
+        'სანდრო ვინ არის?',
+      ]),
+    ).resolves.toBe(true);
+  });
+
   it('is only the incoming introduction request', async () => {
     await expect(answersTheRequestOnly('regular', REQUEST_ID, POINTED_ELSEWHERE[0])).resolves.toBe(
       false,
@@ -91,8 +115,8 @@ describe('#5249: a mediator who points the owner elsewhere answers the request',
 
   it('is wired: that run is offered respond_to_introduction alone', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      'await answersTheRequestOnly(thread.type, thread.introduction_request_id, userMessage)',
+    expect(chat).toMatch(
+      /await answersTheRequestOnly\(\s*thread\.type,\s*thread\.introduction_request_id,\s*userMessage,\s*await spokenBeforeRead,\s*\)/,
     );
     expect(chat).toContain(
       '? tools.filter((tool) => tool.name === RESPOND_TO_INTRODUCTION_TOOL.name)',
