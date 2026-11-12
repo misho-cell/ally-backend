@@ -45,10 +45,12 @@ describe('a number the helper typed themselves', () => {
 describe('the stored answer', () => {
   beforeEach(() => mockQuery.mockReset());
 
-  function answerRound(ownLines: readonly string[]): void {
+  function answerRound(ownLines: readonly string[], ownNumbers: readonly string[] = []): void {
     mockQuery.mockImplementation(((sql: string, params?: unknown[]) => {
       if (sql.includes("c.role = 'user'"))
         return Promise.resolve({ rows: ownLines.map((content) => ({ content })), rowCount: 1 });
+      if (sql.includes('"UserPhone"'))
+        return Promise.resolve({ rows: ownNumbers.map((phone) => ({ phone })), rowCount: 1 });
       if (sql.includes('UPDATE task_asks'))
         return Promise.resolve({
           rows: [{ id: 7, task_id: 3, answer: (params as unknown[])[1], to_user_id: 2 }],
@@ -68,6 +70,19 @@ describe('the stored answer', () => {
     answerRound(['კი, ვიცნობ']);
     const out = await recordAskAnswer(55, `ელექტრიკოსს შეუძლია დაურეკოს: ${TYPED}`);
     expect(out?.answer).toBe('ელექტრიკოსს შეუძლია დაურეკოს: [hidden]');
+  });
+
+  /** Lika's case 01 (12 Nov, B02): „ჩემი ნომერი მიეცი" — give him my number, untyped. */
+  it('keeps the helper’s own registered number, which they told their assistant to give', async () => {
+    answerRound(['ჩემი ნომერი მიეცი'], [TYPED]);
+    const out = await recordAskAnswer(55, `ნინო თავის ნომერს გაძლევს: ${TYPED}`);
+    expect(out?.answer).toBe(`ნინო თავის ნომერს გაძლევს: ${ALLOW_OPEN}${TYPED}${ALLOW_CLOSE}`);
+  });
+
+  it('still hides any other number beside the helper’s own', async () => {
+    answerRound(['ჩემი ნომერი მიეცი'], [TYPED]);
+    const out = await recordAskAnswer(55, `${TYPED} ან ${OTHER}`);
+    expect(out?.answer).toBe(`${ALLOW_OPEN}${TYPED}${ALLOW_CLOSE} ან [hidden]`);
   });
 
   it('reads nothing more for an answer with no number', async () => {
