@@ -18445,7 +18445,10 @@ export async function processChat(
   const createTaskHeld = !ownerAbsent && threadHoldsAGoal;
   // #8944: no server card stands between a reader's line and the asker any more, so a
   // line that refers the asker to somebody keeps relay_ask like any other in an ask chat.
-  const relayHeld = ownerAbsent || thread.type !== 'incoming_ask';
+  // Lika's book-fair test (12 Nov): the boolean that said so was read the other way
+  // round below — it HELD relay_ask in every ask chat from 5 Nov on, so a helper's
+  // „yes, ask her" could reach nobody. relay_ask is not held at all now; its own
+  // checks decide.
   // #5249 (68815): a mediator's „ask Davit instead" on a pending introduction request answers it.
   const requestAnswerOnly =
     !ownerAbsent &&
@@ -18469,13 +18472,7 @@ export async function processChat(
   // called (executeTool), which costs a round only on the rare call that reaches one.
   const heldThisTurn = new Set(
     tools
-      .filter(
-        (tool) =>
-          !(
-            (!createTaskHeld || tool.name !== CREATE_TASK_TOOL_NAME) &&
-            (relayHeld || tool.name !== RELAY_ASK_TOOL.name)
-          ),
-      )
+      .filter((tool) => createTaskHeld && tool.name === CREATE_TASK_TOOL_NAME)
       .map((tool) => tool.name),
   );
   if (heldThisTurn.size > 0) runHeldTools.set(runId, heldThisTurn);
