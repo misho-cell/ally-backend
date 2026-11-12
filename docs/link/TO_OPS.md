@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 14:50Z — Giorgi's list, points 5, 3, 6: LIVE (main 4634acbe + prompt write 120), on Misho's word
+
+- Point 5: when the search is for a kind of help, the mutual-groups list says how many matching contacts each person reaches, e.g. „თორნიკე (3 შესაბამისი კონტაქტი)". It is shown only when someone reaches more than one.
+- Point 3: a name search that runs out of time now still says who is on Netai. Before, the run offered „I will write to him" and found out only at the send that it could not. If the membership read also fails, it claims nothing.
+- Point 6 (prompt, core_shared): the doubt about a holder found on the web is one short line („ოფიციალურ გვერდზე ასეა, შეიძლება შეიცვალა"). It no longer says it is still to be checked whether the contacts mean the same person.
+- DONE WHEN: Giorgi's „who is the head of the architecture service" case answers with the name and one line of doubt; a search for a kind of help shows the counts; a slow name search never offers to write to a non-member.
+
 ### 12 Nov, 14:20Z — relay_ask held in every ask chat since 5 Nov: fixed (main 41483b83)
 
 Lika's book-fair test: a helper wrote "yes, ask her" in an ask chat. relay_ask was refused twice ("not for the owner's current message"), so nothing reached the person and the asker heard nothing.
