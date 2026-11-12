@@ -33,6 +33,21 @@ const MEDIATOR_PUSH_URL = '/chat';
 export interface DisambiguationCandidate {
   phone: string;
   name: string;
+  /**
+   * Lika's re-test (12 Nov): the app's pick button read „<name> (undefined)" —
+   * the phone is (rightly) never sent to the screen, and the button showed it.
+   * The number's last four digits tell same-named people apart and are no phone.
+   */
+  hint: string;
+}
+
+/** How many of a number's last digits tell two same-named contacts apart. */
+const HINT_DIGITS = 4;
+
+/** „…4175": enough to tell two people apart, never the number. */
+export function phoneHint(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length > HINT_DIGITS ? `…${digits.slice(-HINT_DIGITS)}` : '';
 }
 
 type PhoneResult =
@@ -69,7 +84,11 @@ async function findMediatorPhone(
   if (result.rows.length > 1) {
     return {
       needs_disambiguation: true,
-      candidates: result.rows.map((r) => ({ phone: r.phone, name: r.display_name ?? r.phone })),
+      candidates: result.rows.map((r) => ({
+        phone: r.phone,
+        name: r.display_name ?? phoneHint(r.phone),
+        hint: phoneHint(r.phone),
+      })),
     };
   }
 

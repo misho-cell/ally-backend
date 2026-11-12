@@ -57,9 +57,17 @@ function scriptWords(text: string): { georgian: number; cyrillic: number; latin:
 const CONTACT_CARD_LINE_RE =
   /^\s*\[(?:Name|Mobile|Phone|Tel|Telephone|Work|Home|Email|E-mail)\][^\n]*$/gimu;
 
-/** The text a language is read from: no links, no shared contact cards. */
+/**
+ * Lika's re-test (12 Nov, alert 265): a Georgian owner tapped a pick button,
+ * „tornike abuladze (…)", and the reply came in English — the tapped NAME was
+ * read as an English sentence. A line that is a pick (a name and the server's
+ * „(…dddd)" hint, requestIntroduction's phoneHint) says nothing about language.
+ */
+const PICKED_CONTACT_LINE_RE = /^[^\n]*\(…\d{4}\)\s*$/gmu;
+
+/** The text a language is read from: no links, no shared contact cards, no picked names. */
 function spokenText(text: string): string {
-  return withoutLinks(text).replace(CONTACT_CARD_LINE_RE, ' ');
+  return withoutLinks(text).replace(CONTACT_CARD_LINE_RE, ' ').replace(PICKED_CONTACT_LINE_RE, ' ');
 }
 
 /**
