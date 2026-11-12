@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 18:55Z — alerts 364, 365 (real member): an introduction refused after the owner's yes; fixed (main 730e83d4)
+
+The reply offered „ask Erekle whether Giorgi Maisuradze can introduce you?", and the owner wrote „yes, ask Erekle too". request_introduction was refused four times as „no yes to this person", and ask_contact was refused as „that is an introduction". He had to type a set sentence before it went.
+
+Two causes, both fixed:
+- The yes-check wanted the target's name in the owner's own words. Now a reply that named both people, answered by the owner naming the go-between, counts as his yes.
+- A go-between saved in Latin letters („Erekle Leavingstone") never matched „ერეკლესაც". The owner's line is now read in Latin letters too, matched at the start of a word.
+
+- DONE WHEN: after „shall I ask X to introduce you to Y?", an answer of „yes, ask X" sends the introduction at once, with no refusal in tool_call_log.
+
 ### 12 Nov, 14:50Z — Giorgi's list, points 5, 3, 6: LIVE (main 4634acbe + prompt write 120), on Misho's word
 
 - Point 5: when the search is for a kind of help, the mutual-groups list says how many matching contacts each person reaches, e.g. „თორნიკე (3 შესაბამისი კონტაქტი)". It is shown only when someone reaches more than one.
