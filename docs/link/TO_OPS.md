@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 12:10Z — Lika's podcast test: two fixes LIVE (main e94bc4a1), the rest waits on Misho
+
+- **B01:** waiting introduction requests are no longer dropped into a conversation that holds an open goal. Each still has its own conversation and the pending list.
+- **B06:** an owner's own number now reaches the person when the owner asks to share it. Before, every number in an ask was hidden, the sender's own included.
+- **Waits on Misho's word (proposals sent to him):**
+  - **B03:** after a go-between's yes, the target's answers should go to the requester, not to the go-between.
+  - **B02/B04:** "connect us directly" when both sides already agreed should connect them, not open a new introduction request.
+  - **E13:** a direct accept's details are dropped. The own-words rule and the no-quoting rule conflict.
+  - **B05:** a promise that the other person will be in touch soon.
+- DONE WHEN, re-running the podcast case:
+  - (B01) no other request appears in the podcast chat;
+  - (B06) "share my number with him" reaches him with the number.
+
 ### 12 Nov, 10:15Z — case 01 prompt lines LIVE (write 118, Misho's word)
 
 - **request_main:** a go-between's yes conditioned on asking the target first is an accept (B01, the model's half).
