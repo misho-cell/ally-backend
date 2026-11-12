@@ -18413,7 +18413,12 @@ export async function processChat(
   // #5249 (68815): a mediator's „ask Davit instead" on a pending introduction request answers it.
   const requestAnswerOnly =
     !ownerAbsent &&
-    (await answersTheRequestOnly(thread.type, thread.introduction_request_id, userMessage));
+    (await answersTheRequestOnly(
+      thread.type,
+      thread.introduction_request_id,
+      userMessage,
+      await spokenBeforeRead,
+    ));
   // #5249 (68874): that answer is the mediator's no with a suggestion — never a yes.
   if (requestAnswerOnly) runRedirectAnswers.set(runId, userMessage);
   if (thread.type === REQUEST_THREAD_TYPE && typeof thread.introduction_request_id === 'number') {

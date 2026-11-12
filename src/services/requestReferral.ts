@@ -56,11 +56,20 @@ const HANDS_OVER_A_NUMBER = /\+?\d(?:[\s().-]?\d){6,}/u;
 /**
  * True when the mediator's line, on a pending incoming introduction request,
  * tells the owner to ask somebody else: that run answers the request and nothing else.
+ *
+ * Lika's case 01 (12 Nov, B01): the go-between first wrote „კი, შემიძლია
+ * გაცნობა. ნინოს ჰკითხეთ…" — yes, and ask the person first. That run did not
+ * answer the request, so it stayed pending; his next line, „ხო გითხარი ჰკითხე
+ * მეთქი" (I told you, ask her), read as an order to ask somebody else and his
+ * yes was recorded as a refusal on both sides. A go-between who has already
+ * said yes in this conversation is following up on it, not pointing elsewhere.
  */
 export async function answersTheRequestOnly(
   threadType: string | undefined,
   requestId: number | null | undefined,
   line: string,
+  /** The go-between's own earlier lines in this conversation. */
+  earlierLines: readonly string[] = [],
 ): Promise<boolean> {
   if (threadType !== REQUEST_THREAD_TYPE || requestId === null || requestId === undefined) {
     return false;
@@ -70,7 +79,8 @@ export async function answersTheRequestOnly(
   if (
     contactInstructionIn(line) === null ||
     SAYS_YES_TO_INTRODUCE.test(line) ||
-    HANDS_OVER_A_NUMBER.test(line)
+    HANDS_OVER_A_NUMBER.test(line) ||
+    earlierLines.some((earlier) => SAYS_YES_TO_INTRODUCE.test(earlier))
   ) {
     return false;
   }
