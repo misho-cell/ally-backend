@@ -6828,3 +6828,9 @@ question, and „everything" here answered the texts on the table; it is asked a
   - `podcast-b05-no-promise-for-another`: core_shared rule 4. Never promise what another person will do; say what was sent and whose answer is awaited (B05).
 - **Checked before the write:** `prompt.sh check` passes every refusal for both. Sizes: request_main 3,426 → 3,604; core_shared 21,628 → 21,756.
 - **UNDO:** put back each change's `.before.txt` (in `ops/prompt-changes/`) with the same route.
+
+## 120 · GIORGI'S LIST, POINT 6 (THE OVER-CAUTIOUS ANSWER): ONE PROMPT LINE (Misho, his chat, 12 Nov: „კი, სამივე გააკეთე", on points 5, 3 and the over-cautious answer in 6)
+- **What:** `./scripts/ops/prompt.sh apply giorgi-p6-one-line-of-doubt` for the committed change file.
+  - core_shared, the web-facts paragraph, after „never „დაუდასტურებელ სახელს არ მოგაწვდი"". The doubt about a holder found on the web is one short line at most („ოფიციალურ გვერდზე ასეა, შეიძლება შეიცვალა"), never a sentence on why it cannot be confirmed. The answer never says it is still to be checked whether the contacts who know someone mean the same person; asking them is the step itself.
+- **Checked before the write:** `prompt.sh check` passes every refusal. Size: core_shared 21,756 → 22,042.
+- **UNDO:** put back `ops/prompt-changes/giorgi-p6-one-line-of-doubt.before.txt` with the same route.

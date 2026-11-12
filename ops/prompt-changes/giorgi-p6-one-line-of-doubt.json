@@ -1,0 +1,12 @@
+{
+  "target": "block:core_shared",
+  "before_sha256": "f8d1e551b1742fbf8cba4a749990c5302dc1e9ec105e4e9ef2985cdc14db43b0",
+  "requires": [
+    "podcast-b05-no-promise-for-another"
+  ],
+  "what": "core_shared: the doubt about a holder found on the web is one short line; no line that it is still to be checked whether the contacts who know them mean the same person.",
+  "why": "Giorgi's list, point 6 (9 Nov): an answer about a city official spent two sentences on what was unconfirmed; a plain search engine just named him. Misho: do it (12 Nov).",
+  "approved_by": "Misho, 12 Nov 2026, in the code session's chat: „კი, სამივე გააკეთე“ (Giorgi's points 5, 3 and the over-cautious answer in 6).",
+  "authorization_still_needed": "None.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/giorgi-p6-one-line-of-doubt.before.txt, sha256 f8d1e551b1742fbf8cba4a749990c5302dc1e9ec105e4e9ef2985cdc14db43b0."
+}
