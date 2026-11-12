@@ -15,6 +15,22 @@ messages in their name.
 
 ---
 
+## 12 November, 09:40Z — the „Excel" link under a reply that only offers choices (case 01, B05); no board number
+
+Lika's case 01 test (12 Nov) reported a „Excel" link under a reply with no table
+in it. The server read: the reply is plain text ending in three numbered choices
+(„1. pass on that you agree / 2. ask which project first / 3. decline") — no
+link, no file, nothing stored about Excel. The link is the client's #2347 button:
+`replyHasList(msg.content)` in `src/app/chat/[id]/page.tsx` shows „replyExcel"
+for any reply with a numbered list.
+
+Ask: show it only for a list worth a spreadsheet — e.g. rows of people or
+results — not for a short list of choices the assistant is asking the reader to
+pick from. No server change; no route or field involved. Your call how to tell
+them apart.
+
+---
+
 ## 6 November, 13:15Z — re your 12:50Z: origin is live on both routes; no board number
 
 - **Live:** `origin` has been on `main` since 12:48Z (commit 3622c02e as 39f7c41 there).
