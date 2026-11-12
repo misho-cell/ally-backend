@@ -217,6 +217,7 @@ import {
   getIntroStatusForMediator,
   getIntroStatusForTarget,
   getPassedOnAsks,
+  yesToTheirWaitingRequest,
   PendingRequest,
   RespondedRequest,
   pendingIntroInMediatorThread,
@@ -309,7 +310,13 @@ import {
 } from './taskAsks.service';
 import { askThreadForName, askThreadsForName } from './askThreadByName';
 import { laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
-import { mediatorsOwnWords, ownersRecentLines, replyTheOwnerAnswered } from './introResponse';
+import {
+  SERVER_ALREADY_ASKED_NOTE,
+  mediatorsOwnWords,
+  ownersRecentLines,
+  replyTheOwnerAnswered,
+  serverAlreadyAskedThem,
+} from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { factsAboutMe, removeFactAboutMe, RemoveOutcome } from './factsAboutMe.service';
@@ -1052,6 +1059,12 @@ const GET_INTRO_STATUS_TOOL: AnthropicTool = {
     'tell them to write to the person themselves.',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
+
+/** Model-facing, with yesToTheirWaitingRequest's result. */
+const WAITING_YES_NOTE =
+  "This was the owner's yes to that person's own waiting request to meet him: the server " +
+  'answered it and connected them. Tell the owner in one line what what_was_done says; open no ' +
+  'new request and ask nobody again.';
 
 const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
   name: 'respond_to_introduction',
@@ -10988,6 +11001,20 @@ async function executeToolCall(
        * chat said nothing. So the THREAD goes with the request too, and the
        * resolve writes into it when there is no goal (request 1156).
        */
+      // Lika's podcast test (12 Nov, B02/B04): their own request to meet the owner waits on
+      // the owner's answer — asking to meet them is that yes, never a new request.
+      const waitingYes = await yesToTheirWaitingRequest(userId, [
+        input['target_phone'],
+        input['mediator_phone'],
+      ]);
+      if (waitingYes !== null) {
+        return {
+          success: true,
+          connected: true,
+          what_was_done: waitingYes,
+          note: WAITING_YES_NOTE,
+        };
+      }
       const goalForIntro = threadId == null ? null : await getOpenTaskByThread(threadId);
       // 5347: in a link's own request thread, the request that goes on is the owner's.
       const passedOn = threadId == null ? null : await requestThisThreadPassesOn(userId, threadId);
@@ -11439,6 +11466,9 @@ async function executeToolCall(
       const openedThisRun = (runCreatedGoals.get(runId ?? '') ?? []).includes(taskId);
       if (!openedThisRun && askedFromAnotherGoalsThread(task.thread_id, threadId)) {
         return { sent: false, error: ASK_BELONGS_HERE_NOTE };
+      }
+      if (await serverAlreadyAskedThem(userId, input['phone'])) {
+        return { sent: false, error: SERVER_ALREADY_ASKED_NOTE };
       }
       // See noteApprovedAPlan: this run approved the plan, and day one is
       // already queued behind the reply to write to the people in it. Sending

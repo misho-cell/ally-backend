@@ -1,0 +1,10 @@
+{
+  "target": "block:request_main",
+  "before_sha256": "08d75aadb76400b008bdb7115b09e305967662545f0f9c88ae724f416cfc8139",
+  "requires": [],
+  "what": "request_main: after a go-between accepts, the server asks the target; the go-between's run does not ask them itself or open a goal.",
+  "why": "Lika's podcast test (12 Nov), B03. The server asked the target at 10:46:18; 36 seconds later the go-between's run opened its own goal and asked him again in a second conversation, so his answers went to her and the asker never heard back. Server half: ask_contact now refuses that ask.",
+  "approved_by": "Misho, 12 Nov 2026, in the code session's chat: „კი, შენი შეთავაზებებით გააკეთე ყველა“ (on my proposals for the podcast test's B02–B05).",
+  "authorization_still_needed": "None.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/podcast-b03-server-asks-the-target.before.txt, sha256 08d75aadb76400b008bdb7115b09e305967662545f0f9c88ae724f416cfc8139."
+}
