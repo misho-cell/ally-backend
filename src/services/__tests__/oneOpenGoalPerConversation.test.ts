@@ -15,7 +15,7 @@ describe('one open goal per conversation', () => {
     expect(at).toBeGreaterThan(0);
     expect(chat.slice(at, at + 300)).toContain('await getOpenTaskByThread(thread.id)');
     expect(chat).toContain('const createTaskHeld = !ownerAbsent && threadHoldsAGoal;');
-    expect(chat).toContain('(!createTaskHeld || tool.name !== CREATE_TASK_TOOL_NAME) &&');
+    expect(chat).toContain('createTaskHeld && tool.name === CREATE_TASK_TOOL_NAME');
   });
 
   it('no longer reads the owner’s words for it', () => {
