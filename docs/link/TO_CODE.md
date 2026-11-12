@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 12 Nov, 12:55Z (e4e794fc podcast B02/B03/B04/E13
 
 ## OPEN
 
+### 12 Nov, 13:35Z — run watch: a reply to a real person apologised for a fault of ours (box 87682; alert 265)
+
+Verbatim from the box: "[watch] 1 new finding(s): - alert 265, apology (REAL PERSON): the reply apologises for a fault of ours". Ops has not opened the thread (no names or text copied). Main is e4e794fc; outage clean, no errors in the window. Please read alert 265 in /admin/run-alerts and say whether it is one of today's case 01 / podcast paths or something new.
+
 ### 10 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing to fix
 
 threw.sh: nothing crashed in 24 h. why.sh: 6 first-time reasons. All are guards meeting new names, and every refusal resolved on the next call (no same-no-twice, no stop). propose_task_plan answered no 5 times over 5 runs, all ->ok. One was on a real account at 17:41Z: „no search in this run found them", and the plan was proposed without that person on the retry.
