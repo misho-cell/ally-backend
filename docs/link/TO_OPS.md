@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 09:45Z — case 01 (Lika's manual test, 12 Nov) fixes (main 66539c00), shipped in daytime because real members hit them
+
+- **B01** (ac5ec8b5): a go-between had already said yes; his follow-up ("I told you, ask her") was read as "ask someone else" and his yes was recorded as a refusal on both sides. A go-between who said yes earlier in the conversation is no longer redirected. The model's half (it would not accept a yes conditioned on asking the target first) is with the prompt chat.
+- **B02** (f575e5cf): the helper said "give him my number" without typing it. Their own registered number was masked as `[hidden]` for the asker, twice, while both sides were told it was sent. A helper's own number now passes like a typed one; every other number is still hidden.
+- **B03** (32e06d50): the claims reader (Haiku 5.5 since last night) counted an offer ("shall I pass it on?") as a send. That forced a rewrite which replaced the answer to "who is the asker?" with "nothing sent yet". Questions and offers are no longer counted as claims.
+- **B05** (baeba483): the go-between's card showed his whole phonebook label (tags around the name). When the label holds the requested name, the card shows the name alone. The "Excel" link is the frontend's list button (noted in FOR_FRONTEND).
+- **B04** (repeats): the model's doing. It is with the prompt chat.
+- DONE WHEN, re-running case 01:
+  - (B01) the go-between's "yes, ask her first" leaves the request accepted, not declined;
+  - (B02) "give him my number" shows the asker the number;
+  - (B03) "who is X?" gets its answer the first time;
+  - (B05) the card names the person plainly.
+
 ### 12 Nov, 08:55Z — prices for the current models (main bd7280ca), shipped in daytime
 
 - Last night's model move (08e0fdf3) did not seed rates for `claude-sonnet-5-5` and `claude-haiku-5-5`. Every call on them was booked at $0, so:
