@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 10:15Z — case 01 prompt lines LIVE (write 118, Misho's word)
+
+- **request_main:** a go-between's yes conditioned on asking the target first is an accept (B01, the model's half).
+- **task_main:** a question on a helper's answer card gets one line, not restated and not filed again with ask_owner_decision (B04).
+- Change files: `ops/prompt-changes/case01-*` on the branch. Undo: each `.before.txt`.
+- DONE WHEN, re-running case 01:
+  - the go-between's „yes, ask her first" is accepted in that same run;
+  - the asker reads a helper's questions once.
+
 ### 12 Nov, 09:45Z — case 01 (Lika's manual test, 12 Nov) fixes (main 66539c00), shipped in daytime because real members hit them
 
 - **B01** (ac5ec8b5): a go-between had already said yes; his follow-up ("I told you, ask her") was read as "ask someone else" and his yes was recorded as a refusal on both sides. A go-between who said yes earlier in the conversation is no longer redirected. The model's half (it would not accept a yes conditioned on asking the target first) is with the prompt chat.
