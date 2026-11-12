@@ -443,6 +443,16 @@ const QUICK_TIMEOUT_MS = 4_000;
 const QUICK_LIMIT = 10;
 const TIMED_OUT_RE = /statement timeout|query_canceled|timeout exceeded/i;
 
+/** Who of the quick rows is on Netai; null when that read failed too (then nothing is claimed). */
+async function quickAccountStates(phones: string[]): Promise<Map<string, AccountDetails> | null> {
+  try {
+    return await fetchAccountStates(phones);
+  } catch (err) {
+    console.error('searchContactByName quick membership read failed:', (err as Error).message);
+    return null;
+  }
+}
+
 async function ownLabelsOnly(
   userId: string,
   nameQuery: string,
@@ -466,10 +476,21 @@ async function ownLabelsOnly(
     const blocked = new Set((await getExcludedPhones(userId)).map(normalizePhone));
     const rows = result.rows.filter((r) => !blocked.has(normalizePhone(r.phone)));
     if (rows.length === 0) return null;
+    // Giorgi, 9 Nov (#3): the quick rows said nothing of who is on Netai, so the run
+    // offered „I will write to him" and learned only at the send that it could not.
+    const states = await quickAccountStates(rows.map((r) => r.phone));
     return {
       found: true,
       count: rows.length,
-      results: rows.map((r) => ({ name: r.alias, saved_as: r.alias, phone: r.phone })),
+      results: rows.map((r) => ({
+        name: r.alias,
+        saved_as: r.alias,
+        phone: r.phone,
+        ...(states !== null && {
+          is_member: isMemberPhone(states, r.phone),
+          account_state: accountStateFor(states, r.phone),
+        }),
+      })),
       note:
         'The full search did not finish; these are found by the names the owner saved only. ' +
         'Use them; do not search the surname alone.',

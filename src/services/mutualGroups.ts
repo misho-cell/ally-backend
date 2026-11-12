@@ -77,6 +77,12 @@ export function namesAsShown(
 export interface MutualContact {
   readonly name: string;
   readonly onNetai: boolean;
+  /**
+   * Giorgi, 9 Nov (case 1 #5, case 3: „why these people?"): for a kind of help,
+   * how many of this contact's own contacts match it — the reason they are here.
+   * A count only: how another member saved anybody is never shown.
+   */
+  readonly matches?: number;
 }
 
 interface GroupWords {
@@ -89,6 +95,8 @@ interface GroupWords {
   readonly kindHeading: string;
   readonly onNetai: string;
   readonly notOnNetai: string;
+  /** „(3 matching contacts)" after a name. */
+  readonly matching: (count: number) => string;
 }
 
 const WORDS: Readonly<Partial<Record<RunLanguage, GroupWords>>> = {
@@ -97,12 +105,14 @@ const WORDS: Readonly<Partial<Record<RunLanguage, GroupWords>>> = {
     kindHeading: 'ამაში შეიძლება დაგეხმარონ შენი ეს ნაცნობები:',
     onNetai: 'Netai-ზე არიან — მათ ასისტენტს პირდაპირ ვკითხავ',
     notOnNetai: 'Netai-ზე არ არიან — თუ გინდა, მოსაწვევს მოგიმზადებ',
+    matching: (count) => `${count} შესაბამისი კონტაქტი`,
   },
   en: {
     heading: (target) => `These contacts of yours know ${target}:`,
     kindHeading: 'These contacts of yours may be able to help with this:',
     onNetai: "On Netai — I'll ask their assistant directly",
     notOnNetai: 'Not on Netai — if you like, I will write the invitation for you',
+    matching: (count) => `${count} matching contact${count === 1 ? '' : 's'}`,
   },
 };
 
@@ -132,10 +142,16 @@ export function mutualGroupsText(
 ): string | null {
   const words = WORDS[language];
   if (words === undefined || contacts.length === 0) return null;
+  // A count says something only where it differs: „(1)" after every name is noise.
+  const countsTell = contacts.some((c) => (c.matches ?? 0) > 1);
   const names = (onNetai: boolean): string =>
     contacts
       .filter((c) => c.onNetai === onNetai)
-      .map((c) => shownName(c.name, language))
+      .map((c) =>
+        countsTell && c.matches !== undefined && c.matches > 0
+          ? `${shownName(c.name, language)} (${words.matching(c.matches)})`
+          : shownName(c.name, language),
+      )
       .join(NAME_SEPARATOR);
   const lines = [
     ofKind ? words.kindHeading : words.heading(target),
@@ -384,6 +400,8 @@ function contactsOnce(
   digits: readonly string[],
   names: ReadonlyMap<string, string>,
   states: Map<string, AccountDetails>,
+  /** Matching contacts per go-between, for a kind of help; empty otherwise. */
+  matches: ReadonlyMap<string, number> = new Map(),
 ): MutualContact[] {
   const byPerson = new Map<string, MutualContact>();
   for (const d of digits) {
@@ -397,7 +415,12 @@ function contactsOnce(
       (account === null ? `name:${name}` : `user:${account}`);
     const earlier = byPerson.get(key);
     const onNetai = isMemberPhone(states, d) || earlier?.onNetai === true;
-    byPerson.set(key, { name: earlier?.name ?? name, onNetai });
+    const count = Math.max(matches.get(d) ?? 0, earlier?.matches ?? 0);
+    byPerson.set(key, {
+      name: earlier?.name ?? name,
+      onNetai,
+      ...(count > 0 && { matches: count }),
+    });
   }
   return [...byPerson.values()];
 }
@@ -407,16 +430,22 @@ function contactsOnce(
  * run found leading to the target. Giorgi, 9 Nov (case 3): among those, the
  * one holding the most matching contacts comes first.
  */
-export function knownDigits(
-  planned: readonly string[],
-  foundTargets: readonly FoundThroughBridge[],
-): string[] {
+/** How many of the people found each go-between leads to, by the go-between's digits. */
+export function reachCounts(foundTargets: readonly FoundThroughBridge[]): Map<string, number> {
   const reaches = new Map<string, number>();
   for (const person of foundTargets) {
     for (const d of new Set(person.viaPhones.map(phoneDigits))) {
       reaches.set(d, (reaches.get(d) ?? 0) + 1);
     }
   }
+  return reaches;
+}
+
+export function knownDigits(
+  planned: readonly string[],
+  foundTargets: readonly FoundThroughBridge[],
+): string[] {
+  const reaches = reachCounts(foundTargets);
   const all = [
     ...new Set(
       [...planned, ...foundTargets.flatMap((person) => person.viaPhones.map(phoneDigits))].filter(
@@ -468,11 +497,12 @@ export async function mutualGroupsFor(
     const names = namesAsShown(labels, states, await membersOwnNames(states), language);
     const heading =
       (await goBetweensLabelFor(planned, targetDigits(planInput, foundTargets))) ?? target;
+    const ofKind = reach.ofKind !== undefined;
     return mutualGroupsText(
       heading,
-      contactsOnce(digits, names, states),
+      contactsOnce(digits, names, states, ofKind ? reachCounts(foundTargets) : new Map()),
       language,
-      reach.ofKind !== undefined,
+      ofKind,
     );
   } catch (err) {
     // eslint-disable-next-line no-console
