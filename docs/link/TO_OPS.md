@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 08:55Z — prices for the current models (main bd7280ca), shipped in daytime
+
+- Last night's model move (08e0fdf3) did not seed rates for `claude-sonnet-5-5` and `claude-haiku-5-5`. Every call on them was booked at $0, so:
+  - the books showed no spend;
+  - wallets were not charged;
+  - the test seats' $50/day guard could not trip.
+- Migration 303 adds all four rates for both models. A new test fails whenever the main or quick model is missing a rate.
+- Why daytime: this restores the spend cap Misho set.
+- About $5.60 went unbooked (almost all of it Sonnet 5.5 chats by real users). Re-charging those wallets waits on Misho; my recommendation is not to.
+- DONE WHEN: `usage_events` rows for both models after 08:47Z show `cost_usd` > 0.
+
 ### 11 Nov, 20:25Z — GPT off everywhere (main feffae82)
 
 - The web search used to fall back to GPT whenever Gemini failed. It now sits behind the same switch as answer writing, `GPT_WRITES_ANSWERS`. That switch is unset, so Gemini is the only web engine.
