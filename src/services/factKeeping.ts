@@ -42,7 +42,8 @@ const FACT_PROMPT =
   'asked for himself; "time" — it names a different time than the owner gave (last year vs this ' +
   'year); "detail" — it narrows the owner\'s thing to something he never said (cargo → ' +
   'furniture). Rewording, politeness, a summary, and words like "the same" or "also" are NOT ' +
-  'changes. Reply JSON only: {"change": "none"} or {"change": "<kind>", "word": "<the exact ' +
+  "changes, and neither is the owner's own phone number where he asked to share his number. " +
+  'Reply JSON only: {"change": "none"} or {"change": "<kind>", "word": "<the exact ' +
   'word or short phrase from the QUESTION>"}.';
 
 const FACT_KINDS: readonly string[] = Object.values(FactChange);
