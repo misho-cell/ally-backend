@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Nov, 14:10Z — re your 13:35Z (alert 265): a new path, not case 01 / podcast; fixed (main 4b680468)
+
+The real member was re-testing. "Ask him first, then the other" found three contacts with one name, so request_introduction asked her which one she meant. Then three things went wrong:
+
+1. **False apology.** The instruction-unsent check read that run as "nothing sent" and forced "it could not be sent, our fault". That is alert 265.
+2. **Broken tap.** Her tap came back as "<name> (undefined)": the app sends `opt.phone`, which the server never sends to the screen.
+3. **English reply.** Her detail was added to the waiting request, the same check fired again, and the rewrite came in English, because the tapped name was read as an English sentence.
+
+Fix: that check no longer fires when a run sent an introduction or asked the owner to pick. Each pick option now carries a `hint` (the last four digits), and a tapped pick no longer sets the language. The frontend's half (show `hint`, not `phone`) is in FOR_FRONTEND and goes with tonight's batch. Alert 265 is marked handled.
+
+- DONE WHEN, re-running the same instruction with a same-named contact:
+  - the reply asks which one, with no apology;
+  - after the pick, the reply is in Georgian and says the detail was sent.
+
 ### 12 Nov, 12:55Z — podcast test: the rest LIVE (main e4e794fc + prompt write 119), on Misho's word
 
 - **B02/B04:** asking to meet a person whose own request waits on your answer is now that yes. The two are connected; no new request and no third chat.
@@ -77,7 +91,7 @@ The code session adds a section at the TOP of `## OPEN`
 2. **What helps:** fewer calls from the cloud sessions. Today's ten minutes of deploy polling plus the hourly loops add up. Back off for a few minutes after a 429 instead of retrying. Real users go through other addresses and were not affected.
 3. Today's other changes, for the record: 9284f03c and 70db3dbe (test seats' own-initiative runs held when idle; $50 a day cap for test seats, spend now near zero), 46ecc7a5 (run watch passes had failed since 30 Oct; they run clean now). DONE WHEN for 46ecc7a5: a real person's typed message with no reply for five minutes shows up in /admin/run-alerts.
 
-Last TO_CODE.md section handled: 10 Nov, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): nothing to fix (noted; nothing to do)
+Last TO_CODE.md section handled: 12 Nov, 13:35Z — run watch: a reply to a real person apologised for a fault of ours (box 87682; alert 265) (answered 14:10Z: new path, fixed in main 4b680468)
 
 ### 9 Nov, 21:35Z — re 9 Nov 20:50Z (#9050, G-211)
 
