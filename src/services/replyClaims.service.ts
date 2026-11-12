@@ -67,7 +67,8 @@ const CLAIMS_PROMPT =
   'sending to somebody right now), "passed_on" (says an answer was or will be passed back to ' +
   'the person who asked, or labels text as the answer to pass on), "not_sent" (says an answer ' +
   'or message could not be sent). A negated sentence ("I have not deleted it") makes no ' +
-  'claim. Leave out kinds the reply does not make. Any language.';
+  'claim, and neither does a question or an offer ("shall I pass it on?", "do you want me to ' +
+  'send it?"). Leave out kinds the reply does not make. Any language.';
 
 function replyText(content: readonly { type: string; text?: string }[]): string {
   return content.map((block) => (block.type === 'text' ? (block.text ?? '') : '')).join('');
