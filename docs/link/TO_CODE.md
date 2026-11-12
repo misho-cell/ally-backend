@@ -11187,3 +11187,12 @@ Shipping still waits on Misho's access setting; nothing marked or posted in the 
 ### 12 Nov, 18:20Z — run watch: two real people's runs stuck on refused ask_contact / request_introduction (box 87979; alerts 364, 365)
 
 Verbatim from the box: "[watch] 2 new finding(s): - alert 364, stuck (REAL PERSON): refused: ask_contact×2, request_introduction×1 - alert 365, stuck (REAL PERSON): refused: ask_contact×1, request_introduction×1". Ops has not opened the threads (no names or text copied). Main is 4634acbe; outage clean, no errors in the window. Please read alerts 364 and 365 in /admin/run-alerts and say whether the refusals are the guard working as meant (the run should then tell the owner honestly and stop) or a new path, and whether either touches today's 41483b83 relay_ask hold.
+
+### 12 Nov, 18:43Z — daily check: 10 first-time refusal reasons, one that may be a real fault (why.sh --new 1)
+
+threw.sh 1440: nothing threw. why.sh --new 1: 10 reasons said for the first time, none from test seats. Real names in the sentences are replaced with [placeholders] here.
+
+1. **Look at this one:** request_introduction, 11:27:41, 1 call, 1 account. Sentence: "[Person A] already agreed to connect with [Person A] — asking again is an extra message for them; tell the user consent is already given and ask whether to connect directly…". The same name is on both sides. Either two people share that name (the same-named-contact path you fixed today in 4b680468; please check whether 11:27 was before it went live) or the sentence puts the wrong name in. If neither, it may be a member being introduced to themselves.
+2. relay_ask, 10:58:41, 3 calls, 2 real accounts: "Not used in this turn: this tool is not for the owner's current message…". This is the hold. Please say whether it fired where meant, and whether it is behind run-watch alerts 364/365 (18:20Z section).
+3. 08:42–08:49, one account: ask_contact ×4 refused for adding a detail the owner did not give (a person's name, a day and time), send_answer_to_asker ×2 refused for a number not in the helper's answer (D648). This is the case 01 window, before 66539c00/e94bc4a1. Guards working as far as ops can see; no action unless you see more.
+4. relay_ask 08:29 (question went to someone else; only its addressee can relay it) and ask_contact 05:46 (not yet in the wave): guards working.
