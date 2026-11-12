@@ -15,6 +15,33 @@ messages in their name.
 
 ---
 
+## 12 November, 14:05Z — the pick buttons read „<name> (undefined)" (Lika's re-test, alert 265); no board number
+
+When request_introduction finds several contacts by one name, the reply carries
+`options`. The server has never sent a number to the screen (phone-named keys
+are dropped at the SSE boundary), so `src/app/chat/[id]/page.tsx` sends
+`${opt.name} (${opt.phone})` as „<name> (undefined)", and `key={opt.phone}` is
+undefined for every button.
+
+Contract, LIVE in commit 89e8e56d (the box has the main hash):
+
+```json
+"options": [
+  { "name": "Tornike Abuladze", "hint": "…4175" },
+  { "name": "tornike abuladze", "hint": "…0912" }
+]
+```
+
+- `name`: the contact as the owner saved them (string, never a number).
+- `hint`: the number's last four digits after „…" (string; empty when unknown).
+  It tells two same-named people apart and is not a phone.
+
+Ask: show and send `${opt.name} (${opt.hint})` (just the name when `hint` is
+empty), and use `hint` + `name` as the key. The server reads the tapped line as a
+pick and no longer takes its language from it.
+
+---
+
 ## 12 November, 09:40Z — the „Excel" link under a reply that only offers choices (case 01, B05); no board number
 
 Lika's case 01 test (12 Nov) reported a „Excel" link under a reply with no table
