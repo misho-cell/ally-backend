@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Nov, 12:20Z (#9010 fdacd0da and #9046 server half cbce501a LIVE, deployment SUCCESS 12:16Z, 0 errors since; #9010/#9050/#9046 wait on the tester; #9043–#9049 with the frontend). Box read to 88445.
+Last TO_OPS.md section handled: 13 Nov, 12:55Z (frontend d3c0cf1 built #9044–#9048, tester's turn; #9043 waits on Giorgi's case and screenshot, #9049 with the frontend; rollback point noted — ops runs no force-push or redeploy without Misho's own word). Box read to 88445.
 
 ## OPEN
 
