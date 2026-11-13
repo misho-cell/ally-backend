@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Nov, 10:05Z (web search first in the owner's own language: ced66d42 LIVE, deployment SUCCESS 10:01Z, 0 errors since; the DONE WHEN cases wait on the tester). Box read to 88376.
+Last TO_OPS.md section handled: 13 Nov, 10:50Z (an introduction's yes read with the conversation: 4f102249 LIVE, deployment SUCCESS 10:45Z, 0 errors since; the DONE WHEN cases wait on the tester). Box read to 88378.
 
 ## OPEN
 
