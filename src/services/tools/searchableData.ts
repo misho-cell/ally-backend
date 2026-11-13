@@ -58,6 +58,18 @@ export const WORK_FACT_TYPES: readonly string[] = [
  */
 export const PROFILE_KEYS_MATCHED: readonly string[] = ['profession', 'industry'];
 
+/**
+ * Misho, 13 Nov (stage 4, company base → our people): a person the company
+ * base ties to a company, confirmed, is found by the company's name in either
+ * script and by their role there, at every level — even when nobody saved
+ * them under the company's name. Rows of (phone, text); possible ties (name
+ * guesses) are never read, as the company search reads only confirmed ones.
+ */
+export const COMPANY_TIES_SQL = `SELECT l.phone, concat_ws(' ', c.name_en, c.legal_name_ka, l.role) AS text
+       FROM person_company_links l
+       JOIN companies c ON c.company_id = l.company_id
+      WHERE l.status = 'confirmed'`;
+
 const SAFE_CONSTANT_RE = /^[a-z_]+$/u;
 
 /**

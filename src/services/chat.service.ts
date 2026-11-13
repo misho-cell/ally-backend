@@ -169,6 +169,7 @@ import { safetyReplyFor } from './safetyWorry';
  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
  */
 const OFFER_TOOLS_ON = true;
+import { searchNeeds } from './tools/searchNeeds';
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
 import { isWarmTie } from './ownerTies';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
@@ -4496,6 +4497,31 @@ const FIND_PEOPLE_IN_BASE_TOOL: AnthropicTool = {
       need: {
         type: 'string',
         description: 'The need in English words, synonyms and place included.',
+      },
+    },
+    required: ['need'],
+  },
+};
+
+/**
+ * Misho, 13 Nov (search stage 4): who is LOOKING for something — a seller's
+ * clients, an investor's founders — at every level of the owner's network.
+ */
+const SEARCH_NEEDS_TOOL: AnthropicTool = {
+  name: 'search_needs',
+  description:
+    'People whose stated NEED matches: who is looking for this, not who does it ("who needs a ' +
+    'mobile app", "who is looking for an investor", "who wants to hire a lawyer"). Searches ' +
+    "the user's own contacts, one ring out, and the rest of the base, nearest first. Pass only " +
+    'the thing needed, no "who needs"; needs are written in English or Georgian, so when the ' +
+    'first call finds nobody, call once more in the other language. Each row says its level, ' +
+    'and for one ring out the contact who knows them (via).',
+  input_schema: {
+    type: 'object',
+    properties: {
+      need: {
+        type: 'string',
+        description: 'The thing people are looking for, in one language ("mobile app").',
       },
     },
     required: ['need'],
@@ -13112,6 +13138,15 @@ async function executeToolCall(
       return searchRoster(userId, String(input['group'] ?? ''), String(input['name'] ?? ''));
     case 'find_people_in_base':
       return findPeopleInBase(userId, String(input['need'] ?? ''));
+    case 'search_needs': {
+      const needs = withoutWithheldPeople(
+        await searchNeeds(userId, String(input['need'] ?? '')),
+        await withheldForRun(runId, userId),
+      );
+      // A person found by their need is a route like any other: the walk to them is never refused.
+      if (runId !== undefined) notePeopleFound(runId, needs);
+      return needs;
+    }
     case 'find_companies_for_need': {
       const companies = await findCompaniesForNeed(
         userId,
@@ -17398,6 +17433,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   FIND_WARM_PATH_TOOL,
   ...(COMPANY_SEARCH_TOOL_ON ? [FIND_COMPANIES_FOR_NEED_TOOL] : []),
   ...(BASE_PEOPLE_TOOL_ON ? [FIND_PEOPLE_IN_BASE_TOOL] : []),
+  SEARCH_NEEDS_TOOL,
   GET_COUNTRY_CHANNELS_TOOL,
   GET_NETAI_INFO_TOOL,
   GET_MY_TOKEN_BALANCE_TOOL,

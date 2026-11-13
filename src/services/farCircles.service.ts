@@ -1,5 +1,9 @@
 import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from './researchFactsView';
-import { PROFILE_KEYS_MATCHED, SENSITIVE_FACT_TYPES } from './tools/searchableData';
+import {
+  PROFILE_KEYS_MATCHED,
+  SENSITIVE_FACT_TYPES,
+  COMPANY_TIES_SQL,
+} from './tools/searchableData';
 import { query } from '../db/postgres/client';
 import { IS_MEMBER_SQL } from './memberPaths.service';
 import { normalizePhone, phoneDigits } from './phone';
@@ -107,7 +111,7 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
            FROM "UserAlias" ua
           WHERE ua."contactId" = ANY($1::int[])
          UNION ALL
-         -- Misho, 13 Nov: what the person is known for finds them this far out
+         -- Misho, 13 Nov: what the person is known for (and the company base's confirmed ties) finds them this far out
          -- too, read by the same rule as the nearer circles (searchableData):
          -- every fact kind but the sensitive ones, researched facts confirmed
          -- or possible, the member's own profession and industry, active offers.
@@ -132,6 +136,9 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
                FROM offers o
                JOIN "UserPhone" upo ON upo."userId" = o.user_id
               WHERE o.active
+             UNION ALL
+             SELECT ct.phone, normalize_search_token(ct.text)
+               FROM (${COMPANY_TIES_SQL}) ct
            ) f
            JOIN "UserAlias" ua_f ON ua_f.phone = f.phone
           WHERE ua_f."contactId" = ANY($1::int[])
