@@ -134,9 +134,11 @@ describe('the far circles and the needs search', () => {
 describe('meaning search in the chat', () => {
   const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
 
-  it('runs for the own circle and the needs search; the second circle and further out get it in the full research', () => {
-    expect(chat).toContain('(uid: string, q: string) => searchByTag(uid, q, meanings)');
+  it('runs in the chat for the needs search only; every circle gets it in the full research', () => {
+    // Two answers (13 Nov): measured on live, the meanings took the quick searches past their timeouts.
     expect(chat).toContain("await searchMeanings(userId, input['need'], runId),");
+    const tag = chat.slice(chat.indexOf("case 'search_by_tag': {"));
+    expect(tag.slice(0, tag.indexOf("case 'search_by_insight'"))).not.toContain('searchMeanings');
     const second = chat.slice(chat.indexOf("case 'search_second_degree': {"));
     expect(second.slice(0, second.indexOf("case 'search_contacts_by_country'"))).not.toContain(
       'searchMeanings',

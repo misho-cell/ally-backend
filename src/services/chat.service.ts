@@ -172,7 +172,6 @@ const OFFER_TOOLS_ON = true;
 import { researchWaiting, runFullResearch, takeResearch } from './fullResearch.service';
 import { searchNeeds } from './tools/searchNeeds';
 import { searchMeanings } from './tools/searchMeanings';
-import type { WordMeanings } from './tools/transliterate';
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
 import { isWarmTie } from './ownerTies';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
@@ -1319,12 +1318,10 @@ function phonesShownIn(found: object): Set<string> {
   );
 }
 
-/** How far out a walk past the second circle starts, and the words' other meanings. */
+/** How far out a walk past the second circle starts. */
 interface FurtherOutReach {
   /** Misho, 13 Nov: 1 for a name search, whose second circle was never searched. */
   readonly firstRing?: number;
-  /** Misho, 13 Nov (meaning search): each word's other words of the same meaning. */
-  readonly meanings?: WordMeanings;
 }
 
 /** Further-out people for an empty search; the search unchanged when there are none or the walk fails. */
@@ -1340,12 +1337,7 @@ export async function withFurtherOut<T extends object>(
     const shown = phonesShownIn(found);
     const further = withoutWithheldPeople(
       {
-        further_out: await farMembersHolding(
-          Number(userId),
-          words,
-          reach.firstRing,
-          reach.meanings,
-        ),
+        further_out: await farMembersHolding(Number(userId), words, reach.firstRing),
       },
       await withheldForRun(runId, userId),
     ).further_out.filter((hit) => !shown.has(phoneDigits(hit.phone)));
@@ -10815,15 +10807,8 @@ async function executeToolCall(
     }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
-      const meanings = await searchMeanings(userId, tagQuery, runId);
-      const found = runLoggedSearch(
-        userId,
-        'tag',
-        tagQuery,
-        (uid: string, q: string) => searchByTag(uid, q, meanings),
-        runId,
-        threadId,
-      );
+      // Two answers (13 Nov): meanings go to the full research; they timed out large books here.
+      const found = runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
       // #510: the profession's other words, searched by the server in the same call.
       const related = relatedProfessionWords(typeof tagQuery === 'string' ? tagQuery : '');
       const searched =
@@ -10844,7 +10829,6 @@ async function executeToolCall(
             tagQuery,
             { ...searched, look_further: LOOK_INTO_THE_NETWORK },
             runId,
-            { meanings },
           )
         : searched;
     }
@@ -14715,7 +14699,8 @@ function startFullResearch(
   ownerLine: string,
   askedAt: Date,
 ): void {
-  void withheldForLine(userId, ownerLine)
+  void untilConversationQuiet(taskId, threadId)
+    .then(() => withheldForLine(userId, ownerLine))
     .catch(() => new Set<string>() as ReadonlySet<string>)
     .then((withheld) =>
       runFullResearch({ userId, threadId, taskId, words, ownerLine, withheld, askedAt }),
@@ -14729,6 +14714,26 @@ function startFullResearch(
       // eslint-disable-next-line no-console
       console.error('[full-research] could not start:', (err as Error).message);
     });
+}
+
+/** How often, and how long at most, the full research waits for the quick answer to finish. */
+const QUIET_CHECK_MS = 5_000;
+export const QUIET_WAIT_MAX_MS = 5 * 60 * 1000;
+
+/**
+ * Misho, 13 Nov (two answers): the full research starts once the quick answer is
+ * done. Measured on live the same evening: started beside it, its searches slowed
+ * the quick answer's own to ~20 s. After the longest wait it starts anyway.
+ */
+async function untilConversationQuiet(taskId: number, threadId: number): Promise<void> {
+  const { conversationIsBusy } = await import('./taskEngine.service');
+  for (let waited = 0; waited < QUIET_WAIT_MAX_MS; waited += QUIET_CHECK_MS) {
+    const busy = await conversationIsBusy(taskId, threadId).catch(() => false);
+    if (!busy) return;
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, QUIET_CHECK_MS).unref();
+    });
+  }
 }
 
 /**
