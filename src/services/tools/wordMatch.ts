@@ -161,9 +161,10 @@ export function buildExactMatchSql(
   // a public fact)? Only a match on another person's private label or fact is
   // not own — and only a row with no own match is „found by others' labels".
   // 1694 (box 47985; Misho's yes 9 Oct, §110.6): a member who told his own assistant
-  // what he does is found by it. Work keys only — „interests" or searched topics would
-  // make a member who LOOKED for a lawyer read as one. Their text ranks the search and
-  // is never shown; §111.2 and BP: a row found only this way says so (self_work).
+  // what he does is found by it — and, Misho 13 Nov (§121), by the city and interests he
+  // told it (PROFILE_KEYS_MATCHED; searched topics are never saved there). Their text
+  // ranks the search and is never shown; §111.2 and BP: a row found only this way says
+  // so (self_work).
   // 5446 (D792): a goal the member helped solve is read the same way — it finds and
   // ranks them, is never shown, and the model offers them with no reason.
   // 5446 (4): a row found only by its working ties matches none of the query's

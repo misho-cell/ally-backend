@@ -7,12 +7,12 @@ import { buildExactMatchSql } from '../tools/wordMatch';
 describe('a member found by his own work', () => {
   const tag = readFileSync(join(__dirname, '..', 'tools', 'searchByTag.ts'), 'utf8');
 
-  it('reads only the work keys of a member the owner holds', () => {
+  it('reads the work, city and interests a member the owner holds told their assistant (§121)', () => {
     const sql = buildExactMatchSql('501', [['notary']], [], true).matchedCte;
     expect(sql).toContain('JOIN user_profile_kv kv ON kv.user_id = up4."userId"::text');
     expect(sql).toContain('WHERE up4.phone IN (SELECT phone FROM mine)');
-    expect(sql).toContain("AND kv.key IN ('profession', 'industry')");
-    expect(sql).not.toMatch(/kv\.key IN \([^)]*interests/u);
+    expect(sql).toContain("AND kv.key IN ('profession', 'industry', 'city', 'interests')");
+    expect(sql).not.toMatch(/kv\.key IN \([^)]*(age|birthdate|family_public)/u);
   });
 
   // 5446 (D792): a goal the member helped solve is the second silent branch.

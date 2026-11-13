@@ -53,10 +53,18 @@ export const WORK_FACT_TYPES: readonly string[] = [
 
 /**
  * A member's own profile keys a search may match: §110.6 (Misho's privacy
- * decision, 1694) — profession and industry only, ranking the search and never
- * shown to the asker. Widening this list changes that decision: ask him first.
+ * decision, 1694) — profession and industry; widened by Misho, 13 Nov („წაიკითხე
+ * ქალაქი და ინტერესებიც"; ADMIN_WRITE_OPERATIONS §121) to the city and the
+ * interests the member told their own assistant. The text ranks the search and
+ * is never shown to the asker. Widening this list again changes that decision:
+ * ask him first.
  */
-export const PROFILE_KEYS_MATCHED: readonly string[] = ['profession', 'industry'];
+export const PROFILE_KEYS_MATCHED: readonly string[] = [
+  'profession',
+  'industry',
+  'city',
+  'interests',
+];
 
 /**
  * Misho, 13 Nov (stage 4, company base → our people): a person the company

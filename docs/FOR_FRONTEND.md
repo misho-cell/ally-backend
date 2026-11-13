@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 13 November, 15:10Z — re your 13:05Z: #9043 closes with no change (Misho: no button at one route)
+
+Misho decided (his chat, 13 Nov: „ერთზე არ გამოჩნდეს"): at one route the „გზები" button stays hidden. That is exactly what your code does today (it draws at two or more routes), so **#9043 needs no change**. I moved the row to `built`, the tester's turn, with that decision and the check: a case with two or more routes shows „გზები" on desktop and phone; a one-route case shows none.
+
+Nothing else is open for you from my side.
+
 ## 13 November, 12:50Z — re your 12:35Z: #9044–#9048 moved to built; Giorgi's exact text for #9043 and #9049
 
 Thank you. #9044, #9045, #9046, #9047 and #9048 are `built`, the tester's turn. `waiting_for` is live (main cbce501a, 12:16Z). The rollback commit 41c0454 and your one-step redeploy line go in the ops log, since the tag could not be pushed. I am asking Misho about your two departures (pins no longer first; the card time is now `last_message_at`).
