@@ -3,33 +3,48 @@ import { join } from 'path';
 
 import {
   countWebSearch,
-  firstSearchNotInGeorgian,
+  firstSearchLanguageNote,
+  firstSearchNotInLanguage,
   forgetWebSearches,
   MAX_SEARCHES_PER_QUESTION,
   searchRoundNote,
 } from '../webSearchRounds';
 
 /**
- * Misho, 13 Nov (a real member asked who heads Rompetrol Georgia): our one
- * English search found the group's Romanian pages; a Georgian search answers
- * it. The first web search is in Georgian, and up to five different searches
+ * Misho, 13 Nov: a real member asked who heads Rompetrol Georgia; our one
+ * English search found the group's Romanian pages. The first web search is in
+ * the language the owner is writing in, and up to five different searches
  * follow when it does not answer, the model choosing each next one.
  */
 describe('the first web search of a run', () => {
-  const run = 'run-georgian-first';
+  const run = 'run-lang-first';
   afterEach(() => forgetWebSearches(run));
 
-  it('is refused when it has no Georgian in it', () => {
-    expect(firstSearchNotInGeorgian(run, 'Rompetrol Georgia General Director')).toBe(true);
+  it('for a Georgian conversation, is refused unless it carries Georgian', () => {
+    expect(firstSearchNotInLanguage(run, 'ka', 'Rompetrol Georgia General Director')).toBe(true);
+    expect(firstSearchNotInLanguage(run, 'ka', 'ვინ არის Rompetrol საქართველოს დირექტორი')).toBe(
+      false,
+    );
   });
 
-  it('goes when it is in Georgian, a Latin company name inside it included', () => {
-    expect(firstSearchNotInGeorgian(run, 'ვინ არის Rompetrol საქართველოს დირექტორი')).toBe(false);
+  it('for an English conversation, a plain English search goes', () => {
+    expect(firstSearchNotInLanguage(run, 'en', 'Rompetrol Georgia General Director')).toBe(false);
   });
 
-  it('is followed by searches in any language', () => {
+  it('for a Russian conversation, wants Cyrillic', () => {
+    expect(firstSearchNotInLanguage(run, 'ru', 'Rompetrol director')).toBe(true);
+    expect(firstSearchNotInLanguage(run, 'ru', 'кто директор Rompetrol')).toBe(false);
+  });
+
+  it('only binds the first search; later ones may be any language', () => {
     countWebSearch(run);
-    expect(firstSearchNotInGeorgian(run, 'Rompetrol Georgia General Director')).toBe(false);
+    expect(firstSearchNotInLanguage(run, 'ka', 'Rompetrol Georgia General Director')).toBe(false);
+  });
+
+  it('names the conversation’s language when it refuses', () => {
+    expect(firstSearchLanguageNote('ka')).toContain('Georgian');
+    expect(firstSearchLanguageNote('en')).toContain('English');
+    expect(firstSearchLanguageNote('ru')).toContain('Russian');
   });
 });
 
@@ -60,8 +75,8 @@ describe('the wiring', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
   const web = readFileSync(join(__dirname, '..', 'tools', 'webSearch.ts'), 'utf8');
 
-  it('refuses before the search budget is spent, and the round rides with the results', () => {
-    const refusal = chat.indexOf('firstSearchNotInGeorgian(runId');
+  it('refuses before the search budget is spent, by the run’s own language', () => {
+    const refusal = chat.indexOf('firstSearchNotInLanguage(runId, runLang(runId)');
     const budget = chat.indexOf('searchBudgetSpent(runId, name)');
     expect(refusal).toBeGreaterThan(0);
     expect(refusal).toBeLessThan(budget);

@@ -1,24 +1,52 @@
-import { hasGeorgian } from './tools/transliterate';
+import type { RunLanguage } from './runLanguage';
 
 /**
  * Misho, 13 Nov (a real member's „who is Rompetrol Georgia's director"): our
  * one search was English, found the group's Romanian pages and never the
  * Georgian director, while a Georgian search answers it at once. So the first
- * web search of a run is in Georgian, and when it does not answer, the model
- * writes up to five different searches, choosing each next one itself.
+ * web search of a run is in the language the owner is writing in, and when it
+ * does not answer, the model writes up to five different searches, choosing
+ * each next one itself.
  */
 export const MAX_SEARCHES_PER_QUESTION = 5;
 
-export const FIRST_SEARCH_IN_GEORGIAN =
-  'Not searched: the first web search is always in Georgian. Write this same question in ' +
-  'Georgian words — for example „ვინ არის <company>-ის გენერალური დირექტორი" — and search ' +
-  'again; searches in English or other languages may follow it.';
+const GEORGIAN_RE = /[Ⴀ-ჿ]/u;
+const CYRILLIC_RE = /[Ѐ-ӿ]/u;
+const LATIN_RE = /[A-Za-z]/u;
+
+const LANGUAGE_NAME: Readonly<Record<RunLanguage, string>> = {
+  ka: 'Georgian',
+  en: 'English',
+  ru: 'Russian',
+  es: 'Spanish',
+};
+
+/** True when the query carries letters of the conversation's own script. */
+function queryIsInLanguage(language: RunLanguage, query: string): boolean {
+  if (language === 'ka') return GEORGIAN_RE.test(query);
+  if (language === 'ru') return CYRILLIC_RE.test(query);
+  // English, Spanish and any other Latin-script language: Latin letters.
+  return LATIN_RE.test(query);
+}
 
 const runWebSearches = new Map<string, number>();
 
-/** True when this would be the run's first web search and it has no Georgian in it. */
-export function firstSearchNotInGeorgian(runId: string, query: string): boolean {
-  return (runWebSearches.get(runId) ?? 0) === 0 && !hasGeorgian(query);
+/** True when this would be the run's first web search and it is not in the conversation's language. */
+export function firstSearchNotInLanguage(
+  runId: string,
+  language: RunLanguage,
+  query: string,
+): boolean {
+  return (runWebSearches.get(runId) ?? 0) === 0 && !queryIsInLanguage(language, query);
+}
+
+/** What the run is told when its first web search is not in the conversation's language. */
+export function firstSearchLanguageNote(language: RunLanguage): string {
+  const name = LANGUAGE_NAME[language] ?? LANGUAGE_NAME.ka;
+  return (
+    `Not searched: the first web search is in ${name}, the language of this conversation. ` +
+    `Write this same question in ${name} and search again; searches in other languages may follow it.`
+  );
 }
 
 /** Counts one web search the run made; the count so far. */
@@ -40,7 +68,7 @@ export function searchRoundNote(made: number): string {
   return (
     `Web search ${made} of up to ${MAX_SEARCHES_PER_QUESTION} for one question. If these ` +
     'results do not answer it, decide the next search yourself and make it different: other ' +
-    'words, English or Russian, the exact title, the organisation’s own site or a news site. ' +
+    'words, another language, the exact title, the organisation’s own site or a news site. ' +
     'Never the same search again.'
   );
 }
