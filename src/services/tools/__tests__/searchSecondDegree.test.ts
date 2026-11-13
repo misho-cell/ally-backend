@@ -119,6 +119,11 @@ describe('searchSecondDegree tag matching', () => {
       ['employer', 'affiliation'],
       // #8647: no owner line, no need words — the need parameter is NULL.
       null,
+      // Misho, 13 Nov: every fact kind but the sensitive ones and needs; research
+      // that is confirmed or possible; the member's own work and place.
+      expect.arrayContaining(['health', 'religion']),
+      ['confirmed', 'possible'],
+      expect.arrayContaining(['profession', 'industry', 'city']),
     ]);
   });
 
