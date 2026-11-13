@@ -33,7 +33,9 @@ describe('day one after the owner’s yes in the quiet hours', () => {
   });
 
   it('carries that origin into the run and through every retry', () => {
-    expect(ENGINE).toContain('const woken = await wakeTask(taskId, text, undefined, origin);');
+    expect(ENGINE).toContain(
+      'const woken = await wakeTask(taskId, text, undefined, origin, carriesAnswer);',
+    );
     expect(ENGINE).toMatch(/attempt \+ 1,\s+onGaveUp,\s+origin,/);
   });
 });

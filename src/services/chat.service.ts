@@ -169,6 +169,7 @@ import { safetyReplyFor } from './safetyWorry';
  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
  */
 const OFFER_TOOLS_ON = true;
+import { researchWaiting, runFullResearch, takeResearch } from './fullResearch.service';
 import { searchNeeds } from './tools/searchNeeds';
 import { searchMeanings } from './tools/searchMeanings';
 import type { WordMeanings } from './tools/transliterate';
@@ -6410,8 +6411,15 @@ function withheldForRun(runId: string | undefined, userId: string): Promise<Read
   if (runId === undefined || line.trim() === '') return Promise.resolve(new Set<string>());
   const known = runWithheldByOwnerLine.get(runId);
   if (known !== undefined) return known;
+  const read = withheldForLine(userId, line);
+  runWithheldByOwnerLine.set(runId, read);
+  return read;
+}
+
+/** Who the owner's line closes off, and whoever they ruled out for its subject, as digits. */
+function withheldForLine(userId: string, line: string): Promise<ReadonlySet<string>> {
   // #6358: and whoever the owner ruled out for this subject.
-  const read = Promise.all([
+  return Promise.all([
     boundaryExclusionsForOwnerLine(line),
     ruledOutOnSubject(userId, line).catch((err: unknown) => {
       // eslint-disable-next-line no-console
@@ -6422,8 +6430,6 @@ function withheldForRun(runId: string | undefined, userId: string): Promise<Read
     ([closed, ruledOut]) =>
       new Set([...closed, ...ruledOut].map((phone) => phone.replace(/\D/g, ''))),
   );
-  runWithheldByOwnerLine.set(runId, read);
-  return read;
 }
 
 /** 3732: who this run's own searches returned, so the walk can take a name the run was shown. */
@@ -14651,13 +14657,19 @@ function startOpeningSearches(
   goalText: string,
   runId: string,
   threadId: number,
+  /** Misho, 13 Nov (two answers): the goal the full research answers, once the words are known. */
+  taskId: number | null = null,
 ): LateOpeningSearch {
   let landed: OpeningSearches | null = null;
   let delivered = false;
+  const askedAt = new Date();
   runWebCardFromGoal.add(runId);
   void runOpeningSearches(userId, goalText, runId, threadId)
     .then((found) => {
       landed = found;
+      if (taskId !== null && found.query !== undefined) {
+        startFullResearch(userId, threadId, taskId, found.query, goalText, askedAt);
+      }
       // Question A (tester 953): what the opening web search published is
       // allowed for this run, exactly as the model's own web_search is.
       if (found.webRaw !== undefined) registerWebResult(runId, found.webRaw);
@@ -14686,6 +14698,71 @@ function startOpeningSearches(
 
 /** Exported for its own test — the delivery contract is what can go wrong quietly. */
 export const __startOpeningSearchesForTest = startOpeningSearches;
+
+/** The event that brings the full research as the goal's second answer, in the conversation's language. */
+export const FULL_RESEARCH_EVENT: Readonly<Record<RunLanguage, string>> = {
+  ka: 'სრული ძიება ყველა დონეზე დასრულდა; მიგნებები ამ ნაბიჯის მონაცემებშია.',
+  en: 'The full research of every level has finished; the findings are in this step’s data.',
+  ru: 'Полный поиск по всем уровням завершён; находки — в данных этого шага.',
+  es: 'La búsqueda completa en todos los niveles ha terminado; los hallazgos están en los datos de este paso.',
+};
+
+/**
+ * Misho, 13 Nov (two answers): every level is searched in the background once
+ * the opening search has its words. The findings wait for the conversation's
+ * next run; when none comes, the goal is woken to give them as the second answer.
+ */
+function startFullResearch(
+  userId: string,
+  threadId: number,
+  taskId: number,
+  words: string,
+  ownerLine: string,
+  askedAt: Date,
+): void {
+  void withheldForLine(userId, ownerLine)
+    .catch(() => new Set<string>() as ReadonlySet<string>)
+    .then((withheld) =>
+      runFullResearch({ userId, threadId, taskId, words, ownerLine, withheld, askedAt }),
+    )
+    .then(async (landed) => {
+      if (!landed) return;
+      const { wakeWithFullResearch } = await import('./taskEngine.service');
+      wakeWithFullResearch(taskId, FULL_RESEARCH_EVENT, async () => researchWaiting(threadId));
+    })
+    .catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[full-research] could not start:', (err as Error).message);
+    });
+}
+
+/**
+ * The full research, when it waits for this conversation, as a prompt section —
+ * taken once; the people it names become this run's to walk to and ask.
+ */
+async function fullResearchForRun(
+  userId: string,
+  threadId: number,
+  runId: string,
+): Promise<string> {
+  const taken = await takeResearch(userId, threadId).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[full-research] not taken:', (err as Error).message);
+    return null;
+  });
+  if (taken === null) return '';
+  for (const result of taken.results) notePeopleFound(runId, result);
+  notePeopleFound(runId, { results: taken.people });
+  return `\n\n${taken.section}`;
+}
+
+/** Misho, 13 Nov (two answers): the first run says its answer is the quick one. */
+export const QUICK_ANSWER_NOTE =
+  '\n\nA FULL SEARCH of every level of the owner’s network is running in the background; ' +
+  'its findings come to this conversation as a second answer. Unless that full search is ' +
+  'handed to you in this run, say in one short line that this is a quick first answer, that ' +
+  'the full search goes on, and that the owner can wait for it or write to the people named ' +
+  'here meanwhile.';
 
 /**
  * What the create_task result tells the model to do NEXT, which depends
@@ -16012,9 +16089,12 @@ async function runToolLoop(
        * things. One turn, two kinds of block, no ambiguity.
        */
       const lateFindings = lateSearch?.takeIfReady() ?? null;
+      // Misho, 13 Nov (two answers): the full research, landed while this run works, joins it.
+      const fullResearch = (await fullResearchForRun(userId, threadId, runId)).trim();
       const fileEvents = lateFiles.take();
       const lateBlocks: Anthropic.ContentBlockParam[] = [
         ...(lateFindings === null ? [] : [{ type: 'text' as const, text: lateFindings }]),
+        ...(fullResearch === '' ? [] : [{ type: 'text' as const, text: fullResearch }]),
         ...(fileEvents.length === 0
           ? []
           : [{ type: 'text' as const, text: lateFileNudge(framedEvents(fileEvents), false) }]),
@@ -18532,7 +18612,9 @@ export async function processChat(
    */
   // #8779 group 4: no word list skips the opening searches on a goal any more.
   const lateSearch =
-    autoGoalId === null ? null : startOpeningSearches(userId, userMessage, runId, threadId);
+    autoGoalId === null
+      ? null
+      : startOpeningSearches(userId, userMessage, runId, threadId, autoGoalId);
   // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
   const worldAnswerWork =
     !ownerAbsent && worldAnswerIsDue(autoGoalId !== null, userMessage)
@@ -18825,7 +18907,9 @@ export async function processChat(
         `never that a plan is ready or waits for their yes unless a plan was proposed.`) +
     // #1123: told in THIS run only, so no always-on line reads as „cannot send" (#1090).
     (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '') +
-    (worldAnswer === null ? '' : worldAnswerSection(worldAnswer));
+    (worldAnswer === null ? '' : worldAnswerSection(worldAnswer)) +
+    (lateSearch === null ? '' : QUICK_ANSWER_NOTE) +
+    (await fullResearchForRun(userId, threadId, runId));
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.
   const systemPrompt = joinSystemPrompt(
