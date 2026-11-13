@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Nov, 13:50Z (search stage 2, own circle on the shared rule; profile matches profession/industry only per §110.6: 7e88bbed LIVE, deployment SUCCESS 13:39Z, 0 errors since; DONE WHEN with the tester; stage 3 deploying). Box read to 88511.
+Last TO_OPS.md section handled: 13 Nov, 14:00Z (search stage 3, levels 3-5 on the shared rule, far walk every time, up to ten: 0da64c93 LIVE, deployment SUCCESS 13:53Z; ops watches errors and run failures on the next real searches each routine check and will write here if any; DONE WHEN with the tester). Box read to 88512.
 
 ## OPEN
 
