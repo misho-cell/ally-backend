@@ -22,7 +22,9 @@ describe('the owner’s need ranks equal matches in the second circle', () => {
   it('ranks after the searched words and before the friends’ count, in both orderings', () => {
     const code = readFileSync(join(__dirname, '..', 'tools', 'searchSecondDegree.ts'), 'utf8');
     expect(code).toMatch(/ORDER BY \(\$\{wordHits\}\) DESC,\s+need_hit DESC,/u);
-    expect(code).toContain('ORDER BY r.word_hits DESC, r.need_hit DESC, r.bridge_rank DESC');
+    expect(code).toContain(
+      'ORDER BY r.word_hits DESC, r.need_hit DESC, r.evidence DESC, r.bridge_rank DESC',
+    );
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toMatch(
       /searchSecondDegree\(\s*uid,\s*q,\s*runId === undefined \? '' : \(runOwnerLine\.get\(runId\) \?\? ''\),/u,

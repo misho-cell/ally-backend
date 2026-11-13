@@ -70,6 +70,20 @@ export const COMPANY_TIES_SQL = `SELECT l.phone, concat_ws(' ', c.name_en, c.leg
        JOIN companies c ON c.company_id = l.company_id
       WHERE l.status = 'confirmed'`;
 
+/**
+ * Misho, 13 Nov (one shared score): a person matched by several different
+ * things said about them — a label, a fact, their profile, a company tie —
+ * ranks above one matched by a single mention, after how many of the
+ * searched words they match. Three different mentions count in full: past
+ * that, closeness decides, so a much-tagged person never buries a closer one.
+ */
+export const EVIDENCE_COUNTED = 3;
+
+/** How many different matching mentions a person has, at most EVIDENCE_COUNTED (an aggregate). */
+export function evidenceScore(mentionExpr: string): string {
+  return `LEAST(COUNT(DISTINCT ${mentionExpr}), ${EVIDENCE_COUNTED})`;
+}
+
 const SAFE_CONSTANT_RE = /^[a-z_]+$/u;
 
 /**

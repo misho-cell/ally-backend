@@ -542,7 +542,9 @@ describe('Ticket 20 row 110: a multi-word query is words, not a phrase', () => {
     // Before bridge_rank and before warmth: matching the query beats being
     // well-connected. Without this the commoner word would swamp the rarer one,
     // which is worse than today's zero.
-    expect(sql).toMatch(/ORDER BY r\.word_hits DESC, r\.need_hit DESC, r\.bridge_rank DESC/);
+    expect(sql).toMatch(
+      /ORDER BY r\.word_hits DESC, r\.need_hit DESC, r\.evidence DESC, r\.bridge_rank DESC/,
+    );
   });
 
   it('a single word still behaves as one group — nothing changes for it', async () => {
