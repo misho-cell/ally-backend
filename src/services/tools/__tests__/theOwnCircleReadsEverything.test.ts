@@ -32,7 +32,7 @@ describe('the own-circle search', () => {
 
   it('reads the member’s own profile keys and offers in the main tag search', () => {
     const { matchedCte: sql } = buildExactMatchSql('7', groups, [], true);
-    expect(sql).toContain("kv.key IN ('profession', 'industry')");
+    expect(sql).toContain("kv.key IN ('profession', 'industry', 'city', 'interests')");
     expect(sql).toContain('JOIN offers o ON o.user_id = upo."userId"');
   });
 });

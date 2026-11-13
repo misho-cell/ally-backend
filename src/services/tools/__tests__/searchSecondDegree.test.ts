@@ -123,7 +123,7 @@ describe('searchSecondDegree tag matching', () => {
       // that is confirmed or possible; the member's own work and place.
       expect.arrayContaining(['health', 'religion']),
       ['confirmed', 'possible'],
-      ['profession', 'industry'],
+      ['profession', 'industry', 'city', 'interests'],
     ]);
   });
 

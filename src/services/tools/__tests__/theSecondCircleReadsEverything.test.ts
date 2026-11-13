@@ -41,7 +41,7 @@ describe('the second circle’s search', () => {
   });
 
   it('matches a member’s own profile on profession and industry only (§110.6)', () => {
-    expect(PROFILE_KEYS_MATCHED).toEqual(['profession', 'industry']);
+    expect(PROFILE_KEYS_MATCHED).toEqual(['profession', 'industry', 'city', 'interests']);
     expect(src).toContain("from './searchableData'");
   });
 });

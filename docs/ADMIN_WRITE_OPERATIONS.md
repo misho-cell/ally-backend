@@ -6834,3 +6834,8 @@ question, and „everything" here answered the texts on the table; it is asked a
   - core_shared, the web-facts paragraph, after „never „დაუდასტურებელ სახელს არ მოგაწვდი"". The doubt about a holder found on the web is one short line at most („ოფიციალურ გვერდზე ასეა, შეიძლება შეიცვალა"), never a sentence on why it cannot be confirmed. The answer never says it is still to be checked whether the contacts who know someone mean the same person; asking them is the step itself.
 - **Checked before the write:** `prompt.sh check` passes every refusal. Size: core_shared 21,756 → 22,042.
 - **UNDO:** put back `ops/prompt-changes/giorgi-p6-one-line-of-doubt.before.txt` with the same route.
+
+## 121 · §110.6 WIDENED: A MEMBER IS ALSO FOUND BY THE CITY AND INTERESTS THEY TOLD THEIR ASSISTANT (Misho, his chat, 13 Nov: „წაიკითხე ქალაქი და ინტერესებიც თუ გამოგადგება")
+- **What:** a code change, not a live write. `PROFILE_KEYS_MATCHED` (src/services/tools/searchableData.ts) goes from `profession`, `industry` to `profession`, `industry`, `city`, `interests`, read the same way at every level (own circle, second circle, far circles). The text still only ranks the search and is never shown to the asker; a row found only this way still carries the §111.2 note. No other profile key (age, birthdate, family, languages…) is read.
+- **Checked before:** the `interests` lines are the member's own stated interests (the assistant appends them); none reads as a search.
+- **UNDO:** set `PROFILE_KEYS_MATCHED` back to `['profession', 'industry']` and ship.
