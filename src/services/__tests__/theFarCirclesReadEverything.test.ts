@@ -110,10 +110,11 @@ describe('the far circles in the chat', () => {
     expect(chat).toContain('runId,\n          { firstRing: NAME_SEARCH_FIRST_RING },\n        );');
   });
 
-  it('are searched every time, not only when the second circle found nobody', () => {
+  it('are searched by the quick second-circle search only when it found nobody (two answers)', () => {
+    // Misho, 13 Nov: the full research walks them every time, in the background.
     expect(chat).toContain(
-      "withWarmRoutes(userId, input['tag_query'], found, runId).then((warm) =>\n" +
-        "              withFurtherOut(userId, input['tag_query'], warm, runId, { meanings }),",
+      "? withFurtherOut(userId, input['tag_query'], found, runId)\n" +
+        "          : withWarmRoutes(userId, input['tag_query'], found, runId);",
     );
   });
 
