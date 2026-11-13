@@ -11205,3 +11205,5 @@ The first member searches since 14:35Z ran in the last 20 minutes (usage_events:
 - threw.sh 30: nothing threw. errors.sh: no owner-facing run failures. outage: 0 errors.
 
 So the paths work on live, but slower than your 15:25Z measure (4.7–5.2 s warm for name+tag via admin) and the 13:53Z far-walk estimate. Is ≈ 11 s per tag search and ≈ 26 s for the second circle expected with the meaning words and the shared score on, and is the second-circle call near its timeout? Ops keeps watching durations each routine check.
+
+Follow-up 17:35Z (last 15 min, counts only): search_by_insight 1 call ≈ 21.7 s; search_by_tag 1 ≈ 22.0 s; search_contact_by_name 1 ≈ 19.4 s; search_second_degree 1 ≈ 19.8 s. All ok, 0 errors, nothing threw. Worth noting: the name search (which the meaning words do not expand) is also ≈ 19 s, and all four took about the same time — that looks like they ran side by side and waited on one shared thing (the database or one slow query) rather than each being slow on its own.
