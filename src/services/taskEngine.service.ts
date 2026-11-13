@@ -1427,6 +1427,8 @@ function wakeWhenFree(
   onGaveUp?: () => Promise<void>,
   /** #7234: who caused it; an owner-caused wake is not held for the morning. */
   origin: WakeOrigin = WakeOrigin.Netai,
+  /** #8747: the wake brings news the owner should hear of, whatever the goal's state. */
+  carriesAnswer = false,
 ): void {
   if (attempt === 1) {
     void ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
@@ -1449,7 +1451,7 @@ function wakeWhenFree(
           return;
         }
         const text = typeof eventText === 'function' ? await eventText() : eventText;
-        const woken = await wakeTask(taskId, text, undefined, origin);
+        const woken = await wakeTask(taskId, text, undefined, origin, carriesAnswer);
         if (woken === 'woken') {
           // eslint-disable-next-line no-console
           console.log(`[task-engine] task ${taskId}: woken (attempt ${attempt})`);
@@ -1482,6 +1484,7 @@ function wakeWhenFree(
             attempt + 1,
             onGaveUp,
             origin,
+            carriesAnswer,
           );
         } else {
           // eslint-disable-next-line no-console
@@ -1911,6 +1914,32 @@ export function wakeAfterResume(taskId: number, eventText: string): void {
       await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
     },
     WAKE_RETRY_DELAY_MS,
+  );
+}
+
+/**
+ * Misho, 13 Nov (two answers): the full research of every level has landed and
+ * no run in the conversation took it. The goal is woken to give it as the
+ * second answer — the owner's own request caused it, so the night does not hold
+ * it, and it is news. `stillWanted` stands it down when a run took it first.
+ */
+export function wakeWithFullResearch(
+  taskId: number,
+  eventText: EventText,
+  stillWanted: () => Promise<boolean>,
+): void {
+  wakeWhenFree(
+    taskId,
+    eventText,
+    async () => (await stillWanted()) && (await goalOpen(taskId)),
+    async () => {
+      await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
+    },
+    WAKE_RETRY_DELAY_MS,
+    1,
+    undefined,
+    WakeOrigin.Owner,
+    ANSWER_IS_NEWS,
   );
 }
 

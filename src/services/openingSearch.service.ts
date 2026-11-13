@@ -144,6 +144,8 @@ export interface OpeningSearches {
    * from an opening search came out „[hidden]", fresh thread or not.
    */
   readonly webRaw?: unknown;
+  /** Misho, 13 Nov (two answers): the searched words, so the full research reads the same ones. */
+  readonly query?: string;
 }
 
 /**
@@ -415,7 +417,14 @@ export async function runOpeningSearches(
   // decision would be a false one.
   if (web === null && !reachingForAPerson) missing.push('web_search');
   if (secondDegree === null) missing.push('search_second_degree');
-  return { web, secondDegree, missing, waysIn, ...(webRaw !== null && { webRaw }) };
+  return {
+    web,
+    secondDegree,
+    missing,
+    waysIn,
+    query: searched.query,
+    ...(webRaw !== null && { webRaw }),
+  };
 }
 
 /** Results are handed to the model, never to a screen, so the labels are plain. */
