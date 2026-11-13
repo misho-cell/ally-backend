@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { farMembersHolding } from './farCircles.service';
+import { FarDepth, farMembersHolding } from './farCircles.service';
 import { phoneDigits } from './phone';
 import { findCompaniesForNeed } from './tools/findCompaniesForNeed';
 import { findPeopleInBase } from './tools/findPeopleInBase';
@@ -112,7 +112,13 @@ function levelSearches(
     [
       ResearchLevel.Further,
       async () => ({
-        further_out: await farMembersHolding(Number(userId), words, undefined, meanings),
+        further_out: await farMembersHolding(
+          Number(userId),
+          words,
+          undefined,
+          meanings,
+          FarDepth.Everything,
+        ),
       }),
     ],
     [ResearchLevel.Needs, () => searchNeeds(userId, words, meanings)],

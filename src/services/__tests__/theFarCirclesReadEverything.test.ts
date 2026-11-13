@@ -6,7 +6,7 @@ import { join } from 'path';
 
 import { query } from '../../db/postgres/client';
 import { namesFor } from '../tools/findWarmPath';
-import { farMembersHolding } from '../farCircles.service';
+import { FarDepth, farMembersHolding } from '../farCircles.service';
 import { normalizePhone } from '../phone';
 import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
 import { PROFILE_KEYS_MATCHED, SENSITIVE_FACT_TYPES } from '../tools/searchableData';
@@ -68,7 +68,7 @@ describe('the far circles', () => {
   it('read facts, the member’s profile and active offers, besides labels and tags', async () => {
     routeChain(null);
 
-    await farMembersHolding(OWNER, 'freelance sales');
+    await farMembersHolding(OWNER, 'freelance sales', undefined, undefined, FarDepth.Everything);
 
     const [sql, params] = mockQuery.mock.calls.find(([s]) => String(s).includes('~ ALL')) ?? [];
     expect(String(sql)).toContain('FROM contact_facts cf');
@@ -81,6 +81,17 @@ describe('the far circles', () => {
       MATCHED_RESEARCH_STATUSES,
       PROFILE_KEYS_MATCHED,
     ]);
+  });
+
+  it('read labels and tags only for the quick answer, the first few found (measured: the rest took ~15 s)', async () => {
+    routeChain(null);
+
+    await farMembersHolding(OWNER, 'Nino Beridze');
+
+    const [sql, params] = mockQuery.mock.calls.find(([s]) => String(s).includes('~ ALL')) ?? [];
+    expect(String(sql)).not.toContain('contact_facts');
+    expect(String(sql)).toContain('"UserTags"');
+    expect(params).toHaveLength(3);
   });
 
   it('start one ring out for a name search, whose second circle was never searched', async () => {
