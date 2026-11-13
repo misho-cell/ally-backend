@@ -32,7 +32,7 @@ function routeChain(holder: number | null): void {
       return { rows } as never;
     }
     if (sql.includes('WITH ORDINALITY')) return { rows: [] } as never;
-    if (sql.includes('LIKE ALL')) {
+    if (sql.includes('~ ALL')) {
       const rows =
         holder !== null && ring.includes(holder)
           ? [{ holder_id: holder, phone: FOUND_PHONE, alias: 'Nino Beridze' }]
@@ -45,7 +45,7 @@ function routeChain(holder: number | null): void {
 
 function searchedRings(): unknown[] {
   return mockQuery.mock.calls
-    .filter(([sql]) => String(sql).includes('LIKE ALL'))
+    .filter(([sql]) => String(sql).includes('~ ALL'))
     .map(([, params]) => (params as unknown[])[0]);
 }
 
@@ -70,7 +70,7 @@ describe('the far circles', () => {
 
     await farMembersHolding(OWNER, 'freelance sales');
 
-    const [sql, params] = mockQuery.mock.calls.find(([s]) => String(s).includes('LIKE ALL')) ?? [];
+    const [sql, params] = mockQuery.mock.calls.find(([s]) => String(s).includes('~ ALL')) ?? [];
     expect(String(sql)).toContain('FROM contact_facts cf');
     expect(String(sql)).toContain('FROM user_profile_kv kv');
     expect(String(sql)).toContain('FROM offers o');
@@ -107,13 +107,13 @@ describe('the far circles in the chat', () => {
 
   it('are searched by the name search from the second circle on', () => {
     expect(chat).toContain('const NAME_SEARCH_FIRST_RING = 1;');
-    expect(chat).toContain('runId,\n          NAME_SEARCH_FIRST_RING,\n        );');
+    expect(chat).toContain('runId,\n          { firstRing: NAME_SEARCH_FIRST_RING },\n        );');
   });
 
   it('are searched every time, not only when the second circle found nobody', () => {
     expect(chat).toContain(
       "withWarmRoutes(userId, input['tag_query'], found, runId).then((warm) =>\n" +
-        "              withFurtherOut(userId, input['tag_query'], warm, runId),",
+        "              withFurtherOut(userId, input['tag_query'], warm, runId, { meanings }),",
     );
   });
 

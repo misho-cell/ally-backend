@@ -1,5 +1,11 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildMeaningWordGroups, splitIntoWords } from './transliterate';
+import {
+  buildSearchTerms,
+  buildMeaningWordGroups,
+  NO_MEANINGS,
+  splitIntoWords,
+  WordMeanings,
+} from './transliterate';
 import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql, buildOwnLabelsMatchSql } from './wordMatch';
 import { tieWorkPatternFor } from './jobTies';
@@ -838,8 +844,13 @@ const MATCHED_AS_NOTE =
  * of the same meaning. When nothing matched, the labels the query's meaning goes by are
  * searched too (tagMeaningWords), first hit wins.
  */
-export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
-  const first = await searchByTagOnce(userId, tagQuery);
+export async function searchByTag(
+  userId: string,
+  tagQuery: string,
+  /** Misho, 13 Nov (meaning search): each word's other words of the same meaning. */
+  meanings: WordMeanings = NO_MEANINGS,
+): Promise<object> {
+  const first = await searchByTagOnce(userId, tagQuery, meanings);
   if (!matchedNothing(first)) return first;
   for (const word of await tagMeaningWords(userId, tagQuery)) {
     const again = await searchByTagOnce(userId, word);
@@ -850,13 +861,17 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
   return first;
 }
 
-async function searchByTagOnce(userId: string, tagQuery: string): Promise<object> {
+async function searchByTagOnce(
+  userId: string,
+  tagQuery: string,
+  meanings: WordMeanings = NO_MEANINGS,
+): Promise<object> {
   try {
     const blockedPhones = await getExcludedPhones(userId, tagQuery);
     const excludedSet = new Set(blockedPhones.map(normalizePhone));
     const isExcluded = (phone: string): boolean => excludedSet.has(normalizePhone(phone));
 
-    const rawGroups = buildMeaningWordGroups(tagQuery);
+    const rawGroups = buildMeaningWordGroups(tagQuery, meanings);
     if (rawGroups.length === 0) return { found: false, query: tagQuery };
 
     const exact = await exactOrOwnLabels(userId, rawGroups, blockedPhones);

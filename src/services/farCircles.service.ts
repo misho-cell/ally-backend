@@ -11,6 +11,7 @@ import { labelsAlongChain } from './chainLabels';
 import { namesFor } from './tools/findWarmPath';
 import { georgianStem } from './tools/georgianStem';
 import { normalizeSearchToken } from './tools/normalizeSearchToken';
+import { NO_MEANINGS, WordMeanings } from './tools/transliterate';
 import { NETAI_ACTIVE_SUBSCRIPTION_STATUSES } from './tools/membership';
 import { isWarmTie, ownerTiesTo } from './ownerTies';
 
@@ -61,13 +62,31 @@ interface HitRow {
   readonly alias: string;
 }
 
-/** Each word of the query as a pattern the database compares labels by; short words are dropped. */
-export function wordPatterns(text: string): string[] {
-  return text
-    .split(/[\s,.;:!?„"“”()]+/u)
-    .map((word) => georgianStem(word.trim()))
-    .filter((word) => [...word].length >= MIN_WORD_CHARS)
-    .map((word) => `%${normalizeSearchToken(word)}%`);
+const REGEX_SPECIAL_RE = /[.*+?^${}()|[\]\\]/gu;
+
+/** A word in the database's own form (normalize_search_token), case ending dropped; null when too short. */
+function comparableWord(word: string): string | null {
+  const stem = georgianStem(word.trim());
+  return [...stem].length >= MIN_WORD_CHARS ? normalizeSearchToken(stem) : null;
+}
+
+/**
+ * Each word of the query as one regular expression the database compares a
+ * label's words by: the word, or (Misho, 13 Nov: meaning search) any word of
+ * the same meaning. A person matches when every word of the query matches;
+ * short words are dropped.
+ */
+export function wordAlternatives(text: string, meanings: WordMeanings = NO_MEANINGS): string[] {
+  return text.split(/[\s,.;:!?„"“”()]+/u).flatMap((word) => {
+    const own = comparableWord(word);
+    if (own === null) return [];
+    const others = (meanings.get(word.trim().toLowerCase()) ?? [])
+      .map(comparableWord)
+      .filter((other): other is string => other !== null);
+    return [
+      [...new Set([own, ...others])].map((w) => w.replace(REGEX_SPECIAL_RE, '\\$&')).join('|'),
+    ];
+  });
 }
 
 /** The chain from the first link to this one, as phones; the owner at its root is not a link. */
@@ -142,7 +161,7 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
            ) f
            JOIN "UserAlias" ua_f ON ua_f.phone = f.phone
           WHERE ua_f."contactId" = ANY($1::int[])
-            AND f.words LIKE ALL($2::text[])
+            AND f.words ~ ALL($2::text[])
          UNION ALL
          SELECT ut."contactId", ut.phone,
                 COALESCE(
@@ -154,7 +173,7 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
            FROM "UserTags" ut
           WHERE ut."contactId" = ANY($1::int[])
        ) x
-      WHERE x.words LIKE ALL($2::text[])
+      WHERE x.words ~ ALL($2::text[])
       LIMIT $3`,
     [
       ring.map((link) => link.userId),
@@ -229,8 +248,9 @@ export async function farMembersHolding(
   ownerId: number,
   text: string,
   firstRing: number = FIRST_RING_SEARCHED_HERE,
+  meanings: WordMeanings = NO_MEANINGS,
 ): Promise<FarHit[]> {
-  const patterns = wordPatterns(text);
+  const patterns = wordAlternatives(text, meanings);
   if (patterns.length === 0) return [];
   return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId), patterns, firstRing));
 }
@@ -241,7 +261,7 @@ export async function farMembersHolding(
  * route, even when a colder, shorter one exists.
  */
 export async function warmChainsHolding(ownerId: number, text: string): Promise<FarHit[]> {
-  const patterns = wordPatterns(text);
+  const patterns = wordAlternatives(text);
   if (patterns.length === 0) return [];
   return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId, true), patterns, 1));
 }

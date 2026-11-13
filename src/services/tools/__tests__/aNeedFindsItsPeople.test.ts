@@ -95,7 +95,7 @@ describe('a need finds its people', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(params).toEqual([
       OWNER,
-      ['%mobile%', '%app%'],
+      ['mobile', 'app'],
       'need',
       RESEARCH_SOURCE,
       MATCHED_RESEARCH_STATUSES,

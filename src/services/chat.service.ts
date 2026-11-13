@@ -170,6 +170,8 @@ import { safetyReplyFor } from './safetyWorry';
  */
 const OFFER_TOOLS_ON = true;
 import { searchNeeds } from './tools/searchNeeds';
+import { searchMeanings } from './tools/searchMeanings';
+import type { WordMeanings } from './tools/transliterate';
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
 import { isWarmTie } from './ownerTies';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
@@ -1316,20 +1318,34 @@ function phonesShownIn(found: object): Set<string> {
   );
 }
 
+/** How far out a walk past the second circle starts, and the words' other meanings. */
+interface FurtherOutReach {
+  /** Misho, 13 Nov: 1 for a name search, whose second circle was never searched. */
+  readonly firstRing?: number;
+  /** Misho, 13 Nov (meaning search): each word's other words of the same meaning. */
+  readonly meanings?: WordMeanings;
+}
+
 /** Further-out people for an empty search; the search unchanged when there are none or the walk fails. */
 export async function withFurtherOut<T extends object>(
   userId: string,
   words: unknown,
   found: T,
   runId?: string,
-  /** Misho, 13 Nov: 1 for a name search, whose second circle was never searched. */
-  firstRing?: number,
+  reach: FurtherOutReach = {},
 ): Promise<T | (T & { further_out: FarHit[]; further_out_note: string })> {
   if (typeof words !== 'string') return found;
   try {
     const shown = phonesShownIn(found);
     const further = withoutWithheldPeople(
-      { further_out: await farMembersHolding(Number(userId), words, firstRing) },
+      {
+        further_out: await farMembersHolding(
+          Number(userId),
+          words,
+          reach.firstRing,
+          reach.meanings,
+        ),
+      },
       await withheldForRun(runId, userId),
     ).further_out.filter((hit) => !shown.has(phoneDigits(hit.phone)));
     if (runId !== undefined) {
@@ -10780,7 +10796,7 @@ async function executeToolCall(
           input['name_query'],
           { ...registeredNameOnlyWhenAsked(byName, aboutTheName), look_further: LOOK_ONE_RING_OUT },
           runId,
-          NAME_SEARCH_FIRST_RING,
+          { firstRing: NAME_SEARCH_FIRST_RING },
         );
       }
       // #7758 (tester 79008): who belongs to which group, current or former, rides with the row.
@@ -10793,7 +10809,15 @@ async function executeToolCall(
     }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
-      const found = runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
+      const meanings = await searchMeanings(userId, tagQuery, runId);
+      const found = runLoggedSearch(
+        userId,
+        'tag',
+        tagQuery,
+        (uid: string, q: string) => searchByTag(uid, q, meanings),
+        runId,
+        threadId,
+      );
       // #510: the profession's other words, searched by the server in the same call.
       const related = relatedProfessionWords(typeof tagQuery === 'string' ? tagQuery : '');
       const searched =
@@ -10814,6 +10838,7 @@ async function executeToolCall(
             tagQuery,
             { ...searched, look_further: LOOK_INTO_THE_NETWORK },
             runId,
+            { meanings },
           )
         : searched;
     }
@@ -10847,13 +10872,19 @@ async function executeToolCall(
         : { ...labelled, found_in: 'owner_labels', found_in_note: FOUND_IN_LABELS_NOTE };
     }
     case 'search_second_degree': {
+      const meanings = await searchMeanings(userId, input['tag_query'], runId);
       const searched = runLoggedSearch(
         userId,
         'second_degree',
         input['tag_query'] as string,
         // #8647: the owner's own line ranks equal matches by the need it names.
         (uid: string, q: string) =>
-          searchSecondDegree(uid, q, runId === undefined ? '' : (runOwnerLine.get(runId) ?? '')),
+          searchSecondDegree(
+            uid,
+            q,
+            runId === undefined ? '' : (runOwnerLine.get(runId) ?? ''),
+            meanings,
+          ),
         runId,
         threadId,
       );
@@ -10866,9 +10897,9 @@ async function executeToolCall(
         // Misho, 13 Nov: levels 3-5 are searched every time, not only when the
         // second circle is empty; whoever is already shown is not repeated.
         return secondCircleEmpty(found)
-          ? withFurtherOut(userId, input['tag_query'], found, runId)
+          ? withFurtherOut(userId, input['tag_query'], found, runId, { meanings })
           : withWarmRoutes(userId, input['tag_query'], found, runId).then((warm) =>
-              withFurtherOut(userId, input['tag_query'], warm, runId),
+              withFurtherOut(userId, input['tag_query'], warm, runId, { meanings }),
             );
       });
       // The tester's 1102 (C10): the second circle was searched under one word, so a
@@ -13140,7 +13171,11 @@ async function executeToolCall(
       return findPeopleInBase(userId, String(input['need'] ?? ''));
     case 'search_needs': {
       const needs = withoutWithheldPeople(
-        await searchNeeds(userId, String(input['need'] ?? '')),
+        await searchNeeds(
+          userId,
+          String(input['need'] ?? ''),
+          await searchMeanings(userId, input['need'], runId),
+        ),
         await withheldForRun(runId, userId),
       );
       // A person found by their need is a route like any other: the walk to them is never refused.

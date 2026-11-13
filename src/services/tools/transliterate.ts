@@ -522,12 +522,44 @@ const FILLER_WORDS: ReadonlySet<string> = new Set([
   'პრობლემები',
 ]);
 
-/** The concept words of a phrase, each with its variant group — filler dropped. */
-export function buildMeaningWordGroups(rawQuery: string): string[][] {
+/**
+ * Misho, 13 Nov (meaning search): other words of the same meaning for each
+ * concept word of a query, keyed by the word in lower case (searchMeanings).
+ */
+export type WordMeanings = ReadonlyMap<string, readonly string[]>;
+export const NO_MEANINGS: WordMeanings = new Map();
+
+/**
+ * One word's group with its same-meaning words: its own first spelling, then
+ * each other word's first spelling, then the remaining spellings — so a cap
+ * that keeps the first terms of a group keeps the meanings too.
+ */
+export function withMeanings(own: readonly string[], others: readonly string[][]): string[] {
+  const ordered = [
+    ...own.slice(0, 1),
+    ...others.map((group) => group[0]).filter((term): term is string => term !== undefined),
+    ...own.slice(1),
+    ...others.flatMap((group) => group.slice(1)),
+  ];
+  return [...new Set(ordered)].slice(0, MAX_GROUP_TERMS);
+}
+
+/** The concept words of a phrase, each with its variant group and its same-meaning words — filler dropped. */
+export function buildMeaningWordGroups(
+  rawQuery: string,
+  meanings: WordMeanings = NO_MEANINGS,
+): string[][] {
   const words = splitIntoWords(rawQuery);
   const meaning = words.filter((w) => !FILLER_WORDS.has(w.toLowerCase()));
   const kept = meaning.length > 0 ? meaning : words;
-  return kept.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
+  return kept
+    .map((word) =>
+      withMeanings(
+        wordVariantGroup(word),
+        (meanings.get(word.toLowerCase()) ?? []).map((other) => wordVariantGroup(other)),
+      ),
+    )
+    .filter((group) => group.length > 0);
 }
 
 // One word's group: its own spelling variants first, then every other form of
