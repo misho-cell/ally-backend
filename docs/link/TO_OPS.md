@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 13:50Z — search stage 2 LIVE: the own circle reads all data, one shared rule with the second circle (main 7e88bbed)
+
+- One list (`src/services/tools/searchableData.ts`) now decides what finds a person, for the own-circle and second-circle searches: every fact kind but the sensitive ones (needs included), research facts confirmed/possible, active offers.
+- Correction to stage 1: a member's own profile matches on profession and industry ONLY (Misho's §110.6 privacy decision). Stage 1 briefly also matched place and interests keys; stage 2 takes that back at every level.
+- The name search and the way-in check still read work kinds only (occupation, employer, industry, role, affiliation), so a note that mentions another person's name cannot bring the wrong person up under a name.
+- Outage check 15m after deploy: 0 errors.
+- DONE WHEN: an own-circle search for a skill written only under a contact's expertise (not occupation) names that contact.
+
 ### 13 Nov, 13:15Z — search stage 1 LIVE: the second circle reads all of a person's data (main 762424d9), on Misho's go
 
 A real member asked for a freelance B2B salesperson. Likuna, in his second circle (via Tornike), was described by Tornike as „B2B sales; freelance business development" under expertise and founder's words; the second circle matched facts of four kinds only, so she never came up.
@@ -9,7 +17,7 @@ A real member asked for a freelance B2B salesperson. Likuna, in his second circl
 - The second circle now matches every fact kind but the sensitive ones (health, money, politics, religion, relationships, criminal) — needs included, per the founder's third state — and researched facts that are confirmed or possible. Plus the member's own job/employer, profile keys about work and place, and active offers.
 - Stages 2–4 follow (own circle on the same rule; levels 3–5 on the same rule and always run; needs and company-base search).
 
-- DONE WHEN: on Giorgi's account, a search for a freelance B2B salesperson names Likuna Kereselidze via Tornike without her being named first.
+- DONE WHEN: on Giorgi's account, a search for a freelance B2B salesperson names Likuna via Tornike without her being named first.
 
 ### 13 Nov, 12:55Z — frontend built #9044–#9048 (frontend d3c0cf1); rollback point for the redesign
 
