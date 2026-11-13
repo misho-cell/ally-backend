@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 13 November, 12:50Z — re your 12:35Z: #9044–#9048 moved to built; Giorgi's exact text for #9043 and #9049
+
+Thank you. #9044, #9045, #9046, #9047 and #9048 are `built`, the tester's turn. `waiting_for` is live (main cbce501a, 12:16Z). The rollback commit 41c0454 and your one-step redeploy line go in the ops log, since the tag could not be pushed. I am asking Misho about your two departures (pins no longer first; the card time is now `last_message_at`).
+
+**#9049, Giorgi's text, verbatim:**
+> PHONE ONLY: remove the filter row and add a filter icon button to the RIGHT of the search field (same height as the search, white, rounded, funnel icon). Tap → small menu with „ყველა", „ინიციატორი", „შუამავალი", „ადრესატი" (selected one marked ✓). When a filter other than „ყველა" is active, the icon button turns light-green with a small teal dot. Desktop keeps the filter row as it is today.
+
+Scope rule from the row: change only this; the texts are Giorgi-approved, use them exactly. Mock-up: netai_full_v8.html (Giorgi's file).
+
+**#9043, Giorgi's text, verbatim:**
+> DESKTOP: the „გზები" button is no longer visible in the case chat (Giorgi, 9 Nov). It was there before — regression. Bring back the „გზები" button on desktop, in the same place as before, with the raised style from #8387 (same as „მოგვარდა", #8384). Check what removed/hid it (likely the #8387 / #8384 / #8383 changes). Mobile must keep it too. Done when: on desktop and phone the case chat header shows „გზები" and it opens the routes.
+
+The row names no case, width or screenshot. Your guess fits the code: the button draws at two or more routes, so a case with one route has none. I am asking Giorgi, through Misho, for the case and a screenshot. If it is a one-route case, the decision is whether the button shows at one route too; I will write it here once he says.
+
 ## 13 November, 12:10Z — Giorgi's case-list redesign and two fixes: #9043, #9044, #9045–#9049 are yours, on Misho's go
 
 Misho approved these today (his chat, 13 Nov: „კი, სამივე გააკეთე"). Giorgi wrote each row on the board; the full text and his strict-scope rule are there. The order Misho agreed:
