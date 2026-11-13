@@ -10878,19 +10878,13 @@ async function executeToolCall(
         : { ...labelled, found_in: 'owner_labels', found_in_note: FOUND_IN_LABELS_NOTE };
     }
     case 'search_second_degree': {
-      const meanings = await searchMeanings(userId, input['tag_query'], runId);
       const searched = runLoggedSearch(
         userId,
         'second_degree',
         input['tag_query'] as string,
         // #8647: the owner's own line ranks equal matches by the need it names.
         (uid: string, q: string) =>
-          searchSecondDegree(
-            uid,
-            q,
-            runId === undefined ? '' : (runOwnerLine.get(runId) ?? ''),
-            meanings,
-          ),
+          searchSecondDegree(uid, q, runId === undefined ? '' : (runOwnerLine.get(runId) ?? '')),
         runId,
         threadId,
       );
@@ -10900,13 +10894,14 @@ async function executeToolCall(
         if (threadId !== undefined && typeof input['tag_query'] === 'string') {
           noteSecondDegreeResult(threadId, input['tag_query'], found);
         }
-        // Misho, 13 Nov: levels 3-5 are searched every time, not only when the
-        // second circle is empty; whoever is already shown is not repeated.
+        // Misho, 13 Nov (two answers): the quick answer stays light. Measured the same
+        // evening on live: the words' other meanings took this search to 15 patterns and
+        // 13 s of SQL, and a far walk after every search slowed the searches running
+        // beside it to ~20 s. Both now belong to the full research in the background;
+        // here the walk goes further out only when the second circle found nobody.
         return secondCircleEmpty(found)
-          ? withFurtherOut(userId, input['tag_query'], found, runId, { meanings })
-          : withWarmRoutes(userId, input['tag_query'], found, runId).then((warm) =>
-              withFurtherOut(userId, input['tag_query'], warm, runId, { meanings }),
-            );
+          ? withFurtherOut(userId, input['tag_query'], found, runId)
+          : withWarmRoutes(userId, input['tag_query'], found, runId);
       });
       // The tester's 1102 (C10): the second circle was searched under one word, so a
       // vet saved as „ვეტექიმი" by one friend was never found when another friend's

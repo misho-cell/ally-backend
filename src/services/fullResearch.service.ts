@@ -94,25 +94,40 @@ async function settled(level: ResearchLevel, work: Promise<object>): Promise<Lev
   }
 }
 
-/** Every level, at once; a level that fails is said to have failed, never dropped. */
-export async function researchEveryLevel(request: ResearchRequest): Promise<LevelFindings[]> {
+/**
+ * Each level's search, not yet started: they run ONE AFTER ANOTHER. Measured on
+ * live, 13 Nov: searches run side by side slowed one another to ~20 s and timed
+ * out a name search, so the background never competes with the quick answer.
+ */
+function levelSearches(
+  request: ResearchRequest,
+  meanings: WordMeanings,
+): readonly [ResearchLevel, () => Promise<object>][] {
   const { userId, words, ownerLine } = request;
-  const meanings = await searchMeanings(userId, words);
   const baseWords = baseSearchWords(words, meanings);
-  const findings = await Promise.all([
-    settled(ResearchLevel.Own, searchByTag(userId, words, meanings)),
-    settled(ResearchLevel.OwnSaved, searchByInsight(userId, words)),
-    settled(ResearchLevel.Second, searchSecondDegree(userId, words, ownerLine, meanings)),
-    settled(
+  return [
+    [ResearchLevel.Own, () => searchByTag(userId, words, meanings)],
+    [ResearchLevel.OwnSaved, () => searchByInsight(userId, words)],
+    [ResearchLevel.Second, () => searchSecondDegree(userId, words, ownerLine, meanings)],
+    [
       ResearchLevel.Further,
-      farMembersHolding(Number(userId), words, undefined, meanings).then((further) => ({
-        further_out: further,
-      })),
-    ),
-    settled(ResearchLevel.Needs, searchNeeds(userId, words, meanings)),
-    settled(ResearchLevel.Companies, findCompaniesForNeed(userId, baseWords)),
-    settled(ResearchLevel.BasePeople, findPeopleInBase(userId, baseWords)),
-  ]);
+      async () => ({
+        further_out: await farMembersHolding(Number(userId), words, undefined, meanings),
+      }),
+    ],
+    [ResearchLevel.Needs, () => searchNeeds(userId, words, meanings)],
+    [ResearchLevel.Companies, () => findCompaniesForNeed(userId, baseWords)],
+    [ResearchLevel.BasePeople, () => findPeopleInBase(userId, baseWords)],
+  ];
+}
+
+/** Every level, one after another; a level that fails is said to have failed, never dropped. */
+export async function researchEveryLevel(request: ResearchRequest): Promise<LevelFindings[]> {
+  const meanings = await searchMeanings(request.userId, request.words);
+  const findings: LevelFindings[] = [];
+  for (const [level, search] of levelSearches(request, meanings)) {
+    findings.push(await settled(level, search()));
+  }
   return findings.map((found) =>
     found.result === null
       ? found

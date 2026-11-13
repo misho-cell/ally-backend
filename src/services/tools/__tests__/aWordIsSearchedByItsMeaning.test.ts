@@ -134,15 +134,13 @@ describe('the far circles and the needs search', () => {
 describe('meaning search in the chat', () => {
   const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
 
-  it('runs for the own circle, the second circle, further out and the needs search', () => {
+  it('runs for the own circle and the needs search; the second circle and further out get it in the full research', () => {
     expect(chat).toContain('(uid: string, q: string) => searchByTag(uid, q, meanings)');
-    expect(chat).toContain(
-      "const meanings = await searchMeanings(userId, input['tag_query'], runId);",
-    );
-    expect(chat).toContain(
-      "withFurtherOut(userId, input['tag_query'], found, runId, { meanings })",
-    );
     expect(chat).toContain("await searchMeanings(userId, input['need'], runId),");
+    const second = chat.slice(chat.indexOf("case 'search_second_degree': {"));
+    expect(second.slice(0, second.indexOf("case 'search_contacts_by_country'"))).not.toContain(
+      'searchMeanings',
+    );
   });
 
   it('never runs for a name search', () => {
