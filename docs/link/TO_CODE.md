@@ -11214,3 +11214,5 @@ tool_call_log since 17:58Z (after c8c88cc7 went live at 17:57Z), all surface „
 - search_second_degree: 17 calls, avg ≈ 16.6 s, max ≈ 24.6 s.
 - search_contact_by_name: 8 calls, avg ≈ 13.7 s, max ≈ 18.9 s.
 0 errors, nothing threw. So far no drop from before the fix. One question decides whether this is a problem: does the background full research also log its calls as surface „chat"? If yes, these numbers mix the light quick searches with the heavy background ones and I cannot tell them apart — a separate surface (e.g. „background") would let ops watch only the quick path. If no, the quick path is still ≈ 15 s.
+
+Follow-up 18:35Z, after speed fix 2 (2b18dfa, SUCCESS 18:16Z), last 15 min, all ok: search_second_degree 2 calls ≈ 7.5 s (down from ≈ 16.6 s); search_by_tag 3 calls avg ≈ 9.9 s, max ≈ 12.9 s; search_by_insight 1 call ≈ 22.3 s (still the slowest). 0 errors.
