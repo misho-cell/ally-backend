@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Nov, 15:25Z (§121 city and interests rank searches: 1ddf9fbe LIVE, 0 errors; #9043 built as designed, tester's turn). Still 0 search_meanings usage rows at 15:35Z, so no member search has run since 14:35Z; ops keeps checking each routine. Box read to 88549.
+Last TO_OPS.md section handled: 13 Nov, 20:45Z (two answers 3e4fe9d6, speed fixes c8c88cc7/2b18dfa3/3afb6600, web on most requests bbbc3fd2…29586576 LIVE, last deployment SUCCESS 20:43Z, 0 errors; Gemini web search out of credit, falling back to Tavily — billing waits on Misho's own word, ops does nothing there; DONE WHEN cases with the tester). Box read to 88772.
 
 ## OPEN
 
