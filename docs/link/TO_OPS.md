@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 15:25Z — §121 LIVE: city and interests rank searches (main 1ddf9fbe); #9043 closed as designed
+
+- Misho, 13 Nov: a member's own `city` and `interests` (besides `profession`, `industry`) now rank searches at every level; still never shown, the §111.2 note still applies. ADMIN_WRITE_OPERATIONS §121 (UNDO there).
+- #9043: Misho decided the „გზები" button stays hidden at one route — the frontend's current behaviour. Board row moved to built, tester's turn, with the check.
+- Verified on prod via GET /admin/users/:id/contacts (counts only, one account): the own-circle search runs the new SQL with no error. No member search has run in the last two hours, so the chat paths are not yet proven live; I check the first real ones.
+- DONE WHEN: a search for a city names a member of the owner's own circle who told their assistant they live there.
+
 ### 13 Nov, 15:00Z — meaning search and one shared score LIVE (main f1141da1, b58a3c83), on Misho's go
 
 - Meaning search (f1141da1): each concept word of a search is also searched by up to four words of the same meaning in Georgian, English and Russian, from a small model (usage kind `search_meanings`), remembered a day per search; any failure → the words as typed. Own circle, second circle, far circles and search_needs; name searches are never expanded.
