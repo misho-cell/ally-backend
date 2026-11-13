@@ -26,11 +26,11 @@ describe('B5: an introduction outside the approved plan', () => {
 
   it('is told from the goal’s own plan', () => {
     const chat = source('chat.service.ts');
-    const at = chat.indexOf('error: introductionWaitsLine(');
-    expect(at).toBeGreaterThan(0);
-    expect(chat.slice(at, at + 200)).toContain(
-      'goalForIntro?.plan && goalForIntro.plan_approved_at',
+    const at = chat.indexOf(
+      'const planApproved = Boolean(goalForIntro?.plan && goalForIntro.plan_approved_at);',
     );
+    expect(at).toBeGreaterThan(0);
+    expect(chat.slice(at, at + 300)).toContain('? introductionWaitsLine(true)');
   });
 });
 
