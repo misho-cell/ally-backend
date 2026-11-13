@@ -41,6 +41,7 @@ import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 import { isSearchTimeout, searchDidNotFinish } from './searchDidNotFinish';
 import { tagMeaningWords } from './tagMeaningWords';
+import { evidenceScore } from './searchableData';
 
 const FUZZY_THRESHOLD = 0.45;
 /**
@@ -262,7 +263,8 @@ async function runExactSearch(
     `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
      hits AS (
        SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
-              bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
+              bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only,
+              ${evidenceScore('label')} AS evidence
        FROM matched
        WHERE phone != ALL($${m.blockIdx})
        GROUP BY phone
@@ -272,8 +274,8 @@ async function runExactSearch(
             (${m.totalSql}) AS total_matches
      ${AGG_JOINS}
      GROUP BY h.phone
-     ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
-              MAX(ut."weightCount") DESC NULLS LAST
+     ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.evidence) DESC,
+              MAX(h.src_priority) DESC, MAX(ut."weightCount") DESC NULLS LAST
      LIMIT ${RESULT_LIMIT}`,
     m.params,
     EXACT_SEARCH_TIMEOUT_MS,

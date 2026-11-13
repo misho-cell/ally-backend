@@ -3,6 +3,7 @@ import {
   PROFILE_KEYS_MATCHED,
   SENSITIVE_FACT_TYPES,
   COMPANY_TIES_SQL,
+  evidenceScore,
 } from './tools/searchableData';
 import { query } from '../db/postgres/client';
 import { IS_MEMBER_SQL } from './memberPaths.service';
@@ -123,8 +124,9 @@ async function nextRing(ring: readonly Link[], seen: Set<number>): Promise<Link[
  */
 async function savedUnder(ring: readonly Link[], patterns: readonly string[]): Promise<HitRow[]> {
   const result = await query<HitRow>(
-    `SELECT x.holder_id, x.phone, x.alias
-       FROM (
+    // Misho, 13 Nov (one shared score): a person more things said about them
+    // match comes first, before the read is cut — never an arbitrary few.
+    `WITH x AS (
          SELECT ua."contactId" AS holder_id, ua.phone, ua.alias,
                 normalize_search_token(ua.alias) AS words
            FROM "UserAlias" ua
@@ -172,8 +174,14 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
                 normalize_search_token(ut.tag)
            FROM "UserTags" ut
           WHERE ut."contactId" = ANY($1::int[])
-       ) x
-      WHERE x.words ~ ALL($2::text[])
+     ),
+     matched AS (SELECT * FROM x WHERE x.words ~ ALL($2::text[])),
+     evidence AS (
+       SELECT phone, ${evidenceScore('words')} AS score FROM matched GROUP BY phone
+     )
+     SELECT DISTINCT m.holder_id, m.phone, m.alias, e.score
+       FROM matched m JOIN evidence e ON e.phone = m.phone
+      ORDER BY e.score DESC, m.phone
       LIMIT $3`,
     [
       ring.map((link) => link.userId),

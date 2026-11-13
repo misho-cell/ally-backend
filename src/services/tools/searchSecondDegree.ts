@@ -33,7 +33,12 @@ import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
 import { withEveryHolder } from './everyHolder';
 import { holdersOnly, ownerCommunityPhonesOrNone, ownerHolderPhonesOrNone } from './ownerHolders';
 import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
-import { PROFILE_KEYS_MATCHED, SENSITIVE_FACT_TYPES, COMPANY_TIES_SQL } from './searchableData';
+import {
+  COMPANY_TIES_SQL,
+  evidenceScore,
+  PROFILE_KEYS_MATCHED,
+  SENSITIVE_FACT_TYPES,
+} from './searchableData';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -1357,6 +1362,7 @@ export async function searchSecondDegree(
                                     WHERE nt.phone = m.phone
                                       AND ${foldedLower('nt.tag')} ~ $${needIdx}::text) THEN 1
                       ELSE 0 END)                                         AS need_hit,
+                ${evidenceScore('m.label')}                               AS evidence,
                 (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) AS bridge_rank,
                 MAX(crs.strength_score)                                   AS warmth,
                 -- Row 298: how many matched before the LIMIT, so a capped
@@ -1374,6 +1380,7 @@ export async function searchSecondDegree(
          GROUP BY m.phone
          ORDER BY (${wordHits}) DESC,
                   need_hit DESC,
+                  evidence DESC,
                   (COUNT(DISTINCT fu."userId") - COUNT(DISTINCT w.user_id)) DESC,
                   MAX(crs.strength_score) DESC NULLS LAST,
                   m.phone
@@ -1516,8 +1523,9 @@ export async function searchSecondDegree(
                   cf.is_public DESC, cf.updated_at DESC
          LIMIT 1
        ) fj ON TRUE
-       GROUP BY r.phone, r.word_hits, r.need_hit, r.bridge_rank, r.warmth, r.total_matches
-       ORDER BY r.word_hits DESC, r.need_hit DESC, r.bridge_rank DESC, r.warmth DESC NULLS LAST,
+       GROUP BY r.phone, r.word_hits, r.need_hit, r.evidence, r.bridge_rank, r.warmth, r.total_matches
+       ORDER BY r.word_hits DESC, r.need_hit DESC, r.evidence DESC, r.bridge_rank DESC,
+                r.warmth DESC NULLS LAST,
                 MAX(COALESCE(u_t.name, ua_t.alias))
        LIMIT ${SECOND_DEGREE_RESULT_LIMIT}`,
       [
