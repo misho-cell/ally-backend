@@ -489,8 +489,8 @@ import {
 } from './openingSearch.service';
 import {
   countWebSearch,
-  FIRST_SEARCH_IN_GEORGIAN,
-  firstSearchNotInGeorgian,
+  firstSearchLanguageNote,
+  firstSearchNotInLanguage,
   forgetWebSearches,
   searchRoundNote,
 } from './webSearchRounds';
@@ -4717,7 +4717,7 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     description:
       'Search the web for public information about a person, company, or topic. Use after finding a contact in the database to enrich with LinkedIn, company details, news, or other public info. Also use when the user asks general questions that require up-to-date information.' +
       ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive. ' +
-      'The first search is always written in Georgian. When it does not answer, write up to five different searches, choosing each next one yourself (other words, English or Russian, the organisation’s own site, news). ' +
+      'The first search is written in the language the owner is writing in. When it does not answer, write up to five different searches, choosing each next one yourself (other words, another language, the organisation’s own site, news). ' +
       RULE_280_WEB_LEADS_ARE_PEOPLE +
       ' ' +
       RULE_A_WEB_LEAD_DETAILS +
@@ -10660,13 +10660,13 @@ async function executeToolCall(
     console.log(`[tools] run ${runId}: ${name} held for this turn`);
     return { error: TOOL_HELD_THIS_TURN };
   }
-  // Misho, 13 Nov: the first web search is in Georgian; refused before it spends the budget.
+  // Misho, 13 Nov: the first web search is in the owner's own language; refused before the budget.
   if (
     name === WEB_SEARCH_TOOL &&
     runId !== undefined &&
-    firstSearchNotInGeorgian(runId, String(input['query'] ?? ''))
+    firstSearchNotInLanguage(runId, runLang(runId), String(input['query'] ?? ''))
   ) {
-    return { found: false, error: FIRST_SEARCH_IN_GEORGIAN };
+    return { found: false, error: firstSearchLanguageNote(runLang(runId)) };
   }
   const freeOfficialRead =
     runId !== undefined && isFreeOfficialPageRead(name, input, runOfficialReads.get(runId) ?? 0);
