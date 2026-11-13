@@ -28,7 +28,7 @@ import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
 import { withEveryHolder } from './everyHolder';
 import { holdersOnly, ownerCommunityPhonesOrNone, ownerHolderPhonesOrNone } from './ownerHolders';
 import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
-import { PROFILE_KEYS_MATCHED, SENSITIVE_FACT_TYPES } from './searchableData';
+import { PROFILE_KEYS_MATCHED, SENSITIVE_FACT_TYPES, COMPANY_TIES_SQL } from './searchableData';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -1304,6 +1304,10 @@ export async function searchSecondDegree(
            FROM offers o
            JOIN "UserPhone" upo ON upo."userId" = o.user_id
            WHERE o.active AND LOWER(o.text) ~ $${filterIdx}
+           UNION ALL
+           SELECT ct.phone, LOWER(ct.text) AS label
+           FROM (${COMPANY_TIES_SQL}) ct
+           WHERE LOWER(ct.text) ~ $${filterIdx}
          ) x
          JOIN "UserAlias" ua_b ON ua_b.phone = x.phone,
               bridges b

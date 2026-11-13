@@ -9,6 +9,7 @@ import {
   SENSITIVE_FACT_TYPES,
   sqlConstantList,
   WORK_FACT_TYPES,
+  COMPANY_TIES_SQL,
 } from './searchableData';
 import { toWordStartPattern } from './transliterate';
 import { foldedLower } from './georgianCase';
@@ -215,6 +216,12 @@ export function buildExactMatchSql(
      WHERE upo.phone IN (SELECT phone FROM mine)
        AND o.active
        AND ${regexOr('o.text')}
+     UNION ALL
+     SELECT ct.phone, ${foldedLower('ct.text')} AS label, 2 AS priority, TRUE AS own,
+            FALSE AS self_work
+     FROM (${COMPANY_TIES_SQL}) ct
+     WHERE ct.phone IN (SELECT phone FROM mine)
+       AND ${regexOr('ct.text')}
      UNION ALL
      SELECT up5.phone, ${foldedLower('hs.case_text')} AS label, 2 AS priority, TRUE AS own,
             TRUE AS self_work
