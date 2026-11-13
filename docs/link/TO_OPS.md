@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 20:45Z — evening, on Misho's word: two answers, speed fixes, the web on most requests (main 3e4fe9d6 … 29586576)
+
+- **Two answers (3e4fe9d6).** A goal's request gets a quick first answer (told it is quick); once the conversation is quiet, the full research runs every level in the background (own contacts with meaning words and saved info, second circle with meanings and the owner's need, levels 3-5 reading facts/profile/offers/company ties, people looking for this, company and people bases), one level after another, and comes back as a second answer (task-engine wake, owner-caused, news). People from the first answer may repeat, marked „in the previous answer" and asked directly / introduction requested / not written to. Kept in memory 30 min (lost on a restart).
+- **Speed fixes (c8c88cc7, 2b18dfa3, 3afb6600).** Live searches ran 15-22 s after today's search changes. The quick searches are light again: no meaning words in the tag or second-circle search, the walk past the second circle reads labels and tags only and only when the second circle is empty; all the depth is in the background research. Measured after: tag 5.9 s on an account whose median was 19.6 s. Large accounts were slow before today too (one: tag 17 s, second circle 20 s medians over 14 days) — not fixed here.
+- **The web on most requests (bbbc3fd2, 29586576).** A small model sorts each owner message: web / contacts / none (usage kind `search_intent`). On web, a request with no goal gets the opening search's web half (web + ways in through the owner's contacts). An organisation is always web; a contacts look-up or one named person never (row 253). Seen live: 2 none, 1 web, 1 corrected.
+- **⚠️ Gemini web search is out of credit** (402 RESOURCE_EXHAUSTED since at least 20:25Z); every web search falls back to Tavily. Told Misho — billing is his.
+- DONE WHEN: a goal request gets a second message with the full research; „სამხარაულში მყავს ვინმე?" runs a web search with no goal; a „find X in my contacts" runs none.
+
 ### 13 Nov, 15:25Z — §121 LIVE: city and interests rank searches (main 1ddf9fbe); #9043 closed as designed
 
 - Misho, 13 Nov: a member's own `city` and `interests` (besides `profession`, `industry`) now rank searches at every level; still never shown, the §111.2 note still applies. ADMIN_WRITE_OPERATIONS §121 (UNDO there).
