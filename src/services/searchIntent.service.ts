@@ -35,7 +35,8 @@ const INTENT_PROMPT =
   'something, who leads something, how to reach an organisation. A question whether they ' +
   'know someone AT an organisation („do I have anyone at the forensic bureau?") is web.\n' +
   'contacts — they ask only to look something up in their own contacts (find a saved ' +
-  'contact, a number, how someone is saved, who they have saved as something), or to find, ' +
+  'contact, a number, how someone is saved, who they have saved as something — „დირექტორი ' +
+  'ვის უწერია?" asks whose contacts carry that label, so it is contacts), or to find, ' +
   'reach or be introduced to one particular person they name.\n' +
   'none — anything else: a greeting, thanks, a short reply to the assistant, yes or no, a ' +
   'choice, a correction, a setting.';
