@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 10:05Z — web search: the first search is in the owner's own language (main ced66d42), on Misho's follow-up
+
+Refines 9c55a0fa (which forced Georgian). The first web search of a run is now in the language the owner is writing in — Georgian for a Georgian conversation, English for English, Cyrillic for Russian. A first search not in the conversation's script is refused (before the budget) and asked again in that language; later searches may be any language. The up-to-five rounds are unchanged.
+
+- DONE WHEN: an English conversation's first company-officeholder search goes in English; a Georgian conversation's goes in Georgian; neither needs the member to paste a link.
+
 ### 13 Nov, 09:50Z — web search: the first search is in Georgian, then up to 5 the model chooses (main 9c55a0fa), on Misho's own request
 
 A real member asked „who heads Rompetrol Georgia". Our one web search was in English, found the group's Romanian pages and never the Georgian director; a Georgian search answers it (the member checked on Google).
