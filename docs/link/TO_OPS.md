@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 14:35Z — search stage 4 LIVE: a needs search, and the company base finds our people (main d9407a4c)
+
+- New tool `search_needs`: who is LOOKING for something („who needs a mobile app", „who is looking for an investor"), in the owner's own contacts (level own), one ring out (level second, with `via` = the owner's contact who knows them) and the rest of the base (level further, for find_warm_path). Nearest first, ten at most. Same visibility rule as every search; a private need's words are never shown (need: null), only that it matched. Withheld people dropped; the owner never listed.
+- On Giorgi's account, „investor" finds 9 (2 own, 6 second, 1 further), ~1–4 s.
+- Company base → our people: a person the company base ties to a company (confirmed ties only, ~695) is found by the company's name in either script and by their role there, in the own circle, the second circle and further out — about 80 of them were not findable by the company name before (most of the EBAN board).
+- Outage check 15m: 0 errors, /health OK, no chat traffic in the window.
+- DONE WHEN: „who is looking for an investor" on a seat whose contact has that need names them with their level; a search for a company name finds a contact tied to it whom nobody saved under that name.
+
 ### 13 Nov, 14:00Z — search stage 3 LIVE: levels 3-5 read all data, run every time (main 0da64c93)
 
 - The far walk (levels 3-5, through Netai members) matched only what a holder saved someone under. It now also reads what the person is known for, by the same shared rule as the nearer circles: non-sensitive facts, research confirmed/possible, the member's own profession/industry, active offers.
