@@ -220,12 +220,27 @@ describe('the two answers in the chat', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
   const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
 
-  it('starts the full research once the opening search has its words, for the goal just opened', () => {
+  it('starts the full research once the run has both: the opening search’s words and a goal here', () => {
     expect(chat).toContain(
       'startOpeningSearches(userId, userMessage, runId, threadId, autoGoalId)',
     );
+    expect(chat).toContain('openingWordsLanded(runId, found.query ?? null);');
     expect(chat).toContain(
-      'startFullResearch(userId, threadId, taskId, found.query, goalText, askedAt);',
+      'if (opening === undefined || opening.query === null || opening.taskId === null) return;',
+    );
+  });
+
+  it('starts it too for a goal the model opens in the run (live, 13 Nov: both goals that night were)', () => {
+    expect(chat).toContain(
+      'const researching = movedTo === undefined && goalOpenedInRun(runId, id);',
+    );
+    expect(chat).toContain('...(researching && { full_research_note: QUICK_ANSWER_NOTE.trim() }),');
+  });
+
+  it('forgets a run’s opening that never got a goal, so nothing is kept for ever', () => {
+    expect(chat).toContain('  openingRunEnded(runId);\n');
+    expect(chat).toContain(
+      'if (opening.taskId === null && opening.query !== null) runOpenings.delete(runId);',
     );
   });
 
