@@ -28,6 +28,7 @@ import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
 import { withEveryHolder } from './everyHolder';
 import { holdersOnly, ownerCommunityPhonesOrNone, ownerHolderPhonesOrNone } from './ownerHolders';
 import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
+import { PROFILE_KEYS_MATCHED, SENSITIVE_FACT_TYPES } from './searchableData';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -436,32 +437,7 @@ const SIGNAL_MAX = 1.0;
 // whole category here scored every note-based pointer at exactly 0 — the
 // founder's live run returned four pointers, all strength 0, while a
 // need-based one scored 0.5. Same list, same reasoning, or the number lies.
-const SIGNAL_EXCLUDED_FIELD_TYPES = [
-  'health',
-  'medical',
-  'illness',
-  'diagnosis',
-  'money',
-  'income',
-  'salary',
-  'finance',
-  'debt',
-  'wealth',
-  'politics',
-  'political',
-  'party',
-  'religion',
-  'religious',
-  'faith',
-  'relationship',
-  'love',
-  'dating',
-  'marital_status',
-  'affair',
-  'criminal',
-  'legal_issue',
-  'arrest',
-];
+const SIGNAL_EXCLUDED_FIELD_TYPES = SENSITIVE_FACT_TYPES;
 
 // Where a second-degree row's title and employer come from, in preference
 // order (ticket 9 task 25). Both are read privacy-scoped: a PUBLIC fact, or
@@ -482,20 +458,6 @@ const EMPLOYER_FACT_FIELDS = ['employer', 'affiliation'];
  * state, 1 Sep: „looking for an investor" answers a search for an investor).
  */
 const FACT_TYPES_NEVER_MATCHED = SIGNAL_EXCLUDED_FIELD_TYPES;
-
-const PROFILE_KEYS_MATCHED = [
-  'profession',
-  'industry',
-  'city',
-  'interests',
-  'employer',
-  'employment_type',
-  'geography',
-  'strengths',
-  'product',
-  'service_area',
-  'languages',
-];
 
 // Exported for T15's empty-case fallback in searchByInsight (ticket 7 task
 // 10) — ONE strength vocabulary product-wide, never a re-guessed copy.

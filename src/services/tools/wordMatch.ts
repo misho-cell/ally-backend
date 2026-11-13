@@ -4,6 +4,12 @@
 // ranks above partial matches — the fix for a common word (Axel ≈150) burying a
 // rare one (Dachi) in a two-word query (search Bug 2).
 
+import {
+  PROFILE_KEYS_MATCHED,
+  SENSITIVE_FACT_TYPES,
+  sqlConstantList,
+  WORK_FACT_TYPES,
+} from './searchableData';
 import { toWordStartPattern } from './transliterate';
 import { foldedLower } from './georgianCase';
 import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
@@ -187,14 +193,28 @@ export function buildExactMatchSql(
        AND ${regexOr('cf.value')}
      UNION ALL
      `;
+  // Misho, 13 Nov: the main tag search reads every kind of fact but the
+  // sensitive ones, as the second circle does; a name search reads only what
+  // someone does, because notes and founder's words mention other people's names.
+  const factKindsCondition = withOwnWork
+    ? `cf.field_type NOT IN (${sqlConstantList(SENSITIVE_FACT_TYPES)})`
+    : `cf.field_type IN (${sqlConstantList(WORK_FACT_TYPES)})`;
   const ownWorkBranch = withOwnWork
     ? `SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
             TRUE AS self_work
      FROM "UserPhone" up4
      JOIN user_profile_kv kv ON kv.user_id = up4."userId"::text
      WHERE up4.phone IN (SELECT phone FROM mine)
-       AND kv.key IN ('profession', 'industry')
+       AND kv.key IN (${sqlConstantList(PROFILE_KEYS_MATCHED)})
        AND ${regexOr('kv.value')}
+     UNION ALL
+     SELECT upo.phone, ${foldedLower('o.text')} AS label, 2 AS priority, TRUE AS own,
+            TRUE AS self_work
+     FROM "UserPhone" upo
+     JOIN offers o ON o.user_id = upo."userId"
+     WHERE upo.phone IN (SELECT phone FROM mine)
+       AND o.active
+       AND ${regexOr('o.text')}
      UNION ALL
      SELECT up5.phone, ${foldedLower('hs.case_text')} AS label, 2 AS priority, TRUE AS own,
             TRUE AS self_work
@@ -242,8 +262,9 @@ ${ownWorkBranch}     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.valu
             TRUE AS own, FALSE AS self_work
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
-       AND cf.field_type IN ('occupation', 'employer', 'industry')
+       AND ${factKindsCondition}
        AND cf.retracted_at IS NULL
+       AND cf.removed_by_subject_at IS NULL
        AND (cf.submitted_by_user_id = $${factsUserIdx} OR cf.is_public = true)
        AND ${regexOr('cf.value')}
      UNION ALL
@@ -260,6 +281,7 @@ ${ownWorkBranch}     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.valu
        AND cf.is_matchable = true
        AND cf.is_public = false
        AND cf.submitted_by_user_id <> $${factsUserIdx}
+       AND cf.field_type NOT IN (${sqlConstantList(SENSITIVE_FACT_TYPES)})
        AND ${regexOr('cf.value')}
    )`;
 

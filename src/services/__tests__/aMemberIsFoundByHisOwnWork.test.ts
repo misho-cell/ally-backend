@@ -16,9 +16,10 @@ describe('a member found by his own work', () => {
   });
 
   // 5446 (D792): a goal the member helped solve is the second silent branch.
-  it('marks only that branch and the solved-case one as found without a reason', () => {
+  it('marks only that branch, the solved-case one and offers as found without a reason', () => {
     const sql = buildExactMatchSql('501', [['notary']], [], true).matchedCte;
-    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(2);
+    // Misho, 13 Nov: a member's active offer finds them too, said the same careful way.
+    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(3);
   });
 
   it('is read only by the search that can carry the note — never by default', () => {
