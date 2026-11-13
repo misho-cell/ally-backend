@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 12:55Z — frontend built #9044–#9048 (frontend d3c0cf1); rollback point for the redesign
+
+- Board: #9044, #9045, #9046, #9047, #9048 moved to built, tester's turn. #9043 (not reproduced; waits on Giorgi's case and screenshot) and #9049 (Giorgi's text sent to the frontend) stay open.
+- #9044 rollback: the tag could not be pushed (proxy 403). The pre-redesign frontend commit is 41c0454. One-step emergency redeploy, from the frontend repo: `git push --force-with-lease origin 41c0454:main` (main auto-deploys). It discards everything after 41c0454 on main, so it is for an emergency, not to undo one item.
+- The frontend's departures, put to Misho: pinned cases no longer lead the list; the card time is now the last message's time.
+
 ### 13 Nov, 12:20Z — #9010 and #9046 LIVE (main fdacd0da, cbce501a); #9043–#9049 handed to the frontend, on Misho's go
 
 - #9010 (fdacd0da): a case its person deletes is marked seen, so it goes straight to „დასრულებული/დახურული" instead of standing in „ვმუშაობ" until opened. Board: built, tester's turn. #9050 (⟦own⟧ markers on the card preview) was fixed on 9 Nov; board: built, tester's turn.
