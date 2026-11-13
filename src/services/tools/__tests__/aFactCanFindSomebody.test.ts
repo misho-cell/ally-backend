@@ -109,7 +109,7 @@ describe('the second-circle query looks in the facts', () => {
    */
   it('reaches only people a bridge actually has in their phonebook', () => {
     const at = sql.indexOf('fact_hits AS (');
-    const cte = sql.slice(at, at + 2200);
+    const cte = sql.slice(at, sql.indexOf('member_hits AS (', at));
 
     expect(cte).toContain('JOIN "UserAlias" ua_b ON ua_b.phone = cf.neo4j_contact_id');
     expect(cte).toContain('WHERE ua_b."contactId" = ANY(b.ids)');
@@ -136,9 +136,10 @@ describe('the second-circle query looks in the facts', () => {
    */
   it('refuses a fact its author did not let travel', () => {
     const at = sql.indexOf('fact_hits AS (');
-    const cte = sql.slice(at, at + 900);
+    const cte = sql.slice(at, sql.indexOf('member_hits AS (', at));
 
-    expect(cte).toContain('(cf.is_public OR cf.is_matchable)');
+    // Misho, 13 Nov: a researched fact that is confirmed or possible travels too.
+    expect(cte).toContain('cf.is_public OR cf.is_matchable');
     expect(cte).toContain('cf.retracted_at IS NULL');
   });
 
@@ -160,7 +161,7 @@ describe('the second-circle query looks in the facts', () => {
    */
   it('casts no join column, because every pair already matches', () => {
     const at = sql.indexOf('fact_hits AS (');
-    const cte = sql.slice(at, at + 2200);
+    const cte = sql.slice(at, sql.indexOf('member_hits AS (', at));
 
     // The only casts left are on the two field-type ARRAYS, which are
     // parameters and not columns of anybody's table.

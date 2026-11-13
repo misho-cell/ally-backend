@@ -27,6 +27,7 @@ import { foldedLower, toMtavruli } from './georgianCase';
 import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
 import { withEveryHolder } from './everyHolder';
 import { holdersOnly, ownerCommunityPhonesOrNone, ownerHolderPhonesOrNone } from './ownerHolders';
+import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -467,6 +468,34 @@ const SIGNAL_EXCLUDED_FIELD_TYPES = [
 // one the searcher wrote themselves.
 const TITLE_FACT_FIELDS = ['role', 'occupation'];
 const EMPLOYER_FACT_FIELDS = ['employer', 'affiliation'];
+
+/**
+ * Misho, 13 Nov (a real member's „freelance B2B sales" search): the second
+ * circle matched facts of four kinds only, so Likuna, whose „B2B sales;
+ * freelance business development" sat under expertise, never came up. It now
+ * reads what the owner's own circle reads: every kind of fact but the
+ * sensitive ones, researched facts that are confirmed or possible, and the
+ * member's own profile and offers.
+ */
+/**
+ * The sensitive kinds never point at anyone. A need does (the founder's third
+ * state, 1 Sep: „looking for an investor" answers a search for an investor).
+ */
+const FACT_TYPES_NEVER_MATCHED = SIGNAL_EXCLUDED_FIELD_TYPES;
+
+const PROFILE_KEYS_MATCHED = [
+  'profession',
+  'industry',
+  'city',
+  'interests',
+  'employer',
+  'employment_type',
+  'geography',
+  'strengths',
+  'product',
+  'service_area',
+  'languages',
+];
 
 // Exported for T15's empty-case fallback in searchByInsight (ticket 7 task
 // 10) — ONE strength vocabulary product-wide, never a re-guessed copy.
@@ -1093,6 +1122,9 @@ export async function searchSecondDegree(
     const employerFieldsIdx = factsUserIdx + 2;
     // #8647: the owner's need words, one alternation (or NULL), ranking equal matches.
     const needIdx = factsUserIdx + 3;
+    const excludedFieldsIdx = factsUserIdx + 4;
+    const researchStatusesIdx = factsUserIdx + 5;
+    const profileKeysIdx = factsUserIdx + 6;
     const need = needPattern(ownerLine, groups);
 
     // Rank FIRST, decorate LAST: the old shape joined the display tables
@@ -1276,10 +1308,44 @@ export async function searchSecondDegree(
               bridges b
          WHERE ua_b."contactId" = ANY(b.ids)
            AND cf.retracted_at IS NULL
-           AND (cf.is_public OR cf.is_matchable)
-           AND (cf.field_type = ANY($${titleFieldsIdx}::text[])
-                OR cf.field_type = ANY($${employerFieldsIdx}::text[]))
+           AND cf.removed_by_subject_at IS NULL
+           AND cf.field_type <> ALL($${excludedFieldsIdx}::text[])
+           AND (cf.is_public OR cf.is_matchable
+                OR (cf.source = '${RESEARCH_SOURCE}'
+                    AND cf.research_status = ANY($${researchStatusesIdx}::text[])))
+           AND NOT (cf.source = '${RESEARCH_SOURCE}'
+                    AND cf.research_status <> ALL($${researchStatusesIdx}::text[]))
            AND LOWER(COALESCE(cf.canonical_value, cf.value)) ~ $${filterIdx}
+       ),
+       -- Misho, 13 Nov: a member's own words about their work, and their offers,
+       -- find them one ring out too. Matched on the small tables first, then kept
+       -- only when a bridge holds the number.
+       member_hits AS (
+         SELECT ua_b.phone, ua_b."contactId", x.label
+         FROM (
+           SELECT upm.phone,
+                  LOWER(COALESCE(um."jobPosition", '') || ' ' || COALESCE(um.employer, '')) AS label
+           FROM "User" um
+           JOIN "UserPhone" upm ON upm."userId" = um.id
+           WHERE (um."jobPosition" IS NOT NULL OR um.employer IS NOT NULL)
+             AND um."deletedAt" IS NULL
+             AND LOWER(COALESCE(um."jobPosition", '') || ' ' || COALESCE(um.employer, ''))
+                 ~ $${filterIdx}
+           UNION ALL
+           SELECT upk.phone, LOWER(kv.value) AS label
+           FROM user_profile_kv kv
+           JOIN "UserPhone" upk ON upk."userId"::text = kv.user_id
+           WHERE kv.key = ANY($${profileKeysIdx}::text[])
+             AND LOWER(kv.value) ~ $${filterIdx}
+           UNION ALL
+           SELECT upo.phone, LOWER(o.text) AS label
+           FROM offers o
+           JOIN "UserPhone" upo ON upo."userId" = o.user_id
+           WHERE o.active AND LOWER(o.text) ~ $${filterIdx}
+         ) x
+         JOIN "UserAlias" ua_b ON ua_b.phone = x.phone,
+              bridges b
+         WHERE ua_b."contactId" = ANY(b.ids)
        ),
        -- The label rides along ONLY as far as word_hits below. It never leaves
        -- this CTE: the outer select aggregates phones and joins names, so the
@@ -1303,6 +1369,8 @@ export async function searchSecondDegree(
          SELECT phone, "contactId", label, FALSE AS from_case FROM alias_hits
          UNION
          SELECT phone, "contactId", label, FALSE AS from_case FROM fact_hits
+         UNION
+         SELECT phone, "contactId", label, FALSE AS from_case FROM member_hits
          UNION
          SELECT phone, "contactId", label, TRUE AS from_case FROM case_hits
        ),
@@ -1490,6 +1558,9 @@ export async function searchSecondDegree(
         TITLE_FACT_FIELDS,
         EMPLOYER_FACT_FIELDS,
         need,
+        FACT_TYPES_NEVER_MATCHED,
+        MATCHED_RESEARCH_STATUSES,
+        PROFILE_KEYS_MATCHED,
       ],
       SECOND_DEGREE_QUERY_TIMEOUT_MS,
     );
