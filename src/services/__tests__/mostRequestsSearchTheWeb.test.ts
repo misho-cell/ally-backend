@@ -49,6 +49,11 @@ describe('what kind of message the owner wrote', () => {
     expect(await readSearchIntent('   ', ORIGIN)).toBe(SearchIntent.None);
   });
 
+  it('reads „who has X saved" as a contacts look-up (live, 13 Nov: „დირექტორი ვის უწერია?" went to the web)', () => {
+    const prompt = readFileSync(join(__dirname, '..', 'searchIntent.service.ts'), 'utf8');
+    expect(prompt).toContain('asks whose contacts carry that label, so it is contacts');
+  });
+
   it('keeps a named person’s look-up to the contacts (row 253: a name never leaves for nothing)', () => {
     const prompt = readFileSync(join(__dirname, '..', 'searchIntent.service.ts'), 'utf8');
     expect(prompt).toContain(
