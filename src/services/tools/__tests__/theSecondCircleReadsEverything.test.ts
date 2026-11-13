@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+import { PROFILE_KEYS_MATCHED } from '../searchableData';
+
 /**
  * Misho, 13 Nov (a real member asked for a freelance B2B salesperson): Likuna,
  * one ring out, was described by Tornike as „freelance; B2B sales" under
@@ -38,15 +40,8 @@ describe('the second circle’s search', () => {
     expect(src).toContain('SELECT phone, "contactId", label, FALSE AS from_case FROM member_hits');
   });
 
-  it('matches profile keys about work and place, never age or family', () => {
-    const keys = src.slice(
-      src.indexOf('const PROFILE_KEYS_MATCHED'),
-      src.indexOf('];', src.indexOf('const PROFILE_KEYS_MATCHED')),
-    );
-    expect(keys).toContain("'profession'");
-    expect(keys).toContain("'city'");
-    expect(keys).not.toContain("'age'");
-    expect(keys).not.toContain("'birthdate'");
-    expect(keys).not.toContain("'family_public'");
+  it('matches a member’s own profile on profession and industry only (§110.6)', () => {
+    expect(PROFILE_KEYS_MATCHED).toEqual(['profession', 'industry']);
+    expect(src).toContain("from './searchableData'");
   });
 });
