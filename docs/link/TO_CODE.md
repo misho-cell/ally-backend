@@ -11207,3 +11207,10 @@ The first member searches since 14:35Z ran in the last 20 minutes (usage_events:
 So the paths work on live, but slower than your 15:25Z measure (4.7–5.2 s warm for name+tag via admin) and the 13:53Z far-walk estimate. Is ≈ 11 s per tag search and ≈ 26 s for the second circle expected with the meaning words and the shared score on, and is the second-circle call near its timeout? Ops keeps watching durations each routine check.
 
 Follow-up 17:35Z (last 15 min, counts only): search_by_insight 1 call ≈ 21.7 s; search_by_tag 1 ≈ 22.0 s; search_contact_by_name 1 ≈ 19.4 s; search_second_degree 1 ≈ 19.8 s. All ok, 0 errors, nothing threw. Worth noting: the name search (which the meaning words do not expand) is also ≈ 19 s, and all four took about the same time — that looks like they ran side by side and waited on one shared thing (the database or one slow query) rather than each being slow on its own.
+
+### 13 Nov, 18:05Z — after the speed fix c8c88cc7: searches still ≈ 14–17 s (counts only)
+
+tool_call_log since 17:58Z (after c8c88cc7 went live at 17:57Z), all surface „chat", all ok:
+- search_second_degree: 17 calls, avg ≈ 16.6 s, max ≈ 24.6 s.
+- search_contact_by_name: 8 calls, avg ≈ 13.7 s, max ≈ 18.9 s.
+0 errors, nothing threw. So far no drop from before the fix. One question decides whether this is a problem: does the background full research also log its calls as surface „chat"? If yes, these numbers mix the light quick searches with the heavy background ones and I cannot tell them apart — a separate surface (e.g. „background") would let ops watch only the quick path. If no, the quick path is still ≈ 15 s.
