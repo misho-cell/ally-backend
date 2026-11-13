@@ -1,5 +1,6 @@
 import { georgianScriptName } from './georgianScriptName';
 import { georgianToLatin } from './tools/transliterate';
+import { isPlainYes } from './plainYes';
 import { ownerNamedAGoBetween } from './severalRoutes';
 
 /**
@@ -35,6 +36,8 @@ export interface IntroGateFacts {
   readonly ownerLines: readonly string[];
   /** The assistant's reply the owner's latest line answered ('' when none). */
   readonly replyTheOwnerAnswered: string;
+  /** The assistant's replies among the last ten messages, newest first (Misho, 13 Nov). */
+  readonly recentReplies?: readonly string[];
   readonly mediatorName: string;
   readonly targetName: string;
 }
@@ -73,12 +76,15 @@ function latinNameStartsAWord(line: string, name: string): boolean {
  * answered by the owner naming the go-between, is his yes to that introduction.
  */
 function ownerAnsweredTheProposal(facts: IntroGateFacts): boolean {
-  const reply = [facts.replyTheOwnerAnswered];
-  return (
-    namedIn(reply, facts.targetName) &&
-    namedIn(reply, facts.mediatorName) &&
-    namedIn(facts.ownerLines.slice(-1), facts.mediatorName)
+  // Misho, 13 Nov: the offer may sit a few replies back, and „კი" alone is a yes to it.
+  const replies = [facts.replyTheOwnerAnswered, ...(facts.recentReplies ?? [])];
+  const offered = replies.some(
+    (reply) => namedIn([reply], facts.targetName) && namedIn([reply], facts.mediatorName),
   );
+  if (!offered) return false;
+  // The owner's lines come newest first: [0] is the line he just wrote.
+  const latest = facts.ownerLines[0] ?? '';
+  return isPlainYes(latest) || namedIn([latest], facts.mediatorName);
 }
 
 /**
@@ -102,6 +108,21 @@ export const INTRODUCTION_WAITS_FOR_THE_YES =
   'Not sent: the owner has not said yes to being introduced to this person. Tell them in a ' +
   'line who was found and through whom, and ask whether to ask for the introduction; send ' +
   'it only after their yes. Do not tell them it went.';
+
+/**
+ * Misho, 13 Nov: when the conversation, read up to ten messages back, does not
+ * show whether the owner agreed, he is asked one short question — no set phrase
+ * is demanded of him.
+ */
+export const INTRODUCTION_UNCLEAR =
+  'Not sent: reading the conversation, it is not clear the owner agreed to this introduction. ' +
+  'Ask them one short question that names the go-between and the person to be met, and send ' +
+  'it only on their yes. Never ask them to type a set sentence. Do not tell them it went.';
+
+/** The owner's words, read with the messages before them, declined or asked for something else. */
+export const INTRODUCTION_DECLINED =
+  'Not sent: read with the messages before it, the owner did not agree to this introduction. ' +
+  'Do not send it; do what they asked instead. Do not tell them it went.';
 
 /**
  * K9 B5 (autonomy stage 1): under an approved plan this refusal fires only for a

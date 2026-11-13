@@ -1,6 +1,11 @@
 import { rewriteDropsFacts } from './rewriteKeepsFacts';
 import { relayInMeetingChat } from './meetingChat.service';
-import { introductionMayGo, introductionWaitsLine } from './introYesGate';
+import {
+  INTRODUCTION_DECLINED,
+  INTRODUCTION_UNCLEAR,
+  introductionMayGo,
+  introductionWaitsLine,
+} from './introYesGate';
 import { GET_MY_WHATSAPP_SETTING_DESCRIPTION, myWhatsappSetting } from './tools/myWhatsappSetting';
 import { offersMatching, withOffers } from './tools/searchOffers';
 import { maskPersonalIds } from './personalIdMask';
@@ -494,6 +499,7 @@ import {
   forgetWebSearches,
   searchRoundNote,
 } from './webSearchRounds';
+import { IntroConsent, readIntroConsent, recentExchange } from './introConsentReader';
 import { askTheWorldOrRecall, worldAnswerSwitchOn } from './worldAnswer.service';
 import { isFreeOfficialPageRead } from './officialPageRead';
 import { withoutOurSideApology } from './ourSideApology';
@@ -11038,13 +11044,20 @@ async function executeToolCall(
       const goalForIntro = threadId == null ? null : await getOpenTaskByThread(threadId);
       // 5347: in a link's own request thread, the request that goes on is the owner's.
       const passedOn = threadId == null ? null : await requestThisThreadPassesOn(userId, threadId);
-      if (passedOn === null && !(await introductionHasTheYes(threadId, goalForIntro, input))) {
+      const consent =
+        passedOn === null
+          ? await introductionHasTheYes(threadId, goalForIntro, input, { userId, runId })
+          : IntroConsent.Yes;
+      if (consent !== IntroConsent.Yes) {
+        const planApproved = Boolean(goalForIntro?.plan && goalForIntro.plan_approved_at);
         return {
           success: false,
           sent: false,
-          error: introductionWaitsLine(
-            Boolean(goalForIntro?.plan && goalForIntro.plan_approved_at),
-          ),
+          error: planApproved
+            ? introductionWaitsLine(true)
+            : consent === IntroConsent.No
+              ? INTRODUCTION_DECLINED
+              : INTRODUCTION_UNCLEAR,
         };
       }
       const introOutcome =
@@ -13868,7 +13881,8 @@ async function introductionHasTheYes(
   threadId: number | null | undefined,
   goal: Task | null,
   input: Record<string, unknown>,
-): Promise<boolean> {
+  origin: { readonly userId: string; readonly runId?: string },
+): Promise<IntroConsent> {
   const mediatorPhone = String(input['mediator_phone'] ?? '');
   const targetName = String(input['target_name'] ?? '');
   const plan = goal === null ? null : planInForce(goal);
@@ -13881,16 +13895,28 @@ async function introductionHasTheYes(
     approved &&
     targetName.trim() !== '' &&
     routeIntroductions(plan).some((intro) => ownerNamedAGoBetween(intro.toName, [targetName]));
-  return introductionMayGo({
+  const mediatorName = String(input['mediator_name'] ?? '');
+  // Misho, 13 Nov: up to the last ten messages, so a „კი" is read with what it answers.
+  const exchange = threadId == null ? [] : await recentExchange(threadId);
+  const recentReplies = exchange
+    .filter((line) => line.startsWith('ASSISTANT: '))
+    .map((line) => line.slice('ASSISTANT: '.length))
+    .reverse();
+  const quickYes = introductionMayGo({
     passesARequestOn: false,
     approvedPlanIntroducesThem,
     approvedPlanNamesTheGoBetween,
     ownerSpokeSinceTheAnswer: threadId == null ? false : await ownerSpokeSinceTheAnswer(threadId),
     ownerLines: threadId == null ? [] : await ownersRecentLines(threadId),
     replyTheOwnerAnswered: threadId == null ? '' : await replyTheOwnerAnswered(threadId),
-    mediatorName: String(input['mediator_name'] ?? ''),
+    recentReplies,
+    mediatorName,
     targetName,
   });
+  if (quickYes) return IntroConsent.Yes;
+  if (threadId == null) return IntroConsent.Unclear;
+  // No set phrase is demanded: a small model reads the conversation and says what the owner meant.
+  return readIntroConsent(exchange, mediatorName, targetName, { ...origin, threadId });
 }
 
 /** How buildShownAnswersWakeEvent opens, after the event prefix. */

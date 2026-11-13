@@ -42,13 +42,49 @@ describe('a yes to the introduction the reply offered', () => {
     ).toBe(false);
   });
 
-  it('is held when the owner’s latest line does not name the go-between', () => {
+  it('is held when the owner’s latest line moved on to something else', () => {
     expect(
       introductionMayGo({
         ...none,
         mediatorName: 'Erekle Leavingstone',
         replyTheOwnerAnswered: offered,
-        ownerLines: ['კი კითხე ერეკლესაც', 'სხვა ქსელები მომიძებნე'],
+        // Newest first: the owner's latest line asks for other networks.
+        ownerLines: ['სხვა ქსელები მომიძებნე', 'კი კითხე ერეკლესაც'],
+      }),
+    ).toBe(false);
+  });
+
+  /** Misho, 13 Nov: „კი" alone, to a reply that offered this introduction, is the yes. */
+  it('goes on a plain „კი" to the reply that offered it', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        mediatorName: 'Erekle Leavingstone',
+        replyTheOwnerAnswered: offered,
+        ownerLines: ['კი'],
+      }),
+    ).toBe(true);
+  });
+
+  it('goes when the offer sits a few replies back and the last one only asks „shall I send?"', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        mediatorName: 'Erekle Leavingstone',
+        replyTheOwnerAnswered: 'ერეკლეს მივწერო ამ ტექსტით?',
+        recentReplies: ['ერეკლეს მივწერო ამ ტექსტით?', offered],
+        ownerLines: ['კი'],
+      }),
+    ).toBe(true);
+  });
+
+  it('is held on „no", whatever was offered', () => {
+    expect(
+      introductionMayGo({
+        ...none,
+        mediatorName: 'Erekle Leavingstone',
+        replyTheOwnerAnswered: offered,
+        ownerLines: ['არა, ჯერ არ მინდა'],
       }),
     ).toBe(false);
   });
@@ -137,8 +173,9 @@ describe('#8946: an introduction goes only on the owner’s word', () => {
 
   it('is wired before the send, and a request passed on skips it', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toMatch(
-      /if \(passedOn === null && !\(await introductionHasTheYes\(threadId, goalForIntro, input\)\)\) \{\s+return \{\s+success: false,\s+sent: false,\s+error: introductionWaitsLine\(/,
+    expect(chat).toContain(
+      'passedOn === null\n          ? await introductionHasTheYes(threadId, goalForIntro, input, { userId, runId })\n          : IntroConsent.Yes;',
     );
+    expect(chat).toContain('if (consent !== IntroConsent.Yes) {');
   });
 });
