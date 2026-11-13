@@ -487,6 +487,13 @@ import {
   OpeningSearches,
   goalAsksToReachAPerson,
 } from './openingSearch.service';
+import {
+  countWebSearch,
+  FIRST_SEARCH_IN_GEORGIAN,
+  firstSearchNotInGeorgian,
+  forgetWebSearches,
+  searchRoundNote,
+} from './webSearchRounds';
 import { askTheWorldOrRecall, worldAnswerSwitchOn } from './worldAnswer.service';
 import { isFreeOfficialPageRead } from './officialPageRead';
 import { withoutOurSideApology } from './ourSideApology';
@@ -4710,6 +4717,7 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     description:
       'Search the web for public information about a person, company, or topic. Use after finding a contact in the database to enrich with LinkedIn, company details, news, or other public info. Also use when the user asks general questions that require up-to-date information.' +
       ' WHEN: for who holds a role now, which firms exist in a category, and whether an organisation is still alive. ' +
+      'The first search is always written in Georgian. When it does not answer, write up to five different searches, choosing each next one yourself (other words, English or Russian, the organisation’s own site, news). ' +
       RULE_280_WEB_LEADS_ARE_PEOPLE +
       ' ' +
       RULE_A_WEB_LEAD_DETAILS +
@@ -10412,6 +10420,7 @@ function clearRunState(runId: string): void {
   runThankedAHelper.delete(runId);
   runPostponedAnAnswer.delete(runId);
   forgetFactHolds(runId);
+  forgetWebSearches(runId);
 }
 
 /**
@@ -10650,6 +10659,14 @@ async function executeToolCall(
     // eslint-disable-next-line no-console
     console.log(`[tools] run ${runId}: ${name} held for this turn`);
     return { error: TOOL_HELD_THIS_TURN };
+  }
+  // Misho, 13 Nov: the first web search is in Georgian; refused before it spends the budget.
+  if (
+    name === WEB_SEARCH_TOOL &&
+    runId !== undefined &&
+    firstSearchNotInGeorgian(runId, String(input['query'] ?? ''))
+  ) {
+    return { found: false, error: FIRST_SEARCH_IN_GEORGIAN };
   }
   const freeOfficialRead =
     runId !== undefined && isFreeOfficialPageRead(name, input, runOfficialReads.get(runId) ?? 0);
@@ -10923,9 +10940,12 @@ async function executeToolCall(
         creditSearchTime(runId + WEB_BUDGET_KEY_SUFFIX, Date.now() - wayInStartedAt);
       }
       noteWaysIn(runId, withoutNamesakes(String(input['query'] ?? ''), waysIn));
-      if (waysIn.size === 0) return found;
+      const round =
+        runId === undefined ? {} : { search_round: searchRoundNote(countWebSearch(runId)) };
+      if (waysIn.size === 0) return { ...(found as Record<string, unknown>), ...round };
       return {
         ...(found as Record<string, unknown>),
+        ...round,
         ways_in: Object.fromEntries(waysIn),
         ways_in_note: WAY_IN_TOOL_NOTE,
       };

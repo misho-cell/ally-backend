@@ -347,7 +347,8 @@ export async function webSearch(query: string): Promise<object> {
   if ((await webSearchProvider()) === WebSearchProvider.Gemini) {
     let hits: GeminiHit[] | null = null;
     try {
-      hits = await geminiSearch(enrichedQuery, geminiKey());
+      // Gemini reads a Georgian question as written; a Latin copy glued on garbles a sentence.
+      hits = await geminiSearch(query, geminiKey());
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[web-search] gemini failed, trying tavily: ${(err as Error).message}`);
