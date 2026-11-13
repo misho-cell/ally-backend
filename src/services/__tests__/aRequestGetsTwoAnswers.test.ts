@@ -236,7 +236,7 @@ describe('the two answers in the chat', () => {
   });
 
   it('tells the first run its answer is the quick one', () => {
-    expect(chat).toContain("(lateSearch === null ? '' : QUICK_ANSWER_NOTE)");
+    expect(chat).toContain("(autoGoalId === null ? '' : QUICK_ANSWER_NOTE)");
   });
 
   it('hands the findings to the run that comes first: this one mid-way, or the next', () => {

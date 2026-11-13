@@ -169,6 +169,7 @@ import { safetyReplyFor } from './safetyWorry';
  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
  */
 const OFFER_TOOLS_ON = true;
+import { readSearchIntent, SearchIntent } from './searchIntent.service';
 import { researchWaiting, runFullResearch, takeResearch } from './fullResearch.service';
 import { searchNeeds } from './tools/searchNeeds';
 import { searchMeanings } from './tools/searchMeanings';
@@ -14629,6 +14630,8 @@ async function postWorldAnswer(
 interface LateOpeningSearch {
   /** The prompt section, once the search has landed — once, and never twice. */
   takeIfReady(): string | null;
+  /** A goal's opening searches; a request with no goal gets the web's half alone (13 Nov). */
+  readonly forGoal: boolean;
 }
 
 function startOpeningSearches(
@@ -14642,9 +14645,17 @@ function startOpeningSearches(
   let landed: OpeningSearches | null = null;
   let delivered = false;
   const askedAt = new Date();
-  runWebCardFromGoal.add(runId);
-  void runOpeningSearches(userId, goalText, runId, threadId)
+  // The card is a goal's (#1356); a chat's web search is told in the model's own words.
+  if (taskId !== null) runWebCardFromGoal.add(runId);
+  // Misho, 13 Nov: a request with no goal gets the web's half only, when it asks one.
+  const wanted =
+    taskId !== null ? Promise.resolve(true) : webIsWanted(userId, goalText, runId, threadId);
+  void wanted
+    .then((go) =>
+      go ? runOpeningSearches(userId, goalText, runId, threadId, taskId !== null) : null,
+    )
     .then((found) => {
+      if (found === null) return;
       landed = found;
       if (taskId !== null && found.query !== undefined) {
         startFullResearch(userId, threadId, taskId, found.query, goalText, askedAt);
@@ -14667,6 +14678,7 @@ function startOpeningSearches(
       console.error('[opening-search] failed after the run moved on:', (err as Error).message);
     });
   return {
+    forGoal: taskId !== null,
     takeIfReady(): string | null {
       if (landed === null || delivered) return null;
       delivered = true;
@@ -14677,6 +14689,22 @@ function startOpeningSearches(
 
 /** Exported for its own test — the delivery contract is what can go wrong quietly. */
 export const __startOpeningSearchesForTest = startOpeningSearches;
+
+/**
+ * Misho, 13 Nov: the web is searched for most requests, an organisation always,
+ * and not when the owner asks only to look in their contacts (searchIntent).
+ */
+async function webIsWanted(
+  userId: string,
+  ownerLine: string,
+  runId: string,
+  threadId: number,
+): Promise<boolean> {
+  const intent = await readSearchIntent(ownerLine, { userId, runId, threadId });
+  // eslint-disable-next-line no-console
+  console.log(`[search-intent] run ${runId}: ${intent}`);
+  return intent === SearchIntent.Web;
+}
 
 /** The event that brings the full research as the goal's second answer, in the conversation's language. */
 export const FULL_RESEARCH_EVENT: Readonly<Record<RunLanguage, string>> = {
@@ -16687,8 +16715,8 @@ async function runToolLoop(
   const answeredWithoutSearching =
     !ownerAbsent &&
     toolNamesUsed.length === 0 &&
-    ((lateSearch !== null && !/[?？]\s*$/u.test(finalText.trim())) ||
-      (askedAboutOwnPeople && (lateSearch !== null || ownersQuickRun)));
+    ((lateSearch?.forGoal === true && !/[?？]\s*$/u.test(finalText.trim())) ||
+      (askedAboutOwnPeople && (lateSearch?.forGoal === true || ownersQuickRun)));
   // #960 (the tester's 1145): a goal run that never listed them — read from the phonebook.
   // The tester's 1149 (38116): a quick answer that saved the goal is a goal run too.
   const bookMembersSkipped =
@@ -18611,17 +18639,20 @@ export async function processChat(
    * VIN.GE, and told the owner it had found them a contact there.
    */
   // #8779 group 4: no word list skips the opening searches on a goal any more.
+  // Misho, 13 Nov: a request that opens no goal still gets the web, when it asks for one.
   const lateSearch =
-    autoGoalId === null
-      ? null
-      : startOpeningSearches(userId, userMessage, runId, threadId, autoGoalId);
+    autoGoalId !== null
+      ? startOpeningSearches(userId, userMessage, runId, threadId, autoGoalId)
+      : ownerAbsent || userMessage.trim() === ''
+        ? null
+        : startOpeningSearches(userId, userMessage, runId, threadId);
   // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
   const worldAnswerWork =
     !ownerAbsent && worldAnswerIsDue(autoGoalId !== null, userMessage)
       ? worldAnswerFor(userId, threadId, runId, userMessage, language)
       : Promise.resolve(null);
   // #397: the opening searches are the run's first search; the line says so.
-  if (lateSearch !== null) {
+  if (autoGoalId !== null) {
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
   }
 
@@ -18908,7 +18939,7 @@ export async function processChat(
     // #1123: told in THIS run only, so no always-on line reads as „cannot send" (#1090).
     (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '') +
     (worldAnswer === null ? '' : worldAnswerSection(worldAnswer)) +
-    (lateSearch === null ? '' : QUICK_ANSWER_NOTE) +
+    (autoGoalId === null ? '' : QUICK_ANSWER_NOTE) +
     (await fullResearchForRun(userId, threadId, runId));
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.

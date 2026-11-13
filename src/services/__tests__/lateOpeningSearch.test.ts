@@ -32,15 +32,22 @@ describe('the opening searches arrive late, once, and only when they exist', () 
     }));
   });
 
+  /** Every queued step of the search's promise chain, run to the end. */
+  const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
   async function startWith(promise: Promise<unknown>): Promise<{ takeIfReady(): string | null }> {
     const opening = await import('../openingSearch.service');
     (opening.runOpeningSearches as jest.Mock).mockReturnValue(promise);
     mod = await import('../chat.service');
     return (
-      mod as {
-        __startOpeningSearchesForTest: (...a: unknown[]) => { takeIfReady(): string | null };
-      }
-    ).__startOpeningSearchesForTest('501', 'need a vet', 'run1', 1);
+      (
+        mod as {
+          __startOpeningSearchesForTest: (...a: unknown[]) => { takeIfReady(): string | null };
+        }
+      )
+        // A goal's opening searches (Misho, 13 Nov: a request with no goal asks the intent first).
+        .__startOpeningSearchesForTest('501', 'need a vet', 'run1', 1, 7)
+    );
   }
 
   it('gives nothing back while the search is still running', async () => {
@@ -52,16 +59,14 @@ describe('the opening searches arrive late, once, and only when they exist', () 
 
   it('hands the section over once it lands', async () => {
     const late = await startWith(Promise.resolve({ web: 'found', waysIn: new Map() }));
-    await Promise.resolve();
-    await Promise.resolve();
+    await settle();
 
     expect(late.takeIfReady()).toBe('SECTION:found');
   });
 
   it('hands it over ONCE — a second round must not repeat it', async () => {
     const late = await startWith(Promise.resolve({ web: 'found', waysIn: new Map() }));
-    await Promise.resolve();
-    await Promise.resolve();
+    await settle();
 
     expect(late.takeIfReady()).toBe('SECTION:found');
     expect(late.takeIfReady()).toBeNull();
@@ -72,8 +77,7 @@ describe('the opening searches arrive late, once, and only when they exist', () 
     // A first reply must not depend on either search succeeding — that was
     // true when it blocked and it is still true now.
     const late = await startWith(Promise.reject(new Error('statement timeout')));
-    await Promise.resolve();
-    await Promise.resolve();
+    await settle();
 
     expect(late.takeIfReady()).toBeNull();
   });
