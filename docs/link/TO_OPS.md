@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 09:50Z — web search: the first search is in Georgian, then up to 5 the model chooses (main 9c55a0fa), on Misho's own request
+
+A real member asked „who heads Rompetrol Georgia". Our one web search was in English, found the group's Romanian pages and never the Georgian director; a Georgian search answers it (the member checked on Google).
+
+- The first web search of a run is in Georgian. One without Georgian is refused (before the search budget), and asked again in Georgian; later searches may be any language.
+- Each result carries „search N of up to 5": if it did not answer, the run writes a different next search itself (other words, English or Russian, the company's own site, news); at the fifth it says what it found and what it did not.
+- Gemini gets the Georgian question as written; the Latin transliteration glued on for name matching stays for Tavily only.
+
+- DONE WHEN: a question about a Georgian company's officeholder (e.g. Rompetrol's director) is answered from a Georgian search without the member having to paste the link; a question the first search misses triggers a visibly different second search.
+
 ### 12 Nov, 18:55Z — alerts 364, 365 (real member): an introduction refused after the owner's yes; fixed (main 730e83d4)
 
 The reply offered „ask Erekle whether Giorgi Maisuradze can introduce you?", and the owner wrote „yes, ask Erekle too". request_introduction was refused four times as „no yes to this person", and ask_contact was refused as „that is an introduction". He had to type a set sentence before it went.
