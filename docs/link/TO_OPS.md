@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 14:00Z — search stage 3 LIVE: levels 3-5 read all data, run every time (main 0da64c93)
+
+- The far walk (levels 3-5, through Netai members) matched only what a holder saved someone under. It now also reads what the person is known for, by the same shared rule as the nearer circles: non-sensitive facts, research confirmed/possible, the member's own profession/industry, active offers.
+- The second-circle search walks further out every time (it used to only when it found nobody). A person already shown is not repeated.
+- The name search walks from the second circle on, so a name one ring out is no longer called „third circle".
+- Up to ten far hits (was five).
+- Cost on prod, worst case (all members as one ring): 4.5 s cold, 1.3 s warm; real rings are far smaller.
+- Outage check 15m: 0 errors, /health OK, but no traffic in the window — please watch the next real searches.
+- DONE WHEN: a search for a skill held only as a fact about someone three or more handshakes away returns them under further_out with the chain.
+
 ### 13 Nov, 13:50Z — search stage 2 LIVE: the own circle reads all data, one shared rule with the second circle (main 7e88bbed)
 
 - One list (`src/services/tools/searchableData.ts`) now decides what finds a person, for the own-circle and second-circle searches: every fact kind but the sensitive ones (needs included), research facts confirmed/possible, active offers.
