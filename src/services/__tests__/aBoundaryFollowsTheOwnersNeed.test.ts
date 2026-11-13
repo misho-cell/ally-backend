@@ -119,7 +119,9 @@ describe('#1694: wired into every search the run makes', () => {
   it('filters before the run notes who it found', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('const result = withoutWithheldPeople(found, withheld);');
-    expect(chat).toContain('{ further_out: await farMembersHolding(Number(userId), words) },');
+    expect(chat).toContain(
+      '{ further_out: await farMembersHolding(Number(userId), words, firstRing) },',
+    );
     expect(chat).toContain('runWithheldByOwnerLine.delete(runId);');
   });
 });

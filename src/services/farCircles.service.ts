@@ -1,3 +1,5 @@
+import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from './researchFactsView';
+import { PROFILE_KEYS_MATCHED, SENSITIVE_FACT_TYPES } from './tools/searchableData';
 import { query } from '../db/postgres/client';
 import { IS_MEMBER_SQL } from './memberPaths.service';
 import { normalizePhone, phoneDigits } from './phone';
@@ -26,7 +28,8 @@ const MAX_PEOPLE_IN_THE_MIDDLE = 4;
 const FIRST_RING_SEARCHED_HERE = 2;
 const PEOPLE_PER_RING = 300;
 const HITS_READ = 20;
-export const HITS_SHOWN = 5;
+/** Misho, 13 Nov: ten people further out, not five, each with the chain that reaches them. */
+export const HITS_SHOWN = 10;
 const MIN_WORD_CHARS = 3;
 const QUERY_TIMEOUT_MS = 8_000;
 
@@ -104,6 +107,36 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
            FROM "UserAlias" ua
           WHERE ua."contactId" = ANY($1::int[])
          UNION ALL
+         -- Misho, 13 Nov: what the person is known for finds them this far out
+         -- too, read by the same rule as the nearer circles (searchableData):
+         -- every fact kind but the sensitive ones, researched facts confirmed
+         -- or possible, the member's own profession and industry, active offers.
+         SELECT ua_f."contactId", ua_f.phone, ua_f.alias, f.words
+           FROM (
+             SELECT cf.neo4j_contact_id AS phone,
+                    normalize_search_token(COALESCE(cf.canonical_value, cf.value)) AS words
+               FROM contact_facts cf
+              WHERE cf.retracted_at IS NULL
+                AND cf.removed_by_subject_at IS NULL
+                AND cf.field_type <> ALL($4::text[])
+                AND (cf.is_public OR cf.is_matchable
+                     OR (cf.source = $5 AND cf.research_status = ANY($6::text[])))
+                AND NOT (cf.source = $5 AND cf.research_status <> ALL($6::text[]))
+             UNION ALL
+             SELECT upk.phone, normalize_search_token(kv.value)
+               FROM user_profile_kv kv
+               JOIN "UserPhone" upk ON upk."userId"::text = kv.user_id
+              WHERE kv.key = ANY($7::text[])
+             UNION ALL
+             SELECT upo.phone, normalize_search_token(o.text)
+               FROM offers o
+               JOIN "UserPhone" upo ON upo."userId" = o.user_id
+              WHERE o.active
+           ) f
+           JOIN "UserAlias" ua_f ON ua_f.phone = f.phone
+          WHERE ua_f."contactId" = ANY($1::int[])
+            AND f.words LIKE ALL($2::text[])
+         UNION ALL
          SELECT ut."contactId", ut.phone,
                 COALESCE(
                   (SELECT NULLIF(TRIM(a.alias), '') FROM "UserAlias" a
@@ -116,7 +149,15 @@ async function savedUnder(ring: readonly Link[], patterns: readonly string[]): P
        ) x
       WHERE x.words LIKE ALL($2::text[])
       LIMIT $3`,
-    [ring.map((link) => link.userId), patterns, HITS_READ],
+    [
+      ring.map((link) => link.userId),
+      patterns,
+      HITS_READ,
+      SENSITIVE_FACT_TYPES,
+      RESEARCH_SOURCE,
+      MATCHED_RESEARCH_STATUSES,
+      PROFILE_KEYS_MATCHED,
+    ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
@@ -170,11 +211,21 @@ async function hitsFrom(
   return [...found.values()].slice(0, HITS_SHOWN);
 }
 
-/** Who, beyond the second circle, is saved under these words, with the chain of members to them. */
-export async function farMembersHolding(ownerId: number, text: string): Promise<FarHit[]> {
+/**
+ * Who, beyond the second circle, is saved under these words or known for them,
+ * with the chain of members to them. A name search passes firstRing 1: the
+ * second circle was not searched for a name, and starting past it found
+ * Likuna (in Tornike's own phonebook, two steps) along a longer chain and
+ * called her three steps away.
+ */
+export async function farMembersHolding(
+  ownerId: number,
+  text: string,
+  firstRing: number = FIRST_RING_SEARCHED_HERE,
+): Promise<FarHit[]> {
   const patterns = wordPatterns(text);
   if (patterns.length === 0) return [];
-  return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId), patterns));
+  return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId), patterns, firstRing));
 }
 
 /**

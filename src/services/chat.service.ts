@@ -1300,19 +1300,37 @@ const FURTHER_OUT_NOTE =
   'call find_warm_path with this phone id for the route. The request travels assistant to ' +
   'assistant from the first link on.';
 
+/** A name search walks out from the second circle: it never searched it. */
+const NAME_SEARCH_FIRST_RING = 1;
+
+/** The people a search result already shows, as digits, so a further-out list never repeats them. */
+function phonesShownIn(found: object): Set<string> {
+  const results = (found as { results?: unknown }).results;
+  if (!Array.isArray(results)) return new Set();
+  return new Set(
+    results
+      .map((row) => (row as { phone?: unknown }).phone)
+      .filter((phone): phone is string => typeof phone === 'string')
+      .map((phone) => phoneDigits(phone)),
+  );
+}
+
 /** Further-out people for an empty search; the search unchanged when there are none or the walk fails. */
 export async function withFurtherOut<T extends object>(
   userId: string,
   words: unknown,
   found: T,
   runId?: string,
+  /** Misho, 13 Nov: 1 for a name search, whose second circle was never searched. */
+  firstRing?: number,
 ): Promise<T | (T & { further_out: FarHit[]; further_out_note: string })> {
   if (typeof words !== 'string') return found;
   try {
+    const shown = phonesShownIn(found);
     const further = withoutWithheldPeople(
-      { further_out: await farMembersHolding(Number(userId), words) },
+      { further_out: await farMembersHolding(Number(userId), words, firstRing) },
       await withheldForRun(runId, userId),
-    ).further_out;
+    ).further_out.filter((hit) => !shown.has(phoneDigits(hit.phone)));
     if (runId !== undefined) {
       noteFoundFurtherOut(runId, further);
       // #1849 world Y: the walk to one of them is the route, never a refused ninth search.
@@ -10736,6 +10754,7 @@ async function executeToolCall(
           input['name_query'],
           { ...registeredNameOnlyWhenAsked(byName, aboutTheName), look_further: LOOK_ONE_RING_OUT },
           runId,
+          NAME_SEARCH_FIRST_RING,
         );
       }
       // #7758 (tester 79008): who belongs to which group, current or former, rides with the row.
@@ -10818,9 +10837,13 @@ async function executeToolCall(
         if (threadId !== undefined && typeof input['tag_query'] === 'string') {
           noteSecondDegreeResult(threadId, input['tag_query'], found);
         }
+        // Misho, 13 Nov: levels 3-5 are searched every time, not only when the
+        // second circle is empty; whoever is already shown is not repeated.
         return secondCircleEmpty(found)
           ? withFurtherOut(userId, input['tag_query'], found, runId)
-          : withWarmRoutes(userId, input['tag_query'], found, runId);
+          : withWarmRoutes(userId, input['tag_query'], found, runId).then((warm) =>
+              withFurtherOut(userId, input['tag_query'], warm, runId),
+            );
       });
       // The tester's 1102 (C10): the second circle was searched under one word, so a
       // vet saved as „ვეტექიმი" by one friend was never found when another friend's

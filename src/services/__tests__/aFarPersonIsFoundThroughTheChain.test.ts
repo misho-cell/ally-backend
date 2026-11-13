@@ -127,8 +127,8 @@ describe('a person beyond the second circle', () => {
     expect(hit.hops).toBe(3);
   });
 
-  it('shows at most a handful', () => {
-    expect(HITS_SHOWN).toBeLessThanOrEqual(5);
+  it('shows ten at most (Misho, 13 Nov: levels 3-5 show ten like the circles before them)', () => {
+    expect(HITS_SHOWN).toBe(10);
   });
 });
 
