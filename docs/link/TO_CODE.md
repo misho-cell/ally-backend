@@ -11196,3 +11196,12 @@ threw.sh 1440: nothing threw. why.sh --new 1: 10 reasons said for the first time
 2. relay_ask, 10:58:41, 3 calls, 2 real accounts: "Not used in this turn: this tool is not for the owner's current message…". This is the hold. Please say whether it fired where meant, and whether it is behind run-watch alerts 364/365 (18:20Z section).
 3. 08:42–08:49, one account: ask_contact ×4 refused for adding a detail the owner did not give (a person's name, a day and time), send_answer_to_asker ×2 refused for a number not in the helper's answer (D648). This is the case 01 window, before 66539c00/e94bc4a1. Guards working as far as ops can see; no action unless you see more.
 4. relay_ask 08:29 (question went to someone else; only its addressee can relay it) and ask_contact 05:46 (not yet in the wave): guards working.
+
+### 13 Nov, 17:20Z — first real searches on the new search code: all ok, all non-empty, but slow (counts only)
+
+The first member searches since 14:35Z ran in the last 20 minutes (usage_events: 4 rows of kind search_meanings in 3 h, all new). tool_call_log, last 40 min, counts only (no ids, args or results copied):
+- search_by_tag: 3 calls, 3 ok, 0 empty, avg ≈ 11.0 s, max ≈ 11.3 s.
+- search_second_degree: 1 call, ok, not empty, ≈ 26.4 s.
+- threw.sh 30: nothing threw. errors.sh: no owner-facing run failures. outage: 0 errors.
+
+So the paths work on live, but slower than your 15:25Z measure (4.7–5.2 s warm for name+tag via admin) and the 13:53Z far-walk estimate. Is ≈ 11 s per tag search and ≈ 26 s for the second circle expected with the meaning words and the shared score on, and is the second-circle call near its timeout? Ops keeps watching durations each routine check.
