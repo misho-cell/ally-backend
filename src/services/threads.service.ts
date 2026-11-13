@@ -125,6 +125,8 @@ interface ThreadRow extends Thread {
   followed?: boolean;
   /** The frontend's 06:30Z item 3: who the owner is in this conversation's work (THREAD_ROLE_SQL). */
   role?: ThreadRole | null;
+  /** #9046: how many people this case waits to hear from (WAITING_FOR_SQL); 0 when none. */
+  waiting_for?: number;
   // Public ref of the linked introduction request (null on regular threads) —
   // what the client posts to /requests/:ref/{accept,decline,snooze}.
   request_ref: string | null;
@@ -392,6 +394,30 @@ const THREAD_ROLE_SQL = `CASE
          ELSE NULL
        END`;
 
+/**
+ * #9046 (Giorgi, 9 Nov): each case card says „ველოდები N-ის პასუხს" — the
+ * number of distinct people the owner's own case waits to hear from: its
+ * questions sent and not yet answered or expired, its introduction requests
+ * still with the go-between, and accepted ones whose person has not answered
+ * yet. A go-between or a target who has not got an account counts once too.
+ */
+const WAITING_FOR_SQL = `(SELECT COUNT(DISTINCT w.who)::int FROM (
+         SELECT ta.to_user_id::text AS who FROM task_asks ta
+          WHERE goal.id IS NOT NULL AND ta.task_id = goal.id
+            AND ta.status = 'sent' AND ta.expired_at IS NULL
+         UNION
+         SELECT CASE WHEN r.status = 'pending'
+                     THEN COALESCE(r.mediator_user_id::text, 'request-' || r.id)
+                     ELSE COALESCE(r.target_user_id::text, 'target-' || r.id) END
+          FROM introduction_requests r
+          WHERE r.requester_user_id::text = t.user_id::text
+            AND (r.requester_thread_id = t.id OR r.origin_thread_id = t.id
+                 OR (goal.id IS NOT NULL AND r.requester_task_id = goal.id))
+            AND (r.status = 'pending'
+                 OR (r.status = 'accepted' AND r.target_asked_at IS NOT NULL
+                     AND r.target_answered_at IS NULL))
+       ) w WHERE w.who IS NOT NULL)`;
+
 /** The kinds of row written for a person to read; see `getThreadMessages` for how they were counted. */
 export const SHOWN_TO_A_PERSON: readonly string[] = ['message', 'pending', 'error'];
 const SHOWN_KINDS_SQL = SHOWN_TO_A_PERSON.map((k) => `'${k}'`).join(', ');
@@ -419,7 +445,8 @@ const THREAD_LIST_COLUMNS = `t.id,
        goal.id AS goal_id,
        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
        t.followed_at IS NOT NULL AS followed,
-       ${THREAD_ROLE_SQL} AS role`;
+       ${THREAD_ROLE_SQL} AS role,
+       ${WAITING_FOR_SQL} AS waiting_for`;
 
 // `shared_ir`: the pending request written into this thread by row 305 (b).
 // At most one — `requestIntroduction` never puts a second pending request into
