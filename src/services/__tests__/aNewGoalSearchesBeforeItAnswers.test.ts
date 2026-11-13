@@ -20,9 +20,14 @@ describe('a run that opened a goal and searched nothing', () => {
 
   it('fires only on a goal opened from a stated need, with no tool, and no question back', () => {
     expect(chat).toContain('toolNamesUsed.length === 0 &&');
-    expect(chat).toContain('((lateSearch !== null && !/[?？]\\s*$/u.test(finalText.trim())) ||');
+    // Misho, 13 Nov: a request with no goal has a web-only opening search; this stays the goal's.
+    expect(chat).toContain(
+      '((lateSearch?.forGoal === true && !/[?？]\\s*$/u.test(finalText.trim())) ||',
+    );
     // The tester's 1152 (38606): a quick answer with no opening search, asked about own people.
-    expect(chat).toContain('(askedAboutOwnPeople && (lateSearch !== null || ownersQuickRun)));');
+    expect(chat).toContain(
+      '(askedAboutOwnPeople && (lateSearch?.forGoal === true || ownersQuickRun)));',
+    );
     expect(chat).toContain('? SEARCH_FIRST_NUDGE');
   });
 

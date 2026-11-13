@@ -15,10 +15,9 @@ describe('the „From the web" card', () => {
     expect(chat).toContain('return fromGoal ? waysIn : new Map<string, WayIn>();');
   });
 
-  it('is marked when the opening search starts, and cleared with the run', () => {
-    expect(chat).toContain(
-      '  runWebCardFromGoal.add(runId);\n  void runOpeningSearches(userId, goalText, runId, threadId)',
-    );
+  it('is marked when a goal’s opening search starts, and cleared with the run', () => {
+    // Misho, 13 Nov: a request with no goal gets the web too, told in the model's own words.
+    expect(chat).toContain('  if (taskId !== null) runWebCardFromGoal.add(runId);\n');
     expect(chat).toContain('  runWebCardFromGoal.delete(runId);\n');
   });
 });

@@ -216,6 +216,12 @@ export async function runOpeningSearches(
   goalText: string,
   runId: string,
   threadId: number,
+  /**
+   * Misho, 13 Nov: a request that opens no goal gets the web's half only — the
+   * model searches the owner's network itself, and a second-circle search beside
+   * it slowed both on live.
+   */
+  withSecondCircle = true,
 ): Promise<OpeningSearches> {
   const query = goalText.trim().slice(0, MAX_QUERY_CHARS);
   if (query === '') return { web: null, secondDegree: null, missing: [], waysIn: new Map() };
@@ -406,17 +412,24 @@ export async function runOpeningSearches(
 
   const [web, secondDegree] = await Promise.all([
     reachingForAPerson ? Promise.resolve(null) : withBudget(startWebWork(), 'web_search'),
-    withBudget(
-      logged('search_second_degree', searchSecondDegree(userId, searched.query), false, searched),
-      'search_second_degree',
-    ),
+    withSecondCircle
+      ? withBudget(
+          logged(
+            'search_second_degree',
+            searchSecondDegree(userId, searched.query),
+            false,
+            searched,
+          ),
+          'search_second_degree',
+        )
+      : Promise.resolve(null),
   ]);
   const missing: string[] = [];
   // A search we CHOSE not to run is not missing. `missing` exists so the prompt
   // can be honest about what failed to arrive, and an apology for a deliberate
   // decision would be a false one.
   if (web === null && !reachingForAPerson) missing.push('web_search');
-  if (secondDegree === null) missing.push('search_second_degree');
+  if (secondDegree === null && withSecondCircle) missing.push('search_second_degree');
   return {
     web,
     secondDegree,
