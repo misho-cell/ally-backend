@@ -71,7 +71,7 @@ describe('1102 (a) — the second circle searches the profession’s other words
   });
 
   it('widens search_second_degree, at most three words, with the note', () => {
-    const handler = chat.slice(chat.indexOf("case 'search_second_degree': {")).slice(0, 2000);
+    const handler = chat.slice(chat.indexOf("case 'search_second_degree': {")).slice(0, 3000);
     expect(handler).toContain('(word) => searchSecondDegree(userId, word),');
     expect(handler).toContain('MAX_SECOND_CIRCLE_FAMILY_WORDS,');
     expect(chat).toContain('const MAX_SECOND_CIRCLE_FAMILY_WORDS = 3;');

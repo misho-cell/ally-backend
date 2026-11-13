@@ -3,7 +3,7 @@ jest.mock('../tools/findWarmPath', () => ({ __esModule: true, namesFor: jest.fn(
 
 import { query } from '../../db/postgres/client';
 import { namesFor } from '../tools/findWarmPath';
-import { farMembersHolding, HITS_SHOWN, wordPatterns } from '../farCircles.service';
+import { farMembersHolding, HITS_SHOWN, wordAlternatives } from '../farCircles.service';
 import { normalizePhone } from '../phone';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -30,7 +30,7 @@ function routeChain(saved: { holder: number; alias: string } | null): void {
       const chain = (params?.[1] ?? []) as string[];
       return { rows: chain.map((_, i) => ({ ord: i + 1, label: labels[i] ?? null })) } as never;
     }
-    if (sql.includes('LIKE ALL')) {
+    if (sql.includes('~ ALL')) {
       const rows =
         saved !== null && ring.includes(saved.holder)
           ? [{ holder_id: saved.holder, phone: '995599777000', alias: saved.alias }]
@@ -88,7 +88,7 @@ describe('a person beyond the second circle', () => {
     await farMembersHolding(OWNER, 'ნოტარიუსი');
 
     const searchedRings = mockQuery.mock.calls
-      .filter(([sql]) => String(sql).includes('LIKE ALL'))
+      .filter(([sql]) => String(sql).includes('~ ALL'))
       .map(([, params]) => (params as unknown[])[0]);
     expect(searchedRings).toEqual([[CHAIN[1]], [CHAIN[2]], [CHAIN[3]]]);
   });
@@ -98,7 +98,7 @@ describe('a person beyond the second circle', () => {
 
     await farMembersHolding(OWNER, 'ნოტარიუსი');
 
-    const searched = mockQuery.mock.calls.find(([sql]) => String(sql).includes('LIKE ALL'));
+    const searched = mockQuery.mock.calls.find(([sql]) => String(sql).includes('~ ALL'));
     expect(String(searched?.[0])).toContain('"UserTags"');
     expect(String(searched?.[0])).toContain('"UserAlias"');
   });
@@ -134,11 +134,11 @@ describe('a person beyond the second circle', () => {
 
 describe('the words compared', () => {
   it('drop the case ending and compare in the database’s own form', () => {
-    expect(wordPatterns('ზურაბ ქობულაძეს')).toEqual(['%zurab%', '%kobulaze%']);
+    expect(wordAlternatives('ზურაბ ქობულაძეს')).toEqual(['zurab', 'kobulaze']);
   });
 
   it('drop words under three letters', () => {
-    expect(wordPatterns('ის და ნოტარიუსი')).toEqual(['%notarius%']);
+    expect(wordAlternatives('ის და ნოტარიუსი')).toEqual(['notarius']);
   });
 });
 

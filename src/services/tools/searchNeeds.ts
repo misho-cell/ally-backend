@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { notAnExcludedHolder } from '../excludedHolders.service';
-import { wordPatterns } from '../farCircles.service';
+import { wordAlternatives } from '../farCircles.service';
+import { NO_MEANINGS, WordMeanings } from './transliterate';
 import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
 
 /**
@@ -73,7 +74,7 @@ const NEEDS_SQL = `WITH needs AS (
         AND (cf.is_public OR cf.is_matchable
              OR (cf.source = $4 AND cf.research_status = ANY($5::text[])))
         AND NOT (cf.source = $4 AND cf.research_status <> ALL($5::text[]))
-        AND normalize_search_token(COALESCE(cf.canonical_value, cf.value)) LIKE ALL($2::text[])
+        AND normalize_search_token(COALESCE(cf.canonical_value, cf.value)) ~ ALL($2::text[])
         AND NOT EXISTS (SELECT 1 FROM "UserPhone" me WHERE me."userId" = $1::int AND me.phone = cf.neo4j_contact_id)
       ORDER BY cf.neo4j_contact_id, cf.is_public DESC, cf.id DESC
       LIMIT $6)
@@ -122,8 +123,12 @@ export function nearestFirst(hits: readonly NeedHit[]): NeedHit[] {
     .slice(0, NEEDS_SHOWN);
 }
 
-export async function searchNeeds(userId: string, words: string): Promise<SearchNeedsResult> {
-  const patterns = wordPatterns(words);
+export async function searchNeeds(
+  userId: string,
+  words: string,
+  meanings: WordMeanings = NO_MEANINGS,
+): Promise<SearchNeedsResult> {
+  const patterns = wordAlternatives(words, meanings);
   if (patterns.length === 0) return { results: [], note: NEEDS_NOTE };
   const result = await query<NeedRow>(
     NEEDS_SQL,

@@ -42,7 +42,7 @@ function world(): void {
       return { rows } as never;
     }
     if (sql.includes('WITH ORDINALITY')) return { rows: [] } as never;
-    if (sql.includes('LIKE ALL')) {
+    if (sql.includes('~ ALL')) {
       const rows = ring
         .filter((id) => SOLVER_HOLDERS.includes(id))
         .map((id) => ({
