@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 15:00Z — meaning search and one shared score LIVE (main f1141da1, b58a3c83), on Misho's go
+
+- Meaning search (f1141da1): each concept word of a search is also searched by up to four words of the same meaning in Georgian, English and Russian, from a small model (usage kind `search_meanings`), remembered a day per search; any failure → the words as typed. Own circle, second circle, far circles and search_needs; name searches are never expanded.
+- One shared score (b58a3c83): a person matched by several different mentions (label, fact, profile, company tie; three at most) ranks above one matched once — after the searched words and the owner's own labels/need, before closeness. The far circles now order each ring's read by it before the cut (it was an arbitrary twenty).
+- Cost: one small-model call per new search (~1 s, cached); far worst case 4.8 s vs 3.2–4.6 s, under its 8 s timeout.
+- Outage checks: 0 errors, /health OK — but no search has run on live since; please watch the first real ones (usage_events kind search_meanings should appear).
+- DONE WHEN: a Georgian search („გაყიდვები") names a contact saved only under „sales"; a person matched by a tag and a fact ranks above one matched by a tag alone with the same words.
+
 ### 13 Nov, 14:35Z — search stage 4 LIVE: a needs search, and the company base finds our people (main d9407a4c)
 
 - New tool `search_needs`: who is LOOKING for something („who needs a mobile app", „who is looking for an investor"), in the owner's own contacts (level own), one ring out (level second, with `via` = the owner's contact who knows them) and the rest of the base (level further, for find_warm_path). Nearest first, ten at most. Same visibility rule as every search; a private need's words are never shown (need: null), only that it matched. Withheld people dropped; the owner never listed.
