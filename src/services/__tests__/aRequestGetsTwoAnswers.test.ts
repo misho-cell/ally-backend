@@ -5,7 +5,11 @@ jest.mock('../tools/searchSecondDegree', () => ({
   __esModule: true,
   searchSecondDegree: jest.fn(),
 }));
-jest.mock('../farCircles.service', () => ({ __esModule: true, farMembersHolding: jest.fn() }));
+jest.mock('../farCircles.service', () => ({
+  __esModule: true,
+  FarDepth: { Labels: 'labels', Everything: 'everything' },
+  farMembersHolding: jest.fn(),
+}));
 jest.mock('../tools/searchNeeds', () => ({ __esModule: true, searchNeeds: jest.fn() }));
 jest.mock('../tools/findCompaniesForNeed', () => ({
   __esModule: true,
@@ -108,7 +112,13 @@ describe('the full research', () => {
       'I need a freelance salesperson',
       MEANINGS,
     );
-    expect(farMembersHolding).toHaveBeenCalledWith(186272, 'freelance sales', undefined, MEANINGS);
+    expect(farMembersHolding).toHaveBeenCalledWith(
+      186272,
+      'freelance sales',
+      undefined,
+      MEANINGS,
+      'everything',
+    );
     expect(searchNeeds).toHaveBeenCalledWith(OWNER, 'freelance sales', MEANINGS);
     expect(findCompaniesForNeed).toHaveBeenCalledWith(OWNER, 'freelance sales გაყიდვები');
     expect(findPeopleInBase).toHaveBeenCalledWith(OWNER, 'freelance sales გაყიდვები');

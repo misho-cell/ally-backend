@@ -122,7 +122,58 @@ async function nextRing(ring: readonly Link[], seen: Set<number>): Promise<Link[
  * in a tag the holder gave them (the tester's 63264: „ნოტარიუსი ქუთაისში" was
  * L2's tag on a contact saved by name). Named by the holder's label when there is one.
  */
-async function savedUnder(ring: readonly Link[], patterns: readonly string[]): Promise<HitRow[]> {
+/**
+ * How far into what people are known for a walk reads. Measured on live, 13 Nov:
+ * reading every fact, profile, offer and company tie in each ring, scored, took
+ * a name search's walk to ~15 s over four rings. The quick answer reads labels
+ * and tags, as it always did; the full research in the background reads it all.
+ */
+export enum FarDepth {
+  Labels = 'labels',
+  Everything = 'everything',
+}
+
+/** Who the ring saved under the words: their labels and tags only, the first few found. */
+async function savedUnderLabels(
+  ring: readonly Link[],
+  patterns: readonly string[],
+): Promise<HitRow[]> {
+  const result = await query<HitRow>(
+    `SELECT x.holder_id, x.phone, x.alias
+       FROM (
+         SELECT ua."contactId" AS holder_id, ua.phone, ua.alias,
+                normalize_search_token(ua.alias) AS words
+           FROM "UserAlias" ua
+          WHERE ua."contactId" = ANY($1::int[])
+         UNION ALL
+         SELECT ut."contactId", ut.phone,
+                COALESCE(
+                  (SELECT NULLIF(TRIM(a.alias), '') FROM "UserAlias" a
+                    WHERE a."contactId" = ut."contactId" AND a.phone = ut.phone
+                    ORDER BY a.id DESC LIMIT 1),
+                  ut.tag),
+                normalize_search_token(ut.tag)
+           FROM "UserTags" ut
+          WHERE ut."contactId" = ANY($1::int[])
+       ) x
+      WHERE x.words ~ ALL($2::text[])
+      LIMIT $3`,
+    [ring.map((link) => link.userId), patterns, HITS_READ],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+function savedUnder(
+  ring: readonly Link[],
+  patterns: readonly string[],
+  depth: FarDepth,
+): Promise<HitRow[]> {
+  return depth === FarDepth.Labels ? savedUnderLabels(ring, patterns) : knownFor(ring, patterns);
+}
+
+/** Who the ring saved under the words or knows for them, by every source, best-evidenced first. */
+async function knownFor(ring: readonly Link[], patterns: readonly string[]): Promise<HitRow[]> {
   const result = await query<HitRow>(
     // Misho, 13 Nov (one shared score): a person more things said about them
     // match comes first, before the read is cut — never an arbitrary few.
@@ -228,13 +279,14 @@ async function hitsFrom(
   rings: readonly Link[][],
   patterns: readonly string[],
   firstRing: number = FIRST_RING_SEARCHED_HERE,
+  depth: FarDepth = FarDepth.Labels,
 ): Promise<{ readonly link: Link; readonly row: HitRow }[]> {
   const found = new Map<string, { readonly link: Link; readonly row: HitRow }>();
   for (let index = firstRing - 1; index < rings.length; index += 1) {
     const ring = rings[index];
     if (ring.length === 0) continue;
     const byId = new Map(ring.map((link) => [link.userId, link]));
-    for (const row of await savedUnder(ring, patterns)) {
+    for (const row of await savedUnder(ring, patterns, depth)) {
       const link = byId.get(Number(row.holder_id));
       const phone = normalizePhone(row.phone);
       if (link === undefined || found.has(phone)) continue;
@@ -257,10 +309,12 @@ export async function farMembersHolding(
   text: string,
   firstRing: number = FIRST_RING_SEARCHED_HERE,
   meanings: WordMeanings = NO_MEANINGS,
+  /** The quick answer reads labels and tags; the full research reads everything. */
+  depth: FarDepth = FarDepth.Labels,
 ): Promise<FarHit[]> {
   const patterns = wordAlternatives(text, meanings);
   if (patterns.length === 0) return [];
-  return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId), patterns, firstRing));
+  return chainsTo(ownerId, await hitsFrom(await ringsFrom(ownerId), patterns, firstRing, depth));
 }
 
 /**
