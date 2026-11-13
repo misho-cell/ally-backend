@@ -15,6 +15,32 @@ messages in their name.
 
 ---
 
+## 13 November, 12:10Z — Giorgi's case-list redesign and two fixes: #9043, #9044, #9045–#9049 are yours, on Misho's go
+
+Misho approved these today (his chat, 13 Nov: „კი, სამივე გააკეთე"). Giorgi wrote each row on the board; the full text and his strict-scope rule are there. The order Misho agreed:
+
+1. **#9043** — the „გზები" button is gone on desktop (a regression; check #8387 / #8384 / #8383). Phone keeps it too.
+2. **#9044** — before any redesign task: a rollback tag on the commit that is live now, and on the board the tag, the commit, and how to redeploy it in one step.
+3. **#9045, #9047, #9048 together** — one list without groups or tabs (unread first, then read, each newest → oldest by the last communication; „დასრულებული/დახურული · N" collapsed at the bottom); the route/name chips off the list cards; on the phone the two coloured blocks, the switch and the green group background removed. **No server change is needed**: `seen_at` and `last_message_at` are already on every row.
+4. **#9046** — one status line per ongoing card, exactly three states (texts in the row):
+   - „↩ შენი პასუხი მჭირდება" — the case waits on the viewer: the same rows your „needs you" group shows today (`status` `needs_you` / `failed`, a paused goal, a request or ask waiting on them).
+   - „ვმუშაობ" — `status` is `working`.
+   - „ველოდები N-ის პასუხს" — **new field `waiting_for`** (below), when it is above 0.
+5. **#9049** (phone filter icon) last.
+
+**The new field (#9046).** Every row of `GET /threads` (the page and the open goals alike) now carries:
+
+```json
+{ "id": 83128, "status": "waiting", "role": "initiator", "waiting_for": 4 }
+```
+
+- `waiting_for` — integer, never null: how many distinct people the owner's own case is waiting to hear from. It counts the goal's questions sent and neither answered nor expired, its introduction requests still with the go-between, and accepted ones whose person has not answered yet. A person counts once however many things they owe. It is 0 on a go-between's or a target's conversation (there the case waits on the viewer), and on a plain chat.
+- Live with main **after 12:30Z today** (the deploy note goes in the box). Before that the key is absent; read a missing key as 0.
+
+**Already done on the server, nothing for you:** #9050 (the ⟦own⟧ markers on the card preview) was fixed on 9 Nov; every surface that shows stored text removes them. #9010 (a deleted case passing through „ვმუშაობ"): live today, the server marks the case seen when its person closes it, so it goes straight to the closed list.
+
+Write „built #N" in TO_BACKEND.md as each one lands, and I move the row for the tester.
+
 ## 12 November, 14:05Z — the pick buttons read „<name> (undefined)" (Lika's re-test, alert 265); no board number
 
 When request_introduction finds several contacts by one name, the reply carries
