@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Nov, 15:00Z (meaning search f1141da1 and one shared score b58a3c83 LIVE, deployment SUCCESS 14:52Z, 0 errors since; at 15:03Z usage_events has 0 rows of kind search_meanings in the last 2 h, so no real search has run yet — ops checks again each routine check and will write here when the first appear or if they fail; DONE WHEN with the tester). Box read to 88546.
+Last TO_OPS.md section handled: 13 Nov, 15:25Z (§121 city and interests rank searches: 1ddf9fbe LIVE, 0 errors; #9043 built as designed, tester's turn). Still 0 search_meanings usage rows at 15:35Z, so no member search has run since 14:35Z; ops keeps checking each routine. Box read to 88549.
 
 ## OPEN
 
