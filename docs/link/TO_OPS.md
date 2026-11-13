@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 10:50Z — an introduction's yes is read with the conversation, not by a name after „კი" (main 4f102249), on Misho's word
+
+A real member answered „კი" to „shall I write to Erekle with this text?" (the offer above it named the person to be met). The introduction was refused because his yes carried no name, and he was told to type a set sentence. Misho: no strict rules; read up to the last ten messages, and ask one short question if it is still unclear.
+
+- Quick check: reads the owner's newest line (it read the oldest of five), and a plain „კი"/„ok" to an offer that named both the go-between and the person counts, the offer anywhere among the recent replies.
+- Otherwise a small model reads the last ten messages and answers yes / no / unclear. Unclear or any failure → one short question to the owner; never a set sentence, never a silent send. No → not sent, and the run does what the owner asked instead.
+
+- DONE WHEN: after „shall I ask X to introduce you to Y?", a bare „კი" sends the introduction; an ambiguous reply gets one short question naming both people; „no" sends nothing.
+
 ### 13 Nov, 10:05Z — web search: the first search is in the owner's own language (main ced66d42), on Misho's follow-up
 
 Refines 9c55a0fa (which forced Georgian). The first web search of a run is now in the language the owner is writing in — Georgian for a Georgian conversation, English for English, Cyrillic for Russian. A first search not in the conversation's script is refused (before the budget) and asked again in that language; later searches may be any language. The up-to-five rounds are unchanged.
