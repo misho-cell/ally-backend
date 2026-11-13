@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Nov, 12:20Z — #9010 and #9046 LIVE (main fdacd0da, cbce501a); #9043–#9049 handed to the frontend, on Misho's go
+
+- #9010 (fdacd0da): a case its person deletes is marked seen, so it goes straight to „დასრულებული/დახურული" instead of standing in „ვმუშაობ" until opened. Board: built, tester's turn. #9050 (⟦own⟧ markers on the card preview) was fixed on 9 Nov; board: built, tester's turn.
+- #9046 server half (cbce501a): every GET /threads row carries `waiting_for` — how many distinct people the owner's own case waits to hear from (questions sent and not answered or expired; requests with the go-between; accepted ones whose person has not answered). The status line itself is the frontend's.
+- FOR_FRONTEND 13 Nov 12:10Z: #9043 → #9044 → #9045/#9047/#9048 → #9046 → #9049, Misho's order.
+
+- DONE WHEN: deleting a go-between's case shows it only in the closed list at once; GET /threads on the Rompetrol case (83128) shows waiting_for 4.
+
 ### 13 Nov, 10:50Z — an introduction's yes is read with the conversation, not by a name after „კი" (main 4f102249), on Misho's word
 
 A real member answered „კი" to „shall I write to Erekle with this text?" (the offer above it named the person to be met). The introduction was refused because his yes carried no name, and he was told to type a set sentence. Misho: no strict rules; read up to the last ten messages, and ask one short question if it is still unclear.
