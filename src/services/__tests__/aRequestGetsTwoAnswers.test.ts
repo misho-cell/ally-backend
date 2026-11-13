@@ -229,6 +229,12 @@ describe('the two answers in the chat', () => {
     );
   });
 
+  it('starts only once the quick answer is done, so it never slows the quick searches', () => {
+    // Measured on live, 13 Nov: started beside the first run, its searches slowed that run's to ~20 s.
+    expect(chat).toContain('void untilConversationQuiet(taskId, threadId)');
+    expect(chat).toContain('const busy = await conversationIsBusy(taskId, threadId)');
+  });
+
   it('tells the first run its answer is the quick one', () => {
     expect(chat).toContain("(lateSearch === null ? '' : QUICK_ANSWER_NOTE)");
   });
