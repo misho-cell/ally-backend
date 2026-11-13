@@ -10486,6 +10486,7 @@ function clearRunState(runId: string): void {
   runPostponedAnAnswer.delete(runId);
   forgetFactHolds(runId);
   forgetWebSearches(runId);
+  openingRunEnded(runId);
 }
 
 /**
@@ -11524,9 +11525,12 @@ async function executeToolCall(
       }
       const { id } = await createTask(userId, title, description, taskType, goalThreadId, autonomy);
       noteCreatedGoal(runId, id);
+      // Two answers (13 Nov): a goal opened here gets the full research too.
+      const researching = movedTo === undefined && goalOpenedInRun(runId, id);
       return {
         created: true,
         task_id: id,
+        ...(researching && { full_research_note: QUICK_ANSWER_NOTE.trim() }),
         autonomy,
         // Ticket 20 row 101: propose the plan IN THIS RUN.
         //
@@ -14644,7 +14648,15 @@ function startOpeningSearches(
 ): LateOpeningSearch {
   let landed: OpeningSearches | null = null;
   let delivered = false;
-  const askedAt = new Date();
+  runOpenings.set(runId, {
+    userId,
+    threadId,
+    ownerLine: goalText,
+    askedAt: new Date(),
+    query: null,
+    taskId,
+    runEnded: false,
+  });
   // The card is a goal's (#1356); a chat's web search is told in the model's own words.
   if (taskId !== null) runWebCardFromGoal.add(runId);
   // Misho, 13 Nov: a request with no goal gets the web's half only, when it asks one.
@@ -14655,11 +14667,12 @@ function startOpeningSearches(
       go ? runOpeningSearches(userId, goalText, runId, threadId, taskId !== null) : null,
     )
     .then((found) => {
-      if (found === null) return;
-      landed = found;
-      if (taskId !== null && found.query !== undefined) {
-        startFullResearch(userId, threadId, taskId, found.query, goalText, askedAt);
+      if (found === null) {
+        runOpenings.delete(runId);
+        return;
       }
+      landed = found;
+      openingWordsLanded(runId, found.query ?? null);
       // Question A (tester 953): what the opening web search published is
       // allowed for this run, exactly as the model's own web_search is.
       if (found.webRaw !== undefined) registerWebResult(runId, found.webRaw);
@@ -14713,6 +14726,68 @@ export const FULL_RESEARCH_EVENT: Readonly<Record<RunLanguage, string>> = {
   ru: 'Полный поиск по всем уровням завершён; находки — в данных этого шага.',
   es: 'La búsqueda completa en todos los niveles ha terminado; los hallazgos están en los datos de este paso.',
 };
+
+/**
+ * Misho, 13 Nov (two answers): a run's opening search, until both its words and
+ * its goal are known. Measured on live the same evening: both goals opened that
+ * night were opened by the model (create_task) after the opening web search had
+ * started, so the research that waited for a server-opened goal never ran.
+ */
+interface RunOpening {
+  readonly userId: string;
+  readonly threadId: number;
+  readonly ownerLine: string;
+  readonly askedAt: Date;
+  query: string | null;
+  taskId: number | null;
+  runEnded: boolean;
+}
+
+const runOpenings = new Map<string, RunOpening>();
+
+/** The full research starts once the run has both: the searched words and a goal here. */
+function researchWhenReady(runId: string): void {
+  const opening = runOpenings.get(runId);
+  if (opening === undefined || opening.query === null || opening.taskId === null) return;
+  runOpenings.delete(runId);
+  startFullResearch(
+    opening.userId,
+    opening.threadId,
+    opening.taskId,
+    opening.query,
+    opening.ownerLine,
+    opening.askedAt,
+  );
+}
+
+/** The opening search's words have landed (none when it searched nothing). */
+function openingWordsLanded(runId: string, query: string | null): void {
+  const opening = runOpenings.get(runId);
+  if (opening === undefined) return;
+  if (query === null || (opening.runEnded && opening.taskId === null)) {
+    runOpenings.delete(runId);
+    return;
+  }
+  opening.query = query;
+  researchWhenReady(runId);
+}
+
+/** The model opened a goal in this conversation: its full research joins the run's search. Says whether it will run. */
+function goalOpenedInRun(runId: string | undefined, taskId: number): boolean {
+  const opening = runId === undefined ? undefined : runOpenings.get(runId);
+  if (runId === undefined || opening === undefined) return false;
+  opening.taskId = taskId;
+  researchWhenReady(runId);
+  return true;
+}
+
+/** The run is over: an opening with no goal is forgotten once its words land, or now. */
+function openingRunEnded(runId: string): void {
+  const opening = runOpenings.get(runId);
+  if (opening === undefined) return;
+  if (opening.taskId === null && opening.query !== null) runOpenings.delete(runId);
+  else opening.runEnded = true;
+}
 
 /**
  * Misho, 13 Nov (two answers): every level is searched in the background once
