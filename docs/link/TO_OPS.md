@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Nov, 19:25Z — night batch shipped: fa99a3a9 (0242b72a) and 8b4b6120 (f3edadbd), both outage=0
+- fa99a3a9: the daily nudge's push link reads the owner's chat again (one cast). DONE WHEN: the next 05:00Z nudge run logs no „[ai-notif] push url … not read".
+- 8b4b6120: names spelled as the server knows them (see the 11:20Z section). DONE WHEN: a request about a contact saved in lower Latin („<first> <surname>dze") reads the whole name in Georgian in the plan sentence, and the reply spells the first name as the list does.
+
 ### 14 Nov, 11:20Z — planned for tonight's batch: names spelled as the server knows them (f3edadbd)
 Misho's screenshot: a contact saved all in lower case read „თორნიკე abuladze-ის" in the plan sentence, and the reply wrote „ტორნიკე" (the model guessed თ/ტ from the Latin). Fix: a lower-case -dze/-shvili surname is read as a surname; a Georgian reply's names take the spelling the server is sure of (owner's Georgian label, other members' spelling of the number, listed first name, one-way rule, learned surname), case ending kept. Ships in tonight's 19:00Z window with 0242b72a.
 DONE WHEN: a request about a contact saved in lower Latin („<first> <surname>dze") reads the whole name in Georgian in the plan sentence, and the reply's own text spells the first name as the list does.
