@@ -23,7 +23,7 @@ describe('the owner’s Latin label echoed in brackets', () => {
   it('is applied to Georgian replies only', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
-      "if (language === 'ka') effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);",
+      "if (language === 'ka') {\n    effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);",
     );
   });
 });

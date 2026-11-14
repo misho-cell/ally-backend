@@ -29,6 +29,7 @@ import {
 } from './buttonLetters';
 import { ownersContactsOnNetai } from './ownersMembers.service';
 import { withoutLatinEchoOfNames } from './latinNameEcho';
+import { withNamesSpelledAsKnown } from './namesSpelledAsKnown';
 import {
   buttonSpellingNote,
   correctedLabels,
@@ -780,7 +781,12 @@ import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
 import { withAssistantsSentLine, withoutOfferToSendAgain } from './assistantsSentLine';
-import { georgianNamesFor, georgianScriptName, learnGeorgianSpellings } from './georgianScriptName';
+import {
+  georgianNamesFor,
+  georgianScriptName,
+  learnGeorgianSpellings,
+  sureGeorgianNameWords,
+} from './georgianScriptName';
 import { MAIN_MODEL, QUICK_MODEL, noThinkingFor, oneToolChoice } from './aiModels';
 
 const HISTORY_LIMIT = 50;
@@ -8779,6 +8785,17 @@ const runAskSent = new Set<string>();
 const runAskRefused = new Set<string>();
 /** Who this run's sent questions went to, as the owner saved them. */
 const runAskSentTo = new Map<string, string[]>();
+
+/** The names this run found or wrote to, as the server is sure to spell them in Georgian. */
+async function sureSpellingsForRun(userId: string, runId: string): Promise<string[]> {
+  const names = [
+    ...(runFoundPeople.get(runId) ?? []).flatMap((person) =>
+      person.name === null ? [] : [person.name],
+    ),
+    ...(runAskSentTo.get(runId) ?? []),
+  ];
+  return names.length === 0 ? [] : sureGeorgianNameWords(userId, [...new Set(names)]);
+}
 /**
  * The tester's 49809 (1697): runs whose introduction was refused because the
  * route looks closed. The reply says so and proposes another way (§110.1);
@@ -19253,7 +19270,14 @@ export async function processChat(
   if (language === 'ka' && choices !== undefined) {
     effectiveFinal = channelQuestionInNetaisVoice(effectiveFinal, choices);
   }
-  if (language === 'ka') effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);
+  if (language === 'ka') {
+    effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);
+    // Misho, 14 Nov: „ტორნიკე" for a contact saved „tornike abuladze".
+    effectiveFinal = withNamesSpelledAsKnown(
+      effectiveFinal,
+      await sureSpellingsForRun(userId, runId),
+    );
+  }
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
   // 45679 (conv 44096): a run whose question went says so, never „I cannot send".
