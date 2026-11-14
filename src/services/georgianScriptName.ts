@@ -81,6 +81,20 @@ export async function learnGeorgianSpellings(names: readonly string[]): Promise<
 /** A Georgian surname's ending, on the last word of a capitalised label. */
 const SURNAME_END_RE = /(?:dze|shvili|ia|ua|ava|uri|iani|eli|ani)$/iu;
 const CAPITALISED_RE = /^[A-Z]/u;
+/**
+ * Misho, 14 Nov (screenshot): „tornike abuladze", saved all in lower case,
+ * came out „თორნიკე abuladze-ის" — a surname was read only when capitalised.
+ * In lower case only the endings no English word has are read as a surname.
+ */
+const LOWERCASE_SURNAME_END_RE = /(?:dze|shvili)$/u;
+
+/** A Latin word that reads as a Georgian surname. */
+function readsAsSurname(word: string): boolean {
+  if (!LATIN_NAME_WORD_RE.test(word)) return false;
+  return CAPITALISED_RE.test(word)
+    ? SURNAME_END_RE.test(word)
+    : LOWERCASE_SURNAME_END_RE.test(word);
+}
 
 /**
  * #7231 (tester 73758): „Mechanic BMW service" came out „მეჩანიც BMW სერვიცის"
@@ -141,7 +155,7 @@ function mixedNameInGeorgian(clean: string): string {
  */
 function isNameWord(word: string, index: number, listedFirst: boolean): boolean {
   if (!listedFirst || index === 0) return true;
-  return CAPITALISED_RE.test(word) && SURNAME_END_RE.test(word);
+  return readsAsSurname(word);
 }
 
 /** A first name the names list holds, in either script. */
@@ -167,9 +181,7 @@ export function namePartOfLabel(label: string): string | null {
   const [first, next] = words;
   if (first === undefined || !isListedFirstName(first)) return null;
   const isSurname =
-    next !== undefined &&
-    ((CAPITALISED_RE.test(next) && SURNAME_END_RE.test(next)) ||
-      GEORGIAN_SURNAME_END_RE.test(next));
+    next !== undefined && (readsAsSurname(next) || GEORGIAN_SURNAME_END_RE.test(next));
   return isSurname ? `${first} ${next}` : first;
 }
 
@@ -248,6 +260,25 @@ async function spellingsInTheBase(
   return result.rows;
 }
 
+/** Each Latin label's Georgian spelling as other members saved that very number; a failed read gives none. */
+async function spelledByPeople(
+  ownerId: string,
+  latin: readonly string[],
+): Promise<Map<string, string>> {
+  const spelled = new Map<string, string>();
+  try {
+    for (const row of await spellingsInTheBase(ownerId, latin)) {
+      if (spelled.has(row.label)) continue;
+      const georgian = withoutAllyWord(row.georgian);
+      if (sameNameBySound(georgian, withoutAllyWord(row.label))) spelled.set(row.label, georgian);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[georgian-name] base spellings not read:', (err as Error).message);
+  }
+  return spelled;
+}
+
 /**
  * Each of the owner's labels as a Georgian line writes it: the base's Georgian
  * spelling of that person when there is one, else the rule. A failed read
@@ -260,22 +291,69 @@ export async function georgianNamesFor(
   const named = new Map(labels.map((label) => [label, georgianScriptName(label)]));
   const latin = labels.filter((label) => !hasGeorgian(withoutAllyWord(label)));
   if (latin.length === 0) return named;
-  const spelledByPeople = new Set<string>();
-  try {
-    for (const row of await spellingsInTheBase(ownerId, latin)) {
-      if (spelledByPeople.has(row.label)) continue;
-      const spelled = withoutAllyWord(row.georgian);
-      if (!sameNameBySound(spelled, withoutAllyWord(row.label))) continue;
-      named.set(row.label, spelled);
-      spelledByPeople.add(row.label);
-    }
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[georgian-name] base spellings not read:', (err as Error).message);
-  }
+  const byPeople = await spelledByPeople(ownerId, latin);
+  for (const [label, georgian] of byPeople) named.set(label, georgian);
   // G-157: what nobody saved in Georgian for this very number is spelled as the base spells the word.
-  const left = latin.filter((label) => !spelledByPeople.has(label));
+  const left = latin.filter((label) => !byPeople.has(label));
   await learnGeorgianSpellings(left);
   for (const label of left) named.set(label, georgianScriptName(label));
   return named;
+}
+
+/** A Latin name word in Georgian when its spelling is certain: listed, one way only, or learned. */
+function sureWordInGeorgian(word: string, isFirst: boolean): string | null {
+  if (!LATIN_NAME_WORD_RE.test(word) || ACRONYM_RE.test(word)) return null;
+  const listed = isFirst ? georgianFirstNameOf(word) : null;
+  if (listed !== null) return listed;
+  return ruleIsSure(word) ? latinToGeorgian(word) : learnedSurnameSpelling(word);
+}
+
+/** The name words of a Latin label whose Georgian spelling is certain. */
+function sureWordsOfLatinLabel(label: string): string[] {
+  const clean = withoutAllyWord(label);
+  if (!readsAsAName(clean)) return [];
+  const words = clean.split(WORD_SPLIT_RE);
+  const listedFirst = georgianFirstNameOf(words[0] ?? '') !== null;
+  return words.flatMap((word, index) => {
+    if (!isNameWord(word, index, listedFirst)) return [];
+    const sure = sureWordInGeorgian(word, index === 0);
+    return sure === null ? [] : [sure];
+  });
+}
+
+const GEORGIAN_WORD_RE = /^\p{Script=Georgian}+$/u;
+
+/** The Georgian words of a spelling: the owner's own, or other members' for that number. */
+function georgianWordsOf(name: string): string[] {
+  return withoutAllyWord(name)
+    .split(WORD_SPLIT_RE)
+    .filter((word) => GEORGIAN_WORD_RE.test(word));
+}
+
+/**
+ * Misho, 14 Nov (screenshot): the reply wrote „ტორნიკე" for a contact saved as
+ * „tornike abuladze" — the model saw only the Latin and guessed თ or ტ. These
+ * are the words of the names the server is sure how to write in Georgian: a
+ * Georgian label as the owner saved it, the spelling other members saved for
+ * that number, a listed first name, a word the rule reads one way only, or a
+ * surname whose spelling the base settled (G-157). A word it is not sure of is
+ * left out, so a reply is never corrected towards a guess.
+ */
+export async function sureGeorgianNameWords(
+  ownerId: string,
+  labels: readonly string[],
+): Promise<string[]> {
+  const latin = labels.filter((label) => !hasGeorgian(withoutAllyWord(label)));
+  const own = labels
+    .filter((label) => hasGeorgian(withoutAllyWord(label)))
+    .flatMap(georgianWordsOf);
+  if (latin.length === 0) return own;
+  const byPeople = await spelledByPeople(ownerId, latin);
+  const left = latin.filter((label) => !byPeople.has(label));
+  await learnGeorgianSpellings(left);
+  return [
+    ...own,
+    ...[...byPeople.values()].flatMap(georgianWordsOf),
+    ...left.flatMap(sureWordsOfLatinLabel),
+  ];
 }
