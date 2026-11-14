@@ -118,7 +118,7 @@ export async function nudgePushUrl(userId: string): Promise<string> {
            FROM task_asks ta JOIN tasks k ON k.id = ta.task_id
           WHERE ta.from_user_id = $1::int AND ta.status = 'sent' AND k.thread_id IS NOT NULL
          UNION ALL
-         SELECT t.id, 2, t.updated_at FROM threads t WHERE t.user_id::text = $1
+         SELECT t.id, 2, t.updated_at FROM threads t WHERE t.user_id::text = $1::text
        ) c
        ORDER BY rank, at DESC
        LIMIT 1`,
