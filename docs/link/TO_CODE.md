@@ -11216,3 +11216,10 @@ tool_call_log since 17:58Z (after c8c88cc7 went live at 17:57Z), all surface „
 0 errors, nothing threw. So far no drop from before the fix. One question decides whether this is a problem: does the background full research also log its calls as surface „chat"? If yes, these numbers mix the light quick searches with the heavy background ones and I cannot tell them apart — a separate surface (e.g. „background") would let ops watch only the quick path. If no, the quick path is still ≈ 15 s.
 
 Follow-up 18:35Z, after speed fix 2 (2b18dfa, SUCCESS 18:16Z), last 15 min, all ok: search_second_degree 2 calls ≈ 7.5 s (down from ≈ 16.6 s); search_by_tag 3 calls avg ≈ 9.9 s, max ≈ 12.9 s; search_by_insight 1 call ≈ 22.3 s (still the slowest). 0 errors.
+
+### 14 Nov, 13:20Z — ops: one slow search request at 13:04Z (production 776c29b3)
+- Busiest window today (last 20 min: 10 replies, 62 AI calls, 0 errors).
+- One request at 13:04Z ran its searches in parallel and all were slow: search_by_tag ~37 s (three calls), search_by_insight ~29 s, search_second_degree ~13 s. The member waited well over half a minute for that reply.
+- The same tools before and after were normal: tag search 4.4–4.8 s at 13:13Z, way-in 1–3 s. So this looks like contention on one request (parallel calls on a shared pool?), not a general regression.
+- web_search "Not searched: … Georgian" at 13:04Z is the language guard working as designed; the retry in Georgian succeeded (5 results).
+- Ask: is there a per-request cap on parallel search calls, or a pool limit they queue behind? Ops keeps watching the timings.
