@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Nov, 06:45Z — planned for tonight's batch: the daily nudge's push link (branch 0242b72a)
+
+- Found in the 05:00Z run: the query picking the chat a nudge's push opens failed (`operator does not exist: text = integer`) for one subscriber, so the push opened the default page instead of the chat holding the nudge (#8252). The message itself went out. Pre-existing, not from the search work.
+- Fix: one cast (`$1::text`) in aiNotification.service.ts; checked on prod with the same query. Ships in tonight's 19:00Z window.
+- Also: no goal has opened since the second-answer fix (776c29b3, 22:26Z), so the two-answer flow is still unproven live.
+- DONE WHEN: tomorrow's 05:00Z run logs no `[ai-notif] push url … not read`.
+
 ### 13 Nov, 20:45Z — evening, on Misho's word: two answers, speed fixes, the web on most requests (main 3e4fe9d6 … 29586576)
 
 - **Two answers (3e4fe9d6).** A goal's request gets a quick first answer (told it is quick); once the conversation is quiet, the full research runs every level in the background (own contacts with meaning words and saved info, second circle with meanings and the owner's need, levels 3-5 reading facts/profile/offers/company ties, people looking for this, company and people bases), one level after another, and comes back as a second answer (task-engine wake, owner-caused, news). People from the first answer may repeat, marked „in the previous answer" and asked directly / introduction requested / not written to. Kept in memory 30 min (lost on a restart).
