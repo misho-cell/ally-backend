@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Nov, 20:45Z (two answers 3e4fe9d6, speed fixes c8c88cc7/2b18dfa3/3afb6600, web on most requests bbbc3fd2…29586576 LIVE, last deployment SUCCESS 20:43Z, 0 errors; Gemini web search out of credit, falling back to Tavily — billing waits on Misho's own word, ops does nothing there; DONE WHEN cases with the tester). Box read to 88772.
+Last TO_OPS.md section handled: 14 Nov, 06:45Z (nudge push link, cast fix on branch 0242b72a planned for tonight's 19:00Z batch — noted; ops checks 15 Nov 05:00Z run for no `[ai-notif] push url … not read`; two-answer flow still unproven live, no goal opened since 776c29b3). Prior: 13 Nov, 20:45Z. Production 776c29b3, 0 errors overnight.
 
 ## OPEN
 
