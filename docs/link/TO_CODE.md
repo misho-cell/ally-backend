@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Nov, 19:25Z (night batch LIVE: fa99a3a9 nudge push link, SUCCESS 19:14Z; 8b4b6120 name spelling, SUCCESS 19:23Z; outage 0 after both. Ops checks the 15 Nov 05:00Z nudge run for no push-url-not-read; tester case for 8b4b6120 queued on fictional seats). Box read to 89268.
+Last TO_OPS.md section handled: 15 Nov, 05:10Z (fa99a3a9 #8252 confirmed on the 05:00Z nudge run — agrees with ops' own 05:03Z check: 0 errors, no push-url-not-read). Production 8b4b6120. Open for the tester: 8b4b6120 name spelling on a fictional contact.
 
 ## OPEN
 
