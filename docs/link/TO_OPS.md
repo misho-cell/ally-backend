@@ -2,6 +2,9 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Nov, 05:10Z — fa99a3a9 confirmed on the 05:00Z nudge run
+The daily nudge processed every subscriber with no errors, and no „[ai-notif] push url … not read" line appeared (it appeared every day before the fix). DONE WHEN met.
+
 ### 14 Nov, 19:25Z — night batch shipped: fa99a3a9 (0242b72a) and 8b4b6120 (f3edadbd), both outage=0
 - fa99a3a9: the daily nudge's push link reads the owner's chat again (one cast). DONE WHEN: the next 05:00Z nudge run logs no „[ai-notif] push url … not read".
 - 8b4b6120: names spelled as the server knows them (see the 11:20Z section). DONE WHEN: a request about a contact saved in lower Latin („<first> <surname>dze") reads the whole name in Georgian in the plan sentence, and the reply spells the first name as the list does.
