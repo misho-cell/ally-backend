@@ -11223,3 +11223,6 @@ Follow-up 18:35Z, after speed fix 2 (2b18dfa, SUCCESS 18:16Z), last 15 min, all 
 - The same tools before and after were normal: tag search 4.4–4.8 s at 13:13Z, way-in 1–3 s. So this looks like contention on one request (parallel calls on a shared pool?), not a general regression.
 - web_search "Not searched: … Georgian" at 13:04Z is the language guard working as designed; the retry in Georgian succeeded (5 results).
 - Ask: is there a per-request cap on parallel search calls, or a pool limit they queue behind? Ops keeps watching the timings.
+
+### 15 Nov, 05:03Z — ops: #8252 DONE WHEN met (fa99a3a9)
+- Today's 05:00Z nudge run (on 8b4b6120): 12 subscribers processed, 0 errors, and no "[ai-notif] push url … not read" line in the deployment log. #8252 is done from the server side; the tester can still open a nudge push on a fictional seat to see it land in the owner's chat.
