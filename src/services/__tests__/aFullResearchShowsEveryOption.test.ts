@@ -1,3 +1,7 @@
+jest.mock('../researchWeb', () => ({
+  __esModule: true,
+  webLevel: jest.fn().mockResolvedValue({ web_results: [], companies: [] }),
+}));
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTag: jest.fn() }));
 jest.mock('../tools/searchByInsight', () => ({ __esModule: true, searchByInsight: jest.fn() }));
@@ -217,5 +221,39 @@ describe('the people a result names', () => {
   it('are listed once each, at most as many as asked', () => {
     const listed = peopleListed([{ results: photographers }, { results: photographers }], 5);
     expect(listed.map((p) => p.name)).toEqual(photographers.slice(0, 5).map((p) => p.name));
+  });
+});
+
+describe('the web level of a request that names a person', () => {
+  it('sends nothing out: the name stays home (row 253)', async () => {
+    jest.clearAllMocks();
+    aSecondCircleLikeLikas();
+    const { webLevel } = jest.requireMock('../researchWeb') as { webLevel: jest.Mock };
+    await runFullResearch({
+      userId: OWNER,
+      threadId: THREAD,
+      taskId: 1,
+      words: 'ნინო ბერიძე',
+      ownerLine: 'დამაკავშირე ნინო ბერიძესთან',
+      withheld: new Set<string>(),
+      askedAt: new Date(0),
+    });
+    expect(webLevel).not.toHaveBeenCalled();
+  });
+
+  it('searches the web for a trade', async () => {
+    jest.clearAllMocks();
+    aSecondCircleLikeLikas();
+    const { webLevel } = jest.requireMock('../researchWeb') as { webLevel: jest.Mock };
+    await runFullResearch({
+      userId: OWNER,
+      threadId: THREAD,
+      taskId: 1,
+      words: WORDS,
+      ownerLine: 'I need a product photographer',
+      withheld: new Set<string>(),
+      askedAt: new Date(0),
+    });
+    expect(webLevel).toHaveBeenCalledTimes(1);
   });
 });

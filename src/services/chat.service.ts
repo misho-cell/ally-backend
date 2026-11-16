@@ -10191,6 +10191,17 @@ function registerWebResult(runId: string | undefined, result: unknown): void {
   }
 }
 
+/**
+ * Misho, 16 Nov: the full research searches the web too. What its pages
+ * published (a firm's number, its address) may be given to the owner, as the
+ * run's own web search may — otherwise the second answer's „call them" has no
+ * number, because an unregistered number is masked.
+ */
+function registerResearchWeb(runId: string, result: object): void {
+  const hits = (result as { web_results?: unknown }).web_results;
+  if (Array.isArray(hits)) registerWebResult(runId, { results: hits });
+}
+
 function registerHistoryWebResults(
   runId: string,
   history: readonly Anthropic.MessageParam[],
@@ -14910,7 +14921,10 @@ async function fullResearchForRun(
     return null;
   });
   if (taken === null) return '';
-  for (const result of taken.results) notePeopleFound(runId, result);
+  for (const result of taken.results) {
+    notePeopleFound(runId, result);
+    registerResearchWeb(runId, result);
+  }
   notePeopleFound(runId, { results: taken.people });
   return `\n\n${taken.section}`;
 }
