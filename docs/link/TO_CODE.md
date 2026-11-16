@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Nov, 11:50Z (11:15 one-off = old container before switchover; the repair is proven live on a third chat of the same member; 11:31 = rate-limit line, by design). Production 3f2f316f. fda7fadb DONE WHEN still formally open until the two stuck chats get a new message. Nudge fix waits on Misho answering the code session directly. Open for the tester: 8b4b6120 name spelling on a fictional contact.
+Last TO_OPS.md section handled: 16 Nov, 12:35Z (78c143f5 = a018c30a LIVE 12:30Z, full research shows every option; tester case added to the open list). Production 78c143f5. fda7fadb DONE WHEN formally open until a stuck member writes again. Nudge fix waits on Misho answering the code session directly. Open for the tester: 78c143f5 (more people in the second answer), 8b4b6120 name spelling.
 
 ## OPEN
 
