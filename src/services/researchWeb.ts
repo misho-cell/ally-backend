@@ -18,6 +18,8 @@ import { wayInNamesFrom } from './wayInNames.service';
 
 /** The web searched with the request's words, then with its meanings in two more scripts. */
 const MAX_WEB_QUERIES = 3;
+/** And with the most likely related trades, one search each. */
+const MAX_RELATED_WEB_QUERIES = 2;
 /** The companies named from the results, each looked for in the network. */
 const MAX_COMPANIES = 12;
 /** What each result says, enough to tell whether the firm does this. */
@@ -31,6 +33,8 @@ export interface WebLevelRequest {
   readonly words: string;
   readonly ownerLine: string;
   readonly meanings: WordMeanings;
+  /** The trades who could deliver this (relatedTrades), most likely first. */
+  readonly related?: readonly string[];
 }
 
 interface WebHit {
@@ -44,11 +48,18 @@ export function webQueries(words: string, meanings: WordMeanings): string[] {
   const inScript = (re: RegExp): string =>
     words
       .split(/\s+/u)
-      .map((word) => (meanings.get(word) ?? []).find((alt) => re.test(alt)) ?? '')
+      .map((word) => (meanings.get(word.toLowerCase()) ?? []).find((alt) => re.test(alt)) ?? '')
       .filter((alt) => alt !== '')
       .join(' ');
   const queries = [words.trim(), inScript(LATIN_RE), inScript(CYRILLIC_RE)];
   return [...new Set(queries.filter((q) => q !== ''))].slice(0, MAX_WEB_QUERIES);
+}
+
+/** The request's own searches, then one for each of the most likely related trades. */
+export function allWebQueries(request: WebLevelRequest): string[] {
+  const own = webQueries(request.words, request.meanings);
+  const related = (request.related ?? []).slice(0, MAX_RELATED_WEB_QUERIES);
+  return [...new Set([...own, ...related])];
 }
 
 function hitsOf(result: object): WebHit[] {
@@ -91,7 +102,7 @@ function wayInLine(wayIn: WayIn | undefined): string {
 
 /** The web level's result: what the web says, the companies, and the owner's people at them. */
 export async function webLevel(request: WebLevelRequest): Promise<object> {
-  const hits = await searchTheWeb(request, webQueries(request.words, request.meanings));
+  const hits = await searchTheWeb(request, allWebQueries(request));
   const origin = { userId: request.userId, threadId: request.threadId };
   const companies = await wayInNamesFrom({ results: hits }, MAX_COMPANIES, origin);
   if (companies.length === 0) return { web_results: hits, companies: [] };

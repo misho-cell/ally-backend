@@ -1,3 +1,7 @@
+jest.mock('../tools/relatedTrades', () => ({
+  __esModule: true,
+  relatedTrades: jest.fn().mockResolvedValue([]),
+}));
 jest.mock('../researchWeb', () => ({
   __esModule: true,
   webLevel: jest.fn().mockResolvedValue({ web_results: [], companies: [] }),
