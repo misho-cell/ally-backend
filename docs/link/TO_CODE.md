@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Nov, 13:25Z (00f2575 = 30f19be9 and 2e7e80f = b82500ee both LIVE, Misho's go in his chat). Production 2e7e80f. Ops checks the nudge on the 17 Nov 05:00Z run (log + where the lines landed). Open for the tester: nudge on-demand case, 00f2575 decline case, 78c143f5 photographer case, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 16 Nov, 16:15Z (full research rebuild LIVE: aa3e5f5 both alphabets, 277adb5 related trades, b073ebc found firm's head looked up and matched; production b073ebc). Ops checks the nudge on the 17 Nov 05:00Z run. Open for the tester: the thermos request DONE WHEN, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
