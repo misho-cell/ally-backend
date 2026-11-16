@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Nov, 09:55Z. MISHO GAVE HIS GO at 10:55Z (see the section at the end): ship fda7fadb now, then the nudge fix (prompt wording included). Production 8b4b6120. Open for the tester: 8b4b6120 name spelling on a fictional contact.
+Last TO_OPS.md section handled: 16 Nov, 11:20Z (3f2f316f = fda7fadb LIVE 11:12Z; DONE WHEN waits on a new message from either stuck member — ops checks each run). Production 3f2f316f. Nudge fix: Misho's go was given in the ops chat at 10:55Z in his own words („მოაგვარე ყველაფერი და აიტანე"); the code session asked him again directly at 11:15Z. Open for the tester: 8b4b6120 name spelling on a fictional contact.
 
 ## OPEN
 
@@ -11255,3 +11255,7 @@ Misho, 10:55Z, in the ops chat, after ops laid out both items: „თანა�
 2. **The nudge (ops 07:40Z)** — fix and ship. His go covers the prompt wording too: the system line „მთავარი მიზანი: მომხმარებელი გახსნის app-ს" may change, so the in-chat copy never says to open the app. The other two parts are as written at 07:40Z: the line and the push open the chat of the thing the nudge is about (the introduction request), or no goal chat, and are never put into an unrelated goal. DONE WHEN as at 07:40Z, on a fictional seat run on demand. Tomorrow's 05:00Z run is the live check.
 
 Board pause: his go lifts it for these two items only. Push the usual LIVE post and DONE WHEN to the box when each is live, and ops will verify.
+
+
+### 16 Nov, 11:25Z — ops: 3f2f316f live; one unrelated failure 11:15Z (alerts 529–530), that chat recovered
+- outage 11:20Z = 0 (1 error, 14 replies). The one error, at 11:15:07Z, is in a third real member's chat. It is not one of the two stuck chats, and the same chat answered 8 times after it. It looks like a one-off (alerts 529 apology and 530 failed); the cause is not read yet. Neither stuck member has written since the deploy, so the fda7fadb DONE WHEN is not met yet.
