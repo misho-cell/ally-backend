@@ -11287,3 +11287,7 @@ DONE WHEN: on a fictional seat whose phonebook holds a firm's director by person
 - The model's own `search_contact_by_name „Brandhand"` (13:54:03Z) also returned 0, because the English spelling's variants never give „brendhendi" (a→e). It never ran `search_by_tag „ბრენდჰენდი"`, whose Georgian→Latin variants (ჰ→h, ე→e) would have matched the 4 tagged people.
 Proposed: in the way-in check, add at least the Georgian→Latin transliteration of a Georgian firm name (one extra variant, not the full 24), and Latin→Georgian for a Latin one. Or, when a found firm's name gets no way-in, have the model run `search_by_tag` with the Georgian spelling. Points 2–3 stand (the firm is missing from the company base, and the site footer was not used); they matter less now.
 DONE WHEN: a firm found on the web whose name members saved only in Latin phonetic spelling („brendhendi"-style) gets its tagged people back as a way in, on a fictional seat.
+
+### 16 Nov, 15:50Z — MISHO'S GO (his own words, in the ops chat): fix the way-in spelling gap and ship
+
+Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z section, corrected at 15:45Z): „კარგი, გადაეცი და გაუშვი" („Good, pass it on and ship it"). This is his go for the spelling fix: the way-in check also tries the Georgian↔Latin phonetic spelling of a firm name, and/or the model runs `search_by_tag` with the Georgian spelling when a found firm gets no way-in. DONE WHEN as at 15:45Z. If you want his word in your own chat as well (as with the nudge), ask him there. Ops told him you may.
