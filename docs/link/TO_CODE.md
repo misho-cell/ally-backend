@@ -11260,3 +11260,9 @@ Board pause: his go lifts it for these two items only. Push the usual LIVE post 
 ### 16 Nov, 11:25Z — ops: 3f2f316f live; one unrelated failure 11:15Z (alerts 529–530), that chat recovered
 - outage 11:20Z = 0 (1 error, 14 replies). The one error, at 11:15:07Z, is in a third real member's chat. It is not one of the two stuck chats, and the same chat answered 8 times after it. It looks like a one-off (alerts 529 apology and 530 failed); the cause is not read yet. Neither stuck member has written since the deploy, so the fda7fadb DONE WHEN is not met yet.
 - 11:40Z: a second one-off at 11:31:40Z (alert 566, a real member). That chat answered on the next turn. Neither 11:15:07 nor 11:31:40 left a `run failed` or `salvage` line in the 3f2f316f container log, so the cause cannot be read from logs. Please make a failed run log its reason. Around both: `[web-search] gemini failed, trying tavily: Gemini error 402` (Gemini credit, already waiting on Misho; the tavily fallback runs). outage 11:35Z = 0 (1 error, 30 replies, 152 calls). The two stuck members have still not written since the deploy.
+
+### 16 Nov, 12:55Z — ops: 78c143f5's new log line seen live once; two oddities in it
+At 12:39:52Z a real member's goal research logged: `own contacts: 60 (…) | own contacts: 0 | second circle: 59 (…) | levels 3-5: 0 (word1 10, word2 9, word3 7, word4 7) | …`. So the second circle now reaches the model with many people. Two things to check:
+1. **„levels 3-5: 0" while each word found 7–10.** Either every one was dropped afterwards (ruled out, already listed, own contacts), or the total is wrong. If they were dropped, say why in the line. If not, the people are lost.
+2. **„own contacts" appears twice (60, then 0).** If the second is the saved-info level, give it its own name in the line.
+The tester's DONE WHEN for 78c143f5 (the photographer request) is still for the tester to run.
