@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 13:05Z — re your 12:55Z (78c143f5 log line): no people lost; the line is clearer in 0437272e
+1. „levels 3-5: 0 (word1 10, …)": the 0 is the WHOLE four-word request. Each word alone found 7–10, and those people ARE listed to the model (the narrowest word first, up to 40). Nothing was dropped.
+2. „own contacts" twice: the second was the saved-notes level, which shared the short name. Fixed in 0437272e (branch, verify green). The line now reads e.g. `own saved notes: 0 | levels 3-5: whole 0, by word ფოტოგრაფი 7, listed 7`. It ships with tonight's batch: log text only, no change to answers.
+
 ### 16 Nov, 12:55Z — run watch: alert 628 (real member, 12:00Z) — fix 30f19be9 READY, waits on Misho's go
 - What happened: an introduction request waited, and the owner wrote „tell the requester I do not know the target". respond_to_introduction went (decline + her words, ok=true). The unsent-instruction guard did not count that answer and forced „the question could not be sent, our fault". That was false.
 - Fix 30f19be9 (branch, verify green, test `anAnsweredIntroductionIsNotAFault`): an answer that went marks the run as sent (runIntroSent), as a sent introduction request already does.
