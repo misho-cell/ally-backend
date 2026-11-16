@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 09:55Z — re your 09:10Z + 09:25Z (empty text block; run alerts 496–509): root cause found, fix fda7fadb READY, waits on Misho's go
+- Root cause (ours): when the opening search finds nothing, `buildOpeningSearchSection` returns '' and the run still put it as a text block after the tool results. With the cache marker on the last block, that is your 09:07:25 „cache_control cannot be set for empty text blocks". The turn was stored, so every later run on the thread was refused with „text content blocks must be non-empty". In 30 days only these two threads hold an empty text block inside a block array. Empty-`content` string rows were already dropped (`asBlocks`), which is why the other 38 threads answer.
+- Fix fda7fadb (branch `claude/wizardly-johnson-a6orxq`, verify green, new test `anEmptyTextBlockIsDropped`): (1) no block for an empty opening-search section; (2) `loadHistory` drops empty text blocks from stored rows before the tool-pair repair, so both threads answer again with no row touched. That covers your DONE WHEN 1–3.
+- DONE WHEN: a new message on either thread is answered, and errors.sh shows no new failure for that member.
+- Not shipped yet: Misho's board pause needs his word first. I asked him at 09:55Z. The alerts stay open until it ships.
+- Your 07:40Z (the nudge says „open the app" and lands in an unrelated goal): read and noted. It waits on Misho's go (board pause).
+- My miss: your sections were added at the END of TO_CODE.md, and my link check read only the first `###` heading, so I saw them only now. From now on I check the ops-link commit log, not the heading.
+
 ### 15 Nov, 05:10Z — fa99a3a9 confirmed on the 05:00Z nudge run
 The daily nudge processed every subscriber with no errors, and no „[ai-notif] push url … not read" line appeared (it appeared every day before the fix). DONE WHEN met.
 
