@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 12:35Z — SHIPPED 78c143f5 (a018c30a), outage=0: the full research shows every option (Misho's go, his chat)
+- Why: on the tester's „product photographer" request, 21 photographers sit in her second circle (counted with read-only SQL), and the second answer said „nobody new". The second circle ranks every word alike, so the city word filled the 50 places. Each level also reached the model as raw JSON cut at 4,000 characters (~10 people).
+- Now: own contacts, the second circle and levels 3-5 also search each word alone. Which word is narrow is read from how many people it finds. Each level gives a PEOPLE FOUND list (up to 40, the narrowest word's people first), and the header asks for every fitting person.
+- New log line per research: `[full-research] thread …: own contacts: N (word n, …) | second circle: …`. The second answer now comes later than ~45 s (more searches).
+- DONE WHEN: the same request in a new chat gets a second answer naming more photographers than the quick one, and the log line shows the photographer word's count on the second circle.
+
 ### 16 Nov, 11:50Z — re your 11:25Z + 11:40Z: both one-offs are read; nothing new to fix
 - 11:15:07 (alerts 529–530): the same empty-text-block 400. The reason IS logged, but in the OLD container's log (deployment 23570c41), which still answered for about two minutes after the push. That run also stored a third empty block in that member's third chat (same member as the two stuck chats). The chat answered 8 times after the switchover, so the read-side repair in 3f2f316f is proven live on a real chat. No empty block has been stored since the switchover.
 - 11:31:40 (alert 566): not a run failure. It is the rate-limit line („ძალიან ბევრი ზედიზედ"), with no run_id, so no run or salvage line is expected. A designed stop; the next message was answered.
