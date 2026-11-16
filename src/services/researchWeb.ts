@@ -24,6 +24,12 @@ const MAX_RELATED_WEB_QUERIES = 2;
 const MAX_COMPANIES = 12;
 /** What each result says, enough to tell whether the firm does this. */
 const SNIPPET_CHARS = 220;
+/** The firms whose head is looked up: the first ones the owner has nobody at. */
+const MAX_HEAD_LOOKUPS = 3;
+/** The names read from a head search's titles. */
+const MAX_HEADS = 3;
+/** What a head search adds to the firm's name, in the languages pages are written in. */
+const HEAD_SEARCH_WORDS = 'CEO director founder დირექტორი დამფუძნებელი';
 const LATIN_RE = /^[\p{Script=Latin}\d\s-]+$/u;
 const CYRILLIC_RE = /^[\p{Script=Cyrillic}\d\s-]+$/u;
 
@@ -67,7 +73,18 @@ function hitsOf(result: object): WebHit[] {
   return Array.isArray(rows) ? (rows as WebHit[]) : [];
 }
 
-/** Every query's results, once each, every search charged as the one it is. */
+/** One web search, charged as the one it is. */
+async function chargedSearch(request: WebLevelRequest, q: string): Promise<WebHit[]> {
+  await recordFixedUsage({
+    userId: request.userId,
+    kind: 'web_search',
+    ...(await webSearchLedger()),
+    threadId: request.threadId,
+  }).catch(() => {});
+  return hitsOf(await webSearch(q));
+}
+
+/** Every query's results, once each. */
 async function searchTheWeb(
   request: WebLevelRequest,
   queries: readonly string[],
@@ -75,13 +92,7 @@ async function searchTheWeb(
   const seen = new Set<string>();
   const hits: WebHit[] = [];
   for (const q of queries) {
-    await recordFixedUsage({
-      userId: request.userId,
-      kind: 'web_search',
-      ...(await webSearchLedger()),
-      threadId: request.threadId,
-    }).catch(() => {});
-    for (const hit of hitsOf(await webSearch(q))) {
+    for (const hit of await chargedSearch(request, q)) {
       const key = String(hit.url ?? hit.title ?? '');
       if (key === '' || seen.has(key)) continue;
       seen.add(key);
@@ -100,6 +111,46 @@ function wayInLine(wayIn: WayIn | undefined): string {
   return wayIn.kind === 'first_circle' ? `the owner’s own contact: ${wayIn.who}` : 'none';
 }
 
+interface CompanyHead {
+  readonly name: string;
+  readonly owner_contact: string;
+}
+
+/**
+ * The tester's case, 16 Nov: a found firm's head was in her own phonebook under
+ * his own name only, and the web names him as its head when the firm's head is
+ * searched — nobody searched it. The web is asked who heads the firm (its name
+ * goes out, never a person's), and each name it gives is matched against the
+ * owner's own contacts as a person: first name and surname, never a namesake.
+ */
+async function headsOf(request: WebLevelRequest, company: string): Promise<CompanyHead[]> {
+  const hits = await chargedSearch(request, `${company} ${HEAD_SEARCH_WORDS}`);
+  const origin = { userId: request.userId, threadId: request.threadId };
+  const firm = company.toLocaleLowerCase();
+  const names = (await wayInNamesFrom({ results: hits }, MAX_HEADS, origin)).filter(
+    (name) => !firm.includes(name.toLocaleLowerCase()) && !name.toLocaleLowerCase().includes(firm),
+  );
+  if (names.length === 0) return [];
+  const ways = await findWaysIn(request.userId, names, { threadId: request.threadId }, undefined, {
+    everyNameIsAPerson: true,
+  });
+  return names.map((name) => ({ name, owner_contact: wayInLine(ways.get(name)) }));
+}
+
+/** The heads of the first few companies the owner has nobody at yet. */
+async function headsWhereNobody(
+  request: WebLevelRequest,
+  companies: readonly string[],
+  own: ReadonlyMap<string, WayIn>,
+): Promise<Map<string, CompanyHead[]>> {
+  const heads = new Map<string, CompanyHead[]>();
+  const nobody = companies.filter((c) => own.get(c)?.kind !== 'first_circle');
+  for (const company of nobody.slice(0, MAX_HEAD_LOOKUPS)) {
+    heads.set(company, await headsOf(request, company).catch(() => []));
+  }
+  return heads;
+}
+
 /** The web level's result: what the web says, the companies, and the owner's people at them. */
 export async function webLevel(request: WebLevelRequest): Promise<object> {
   const hits = await searchTheWeb(request, allWebQueries(request));
@@ -111,13 +162,18 @@ export async function webLevel(request: WebLevelRequest): Promise<object> {
   const names = [
     ...new Set([...companies, ...companies.map(firmInTheOtherScript).filter((n) => n !== '')]),
   ].join(' ');
-  const [second, further] = [
+  const [second, further, heads] = [
     await searchSecondDegree(request.userId, names, request.ownerLine),
     await farMembersHolding(Number(request.userId), names, undefined, undefined, FarDepth.Labels),
+    await headsWhereNobody(request, companies, own),
   ];
   return {
     web_results: hits,
-    companies: companies.map((name) => ({ name, owner_contact_there: wayInLine(own.get(name)) })),
+    companies: companies.map((name) => ({
+      name,
+      owner_contact_there: wayInLine(own.get(name)),
+      ...(heads.has(name) ? { heads_on_the_web: heads.get(name) } : {}),
+    })),
     people_saved_under_these_companies: { second_circle: second, further_out: further },
   };
 }

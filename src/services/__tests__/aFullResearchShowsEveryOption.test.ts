@@ -30,6 +30,7 @@ import { query } from '../../db/postgres/client';
 import { farMembersHolding } from '../farCircles.service';
 import {
   forgetResearch,
+  FULL_RESEARCH_HEADER,
   LevelFindings,
   narrowestFirst,
   ResearchLevel,
@@ -259,5 +260,20 @@ describe('the web level of a request that names a person', () => {
       askedAt: new Date(0),
     });
     expect(webLevel).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The tester's document, 16 Nov: „who is Dima? I have nobody by that name"
+ * (she saved him under two words; the answer gave the first), and a stranger
+ * who only shared a register director's name offered as the way in.
+ */
+describe('the second answer’s rules', () => {
+  it('name the owner’s own contact by the whole saved name', () => {
+    expect(FULL_RESEARCH_HEADER).toContain('the whole saved name, every word of it');
+  });
+
+  it('never offer a mere namesake as the way in', () => {
+    expect(FULL_RESEARCH_HEADER).toContain('only SHARES A NAME with a person the search named');
   });
 });

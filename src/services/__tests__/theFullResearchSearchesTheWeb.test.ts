@@ -26,7 +26,7 @@ jest.mock('../farCircles.service', () => ({
 import { recordFixedUsage } from '../costLedger.service';
 import { farMembersHolding } from '../farCircles.service';
 import { findWaysIn } from '../openingSearch.service';
-import { webLevel, webQueries } from '../researchWeb';
+import { allWebQueries, webLevel, webQueries } from '../researchWeb';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { webSearch } from '../tools/webSearch';
 import { wayInNamesFrom } from '../wayInNames.service';
@@ -84,9 +84,73 @@ describe('the full research’s web level', () => {
       ownerLine: '',
       meanings: MEANINGS,
     })) as { web_results: unknown[] };
-    expect(webSearch).toHaveBeenCalledTimes(3);
-    expect(recordFixedUsage).toHaveBeenCalledTimes(3);
+    // Three for the request, one for the head of the firm the owner has nobody at.
+    expect(webSearch).toHaveBeenCalledTimes(4);
+    expect(recordFixedUsage).toHaveBeenCalledTimes(4);
     expect(result.web_results).toHaveLength(2);
+  });
+
+  it('searches the related trades too, two at most', () => {
+    expect(
+      allWebQueries({
+        userId: '186272',
+        threadId: 1,
+        words: WORDS,
+        ownerLine: '',
+        meanings: new Map(),
+        related: ['ბეჭდვა', 'სტამბა', 'სუვენირები'],
+      }),
+    ).toEqual([WORDS, 'ბეჭდვა', 'სტამბა']);
+  });
+
+  /**
+   * The tester's case, 16 Nov: a found firm's head was her own contact, and the
+   * web names him as its head when the head is searched.
+   */
+  it('looks up the head of a firm the owner has nobody at, and matches them as a person', async () => {
+    mocked(wayInNamesFrom).mockImplementation(async (result: { results: { title: string }[] }) =>
+      result.results.some((r) => r.title.includes('CEO'))
+        ? ['Colibri', 'Levan Japaridze']
+        : ['Colibri', 'Promo Gifts'],
+    );
+    mocked(webSearch).mockImplementation(async (q: string) => ({
+      results: q.startsWith('Colibri ') ? [{ title: 'Levan Japaridze — CEO, Colibri' }] : [COLIBRI],
+    }));
+    mocked(findWaysIn).mockImplementation(async (_u: string, names: string[]) =>
+      names.includes('Levan Japaridze')
+        ? new Map([['Levan Japaridze', { kind: 'first_circle', who: 'Levan Japaridze' }]])
+        : new Map([
+            ['Colibri', { kind: 'none' }],
+            ['Promo Gifts', { kind: 'first_circle', who: 'Mariam Lomidze' }],
+          ]),
+    );
+    const result = await webLevel({
+      userId: '186272',
+      threadId: 1,
+      words: WORDS,
+      ownerLine: '',
+      meanings: new Map(),
+    });
+    expect(webSearch).toHaveBeenCalledWith(expect.stringMatching(/^Colibri CEO director founder/));
+    expect(webSearch).not.toHaveBeenCalledWith(expect.stringMatching(/^Promo Gifts CEO/));
+    expect(findWaysIn).toHaveBeenCalledWith(
+      '186272',
+      ['Levan Japaridze'],
+      { threadId: 1 },
+      undefined,
+      { everyNameIsAPerson: true },
+    );
+    expect(result).toMatchObject({
+      companies: [
+        {
+          name: 'Colibri',
+          heads_on_the_web: [
+            { name: 'Levan Japaridze', owner_contact: 'the owner’s own contact: Levan Japaridze' },
+          ],
+        },
+        { name: 'Promo Gifts' },
+      ],
+    });
   });
 
   it('looks for the owner’s people at every company, in their own contacts and further out', async () => {
