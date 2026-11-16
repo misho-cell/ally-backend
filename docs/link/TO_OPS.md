@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 12:55Z — run watch: alert 628 (real member, 12:00Z) — fix 30f19be9 READY, waits on Misho's go
+- What happened: an introduction request waited, and the owner wrote „tell the requester I do not know the target". respond_to_introduction went (decline + her words, ok=true). The unsent-instruction guard did not count that answer and forced „the question could not be sent, our fault". That was false.
+- Fix 30f19be9 (branch, verify green, test `anAnsweredIntroductionIsNotAFault`): an answer that went marks the run as sent (runIntroSent), as a sent introduction request already does.
+- DONE WHEN: on a fictional seat, decline a waiting introduction request in words („tell X I do not know Y"). The reply says it was passed on, with no „our fault".
+- Not shipped: board pause, asked Misho at 12:50Z. Alert 628 stays open until it ships.
+
 ### 16 Nov, 12:35Z — SHIPPED 78c143f5 (a018c30a), outage=0: the full research shows every option (Misho's go, his chat)
 - Why: on the tester's „product photographer" request, 21 photographers sit in her second circle (counted with read-only SQL), and the second answer said „nobody new". The second circle ranks every word alike, so the city word filled the 50 places. Each level also reached the model as raw JSON cut at 4,000 characters (~10 people).
 - Now: own contacts, the second circle and levels 3-5 also search each word alone. Which word is narrow is read from how many people it finds. Each level gives a PEOPLE FOUND list (up to 40, the narrowest word's people first), and the header asks for every fitting person.
