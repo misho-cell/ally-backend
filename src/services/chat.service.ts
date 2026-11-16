@@ -6661,6 +6661,21 @@ async function taskForAsk(
 
 /** Runs that sent an introduction request (37517): a closing „send it?" is replaced. */
 const runIntroSent = new Set<string>();
+
+/**
+ * 16 Nov, alert 628 (a real member): „tell Levan I do not know Lasha" was
+ * answered with respond_to_introduction — the requester got the owner's words —
+ * and the unsent-instruction guard, which did not count that answer, rewrote
+ * the reply into „the question could not be sent, our fault". An answer that
+ * went counts as the instruction carried out, as a sent request does.
+ */
+async function answerSent(runId: string | undefined, outcome: Promise<object>): Promise<object> {
+  const result = await outcome;
+  if (runId !== undefined && (result as { success?: unknown }).success === true) {
+    runIntroSent.add(runId);
+  }
+  return result;
+}
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
 const runWebFound = new Set<string>();
 /** #893: the labels of the list this run worked, for the check that the reply names every row. */
@@ -11234,10 +11249,13 @@ async function executeToolCall(
       if (redirect === undefined && input['accepted'] === true) {
         const passedTo = await requestPassedOnTo(userId, requestId);
         if (passedTo !== null) {
-          return respondToIntroduction(userId, requestId, false, passedOnAnswer(passedTo));
+          return answerSent(
+            runId,
+            respondToIntroduction(userId, requestId, false, passedOnAnswer(passedTo)),
+          );
         }
       }
-      return answer(requestId);
+      return answerSent(runId, answer(requestId));
     }
     case 'get_intro_status': {
       /**

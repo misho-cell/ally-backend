@@ -32,7 +32,7 @@ describe('a request the go-between passed on', () => {
     expect(passedOnAnswer('გიორგი')).toBe('თვითონ ვერ დაგაკავშირებ — თხოვნა გიორგის გადავეცი.');
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
-      'return respondToIntroduction(userId, requestId, false, passedOnAnswer(passedTo));',
+      'respondToIntroduction(userId, requestId, false, passedOnAnswer(passedTo)),',
     );
   });
 
