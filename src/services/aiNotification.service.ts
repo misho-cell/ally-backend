@@ -29,9 +29,29 @@ const NUDGE_PAUSE_DAYS = 14;
 // How long nudges stay suppressed after the agent flags the user as distressed.
 const DISTRESS_PAUSE_DAYS = 7;
 
+/** What one nudge is about, as the model that wrote it says. */
+export enum NudgeSubject {
+  /** An introduction request waits on the owner as the go-between. */
+  Request = 'request',
+  /** Answers the owner waits on, from people asked on a goal. */
+  Waiting = 'waiting',
+  /** Anything else: it belongs in no one chat. */
+  Other = 'other',
+}
+
+const NUDGE_SUBJECTS: ReadonlySet<string> = new Set(Object.values(NudgeSubject));
+
+/** The subject the model named; anything else is Other, which is kept in no chat. */
+export function nudgeSubjectOf(value: unknown): NudgeSubject {
+  return typeof value === 'string' && NUDGE_SUBJECTS.has(value)
+    ? (value as NudgeSubject)
+    : NudgeSubject.Other;
+}
+
 interface NotificationContent {
   title: string;
   body: string;
+  about: NudgeSubject;
 }
 
 interface ContactEntry {
@@ -105,28 +125,47 @@ async function namesWaitedOn(userId: string): Promise<string[]> {
   return result.rows.map((r) => r.name?.trim() ?? '').filter((n) => n !== '');
 }
 
+/** The goal whose answers the owner waits on, newest ask first. */
+const WAITING_GOAL_CHAT_SQL = `
+  SELECT k.thread_id
+    FROM task_asks ta JOIN tasks k ON k.id = ta.task_id
+   WHERE ta.from_user_id = $1::int AND ta.status = 'sent' AND k.thread_id IS NOT NULL
+   ORDER BY ta.created_at DESC
+   LIMIT 1`;
+
 /**
- * #7921 / #1816: a tap opens the conversation the nudge is about — the goal
- * whose answers the owner is waiting on — or their latest conversation, and
- * only failing both the chat list.
+ * The newest introduction request waiting on the owner as go-between, in its
+ * own chat: the thread it continues, else its card's thread (introResponse.ts).
  */
-export async function nudgePushUrl(userId: string): Promise<string> {
+const WAITING_REQUEST_CHAT_SQL = `
+  SELECT COALESCE(r.mediator_thread_id,
+                  (SELECT t.id FROM threads t
+                    WHERE t.introduction_request_id = r.id
+                      AND t.user_id::text = r.mediator_user_id::text
+                    ORDER BY t.id DESC LIMIT 1)) AS thread_id
+    FROM introduction_requests r
+   WHERE r.mediator_user_id::text = $1::text AND r.status = 'pending'
+   ORDER BY r.created_at DESC
+   LIMIT 1`;
+
+/**
+ * #7921 / #1816: a tap opens the conversation the nudge is about. Ops, 16 Nov
+ * (Misho's screenshot, a real member): a nudge about an introduction request
+ * was kept in an unrelated older goal, because the chat was picked apart from
+ * the text — the goal with a sent ask, else the latest thread. The chat now
+ * follows what the nudge says; a nudge about nothing in one chat opens the
+ * chat list and is kept in no goal.
+ */
+export async function nudgePushUrl(
+  userId: string,
+  about: NudgeSubject = NudgeSubject.Waiting,
+): Promise<string> {
+  if (about === NudgeSubject.Other) return AI_NOTIFICATION_PUSH_URL;
+  const sql = about === NudgeSubject.Request ? WAITING_REQUEST_CHAT_SQL : WAITING_GOAL_CHAT_SQL;
   try {
-    const result = await query<{ thread_id: number }>(
-      `SELECT thread_id FROM (
-         SELECT k.thread_id, 1 AS rank, ta.created_at AS at
-           FROM task_asks ta JOIN tasks k ON k.id = ta.task_id
-          WHERE ta.from_user_id = $1::int AND ta.status = 'sent' AND k.thread_id IS NOT NULL
-         UNION ALL
-         SELECT t.id, 2, t.updated_at FROM threads t WHERE t.user_id::text = $1::text
-       ) c
-       ORDER BY rank, at DESC
-       LIMIT 1`,
-      [userId],
-      NUDGE_URL_TIMEOUT_MS,
-    );
-    const threadId = result.rows[0]?.thread_id;
-    return threadId === undefined ? AI_NOTIFICATION_PUSH_URL : `/chat/${threadId}`;
+    const result = await query<{ thread_id: number | null }>(sql, [userId], NUDGE_URL_TIMEOUT_MS);
+    const threadId = result.rows[0]?.thread_id ?? null;
+    return threadId === null ? AI_NOTIFICATION_PUSH_URL : `/chat/${threadId}`;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn(`[ai-notif] push url for ${userId} not read:`, (err as Error).message);
@@ -227,9 +266,11 @@ async function generateNotificationContent(
     ...noThinkingFor(NOTIFICATION_MODEL),
     max_tokens: 1024,
     system: `შენ აგენერირებ პერსონალიზებულ push notification-ს Netai-სთვის — კონტაქტების ქსელის აპლიკაცია.
-მთავარი მიზანი: მომხმარებელი გახსნის app-ს ამ notification-ის გამო.
+მთავარი მიზანი: შეახსენო ერთი მართალი რამ, რაც ახლა მას ელოდება. ეს ტექსტი იმ ჩატშიც ჩაიწერება, რომელსაც ეხება, და იქ წაიკითხავს — ამიტომ არასოდეს დაწერო „გახსენი აპი", „შედი აპში" ან მსგავსი.
 
 წესები:
+- ერთ notification-ში ერთი რამ: ან გაცნობის მოთხოვნა, ან ვისაც პასუხს ელოდება, ან სხვა
+- about: "request" — თუ ტექსტი გაცნობის მოთხოვნაზეა, რომელიც მას ელოდება; "waiting" — თუ იმაზეა, ვისაც პასუხს ელოდება; "other" — ყველაფერი დანარჩენი
 - title: მაქსიმუმ 50 სიმბოლო
 - body: მაქსიმუმ 100 სიმბოლო
 - დაწერე მხოლოდ ის, რაც კონტექსტში მართლა წერია (კონტაქტი, მიზანი, პასუხის მოლოდინი); არაფერი გამოიგონო
@@ -240,7 +281,7 @@ async function generateNotificationContent(
 - ქართულად
 - ადამიანი დაასახელე მხოლოდ ისე, როგორც „ვისაც ახლა პასუხს ელოდება" სიაშია — პირველად სრული სახელით და გვარით; არ შეამოკლო და არ შეცვალო მართლწერა; სიაში თუ არაა, სახელს ნუ ახსენებ
 
-გამოიტანე მხოლოდ JSON: {"title": "...", "body": "..."} ან {"skip": true}`,
+გამოიტანე მხოლოდ JSON: {"title": "...", "body": "...", "about": "request" | "waiting" | "other"} ან {"skip": true}`,
     messages: [
       {
         role: 'user',
@@ -271,7 +312,12 @@ async function generateNotificationContent(
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Claude returned invalid JSON for notification');
 
-  const parsed = JSON.parse(jsonMatch[0]) as { title?: string; body?: string; skip?: boolean };
+  const parsed = JSON.parse(jsonMatch[0]) as {
+    title?: string;
+    body?: string;
+    skip?: boolean;
+    about?: unknown;
+  };
   if (parsed.skip === true) return null;
   if (!parsed.title || !parsed.body) throw new Error('Notification missing title or body');
 
@@ -280,6 +326,7 @@ async function generateNotificationContent(
   return {
     title: scrubMechanicalForStorage(String(parsed.title)),
     body: scrubMechanicalForStorage(String(parsed.body)),
+    about: nudgeSubjectOf(parsed.about),
   };
 }
 
@@ -427,7 +474,7 @@ export async function sendAiNotification(userId: string): Promise<void> {
     [userId, content.title, content.body],
   );
 
-  const url = await nudgePushUrl(userId);
+  const url = await nudgePushUrl(userId, content.about);
   await keepNudgeInItsChat(userId, url, content);
   try {
     // #1816: a tap opens the conversation, like every other push, not wherever the app defaults.
