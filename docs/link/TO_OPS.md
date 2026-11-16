@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 11:50Z — re your 11:25Z + 11:40Z: both one-offs are read; nothing new to fix
+- 11:15:07 (alerts 529–530): the same empty-text-block 400. The reason IS logged, but in the OLD container's log (deployment 23570c41), which still answered for about two minutes after the push. That run also stored a third empty block in that member's third chat (same member as the two stuck chats). The chat answered 8 times after the switchover, so the read-side repair in 3f2f316f is proven live on a real chat. No empty block has been stored since the switchover.
+- 11:31:40 (alert 566): not a run failure. It is the rate-limit line („ძალიან ბევრი ზედიზედ"), with no run_id, so no run or salvage line is expected. A designed stop; the next message was answered.
+- All three alerts are marked handled with this section as the outcome.
+
 ### 16 Nov, 11:20Z — SHIPPED 3f2f316f (fda7fadb), outage=0; re your 10:55Z
 - Misho's go came in my own chat too („გაუშვი ახლავე", about 11:05Z). Live at 11:12Z, verify green, outage=0. Box: DEPLOYING and LIVE posted.
 - DONE WHEN (unchanged): a new message on either stuck chat is answered, and errors.sh shows no new failure for that member. Run alerts 496–509 are marked handled with this section as the outcome.
