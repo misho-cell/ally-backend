@@ -1,7 +1,9 @@
 import { query } from '../db/postgres/client';
 import { FarDepth, farMembersHolding } from './farCircles.service';
 import { phoneDigits } from './phone';
+import { goalReachesANamedPerson } from './openingSearch.service';
 import { peopleListed, personLine, personRowsIn } from './researchPeopleList';
+import { webLevel } from './researchWeb';
 import { findCompaniesForNeed } from './tools/findCompaniesForNeed';
 import { findPeopleInBase } from './tools/findPeopleInBase';
 import { searchByInsight } from './tools/searchByInsight';
@@ -32,6 +34,8 @@ import { withoutWithheldPeople } from './withoutWithheldPeople';
 export const RESEARCH_KEPT_MS = 30 * 60 * 1000;
 /** Each level's own result as the model reads it, at most this long; its people are listed in full. */
 const LEVEL_CHARS = 2_000;
+/** The web level's own result as the model reads it: the companies and their pages. */
+const WEB_LEVEL_CHARS = 8_000;
 /** People listed per level, the narrowest search word's first. */
 const LISTED_PER_LEVEL = 40;
 /** The request's words searched one by one, at most this many. */
@@ -54,6 +58,26 @@ export enum ResearchLevel {
   Needs = 'people LOOKING for this (their need matches), at every level',
   Companies = 'the company base — companies doing this, with the owner’s people there',
   BasePeople = 'the people base — people known to do this, with who knows them',
+  Web = 'the web — the companies that do this, and the owner’s people at each',
+}
+
+/** The request names a person: their name does not go to the web (row 253). */
+const NAMED_PERSON_STAYS_HOME = {
+  skipped: 'the request names a person, and a name is not the web’s to read',
+};
+
+/** The web level, or nothing sent out when the request names a person. */
+function webSearchFor(request: ResearchRequest, meanings: WordMeanings): () => Promise<object> {
+  return async () =>
+    goalReachesANamedPerson(request.ownerLine)
+      ? NAMED_PERSON_STAYS_HOME
+      : webLevel({
+          userId: request.userId,
+          threadId: request.threadId,
+          words: request.words,
+          ownerLine: request.ownerLine,
+          meanings,
+        });
 }
 
 /** One of the request's words, searched alone. */
@@ -158,6 +182,7 @@ function levelSearches(request: ResearchRequest, meanings: WordMeanings): readon
       search: () => findPeopleInBase(userId, baseWords),
       byWord: false,
     },
+    { level: ResearchLevel.Web, search: webSearchFor(request, meanings), byWord: false },
   ];
 }
 
@@ -266,6 +291,7 @@ const LEVEL_LOG_NAME: Readonly<Record<ResearchLevel, string>> = {
   [ResearchLevel.Needs]: 'needs',
   [ResearchLevel.Companies]: 'company base',
   [ResearchLevel.BasePeople]: 'people base',
+  [ResearchLevel.Web]: 'web companies',
 };
 
 const countOf = (result: object | null): string | number =>
@@ -434,8 +460,13 @@ export const FULL_RESEARCH_HEADER =
   'FULL RESEARCH FINISHED — every level of the owner’s network, searched deeper than a quick ' +
   'answer: their own contacts (with words of the same meaning, and what you have saved about ' +
   'them), the second circle, levels 3-5 through members, people looking for this, and the ' +
-  'company and people bases. Answer from it now. If the owner already had a quick answer in ' +
-  'this conversation, this is the second, full answer.\n' +
+  'company and people bases, and the web: the companies that do this, what each one’s page says, ' +
+  'and the owner’s people at each. Answer from it now. If the owner already had a quick answer ' +
+  'in this conversation, this is the second, full answer.\n' +
+  '- THE WEB: name every company that fits, with its link, and say whether its page says it does ' +
+  'this (or only something near it). Where the owner has someone at a company — their own ' +
+  'contact, or someone saved under the company’s name in a friend’s phone — that is the way in: ' +
+  'say who, through whom.\n' +
   'WHAT TO GIVE (Misho, 16 Nov: the owner must see exactly how to reach the result):\n' +
   '- Each level’s PEOPLE FOUND list holds everyone it found, the narrowest search first. ' +
   'Read it whole: this answer is where the owner sees ALL their options, so name every person ' +
@@ -486,7 +517,9 @@ function levelSection(found: LevelFindings): string {
   const people = peopleFoundLines(found);
   if (found.result === null) return `${head}${people}\nThe whole request’s search did not finish.`;
   const text = JSON.stringify(found.result);
-  const clipped = text.length > LEVEL_CHARS ? `${text.slice(0, LEVEL_CHARS)}…` : text;
+  // The web level's companies and what each page says are its answer, not notes beside a list.
+  const limit = found.level === ResearchLevel.Web ? WEB_LEVEL_CHARS : LEVEL_CHARS;
+  const clipped = text.length > limit ? `${text.slice(0, limit)}…` : text;
   return `${head}${people}\nTHE SEARCH’S OWN RESULT (its notes apply):\n${clipped}`;
 }
 
