@@ -510,7 +510,8 @@ export const FULL_RESEARCH_HEADER =
   '- THE WEB: name every company that fits, with its link, and say whether its page says it does ' +
   'this (or only something near it). Where the owner has someone at a company — their own ' +
   'contact, or someone saved under the company’s name in a friend’s phone — that is the way in: ' +
-  'say who, through whom.\n' +
+  'say who, through whom. A company head the web names (heads_on_the_web) who is the owner’s ' +
+  'own contact is the closest way in of all: say so first.\n' +
   'WHAT TO GIVE (Misho, 16 Nov: the owner must see exactly how to reach the result):\n' +
   '- Each level’s PEOPLE FOUND list holds everyone it found, the narrowest search first. ' +
   'Read it whole: this answer is where the owner sees ALL their options, so name every person ' +
@@ -536,7 +537,13 @@ export const FULL_RESEARCH_HEADER =
   'or ask someone to introduce them.\n' +
   '3. A label from someone’s phone is shown as what it is: „<whose> phone has them saved as ' +
   '„…"". Never present a label as a name or a job unless it says one.\n' +
+  '   The owner’s own contact is named EXACTLY as the owner saved them — the whole saved name, ' +
+  'every word of it, never only its first word (the tester, 16 Nov: „who is Dima? I have nobody ' +
+  'by that name" — she had him saved under two words).\n' +
   '4. Where two sources disagree (two different directors), say so in one line.\n' +
+  '4a. Someone who only SHARES A NAME with a person the search named (a director in a ' +
+  'register, a name on a page) is not a way in: leave them out, unless something else ties ' +
+  'them — the company in a label saved for them, or the same number.\n' +
   '5. Plain words and short sentences. No internal word (signal, ring, level, base) unless you ' +
   'say in the same sentence what it means for the owner.\n' +
   '6. End with ONE concrete next step, asked as a question the owner can answer yes to.\n' +
