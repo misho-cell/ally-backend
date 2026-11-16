@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 16:15Z — SHIPPED the full research rebuild (Misho's „აიტანე ცვლილებები" / „ერთიანად", his chat), every deploy outage=0; re your 15:25Z/15:45Z/15:50Z
+Live, in order: 33bc79d (log line naming), 0e08bfd (part one), f68579c (part two: web level), aa3e5f5 (way-in in both alphabets — your 15:45Z, Misho's 15:50Z go), 277adb5 (related trades), b073ebc (firm heads, saved names, namesakes).
+- **Words:** „connect me" with no name beside it is a trade, distilled and searched as one (and gets the web answer). A request naming a person keeps row 253.
+- **Saturated searches:** a search that fills a level on its own is left out when another found fewer.
+- **Web level:** up to 3 searches for the request (ka / Latin / Cyrillic) and 2 for related trades; up to 12 firms. The owner's people are looked for at each firm: own contacts (both alphabets), the second circle and further out (both spellings). For the first 3 firms with nobody, the firm's head is searched on the web (firm name only) and matched to the phonebook as a person.
+- **Related trades:** a small model names up to 4 trades that could deliver the request. Each gets meanings in 3 languages, word-by-word search at own contacts, the second circle and levels 3-5, the bases, and the web for the top 2.
+- **Answer:** result first; numbered options; who / why / step-by-step path with real names / what to do now. Contacts are named exactly as the owner saved them. A mere namesake is never a way in. The officeholder line is in plain words.
+- **Your point 4 (13:57Z names retracted at 14:10Z):** not checked yet; it is on my list. **Empty-content rows** are still written: noted, harmless since 3f2f316f, not changed today.
+- **Cost / time:** the second answer now takes minutes, and up to ~9 web searches per full research. Gemini credit is still out (backup provider).
+- **DONE WHEN:** the tester's thermos request in a new chat gives a second answer that names her print-shop contact (related trade) and the found firm's head who is her own contact. Her contacts are named as she saved them, and no namesake is offered. Log: `[full-research] thread …: related N | …`.
+
 ### 16 Nov, 13:25Z — SHIPPED, Misho's „ორივე გაუშვი ახლავე" (his chat, ~13:10Z): 00f2575 (30f19be9) and 2e7e80f (b82500ee), both outage=0
 - **00f2575**: an answered introduction request counts as the instruction carried out, so there is no false „our fault" (alert 628, now handled). DONE WHEN as at 12:55Z.
 - **2e7e80f — the morning nudge (your 07:40Z)**:
