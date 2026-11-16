@@ -13,6 +13,7 @@ import {
   introductionQueryWithoutAModel,
 } from './searchQuery.service';
 import { RunLanguage } from './runLanguage';
+import { georgianToLatin, latinToGeorgian } from './tools/transliterate';
 import { classifyToken, isCertainNameToken, labelTokens, TokenKind } from './labelReader.service';
 
 /** A phonebook search's sample: counts only, or nothing when there is no shape to tell. */
@@ -907,6 +908,27 @@ export interface WayInOptions {
   readonly everyNameIsAPerson?: boolean;
 }
 
+const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
+const LATIN_LETTER_RE = /\p{Script=Latin}/u;
+
+/**
+ * Ops, 16 Nov 15:45Z (a real member's thermos goal): the web named the firm
+ * „ბრენდჰენდი", and members had saved its head with the tag „brendhendi" —
+ * people save a firm as it sounds, in the other alphabet. The exact lookup
+ * read only the spelling the web gave and found nobody. A firm is also looked
+ * for in the other alphabet: one spelling more, not every variant, so a
+ * near-spelling of a page title still never counts as a way in.
+ */
+export function firmInTheOtherScript(firmName: string): string {
+  const other = GEORGIAN_LETTER_RE.test(firmName)
+    ? georgianToLatin(firmName)
+    : LATIN_LETTER_RE.test(firmName)
+      ? latinToGeorgian(firmName)
+      : '';
+  const spelled = other.trim();
+  return spelled.toLowerCase() === firmName.trim().toLowerCase() ? '' : spelled;
+}
+
 export async function findWaysIn(
   userId: string,
   names: readonly string[],
@@ -920,22 +942,34 @@ export async function findWaysIn(
   // A city or a word like „studio" is not the organisation (32983), and a firm
   // is looked for by its own name, not by the trade in its title (35521).
   const searchNameOf = new Map<string, string>();
+  const otherSpellingOf = new Map<string, string>();
   for (const name of names) {
     const person = options.everyNameIsAPerson === true || leadsFirstName(name) !== null;
     const searchName = person ? wayInSearchName(name) : firmSearchName(name);
     if (searchName === '') out.set(name, { kind: 'none' });
     else searchNameOf.set(name, searchName);
+    const other = person || searchName === '' ? '' : firmInTheOtherScript(searchName);
+    if (other !== '') otherSpellingOf.set(name, other);
   }
-  const queries = [...new Set(searchNameOf.values())];
-  if (queries.length === 0) return out;
+  const primaries = [...new Set(searchNameOf.values())];
+  if (primaries.length === 0) return out;
+  // A firm's other-alphabet spelling travels in its own firm's pass.
+  const spellingsOf = new Map<string, string[]>(primaries.map((q) => [q, [q]]));
+  for (const [name, other] of otherSpellingOf) {
+    const group = spellingsOf.get(searchNameOf.get(name) ?? '');
+    if (group !== undefined && !group.includes(other)) group.push(other);
+  }
+  const queries = [...new Set([...spellingsOf.values()].flat())];
   // Board #959: a few names per pass over the phonebook, not one search per
   // name (63 in one run on 4 October). One pass for all of them was measured
   // on 5 Oct: 3 of 10 checks ran out the 3 s budget and lost every name, where
   // single lookups lost 8%. Small passes in parallel keep the count down, and a
   // slow pass loses only its own names.
   const passes: string[][] = [];
-  for (let i = 0; i < queries.length; i += WAY_IN_NAMES_PER_PASS) {
-    passes.push(queries.slice(i, i + WAY_IN_NAMES_PER_PASS));
+  for (let i = 0; i < primaries.length; i += WAY_IN_NAMES_PER_PASS) {
+    passes.push(
+      primaries.slice(i, i + WAY_IN_NAMES_PER_PASS).flatMap((q) => spellingsOf.get(q) ?? [q]),
+    );
   }
   const failures: string[] = [];
   let unfinished = 0;
@@ -969,15 +1003,17 @@ export async function findWaysIn(
     passes: passes.length,
     unfinished,
     failure: failures[0] ?? null,
-    tied: [...found.values()].filter((m) => m !== null).length,
+    tied: primaries.filter((q) => (spellingsOf.get(q) ?? [q]).some((s) => found.get(s) != null))
+      .length,
     durationMs: Date.now() - startedAt,
   });
   for (const [name, searchName] of searchNameOf) {
-    if (unchecked.has(searchName)) {
+    const other = otherSpellingOf.get(name);
+    if (unchecked.has(searchName) && (other === undefined || unchecked.has(other))) {
       out.set(name, { kind: 'unchecked' });
       continue;
     }
-    const match = found.get(searchName) ?? null;
+    const match = found.get(searchName) ?? (other === undefined ? null : found.get(other)) ?? null;
     // In a list of people the first word is the first name, familiar or not
     // (79366: „Keta X" was reached through another person named X).
     const firstName =

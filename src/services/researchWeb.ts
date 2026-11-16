@@ -1,6 +1,6 @@
 import { recordFixedUsage } from './costLedger.service';
 import { FarDepth, farMembersHolding } from './farCircles.service';
-import { findWaysIn, WayIn } from './openingSearch.service';
+import { findWaysIn, firmInTheOtherScript, WayIn } from './openingSearch.service';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { WordMeanings } from './tools/transliterate';
 import { webSearch } from './tools/webSearch';
@@ -96,7 +96,10 @@ export async function webLevel(request: WebLevelRequest): Promise<object> {
   const companies = await wayInNamesFrom({ results: hits }, MAX_COMPANIES, origin);
   if (companies.length === 0) return { web_results: hits, companies: [] };
   const own = await findWaysIn(request.userId, companies, { threadId: request.threadId });
-  const names = companies.join(' ');
+  // Ops, 16 Nov: members save a firm as it sounds, in the other alphabet („brendhendi").
+  const names = [
+    ...new Set([...companies, ...companies.map(firmInTheOtherScript).filter((n) => n !== '')]),
+  ].join(' ');
   const [second, further] = [
     await searchSecondDegree(request.userId, names, request.ownerLine),
     await farMembersHolding(Number(request.userId), names, undefined, undefined, FarDepth.Labels),
