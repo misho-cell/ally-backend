@@ -8,7 +8,11 @@ jest.mock('../costLedger.service', () => ({
   recordFixedUsage: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../wayInNames.service', () => ({ __esModule: true, wayInNamesFrom: jest.fn() }));
-jest.mock('../openingSearch.service', () => ({ __esModule: true, findWaysIn: jest.fn() }));
+jest.mock('../openingSearch.service', () => ({
+  __esModule: true,
+  findWaysIn: jest.fn(),
+  firmInTheOtherScript: jest.requireActual('../openingSearch.service').firmInTheOtherScript,
+}));
 jest.mock('../tools/searchSecondDegree', () => ({
   __esModule: true,
   searchSecondDegree: jest.fn(),
@@ -96,7 +100,8 @@ describe('the full research’s web level', () => {
     expect(findWaysIn).toHaveBeenCalledWith('186272', ['Colibri', 'Promo Gifts'], { threadId: 1 });
     expect(searchSecondDegree).toHaveBeenCalledWith(
       '186272',
-      'Colibri Promo Gifts',
+      // Both alphabets: members save a firm as it sounds (ops, 16 Nov: „brendhendi").
+      'Colibri Promo Gifts ცოლიბრი პრომო გიფც',
       'I need branded thermoses',
     );
     expect(result).toMatchObject({
