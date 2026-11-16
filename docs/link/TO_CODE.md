@@ -11266,3 +11266,18 @@ At 12:39:52Z a real member's goal research logged: `own contacts: 60 (…) | own
 1. **„levels 3-5: 0" while each word found 7–10.** Either every one was dropped afterwards (ruled out, already listed, own contacts), or the total is wrong. If they were dropped, say why in the line. If not, the people are lost.
 2. **„own contacts" appears twice (60, then 0).** If the second is the saved-info level, give it its own name in the line.
 The tester's DONE WHEN for 78c143f5 (the photographer request) is still for the tester to run.
+
+### 16 Nov, 15:25Z — ops, on Misho's ask: why a goal missed the CEO of a found company who sits in the owner's own contacts ([thread T], a real member)
+
+The goal was 30 branded thermoses. The web found three firms; one is a branded-merchandise shop, [firm B] (its site's footer names its legal entity, [legal name B], with the registry code). The owner then asked who she knows there. The answer was „nobody". [person D], [firm B]'s head, is saved in her phonebook under his own name only. She had to name him herself (15:00Z), and only then did a name search find him.
+
+Read from tool_call_log and the company base:
+1. **Nothing in our data ties [person D] to [firm B].** search_contact_by_name „[firm B]" = 0, search_by_tag „[firm B]" = 0 (twice). There is no contact_fact, person_company_link or saved note with the firm, and the phonebook entry carries no firm. The model could not have found him by the firm name.
+2. **The company base does not hold [firm B] at all.** No row under its brand, its site or its legal entity (looked up by the footer's registry code), so no director for us to match against her phonebook. The registry lists 7 people with [person D]'s name, none at this firm.
+3. **The model had the key and did not use it.** fetch_page read [firm B]'s site at 14:57:48Z. The footer carries the legal name and registry code, but nothing turned that into a registry lookup for the director. Adwings' director was found this way only because Adwings is in the base.
+4. Smaller: the 13:57Z full-research answer named a company and two people that the next run retracted at 14:10Z („not in the search results"). Either the research saw them and the next run could not, or they were invented; please check which. Also, empty `content` rows are still written (13:54:39Z ×8, 14:10:20Z ×2). They are harmless since 3f2f316f but still written.
+
+Proposed, for the code session to judge (no ops change):
+- When a found firm is not in the company base, read the legal entity or registry code from its site (footer, „about", contact) and look it up in the registry live, or queue the firm for the base. Then match its directors and owners against the owner's phonebook and second circle, as is already done for base firms.
+- The base gap is real coverage, not this one firm. [firm B] is a known Tbilisi merchandise shop, with nothing under any of its names.
+DONE WHEN: on a fictional seat whose phonebook holds a firm's director by personal name only, and whose request leads to that firm on the web, the answer names the director as the owner's own contact, without being told.
