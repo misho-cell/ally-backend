@@ -143,9 +143,22 @@ describe('a level searched word by word', () => {
     ]);
   });
 
-  it('is counted in the log line, a word that failed said so', () => {
+  it('is counted in the log line, a word that failed said so, with how many reach the model', () => {
     expect(researchCounts([found])).toBe(
-      `second circle: ${CAP} (${CITY_WORD} ${CAP}, ${PHOTO_WORD} ${PHOTOGRAPHERS}, პროდუქტის did not finish)`,
+      `second circle: whole ${CAP}, by word ${CITY_WORD} ${CAP}, ${PHOTO_WORD} ${PHOTOGRAPHERS}, ` +
+        'პროდუქტის did not finish, listed 40',
+    );
+  });
+
+  it('names every level apart in the log line, and lists a level the whole request missed', () => {
+    const further: LevelFindings = {
+      level: ResearchLevel.Further,
+      result: { further_out: [] },
+      byWord: [{ word: PHOTO_WORD, result: { results: photographers.slice(0, 7) } }],
+    };
+    const saved: LevelFindings = { level: ResearchLevel.OwnSaved, result: { results: [] } };
+    expect(researchCounts([saved, further])).toBe(
+      `own saved notes: 0 | levels 3-5: whole 0, by word ${PHOTO_WORD} 7, listed 7`,
     );
   });
 });
