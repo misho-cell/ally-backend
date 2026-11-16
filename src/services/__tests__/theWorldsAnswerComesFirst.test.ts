@@ -180,7 +180,7 @@ describe('the run (#8350)', () => {
   it('asks only on a new goal, never to reach a person or with people named to ask', () => {
     const due = chat.slice(chat.indexOf('function worldAnswerIsDue('));
     const body = due.slice(0, due.indexOf('\n}'));
-    expect(body).toContain('!goalAsksToReachAPerson(ownerLine)');
+    expect(body).toContain('!goalReachesANamedPerson(ownerLine)');
     expect(body).toContain('!ownerLineNamesPeopleToAsk(ownerLine)');
     // Tester 78509: „who is <post>" asks the world even in a chat with no goal.
     expect(body).toContain('(goalOpened || asksWhoHoldsAPost(ownerLine))');

@@ -495,7 +495,7 @@ import {
   WAY_IN_TOOL_NOTE,
   WayIn,
   OpeningSearches,
-  goalAsksToReachAPerson,
+  goalReachesANamedPerson,
 } from './openingSearch.service';
 import {
   countWebSearch,
@@ -14644,7 +14644,7 @@ const RUN_HEARTBEAT_POLL_MS = 5_000;
 function worldAnswerIsDue(goalOpened: boolean, ownerLine: string): boolean {
   return (
     (goalOpened || asksWhoHoldsAPost(ownerLine)) &&
-    !goalAsksToReachAPerson(ownerLine) &&
+    !goalReachesANamedPerson(ownerLine) &&
     !ownerLineNamesPeopleToAsk(ownerLine)
   );
 }

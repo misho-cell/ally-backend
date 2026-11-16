@@ -64,7 +64,7 @@ describe('applyOfficeholderGate', () => {
 
     expect(out.refused).toEqual(['გიორგი კობახიძე']);
     expect(out.reply).toBe(
-      'მას შეგიძლია მისწერო.\n\nერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე.',
+      'მას შეგიძლია მისწერო.\n\nერთი ადამიანი, ვინც ორგანიზაციის ხელმძღვანელად იყო დასახელებული, მის ოფიციალურ გვერდზე ვერ ვიპოვე, ამიტომ მისი სახელი არ დავწერე.',
     );
   });
 
@@ -97,7 +97,9 @@ describe('applyOfficeholderGate', () => {
       'en',
     );
 
-    expect(out.reply).toBe('I could not confirm one name on an official page, so I left it out.');
+    expect(out.reply).toBe(
+      'One person named as heading an organisation was not on its official page, so I left their name out.',
+    );
   });
 
   it('a sentence without an office word is never touched', async () => {

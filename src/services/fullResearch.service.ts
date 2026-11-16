@@ -38,6 +38,10 @@ const LISTED_PER_LEVEL = 40;
 const MAX_SINGLE_WORDS = 4;
 /** A shorter word („და", „in") says nothing on its own. */
 const MIN_SINGLE_WORD_LETTERS = 3;
+/** A search finding at least this share of the level's largest count has filled it… */
+const SATURATED_SHARE = 0.9;
+/** …and a level's searches that all found fewer than this filled nothing. */
+const SATURATED_MIN_PEOPLE = 40;
 const PREVIOUS_REPLIES_READ = 10;
 const READ_TIMEOUT_MS = 5_000;
 const MIN_NAME_CHARS = 3;
@@ -216,17 +220,40 @@ function resultsOf(found: LevelFindings): object[] {
   );
 }
 
+interface CountedResult {
+  readonly result: object;
+  readonly count: number;
+}
+
+function counted(result: object | null): CountedResult | null {
+  if (result === null) return null;
+  const count = personRowsIn(result).length;
+  return count === 0 ? null : { result, count };
+}
+
+/**
+ * Misho, 16 Nov: a search that filled the level on its own — „Tbilisi" 50 of
+ * 50, „for the team" 59 — says nothing about the request, and its people
+ * pushed the photographers out. Such a search is left out whenever another
+ * found fewer: which search is saturated is read from the counts themselves.
+ */
+export function withoutSaturated(searches: readonly CountedResult[]): CountedResult[] {
+  const most = Math.max(0, ...searches.map((s) => s.count));
+  if (most < SATURATED_MIN_PEOPLE) return [...searches];
+  const saturated = (s: CountedResult): boolean => s.count >= most * SATURATED_SHARE;
+  const narrower = searches.filter((s) => !saturated(s));
+  return narrower.length === 0 ? [...searches] : narrower;
+}
+
 /** The narrowest word's people first — the word that found fewest — then the whole request's. */
 export function narrowestFirst(found: LevelFindings): object[] {
   const words = (found.byWord ?? [])
-    .map((w) => ({
-      result: w.result,
-      count: w.result === null ? 0 : personRowsIn(w.result).length,
-    }))
-    .filter((w): w is { result: object; count: number } => w.result !== null && w.count > 0)
-    .sort((a, b) => a.count - b.count)
-    .map((w) => w.result);
-  return found.result === null ? words : [...words, found.result];
+    .map((w) => counted(w.result))
+    .filter((w): w is CountedResult => w !== null)
+    .sort((a, b) => a.count - b.count);
+  const whole = counted(found.result);
+  const all = whole === null ? words : [...words, whole];
+  return withoutSaturated(all).map((s) => s.result);
 }
 
 /** One line per level: how many people the request found, and each word alone. */
@@ -408,15 +435,36 @@ export const FULL_RESEARCH_HEADER =
   'answer: their own contacts (with words of the same meaning, and what you have saved about ' +
   'them), the second circle, levels 3-5 through members, people looking for this, and the ' +
   'company and people bases. Answer from it now. If the owner already had a quick answer in ' +
-  'this conversation, this is the second, full answer:\n' +
-  '- Best people first, nearest first; anyone who is better than those named before, say so.\n' +
-  '- A person from the previous answer may be named again: say they were in the previous ' +
-  'answer, and whether they have been written to (marks below).\n' +
+  'this conversation, this is the second, full answer.\n' +
+  'WHAT TO GIVE (Misho, 16 Nov: the owner must see exactly how to reach the result):\n' +
   '- Each level’s PEOPLE FOUND list holds everyone it found, the narrowest search first. ' +
   'Read it whole: this answer is where the owner sees ALL their options, so name every person ' +
-  'who fits, nearest circle first, not only the few the quick answer had.\n' +
+  'who fits, not only the few the quick answer had.\n' +
+  '- A person from the previous answer may be named again: say they were in the previous ' +
+  'answer, and whether they have been written to (marks below).\n' +
   '- When nothing new or better was found, say that in one short line and nothing more.\n' +
   '- This is everything: never say more results are coming.\n' +
+  'HOW TO WRITE IT — about the result, so the owner knows what to do next:\n' +
+  '1. Open with one or two sentences: the best way to the result, and what you advise doing first.\n' +
+  '2. Then the options, numbered, best first: one that surely does this, with the shortest real ' +
+  'path, comes first. For each option say:\n' +
+  '   a) who or what it is — a person, or a company and who there;\n' +
+  '   b) why it fits — what is written about them and where (a note saved about them, the label ' +
+  'someone saved them under, a website, with its link);\n' +
+  '   c) how the owner reaches them, step by step, with real names: start from the owner’s own ' +
+  'contact and name every person on the way, saying what each step is — e.g. „Iro is your ' +
+  'contact; Iro has Omiko Khoperia saved; Omiko has her saved as „Nino Colibri"". Never say ' +
+  '„second circle", „level 3" or „ring" — say who knows whom;\n' +
+  '   d) what to do now: call them directly (with the number, when the search gave one), let you ' +
+  'ask that person’s assistant (only Netai members have one; for someone who is not, say plainly ' +
+  'that they do not use Netai, so you cannot write to them, and who could introduce the owner), ' +
+  'or ask someone to introduce them.\n' +
+  '3. A label from someone’s phone is shown as what it is: „<whose> phone has them saved as ' +
+  '„…"". Never present a label as a name or a job unless it says one.\n' +
+  '4. Where two sources disagree (two different directors), say so in one line.\n' +
+  '5. Plain words and short sentences. No internal word (signal, ring, level, base) unless you ' +
+  'say in the same sentence what it means for the owner.\n' +
+  '6. End with ONE concrete next step, asked as a question the owner can answer yes to.\n' +
   'Every search note inside the findings still applies (what may be said, how to name people).';
 
 function markLine(person: MarkedPerson): string {

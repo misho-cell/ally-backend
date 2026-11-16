@@ -105,7 +105,7 @@ describe('the full research of a request of several words', () => {
     expect(mocked(searchByInsight).mock.calls.map(([, words]) => words)).toEqual([WORDS]);
   });
 
-  it('lists every photographer to the model, before the city’s people', async () => {
+  it('lists every photographer to the model, and not the city’s people', async () => {
     await runFullResearch(
       {
         userId: OWNER,
@@ -119,8 +119,10 @@ describe('the full research of a request of several words', () => {
       () => 0,
     );
     const section = (await takeResearch(OWNER, THREAD, 1))?.section ?? '';
-    for (const photographer of photographers) expect(section).toContain(photographer.name);
-    expect(section.indexOf(photographers[0].name)).toBeLessThan(section.indexOf('Nino Beridze 0 '));
+    const second = section.indexOf('SECOND CIRCLE');
+    const listed = section.slice(second, section.indexOf('THE SEARCH’S', second));
+    for (const photographer of photographers) expect(listed).toContain(photographer.name);
+    expect(listed).not.toContain('Nino Beridze 0 ');
   });
 });
 
@@ -135,18 +137,36 @@ describe('a level searched word by word', () => {
     ],
   };
 
-  it('puts the word that found fewest first, and the whole request last', () => {
-    expect(narrowestFirst(found)).toEqual([
+  it('leaves out a search that filled the level on its own, when another found fewer', () => {
+    expect(narrowestFirst(found)).toEqual([{ results: photographers }]);
+  });
+
+  it('keeps the narrow words in order, fewest first, the whole request last', () => {
+    const few = photographers.slice(0, 5);
+    const narrow: LevelFindings = {
+      level: ResearchLevel.Second,
+      result: { results: photographers },
+      byWord: [
+        { word: PHOTO_WORD, result: { results: photographers } },
+        { word: 'პროდუქტის', result: { results: few } },
+      ],
+    };
+    expect(narrowestFirst(narrow)).toEqual([
+      { results: few },
       { results: photographers },
-      { results: cityPeople },
-      { results: cityPeople },
+      { results: photographers },
     ]);
+  });
+
+  it('keeps every search when all of them filled the level', () => {
+    const allFull: LevelFindings = { level: ResearchLevel.Second, result: { results: cityPeople } };
+    expect(narrowestFirst(allFull)).toEqual([{ results: cityPeople }]);
   });
 
   it('is counted in the log line, a word that failed said so, with how many reach the model', () => {
     expect(researchCounts([found])).toBe(
       `second circle: whole ${CAP}, by word ${CITY_WORD} ${CAP}, ${PHOTO_WORD} ${PHOTOGRAPHERS}, ` +
-        'პროდუქტის did not finish, listed 40',
+        `პროდუქტის did not finish, listed ${PHOTOGRAPHERS}`,
     );
   });
 
