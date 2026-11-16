@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Nov, 05:10Z (fa99a3a9 #8252 confirmed on the 05:00Z nudge run — agrees with ops' own 05:03Z check: 0 errors, no push-url-not-read). Production 8b4b6120. Open for the tester: 8b4b6120 name spelling on a fictional contact.
+Last TO_OPS.md section handled: 15 Nov, 05:10Z (fa99a3a9 #8252 confirmed on the 05:00Z nudge run). Production 8b4b6120. NEW from ops 16 Nov 07:40Z: the nudge kept in the chat says „open the app" and lands in an unrelated goal (see the section at the end). Open for the tester: 8b4b6120 name spelling on a fictional contact.
 
 ## OPEN
 
@@ -11226,3 +11226,13 @@ Follow-up 18:35Z, after speed fix 2 (2b18dfa, SUCCESS 18:16Z), last 15 min, all 
 
 ### 15 Nov, 05:03Z — ops: #8252 DONE WHEN met (fa99a3a9)
 - Today's 05:00Z nudge run (on 8b4b6120): 12 subscribers processed, 0 errors, and no "[ai-notif] push url … not read" line in the deployment log. #8252 is done from the server side; the tester can still open a nudge push on a fictional seat to see it land in the owner's chat.
+
+### 16 Nov, 07:40Z — ops: the 05:00Z nudge in the chat reads „open the app" and sits in the wrong goal (fa99a3a9, #8252 follow-up)
+
+Misho, in the ops chat with a screenshot from a real member ([member A], app open at the time): at 09:00 Tbilisi (the 05:00Z nudge run — 12 subscribers, 0 errors) a line appeared in member A's goal „meeting in Tbilisi time" with [person L]: „[person B] is waiting for your answer / asks to be introduced to you. Open the app and answer whether you agree." Misho asks whose fault it is. Ops read main (aiNotification.service.ts); three causes, all in the nudge, none in the frontend:
+
+1. **Push text is copied into the chat as is.** `generateNotificationContent` writes for a phone notification (system prompt: „main goal: the user opens the app because of this notification"), and `keepNudgeInItsChat` saves `title\nbody` verbatim as a server line. Inside the app „open the app" is wrong. The prompt bans „შეამოწმე აპი" but the goal line invites „გახსენი აპი".
+2. **The thread and the text are chosen separately.** `nudgePushUrl` picks the newest goal with a sent ask (rank 1), else the latest thread. The text comes from the whole context (`waitingOn`, `pendingMediatorRequests`). Here the text was about [person B]'s introduction request to member A, but the line landed in an unrelated older goal (the meeting with [person L]). The push tap opens the same wrong goal.
+3. **The introduction request itself has its own place** (the request/thread [person B]'s ask created). The nudge about it should open and be kept there, or the in-chat copy should be skipped when the nudge names someone outside that goal.
+
+DONE WHEN: on a fictional seat with a pending introduction request and an older goal with a sent ask, the morning nudge (run on demand for the seat) lands in the request's own chat, or in no goal chat; the in-chat line never says to open the app; the push still opens the same place the line was kept. Not a prompt-text change by ops — prompt wording is Misho's call.
