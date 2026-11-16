@@ -10,6 +10,7 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchByTag } from './tools/searchByTag';
 import { searchMeanings } from './tools/searchMeanings';
 import { searchNeeds } from './tools/searchNeeds';
+import { relatedTrades } from './tools/relatedTrades';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { WordMeanings } from './tools/transliterate';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
@@ -67,7 +68,7 @@ const NAMED_PERSON_STAYS_HOME = {
 };
 
 /** The web level, or nothing sent out when the request names a person. */
-function webSearchFor(request: ResearchRequest, meanings: WordMeanings): () => Promise<object> {
+function webSearchFor(request: ResearchRequest, words: ResearchWords): () => Promise<object> {
   return async () =>
     goalReachesANamedPerson(request.ownerLine)
       ? NAMED_PERSON_STAYS_HOME
@@ -76,7 +77,8 @@ function webSearchFor(request: ResearchRequest, meanings: WordMeanings): () => P
           threadId: request.threadId,
           words: request.words,
           ownerLine: request.ownerLine,
-          meanings,
+          meanings: words.meanings,
+          related: words.related,
         });
 }
 
@@ -111,6 +113,7 @@ export interface ResearchRequest {
 
 interface KeptResearch {
   readonly findings: readonly LevelFindings[];
+  readonly related: readonly string[];
   readonly askedAt: Date;
   readonly landedAt: number;
   readonly taskId: number;
@@ -150,9 +153,11 @@ interface LevelSearch {
  * live, 13 Nov: searches run side by side slowed one another to ~20 s and timed
  * out a name search, so the background never competes with the quick answer.
  */
-function levelSearches(request: ResearchRequest, meanings: WordMeanings): readonly LevelSearch[] {
+function levelSearches(request: ResearchRequest, words: ResearchWords): readonly LevelSearch[] {
   const { userId, ownerLine } = request;
-  const baseWords = baseSearchWords(request.words, meanings);
+  const { meanings } = words;
+  // The bases are asked for the related trades too: a print shop makes branded thermoses.
+  const baseWords = baseSearchWords([request.words, ...words.related].join(' '), meanings);
   const further = async (words: string): Promise<object> => ({
     further_out: await farMembersHolding(
       Number(userId),
@@ -182,7 +187,7 @@ function levelSearches(request: ResearchRequest, meanings: WordMeanings): readon
       search: () => findPeopleInBase(userId, baseWords),
       byWord: false,
     },
-    { level: ResearchLevel.Web, search: webSearchFor(request, meanings), byWord: false },
+    { level: ResearchLevel.Web, search: webSearchFor(request, words), byWord: false },
   ];
 }
 
@@ -228,14 +233,50 @@ function withoutWithheld(found: LevelFindings, withheld: ReadonlySet<string>): L
 }
 
 /** Every level, one after another; a level that fails is said to have failed, never dropped. */
-export async function researchEveryLevel(request: ResearchRequest): Promise<LevelFindings[]> {
-  const meanings = await searchMeanings(request.userId, request.words);
-  const singles = singleWords(request.words);
+export interface Research {
+  readonly findings: readonly LevelFindings[];
+  /** The trades who could deliver this, searched as fully as the request's own words. */
+  readonly related: readonly string[];
+}
+
+/** What the research searches: the request's words one by one, then each related trade. */
+interface ResearchWords {
+  readonly meanings: WordMeanings;
+  readonly singles: readonly string[];
+  readonly related: readonly string[];
+}
+
+/**
+ * Misho, 16 Nov: „if related words are searched, the search on them must be
+ * enough too". A related trade gets its own meanings in the three languages,
+ * its own search at every network level, the bases and the web.
+ */
+async function researchWordsFor(request: ResearchRequest): Promise<ResearchWords> {
+  const [meanings, related] = await Promise.all([
+    searchMeanings(request.userId, request.words),
+    goalReachesANamedPerson(request.ownerLine)
+      ? Promise.resolve([])
+      : relatedTrades(request.userId, request.ownerLine, request.words),
+  ]);
+  const relatedMeanings =
+    related.length === 0 ? new Map() : await searchMeanings(request.userId, related.join(' '));
+  return {
+    meanings: new Map([...meanings, ...relatedMeanings]),
+    singles: [...new Set([...singleWords(request.words), ...related])],
+    related,
+  };
+}
+
+export async function researchEveryLevel(request: ResearchRequest): Promise<Research> {
+  const words = await researchWordsFor(request);
   const findings: LevelFindings[] = [];
-  for (const spec of levelSearches(request, meanings)) {
-    findings.push(await searchLevel(spec, request.words, singles));
+  for (const spec of levelSearches(request, words)) {
+    findings.push(await searchLevel(spec, request.words, words.singles));
   }
-  return findings.map((found) => withoutWithheld(found, request.withheld));
+  return {
+    findings: findings.map((found) => withoutWithheld(found, request.withheld)),
+    related: words.related,
+  };
 }
 
 /** Every result a level holds: the whole request's, then each word's. */
@@ -321,11 +362,14 @@ export async function runFullResearch(
   now: () => number = Date.now,
 ): Promise<boolean> {
   try {
-    const findings = await researchEveryLevel(request);
+    const { findings, related } = await researchEveryLevel(request);
     // eslint-disable-next-line no-console
-    console.info(`[full-research] thread ${request.threadId}: ${researchCounts(findings)}`);
+    console.info(
+      `[full-research] thread ${request.threadId}: related ${related.length} | ${researchCounts(findings)}`,
+    );
     kept.set(request.threadId, {
       findings,
+      related,
       askedAt: request.askedAt,
       landedAt: now(),
       taskId: request.taskId,
@@ -527,13 +571,20 @@ function levelSection(found: LevelFindings): string {
 export function researchSection(
   findings: readonly LevelFindings[],
   marked: readonly MarkedPerson[],
+  related: readonly string[] = [],
 ): string {
   const touched = marked.filter((p) => p.inPreviousAnswer || p.contacted !== Contacted.No);
   const marks =
     touched.length === 0
       ? '\n\nNobody found here was in a previous answer or has been written to on this goal.'
       : `\n\nALREADY IN THIS CONVERSATION:\n${touched.map(markLine).join('\n')}`;
-  return `${FULL_RESEARCH_HEADER}${marks}${findings.map(levelSection).join('')}`;
+  const trades =
+    related.length === 0
+      ? ''
+      : `\n\nRELATED TRADES, searched as fully as the request’s own words: ${related.join(', ')}. ` +
+        'Someone found only through one fits if that trade can deliver this: say which, and how ' +
+        '(e.g. „a print shop — they print logos on thermoses").';
+  return `${FULL_RESEARCH_HEADER}${marks}${trades}${findings.map(levelSection).join('')}`;
 }
 
 export interface TakenResearch {
@@ -568,7 +619,11 @@ export async function takeResearch(
     }),
   ]);
   return {
-    section: researchSection(waiting.findings, markPeople(people, replies, contacted)),
+    section: researchSection(
+      waiting.findings,
+      markPeople(people, replies, contacted),
+      waiting.related,
+    ),
     results: waiting.findings.flatMap(resultsOf),
     people,
   };
