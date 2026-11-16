@@ -10,8 +10,9 @@ import { join } from 'path';
 describe('the nudge push link', () => {
   const src = readFileSync(join(__dirname, '..', 'aiNotification.service.ts'), 'utf8');
 
-  it('compares the owner as text on both sides in the threads branch', () => {
-    expect(src).toContain('FROM threads t WHERE t.user_id::text = $1::text');
+  it('compares the owner as text on both sides where a thread is read (16 Nov: the request’s chat)', () => {
+    expect(src).toContain('AND t.user_id::text = r.mediator_user_id::text');
+    expect(src).toContain("WHERE r.mediator_user_id::text = $1::text AND r.status = 'pending'");
   });
 
   it('keeps the asks branch an integer comparison', () => {

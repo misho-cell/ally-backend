@@ -44,7 +44,7 @@ beforeEach(() => {
     Promise.resolve({
       rows: sql.includes('RETURNING id')
         ? [{ id: 1 }]
-        : sql.includes('thread_id FROM (')
+        : sql.includes('SELECT k.thread_id')
           ? [{ thread_id: THREAD_ID }]
           : [],
     }),
@@ -65,7 +65,11 @@ describe('the morning nudge (#8252)', () => {
   });
 
   it('is written into the chat its push opens', async () => {
-    modelWrites({ title: 'ნინო პასუხს გელოდება', body: 'შენს კითხვაზე ჯერ არ უპასუხია.' });
+    modelWrites({
+      title: 'ნინო პასუხს გელოდება',
+      body: 'შენს კითხვაზე ჯერ არ უპასუხია.',
+      about: 'waiting',
+    });
     await sendAiNotification(USER_ID);
     expect(mockSave).toHaveBeenCalledWith(
       THREAD_ID,
