@@ -230,15 +230,34 @@ export function narrowestFirst(found: LevelFindings): object[] {
 }
 
 /** One line per level: how many people the request found, and each word alone. */
+/** Each level's name in the log line (ops, 16 Nov: two levels both read „own contacts"). */
+const LEVEL_LOG_NAME: Readonly<Record<ResearchLevel, string>> = {
+  [ResearchLevel.Own]: 'own contacts',
+  [ResearchLevel.OwnSaved]: 'own saved notes',
+  [ResearchLevel.Second]: 'second circle',
+  [ResearchLevel.Further]: 'levels 3-5',
+  [ResearchLevel.Needs]: 'needs',
+  [ResearchLevel.Companies]: 'company base',
+  [ResearchLevel.BasePeople]: 'people base',
+};
+
+const countOf = (result: object | null): string | number =>
+  result === null ? 'did not finish' : personRowsIn(result).length;
+
+/**
+ * One line per research: each level's people for the whole request, and each
+ * word's alone. Ops, 16 Nov: „levels 3-5: 0" beside words that found 7-10 read
+ * as people lost — they are not, the words' people are listed — so the line
+ * says which number is which, and how many reach the model.
+ */
 export function researchCounts(findings: readonly LevelFindings[]): string {
   return findings
     .map((found) => {
-      const short = found.level.split(' — ')[0];
-      const whole = found.result === null ? 'did not finish' : personRowsIn(found.result).length;
-      const words = (found.byWord ?? []).map(
-        (w) => `${w.word} ${w.result === null ? 'did not finish' : personRowsIn(w.result).length}`,
-      );
-      return words.length === 0 ? `${short}: ${whole}` : `${short}: ${whole} (${words.join(', ')})`;
+      const name = LEVEL_LOG_NAME[found.level];
+      const listed = peopleListed(narrowestFirst(found), LISTED_PER_LEVEL).length;
+      if (found.byWord === undefined) return `${name}: ${countOf(found.result)}`;
+      const words = found.byWord.map((w) => `${w.word} ${countOf(w.result)}`).join(', ');
+      return `${name}: whole ${countOf(found.result)}, by word ${words}, listed ${listed}`;
     })
     .join(' | ');
 }
