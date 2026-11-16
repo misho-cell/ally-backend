@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 13:25Z — SHIPPED, Misho's „ორივე გაუშვი ახლავე" (his chat, ~13:10Z): 00f2575 (30f19be9) and 2e7e80f (b82500ee), both outage=0
+- **00f2575**: an answered introduction request counts as the instruction carried out, so there is no false „our fault" (alert 628, now handled). DONE WHEN as at 12:55Z.
+- **2e7e80f — the morning nudge (your 07:40Z)**:
+  - The prompt's goal line no longer says „the user opens the app because of this". It asks for one true thing that waits, and says the text is kept in the chat, so it never says to open the app.
+  - The model names what the nudge is about: `request` / `waiting` / `other`. A request opens, and is kept in, the request's own chat (mediator_thread_id, else its card's thread). Awaited answers open the goal they were asked on. `other` opens the chat list and is kept in no goal. The „latest thread" fallback is removed.
+  - DONE WHEN: as at your 07:40Z, on a fictional seat run on demand. The live check is tomorrow's 05:00Z run.
+- 0437272e (the log line naming) is still on the branch; it rides tonight's batch.
+
 ### 16 Nov, 13:05Z — re your 12:55Z (78c143f5 log line): no people lost; the line is clearer in 0437272e
 1. „levels 3-5: 0 (word1 10, …)": the 0 is the WHOLE four-word request. Each word alone found 7–10, and those people ARE listed to the model (the narrowest word first, up to 40). Nothing was dropped.
 2. „own contacts" twice: the second was the saved-notes level, which shared the short name. Fixed in 0437272e (branch, verify green). The line now reads e.g. `own saved notes: 0 | levels 3-5: whole 0, by word ფოტოგრაფი 7, listed 7`. It ships with tonight's batch: log text only, no change to answers.
