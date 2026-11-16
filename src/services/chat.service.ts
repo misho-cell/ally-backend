@@ -4978,6 +4978,25 @@ export function repairToolPairs(rows: Anthropic.MessageParam[]): Anthropic.Messa
   return kept;
 }
 
+function isEmptyText(block: HistoryBlock): boolean {
+  return block.type === 'text' && block.text.trim() === '';
+}
+
+/**
+ * 16 Nov (alerts 496–509, a real person): an opening search that found nothing
+ * was stored as an empty text block beside the tool results, and the API
+ * refuses one („text content blocks must be non-empty") — every later message
+ * on those two threads failed. Like repairToolPairs, a repair on read: the
+ * threads already stored that way answer again without touching a row.
+ */
+export function withoutEmptyText(rows: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  return rows.map((row) => {
+    const blocks = blocksOf(row.content);
+    if (!blocks || !blocks.some(isEmptyText)) return row;
+    return { role: row.role, content: blocks.filter((block) => !isEmptyText(block)) };
+  });
+}
+
 function asBlocks(content: Anthropic.MessageParam['content']): HistoryBlock[] {
   const blocks = blocksOf(content);
   if (blocks) return blocks;
@@ -5088,7 +5107,9 @@ async function loadHistory(threadId: number): Promise<Anthropic.MessageParam[]> 
   }));
 
   // G4: mid-history first — the two strippers below only reach the ends.
-  const rows = withoutUnfinishedEnd(mergeAdjacentSameRole(repairToolPairs(stored)));
+  const rows = withoutUnfinishedEnd(
+    mergeAdjacentSameRole(repairToolPairs(withoutEmptyText(stored))),
+  );
 
   // Strip leading orphaned tool_result or assistant messages — Anthropic requires
   // the conversation to start with a user message.
@@ -16208,12 +16229,14 @@ async function runToolLoop(
        * beside that is asking the API to merge two things that mean different
        * things. One turn, two kinds of block, no ambiguity.
        */
-      const lateFindings = lateSearch?.takeIfReady() ?? null;
+      const lateFindings = (lateSearch?.takeIfReady() ?? '').trim();
       // Misho, 13 Nov (two answers): the full research, landed while this run works, joins it.
       const fullResearch = (await fullResearchForRun(userId, threadId, runId)).trim();
       const fileEvents = lateFiles.take();
+      // 16 Nov (alerts 496–509): an opening search that found nothing gives
+      // '', and an empty text block made the API refuse every later run.
       const lateBlocks: Anthropic.ContentBlockParam[] = [
-        ...(lateFindings === null ? [] : [{ type: 'text' as const, text: lateFindings }]),
+        ...(lateFindings === '' ? [] : [{ type: 'text' as const, text: lateFindings }]),
         ...(fullResearch === '' ? [] : [{ type: 'text' as const, text: fullResearch }]),
         ...(fileEvents.length === 0
           ? []
