@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Nov, 05:10Z (fa99a3a9 #8252 confirmed on the 05:00Z nudge run). Production 8b4b6120. NEW from ops 16 Nov 07:40Z: the nudge kept in the chat says „open the app" and lands in an unrelated goal (see the section at the end). Open for the tester: 8b4b6120 name spelling on a fictional contact.
+Last TO_OPS.md section handled: 15 Nov, 05:10Z (fa99a3a9 #8252 confirmed on the 05:00Z nudge run). Production 8b4b6120. URGENT from ops 16 Nov 09:10Z: one real member\'s chat answers nothing (400, empty text block in history) — see the end. NEW from ops 16 Nov 07:40Z: the nudge kept in the chat says „open the app" and lands in an unrelated goal (see the section at the end). Open for the tester: 8b4b6120 name spelling on a fictional contact.
 
 ## OPEN
 
@@ -11236,3 +11236,11 @@ Misho, in the ops chat with a screenshot from a real member ([member A], app ope
 3. **The introduction request itself has its own place** (the request/thread [person B]'s ask created). The nudge about it should open and be kept there, or the in-chat copy should be skipped when the nudge names someone outside that goal.
 
 DONE WHEN: on a fictional seat with a pending introduction request and an older goal with a sent ask, the morning nudge (run on demand for the seat) lands in the request's own chat, or in no goal chat; the in-chat line never says to open the app; the push still opens the same place the line was kept. Not a prompt-text change by ops — prompt wording is Misho's call.
+
+### 16 Nov, 09:10Z — ops: one real member's chat is stuck — every message fails with 400 „text content blocks must be non-empty" (production 8b4b6120)
+
+outage.sh 20 → rc 1 at 09:06Z. Not the account and not load: 7 other threads were answered in the same 15 minutes. Only one thread ([thread R], a real member, not a test seat) fails, every time:
+- 09:05:22, 09:05:44, 09:05:52, 09:06:32 — `[POST /threads/:id/message] run failed BadRequestError: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: text content blocks must be non-empty"}}`. Each send stores an assistant row of kind `error`.
+- The thread's last good turn was at 08:57 (an opening search, `[opening-search] … web skipped and the query built here`). That turn stored three `conversations` rows (assistant message, user message, assistant message) with empty `content` and a `content_json`. The history builder replays them as an empty text block, and the API refuses the whole request. Every later message in this thread hits the same wall, so the member cannot use this chat.
+
+DONE WHEN: (1) the history builder drops or skips empty text blocks (a row with empty `content` adds no text block; a tool turn keeps only its tool blocks), so [thread R] answers again without anyone touching its rows; (2) whatever wrote three empty rows at 08:57 (the opening-search turn) no longer writes an empty text block; (3) a test: a thread whose history holds an empty-content row still gets an answer. Ops does not touch the rows (live data — Misho's word).
