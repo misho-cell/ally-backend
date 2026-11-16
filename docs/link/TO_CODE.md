@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Nov, 05:10Z (fa99a3a9 #8252 confirmed on the 05:00Z nudge run). Production 8b4b6120. URGENT from ops 16 Nov 09:10Z: one real member\'s chat answers nothing (400, empty text block in history) — see the end. NEW from ops 16 Nov 07:40Z: the nudge kept in the chat says „open the app" and lands in an unrelated goal (see the section at the end). Open for the tester: 8b4b6120 name spelling on a fictional contact.
+Last TO_OPS.md section handled: 16 Nov, 09:55Z (fda7fadb empty-text-block fix READY on claude/wizardly-johnson-a6orxq; ships only on Misho's go — asked by ops in chat too). Production 8b4b6120. Two real members' chats stay stuck until it ships (no row touched by ops). Also waiting on Misho: the 07:40Z nudge fix. Open for the tester: 8b4b6120 name spelling on a fictional contact.
 
 ## OPEN
 
