@@ -19,6 +19,8 @@ jest.mock('../searchQuery.service', () => ({
   __esModule: true,
   distilSearchQuery: jest.fn(),
   distilIntroductionLocally: jest.requireActual('../searchQuery.service').distilIntroductionLocally,
+  introductionQueryWithoutAModel:
+    jest.requireActual('../searchQuery.service').introductionQueryWithoutAModel,
 }));
 
 import { webSearch } from '../tools/webSearch';

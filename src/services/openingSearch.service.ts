@@ -7,7 +7,11 @@ import { webSearchLedger } from './tools/webSearchProvider';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
 import { matchShapeOf } from './resultShape';
-import { distilSearchQuery, distilIntroductionLocally } from './searchQuery.service';
+import {
+  distilSearchQuery,
+  distilIntroductionLocally,
+  introductionQueryWithoutAModel,
+} from './searchQuery.service';
 import { RunLanguage } from './runLanguage';
 import { classifyToken, isCertainNameToken, labelTokens, TokenKind } from './labelReader.service';
 
@@ -113,6 +117,19 @@ const NAMES_A_TRADE =
 export function goalAsksToReachAPerson(goalText: string): boolean {
   if (!REACHING_FOR_A_PERSON.test(goalText)) return false;
   return !NAMES_A_TRADE.test(goalText);
+}
+
+/**
+ * Misho, 16 Nov (the tester's „30 branded thermoses — find someone who can
+ * help, and connect me, so I can agree price, design and deadline"): „connect
+ * me" made the goal read as reaching a person, no name stood beside the phrase,
+ * and every search ran on the whole sentence — the second circle matched „our"
+ * and „for the team", and the web was asked the sentence. With no name beside
+ * the phrase there is nobody named to protect: the goal is a trade, and it is
+ * distilled and searched as one. A goal that does name someone keeps row 253.
+ */
+export function goalReachesANamedPerson(goalText: string): boolean {
+  return goalAsksToReachAPerson(goalText) && introductionQueryWithoutAModel(goalText) !== '';
 }
 
 /**
@@ -325,7 +342,7 @@ export async function runOpeningSearches(
    * name still left the building, to a different company. The whole of the fix
    * is three lines and two of them are the order.
    */
-  const reachingForAPerson = goalAsksToReachAPerson(query);
+  const reachingForAPerson = goalReachesANamedPerson(query);
   const searched = reachingForAPerson
     ? distilIntroductionLocally(query)
     : await distilSearchQuery(query, { userId, runId });

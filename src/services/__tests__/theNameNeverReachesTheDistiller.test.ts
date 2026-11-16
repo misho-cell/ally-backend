@@ -118,7 +118,7 @@ describe('the call site takes the local branch, and takes it in time', () => {
   });
 
   it('decides before the model call exists to be made', () => {
-    const decidedAt = opening.indexOf('const reachingForAPerson = goalAsksToReachAPerson(query);');
+    const decidedAt = opening.indexOf('const reachingForAPerson = goalReachesANamedPerson(query);');
     const distilledAt = opening.indexOf('distilSearchQuery(query, { userId, runId })');
 
     expect(decidedAt).toBeGreaterThan(0);
@@ -127,6 +127,6 @@ describe('the call site takes the local branch, and takes it in time', () => {
 
   /** One decision, read once — a second call could answer differently. */
   it('reads the flag once and reuses it', () => {
-    expect(opening.split('goalAsksToReachAPerson(query)')).toHaveLength(2);
+    expect(opening.split('goalReachesANamedPerson(query)')).toHaveLength(2);
   });
 });

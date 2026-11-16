@@ -470,7 +470,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
     nameFromLinkedinOnly: '(LinkedIn-ის მიხედვით, ოფიციალურ გვერდზე ვერ დავადასტურე)',
     nameFromWebOnly: '(ინტერნეტის წყაროს მიხედვით, შეიძლება შეიცვალა)',
-    unverifiedNameLeftOut: 'ერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე.',
+    unverifiedNameLeftOut:
+      'ერთი ადამიანი, ვინც ორგანიზაციის ხელმძღვანელად იყო დასახელებული, მის ოფიციალურ გვერდზე ვერ ვიპოვე, ამიტომ მისი სახელი არ დავწერე.',
     goalPausedNoTokens:
       'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
     statusLines: {
@@ -506,7 +507,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
     nameFromLinkedinOnly: '(according to LinkedIn; I could not confirm it on an official page)',
     nameFromWebOnly: '(according to a web source; this may have changed)',
-    unverifiedNameLeftOut: 'I could not confirm one name on an official page, so I left it out.',
+    unverifiedNameLeftOut:
+      'One person named as heading an organisation was not on its official page, so I left their name out.',
     goalPausedNoTokens:
       'I have paused work on this goal — the tokens have run out. I will carry on once it is topped up.',
     statusLines: {
@@ -544,7 +546,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     nameFromLinkedinOnly: '(по данным LinkedIn; на официальной странице подтвердить не удалось)',
     nameFromWebOnly: '(по данным источника в интернете; это могло измениться)',
     unverifiedNameLeftOut:
-      'Одно имя не удалось подтвердить на официальной странице, поэтому я его не указал.',
+      'Одного человека, названного руководителем организации, нет на её официальной странице, поэтому я не указал его имя.',
     goalPausedNoTokens:
       'Я приостановил работу над этой целью — токены закончились. Продолжу после пополнения.',
     statusLines: {
@@ -582,7 +584,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     nameFromLinkedinOnly: '(según LinkedIn; no pude confirmarlo en una página oficial)',
     nameFromWebOnly: '(según una fuente en internet; puede haber cambiado)',
     unverifiedNameLeftOut:
-      'No pude confirmar un nombre en una página oficial, así que no lo incluí.',
+      'Una persona señalada como responsable de una organización no aparece en su página oficial, así que no incluí su nombre.',
     goalPausedNoTokens:
       'He pausado el trabajo en este objetivo: se acabaron los tokens. Continuaré tras la recarga.',
     statusLines: {

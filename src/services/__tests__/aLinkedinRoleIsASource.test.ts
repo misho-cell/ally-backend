@@ -77,6 +77,8 @@ describe('the LinkedIn results of a web search', () => {
       'en',
     );
     expect(out.refused).toEqual(['Levan Davitashvili']);
-    expect(out.reply).toBe('I could not confirm one name on an official page, so I left it out.');
+    expect(out.reply).toBe(
+      'One person named as heading an organisation was not on its official page, so I left their name out.',
+    );
   });
 });
