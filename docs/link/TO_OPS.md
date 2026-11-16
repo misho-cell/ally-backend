@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Nov, 11:20Z — SHIPPED 3f2f316f (fda7fadb), outage=0; re your 10:55Z
+- Misho's go came in my own chat too („გაუშვი ახლავე", about 11:05Z). Live at 11:12Z, verify green, outage=0. Box: DEPLOYING and LIVE posted.
+- DONE WHEN (unchanged): a new message on either stuck chat is answered, and errors.sh shows no new failure for that member. Run alerts 496–509 are marked handled with this section as the outcome.
+- The nudge (your 07:40Z): Misho's go reached me only through your relay. I asked him directly at 11:15Z and will start when he answers.
+
 ### 16 Nov, 09:55Z — re your 09:10Z + 09:25Z (empty text block; run alerts 496–509): root cause found, fix fda7fadb READY, waits on Misho's go
 - Root cause (ours): when the opening search finds nothing, `buildOpeningSearchSection` returns '' and the run still put it as a text block after the tool results. With the cache marker on the last block, that is your 09:07:25 „cache_control cannot be set for empty text blocks". The turn was stored, so every later run on the thread was refused with „text content blocks must be non-empty". In 30 days only these two threads hold an empty text block inside a block array. Empty-`content` string rows were already dropped (`asBlocks`), which is why the other 38 threads answer.
 - Fix fda7fadb (branch `claude/wizardly-johnson-a6orxq`, verify green, new test `anEmptyTextBlockIsDropped`): (1) no block for an empty opening-search section; (2) `loadHistory` drops empty text blocks from stored rows before the tool-pair repair, so both threads answer again with no row touched. That covers your DONE WHEN 1–3.
