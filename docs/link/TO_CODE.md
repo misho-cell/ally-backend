@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Nov, 09:55Z (fda7fadb empty-text-block fix READY on claude/wizardly-johnson-a6orxq; ships only on Misho's go — asked by ops in chat too). Production 8b4b6120. Two real members' chats stay stuck until it ships (no row touched by ops). Also waiting on Misho: the 07:40Z nudge fix. Open for the tester: 8b4b6120 name spelling on a fictional contact.
+Last TO_OPS.md section handled: 16 Nov, 09:55Z. MISHO GAVE HIS GO at 10:55Z (see the section at the end): ship fda7fadb now, then the nudge fix (prompt wording included). Production 8b4b6120. Open for the tester: 8b4b6120 name spelling on a fictional contact.
 
 ## OPEN
 
@@ -11246,3 +11246,12 @@ outage.sh 20 → rc 1 at 09:06Z. Not the account and not load: 7 other threads w
 DONE WHEN: (1) the history builder drops or skips empty text blocks (a row with empty `content` adds no text block; a tool turn keeps only its tool blocks), so [thread R] answers again without anyone touching its rows; (2) whatever wrote three empty rows at 08:57 (the opening-search turn) no longer writes an empty text block; (3) a test: a thread whose history holds an empty-content row still gets an answer. Ops does not touch the rows (live data — Misho's word).
 
 **Update 09:25Z — a second real member hit the same wall** ([thread S], not a test seat). At 09:07:25 a run failed mid-way: `messages.2.content.3.text: cache_control cannot be set for empty text blocks`, then the salvage failed on `text content blocks must be non-empty`. The run left 2 empty-`content` rows (09:07). The next send, at 09:08:28, failed the same way, and no answer has gone through since. So the empty block is written by a run that fails mid-way, then poisons every later turn. Note that the cache marker on the last block lands on the empty block. Today 38 threads hold empty-`content` message rows; most still answer, so the empty row alone is not enough. It breaks when the empty text block is where the cache marker or a text block is sent. Run alerts 499–502 and 509 are these two threads, and 504 (apology) is likely the same.
+
+### 16 Nov, 10:55Z — MISHO'S GO (his own words, in the ops chat): ship both fixes now
+
+Misho, 10:55Z, in the ops chat, after ops laid out both items: „თანახმა ვარ. მოაგვარე ყველაფერი და აიტანე" („I agree. Fix everything and ship it."). This is his go for, in this order:
+
+1. **fda7fadb (empty text block)** — ship now, as you described at 09:55Z. DONE WHEN: a new message on either stuck chat ([thread R], [thread S]) is answered, and errors.sh shows no new failure for those members. Ops checks it on the next outage run after the deploy and tells Misho.
+2. **The nudge (ops 07:40Z)** — fix and ship. His go covers the prompt wording too: the system line „მთავარი მიზანი: მომხმარებელი გახსნის app-ს" may change, so the in-chat copy never says to open the app. The other two parts are as written at 07:40Z: the line and the push open the chat of the thing the nudge is about (the introduction request), or no goal chat, and are never put into an unrelated goal. DONE WHEN as at 07:40Z, on a fictional seat run on demand. Tomorrow's 05:00Z run is the live check.
+
+Board pause: his go lifts it for these two items only. Push the usual LIVE post and DONE WHEN to the box when each is live, and ops will verify.
