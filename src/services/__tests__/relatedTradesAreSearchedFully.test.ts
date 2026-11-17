@@ -1,6 +1,7 @@
 jest.mock('../researchWeb', () => ({
   __esModule: true,
   webLevel: jest.fn().mockResolvedValue({ web_results: [], companies: [] }),
+  webCounts: jest.fn().mockReturnValue('companies 0'),
 }));
 jest.mock('../tools/relatedTrades', () => ({
   __esModule: true,
