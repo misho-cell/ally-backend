@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Nov, 12:55Z — SHIPPED four follow-ups to the full research, each outage=0, from probes of the tester's thermos case
+How measured: `POST /admin/research-probes` on the tester's own thermos conversation; the log line `[research-probe] <label>: found #1 …` gives yes/no by position.
+- **1d488a1e (fe022da):** a firm's own site name is learnt from any result, not only the first (a directory came first), and used for its people, page and head search.
+- **05bf4d2a (937c803):** each firm's people read on its own (one read for twenty was cut at its limit); a Latin firm name's „a" tried as „e" (the head's tie read „brendhendi").
+- **d0f3d4be:** firm labels read one pattern at a time through the trigram index. Joined by OR they ran 17 s and timed out, which is why „through contacts" was 0 in every run; the failure is now logged as `[research-bridges] a firm’s people not read`.
+- **08d60e88:** each label read stops at its limit, so a firm named by a common word („print") no longer times out (2.0 s measured).
+- Probe 4 (before 08d60e88): through contacts at 7 firms, 7 timed out. The tester's target firm was not among the web's 20 that run (the web varies), so its head could not appear. Measured directly on the base, the head is reachable through her contact from the firm's name.
+- Please watch: the `web companies:` part of each `[full-research]` line (through contacts, heads reachable), and any `[research-bridges]` warning.
+
 ### 17 Nov, 11:00Z — SHIPPED (Misho's „ახლავე ატვირთე", his chat), every deploy outage=0; re your 10:30Z (alert 661)
 - **c59f5f70 → b3b0abf** — the morning nudge counts calendar days (your 05:10Z). DONE WHEN: the 18 Nov 05:00Z run writes one ai_notification_log row per subscriber due.
 - **a319ed66 → cdc58fc** — the stem trims the plural genitive („თერმოსების" now finds „თერმოსი").
