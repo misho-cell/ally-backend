@@ -408,6 +408,19 @@ function isSuppressed(s: SuppressionState): boolean {
   return false;
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * 17 Nov: a restart sent 16 Nov's nudges at 11:15, so at 05:00 on the 17th
+ * fewer than 24 hours had passed and the whole walk skipped everyone. The
+ * frequency counts calendar days (UTC), not hours: a nudge sent any time
+ * yesterday leaves today's due.
+ */
+export function calendarDaysBetween(earlier: Date, later: Date): number {
+  const dayOf = (d: Date): number => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return Math.round((dayOf(later) - dayOf(earlier)) / MS_PER_DAY);
+}
+
 export async function sendAiNotification(userId: string): Promise<void> {
   const settingsResult = await query<{
     frequency_days: number;
@@ -441,9 +454,8 @@ export async function sendAiNotification(userId: string): Promise<void> {
   if (isSuppressed(settings)) return;
 
   if (settings.last_sent_at !== null) {
-    const daysSinceLast =
-      (Date.now() - new Date(settings.last_sent_at).getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceLast < settings.frequency_days) return;
+    const lastSent = new Date(settings.last_sent_at);
+    if (calendarDaysBetween(lastSent, new Date()) < settings.frequency_days) return;
 
     await updateEngagement(userId, new Date(settings.last_sent_at));
 

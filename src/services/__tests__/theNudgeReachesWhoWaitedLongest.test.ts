@@ -5,6 +5,7 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import {
   AI_NOTIFICATION_PUSH_URL,
+  calendarDaysBetween,
   MAX_NUDGE_SEATS,
   NudgeSeatOutcome,
   nudgePushUrl,
@@ -32,6 +33,14 @@ describe('the morning nudge walk (#7921)', () => {
     expect(insideSendDay(new Date('2026-10-28T07:30:00Z'))).toBe(true);
     expect(insideSendDay(new Date('2026-10-28T04:59:00Z'))).toBe(false);
     expect(insideSendDay(new Date('2026-10-28T15:00:00Z'))).toBe(false);
+  });
+
+  /** 17 Nov: yesterday's walk ran late at 11:15, and this morning's skipped everyone. */
+  it('counts the days between nudges by the calendar, not by 24 hours', () => {
+    const lateYesterday = new Date('2026-11-16T11:15:30Z');
+    expect(calendarDaysBetween(lateYesterday, new Date('2026-11-17T05:00:07Z'))).toBe(1);
+    expect(calendarDaysBetween(lateYesterday, new Date('2026-11-16T23:59:00Z'))).toBe(0);
+    expect(calendarDaysBetween(lateYesterday, new Date('2026-11-18T00:01:00Z'))).toBe(2);
   });
 
   it('opens the conversation the nudge is about', async () => {
