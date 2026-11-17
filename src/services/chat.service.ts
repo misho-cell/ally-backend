@@ -574,6 +574,7 @@ import {
   threadAskedSomebody,
   NOT_ON_NETAI_LINE,
   NOT_SENT_LINE,
+  NUMBER_NOT_FOUND_LINE,
   HELD_LINE,
 } from './instructionUnsent';
 import { questionHeldOnThread } from './paceUntilSeen';
@@ -6661,6 +6662,12 @@ async function taskForAsk(
 
 /** Runs that sent an introduction request (37517): a closing „send it?" is replaced. */
 const runIntroSent = new Set<string>();
+/**
+ * Alert 661 (a real member, 17 Nov 10:14Z): the owner gave a number to write
+ * to, the number belongs to nobody we know, and the run's last line said
+ * „it did not go out — our fault". Nothing could go; that is no fault of ours.
+ */
+const runNumberNotFound = new Set<string>();
 
 /**
  * 16 Nov, alert 628 (a real member): „tell Levan I do not know Lasha" was
@@ -10511,6 +10518,7 @@ function clearRunState(runId: string): void {
   runPlanWritesToNobody.delete(runId);
   runMembersFound.delete(runId);
   runIntroSent.delete(runId);
+  runNumberNotFound.delete(runId);
   runWebFound.delete(runId);
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
@@ -10833,8 +10841,13 @@ async function executeToolCall(
   }
 
   switch (name) {
-    case 'lookup_contact_by_phone':
-      return lookupContactByPhone(userId, input['phone_number'] as string);
+    case 'lookup_contact_by_phone': {
+      const byPhone = await lookupContactByPhone(userId, input['phone_number'] as string);
+      if (runId !== undefined && (byPhone as { found?: unknown }).found === false) {
+        runNumberNotFound.add(runId);
+      }
+      return byPhone;
+    }
     case 'get_contact_insight':
       return getContactInsight(userId, String(input['phone'] ?? ''));
     case 'search_contact_by_name': {
@@ -15357,6 +15370,11 @@ async function serverSendsOrSaysSo(
     // eslint-disable-next-line no-console
     console.log(`[instruction-unsent] run ${runId} thread ${threadId}: held, not failed (#8518)`);
     return { text: HELD_LINE[language] };
+  }
+  if (runNumberNotFound.has(runId)) {
+    // eslint-disable-next-line no-console
+    console.log(`[instruction-unsent] run ${runId} thread ${threadId}: the number is nobody's`);
+    return { text: NUMBER_NOT_FOUND_LINE[language], nothingWent: true };
   }
   // eslint-disable-next-line no-console
   console.warn(

@@ -127,6 +127,18 @@ export const NOT_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
 };
 
 /**
+ * Alert 661 (a real member, 17 Nov): the number the owner gave belongs to
+ * nobody in their contacts or on Netai, so nothing could go. Not our fault and
+ * not an apology: what was looked for, and what the owner can give instead.
+ */
+export const NUMBER_NOT_FOUND_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'ეს ნომერი შენს კონტაქტებში და Netai-ზე ვერ ვიპოვე, ამიტომ ვერაფერი გავაგზავნე. თუ სხვა ნომერი ან სახელი გაქვს, მომწერე და ვცდი.',
+  en: 'I could not find this number in your contacts or on Netai, so nothing went. If you have another number or a name, send it and I will try.',
+  ru: 'Я не нашёл этот номер ни в твоих контактах, ни в Netai, поэтому ничего не ушло. Если есть другой номер или имя, пришли — попробую.',
+  es: 'No encontré este número en tus contactos ni en Netai, así que no salió nada. Si tienes otro número o un nombre, envíamelo y lo intento.',
+};
+
+/**
  * #8518 (the tester's 80752 item 4, case 94): the question did not fail, it
  * waits — the person has not opened the previous message (#7659). „It could
  * not be sent, our mistake" was untrue; this says what happens instead.
