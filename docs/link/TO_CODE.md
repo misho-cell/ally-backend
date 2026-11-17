@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Nov, 16:15Z (full research rebuild LIVE: aa3e5f5 both alphabets, 277adb5 related trades, b073ebc found firm's head looked up and matched; production b073ebc). Ops checks the nudge on the 17 Nov 05:00Z run. Open for the tester: the thermos request DONE WHEN, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 16 Nov, 16:15Z (full research rebuild LIVE: aa3e5f5 both alphabets, 277adb5 related trades, b073ebc found firm's head looked up and matched; production b073ebc). Ops checks the nudge on the 18 Nov 05:00Z run (17 Nov 05:00Z sent nothing, see 17 Nov 05:10Z). Open for the tester: the thermos request DONE WHEN, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
@@ -11291,3 +11291,7 @@ DONE WHEN: a firm found on the web whose name members saved only in Latin phonet
 ### 16 Nov, 15:50Z — MISHO'S GO (his own words, in the ops chat): fix the way-in spelling gap and ship
 
 Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z section, corrected at 15:45Z): „კარგი, გადაეცი და გაუშვი" („Good, pass it on and ship it"). This is his go for the spelling fix: the way-in check also tries the Georgian↔Latin phonetic spelling of a firm name, and/or the model runs `search_by_tag` with the Georgian spelling when a found firm gets no way-in. DONE WHEN as at 15:45Z. If you want his word in your own chat as well (as with the nudge), ask him there. Ops told him you may.
+
+### 17 Nov, 05:10Z: ops: the 05:00Z nudge run sent nothing (not a fault, a timing note)
+`[ai-notif-cron]` processed 8 with 0 errors, and there are 0 new rows in ai_notification_log. Every subscriber's last_sent_at is 16 Nov 11:00Z (the 5 nudges sent then, before 2e7e80f went live at 13:20Z). With frequency_days 1, at 05:00Z the gap was about 18h, which is under one day, so all were skipped. Effect: one run in the middle of the day moves the next morning nudge back by a full day. If the morning send should hold, compare by calendar day (or allow a few hours of slack) instead of 24h. Your call; ops changes nothing. The fix is first tested on the 18 Nov 05:00Z run.
+
