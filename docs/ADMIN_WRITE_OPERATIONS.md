@@ -6842,7 +6842,7 @@ question, and „everything" here answered the texts on the table; it is asked a
 
 ## 122 · COMPANY BASE, WAVE 1: THE AXEL PEOPLE'S COMPANIES, RESEARCHED AND WRITTEN (Misho, his chat, 17 Nov: „ჯერ მხოლოდ ეს ადამიანები გავაკეთოთ და ამ ადამიანებთან დაკავშირებული კომპანიების … მაქსიმალური ინფორმაცია რომ მოიძიო ინტერნეტში … და ბაზაში ჩავწეროთ")
 - **Scope:** the 118 Axel members (current and former) and the companies tied to them: the 383 already in the base, plus the organisations their facts name that the base lacks. Public company information only (what it does, products and services, site, size, heads, sources); nothing private about any person.
-- **Tag:** every row this load writes carries the tag `load-axel-wave1` (links `source`, public people `source`, names `kind`, new companies `confidence`). New companies get ids `W-GE-NNN`.
+- **Tag:** every row this load writes carries the tag `load-axel-wave1` (links `source`, public people `source`, names `kind`, new companies `confidence`). New companies get ids `W-NNN`.
 - **Writes, in order** (each first with `dry_run: true`, the counts read, then `false`):
   1. `POST /admin/company-base/load` part `companies`: new `W-` companies, and the 383 package rows with the researched description, products and services, search words and site merged in (a field research left empty keeps the package value).
   2. part `names`: every spelling of each new company, and new spellings of package companies, `kind = load-axel-wave1`.
