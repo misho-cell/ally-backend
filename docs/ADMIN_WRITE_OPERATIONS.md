@@ -6839,3 +6839,15 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** a code change, not a live write. `PROFILE_KEYS_MATCHED` (src/services/tools/searchableData.ts) goes from `profession`, `industry` to `profession`, `industry`, `city`, `interests`, read the same way at every level (own circle, second circle, far circles). The text still only ranks the search and is never shown to the asker; a row found only this way still carries the §111.2 note. No other profile key (age, birthdate, family, languages…) is read.
 - **Checked before:** the `interests` lines are the member's own stated interests (the assistant appends them); none reads as a search.
 - **UNDO:** set `PROFILE_KEYS_MATCHED` back to `['profession', 'industry']` and ship.
+
+## 122 · COMPANY BASE, WAVE 1: THE AXEL PEOPLE'S COMPANIES, RESEARCHED AND WRITTEN (Misho, his chat, 17 Nov: „ჯერ მხოლოდ ეს ადამიანები გავაკეთოთ და ამ ადამიანებთან დაკავშირებული კომპანიების … მაქსიმალური ინფორმაცია რომ მოიძიო ინტერნეტში … და ბაზაში ჩავწეროთ")
+- **Scope:** the 118 Axel members (current and former) and the companies tied to them: the 383 already in the base, plus the organisations their facts name that the base lacks. Public company information only (what it does, products and services, site, size, heads, sources); nothing private about any person.
+- **Tag:** every row this load writes carries the tag `load-axel-wave1` (links `source`, public people `source`, names `kind`, new companies `confidence`). New companies get ids `W-GE-NNN`.
+- **Writes, in order** (each first with `dry_run: true`, the counts read, then `false`):
+  1. `POST /admin/company-base/load` part `companies`: new `W-` companies, and the 383 package rows with the researched description, products and services, search words and site merged in (a field research left empty keeps the package value).
+  2. part `names`: every spelling of each new company, and new spellings of package companies, `kind = load-axel-wave1`.
+  3. part `public_people`: heads found on public pages, `source = load-axel-wave1`.
+  4. `POST /admin/company-base/links-by-number` (new route): the Axel people's ties to these companies, on the numbers we hold, `source = load-axel-wave1`; a tie stated by a fact or the person's own page is `confirmed`, a label alone `possible`.
+  5. `POST /admin/company-base/match-labels`: the members' phonebook labels against the now larger name index (replaces the label links of its run before, as always).
+- **Saved before the write:** the 383 package rows as they were (`scratchpad/subs/t/co/backup_existing_wave1.json`, not in git: it is live data).
+- **UNDO:** (a) `POST /admin/company-base/undo-load {"source":"load-axel-wave1","dry_run":false}` removes this load's links, public people, names and the `W-` companies it created, in one transaction; (b) load the saved 383 package rows back with part `companies`; (c) run `match-labels` again.
