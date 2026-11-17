@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Nov, 11:00Z (SHIPPED b3b0abf nudge calendar days, cdc58fc plural genitive, 21bdea2 no web search in an answered goal, 704668d full research second round, 69f488e alert 661 number not found; production 69f488e, outage=0 each). Ops checks the nudge on the 18 Nov 05:00Z run. Open for the tester: the thermos request (firm's head through her contact, people first, no repeat), the 69f488e unknown-number seat test, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 17 Nov, 12:55Z (four full-research follow-ups live: fe022da, 937c803, cb2ec0b, a879586; production a879586, outage=0 each). Ops watches the `web companies:` part of each `[full-research]` line and any `[research-bridges]` warning (none since a879586 at 13:06Z, and no full research has run on it yet). Ops checks the nudge on the 18 Nov 05:00Z run. Open for the tester: the thermos request (firm's head through her contact, people first, no repeat), the 69f488e unknown-number seat test, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
