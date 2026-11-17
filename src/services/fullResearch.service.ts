@@ -3,7 +3,7 @@ import { FarDepth, farMembersHolding } from './farCircles.service';
 import { phoneDigits } from './phone';
 import { goalReachesANamedPerson } from './openingSearch.service';
 import { peopleListed, personLine, personRowsIn } from './researchPeopleList';
-import { webLevel } from './researchWeb';
+import { webCounts, webLevel } from './researchWeb';
 import { findCompaniesForNeed } from './tools/findCompaniesForNeed';
 import { findPeopleInBase } from './tools/findPeopleInBase';
 import { searchByInsight } from './tools/searchByInsight';
@@ -36,7 +36,7 @@ export const RESEARCH_KEPT_MS = 30 * 60 * 1000;
 /** Each level's own result as the model reads it, at most this long; its people are listed in full. */
 const LEVEL_CHARS = 2_000;
 /** The web level's own result as the model reads it: the companies and their pages. */
-const WEB_LEVEL_CHARS = 8_000;
+const WEB_LEVEL_CHARS = 16_000;
 /** People listed per level, the narrowest search word's first. */
 const LISTED_PER_LEVEL = 40;
 /** The request's words searched one by one, at most this many. */
@@ -131,9 +131,34 @@ export function baseSearchWords(words: string, meanings: WordMeanings): string {
   return [words, ...[...meanings.values()].flat()].join(' ');
 }
 
-async function settled(level: ResearchLevel, work: Promise<object>): Promise<LevelFindings> {
+/**
+ * Misho, 17 Nov: „let the second answer take up to 30 minutes". The research
+ * as a whole stops at this; a level still running then is said not to have
+ * finished, and the answer is written from the rest.
+ */
+export const RESEARCH_BUDGET_MS = 30 * 60 * 1000;
+
+/** The work, or a failure when the research's deadline comes first. */
+export function beforeDeadline<T>(work: Promise<T>, deadline: number): Promise<T> {
+  const left = deadline - Date.now();
+  if (left <= 0) return Promise.reject(new Error('the research ran out of time'));
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('the research ran out of time')), left);
+  });
+  return Promise.race([work, late]).finally(() => clearTimeout(timer));
+}
+
+async function settled(
+  level: ResearchLevel,
+  work: Promise<object>,
+  deadline: number = Number.POSITIVE_INFINITY,
+): Promise<LevelFindings> {
   try {
-    return { level, result: await work };
+    return {
+      level,
+      result: await (Number.isFinite(deadline) ? beforeDeadline(work, deadline) : work),
+    };
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn(`[full-research] ${level} did not finish:`, (err as Error).message);
@@ -210,12 +235,14 @@ async function searchLevel(
   spec: LevelSearch,
   words: string,
   singles: readonly string[],
+  deadline: number,
 ): Promise<LevelFindings> {
-  const whole = await settled(spec.level, spec.search(words));
+  const whole = await settled(spec.level, spec.search(words), deadline);
   if (!spec.byWord || singles.length === 0) return whole;
   const byWord: WordFindings[] = [];
   for (const word of singles) {
-    byWord.push({ word, result: (await settled(spec.level, spec.search(word))).result });
+    const found = await settled(spec.level, spec.search(word), deadline);
+    byWord.push({ word, result: found.result });
   }
   return { ...whole, byWord };
 }
@@ -267,11 +294,15 @@ async function researchWordsFor(request: ResearchRequest): Promise<ResearchWords
   };
 }
 
-export async function researchEveryLevel(request: ResearchRequest): Promise<Research> {
+export async function researchEveryLevel(
+  request: ResearchRequest,
+  now: number = Date.now(),
+): Promise<Research> {
+  const deadline = now + RESEARCH_BUDGET_MS;
   const words = await researchWordsFor(request);
   const findings: LevelFindings[] = [];
   for (const spec of levelSearches(request, words)) {
-    findings.push(await searchLevel(spec, request.words, words.singles));
+    findings.push(await searchLevel(spec, request.words, words.singles, deadline));
   }
   return {
     findings: findings.map((found) => withoutWithheld(found, request.withheld)),
@@ -349,6 +380,9 @@ export function researchCounts(findings: readonly LevelFindings[]): string {
     .map((found) => {
       const name = LEVEL_LOG_NAME[found.level];
       const listed = peopleListed(narrowestFirst(found), LISTED_PER_LEVEL).length;
+      if (found.level === ResearchLevel.Web && found.result !== null) {
+        return `${name}: people ${countOf(found.result)}, ${webCounts(found.result)}`;
+      }
       if (found.byWord === undefined) return `${name}: ${countOf(found.result)}`;
       const words = found.byWord.map((w) => `${w.word} ${countOf(w.result)}`).join(', ');
       return `${name}: whole ${countOf(found.result)}, by word ${words}, listed ${listed}`;
@@ -507,17 +541,29 @@ export const FULL_RESEARCH_HEADER =
   'company and people bases, and the web: the companies that do this, what each one’s page says, ' +
   'and the owner’s people at each. Answer from it now. If the owner already had a quick answer ' +
   'in this conversation, this is the second, full answer.\n' +
-  '- THE WEB: name every company that fits, with its link, and say whether its page says it does ' +
-  'this (or only something near it). Where the owner has someone at a company — their own ' +
-  'contact, or someone saved under the company’s name in a friend’s phone — that is the way in: ' +
-  'say who, through whom. A company head the web names (heads_on_the_web) who is the owner’s ' +
-  'own contact is the closest way in of all: say so first.\n' +
-  'WHAT TO GIVE (Misho, 16 Nov: the owner must see exactly how to reach the result):\n' +
+  '- THE WEB: name every company that fits, with its link. Whether it does this is read from ' +
+  'its_page: its own page was opened and the request’s words looked for on it (mentions, with ' +
+  'an excerpt) — say „its page says …" only from that; with no its_page, say only what the ' +
+  'result’s text says. The way in to a company, closest first: (1) a head the web names ' +
+  '(heads_on_the_web) who is the owner’s own contact; (2) such a head saved in a contact’s ' +
+  'phone (through_your_contacts: „<your_contact> has him saved as „…""); (3) someone a contact ' +
+  'holds whom other people’s phones tie to the company (people_your_contacts_hold_there: say ' +
+  'whose phone has them and as what, and that others’ phones tie them to the company — never ' +
+  'quote those others’ labels); (4) the owner’s own contact there; (5) people saved under the ' +
+  'company’s name further out.\n' +
+  'WHAT TO GIVE (Misho, 16 Nov: the owner must see exactly how to reach the result; the tester, ' +
+  '17 Nov: „it should press on the people I know"):\n' +
+  '- The network comes first. An option with a real path through people the owner knows comes ' +
+  'before any company reached only by its public phone; companies with no way in go last, in ' +
+  'one line each with their link and public contact.\n' +
+  '- Name the person to reach yourself — never only ask a contact whom they would recommend ' +
+  'when the findings name someone who does this.\n' +
   '- Each level’s PEOPLE FOUND list holds everyone it found, the narrowest search first. ' +
-  'Read it whole: this answer is where the owner sees ALL their options, so name every person ' +
-  'who fits, not only the few the quick answer had.\n' +
-  '- A person from the previous answer may be named again: say they were in the previous ' +
-  'answer, and whether they have been written to (marks below).\n' +
+  'Read it whole and name every person who fits, not only the few the quick answer had.\n' +
+  '- NEVER REPEAT THE PREVIOUS ANSWER (the tester, 17 Nov: „it says the same again, at length"). ' +
+  'Start with what is new or better. Someone the previous answer already gave gets at most one ' +
+  'short line — that they were in it, and whether they have been written to (marks below) — ' +
+  'unless this research learned something new about them.\n' +
   '- When nothing new or better was found, say that in one short line and nothing more.\n' +
   '- This is everything: never say more results are coming.\n' +
   'HOW TO WRITE IT — about the result, so the owner knows what to do next:\n' +
@@ -544,8 +590,8 @@ export const FULL_RESEARCH_HEADER =
   '4a. Someone who only SHARES A NAME with a person the search named (a director in a ' +
   'register, a name on a page) is not a way in: leave them out, unless something else ties ' +
   'them — the company in a label saved for them, or the same number.\n' +
-  '5. Plain words and short sentences. No internal word (signal, ring, level, base) unless you ' +
-  'say in the same sentence what it means for the owner.\n' +
+  '5. Plain words and short sentences, at most three for an option. No internal word (signal, ' +
+  'ring, level, base) unless you say in the same sentence what it means for the owner.\n' +
   '6. End with ONE concrete next step, asked as a question the owner can answer yes to.\n' +
   'Every search note inside the findings still applies (what may be said, how to name people).';
 

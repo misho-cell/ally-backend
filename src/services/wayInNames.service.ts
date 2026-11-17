@@ -25,15 +25,18 @@ const NAMES_PROMPT =
   'website addresses and generic phrases. Copy each name exactly as written in the ' +
   `title, one per line, nothing else. If no title names one, reply ${NONE}.`;
 
-function titlesOf(result: unknown): string[] {
+function everyTitleOf(result: unknown): string[] {
   if (result === null || typeof result !== 'object') return [];
   const rows = (result as { results?: unknown }).results;
   if (!Array.isArray(rows)) return [];
   return rows
     .map((row: unknown) => (row as { title?: unknown } | null)?.title)
     .filter((title): title is string => typeof title === 'string' && title.trim() !== '')
-    .slice(0, MAX_TITLES_READ)
     .map((title) => title.slice(0, MAX_TITLE_CHARS));
+}
+
+function titlesOf(result: unknown): string[] {
+  return everyTitleOf(result).slice(0, MAX_TITLES_READ);
 }
 
 function replyText(content: readonly { type: string; text?: string }[]): string {
@@ -71,7 +74,39 @@ export async function wayInNamesFrom(
   limit: number,
   origin: WayInNamesOrigin,
 ): Promise<string[]> {
-  const titles = titlesOf(result);
+  return namesFromTitles(titlesOf(result), limit, origin);
+}
+
+/**
+ * The tester's case, 17 Nov: the full research's web level had 60 results and
+ * named the companies from the first 8 titles only, so two firms were looked
+ * for in the network and the others never were. Every title is read, eight at
+ * a time, and the names are kept in the results' order.
+ */
+export async function wayInNamesFromAll(
+  result: unknown,
+  limit: number,
+  origin: WayInNamesOrigin,
+): Promise<string[]> {
+  const titles = everyTitleOf(result);
+  const chunks: string[][] = [];
+  for (let at = 0; at < titles.length; at += MAX_TITLES_READ) {
+    chunks.push(titles.slice(at, at + MAX_TITLES_READ));
+  }
+  const named = await Promise.all(chunks.map((chunk) => namesFromTitles(chunk, limit, origin)));
+  const kept = new Map<string, string>();
+  for (const name of named.flat()) {
+    const key = name.toLocaleLowerCase();
+    if (!kept.has(key)) kept.set(key, name);
+  }
+  return [...kept.values()].slice(0, limit);
+}
+
+async function namesFromTitles(
+  titles: readonly string[],
+  limit: number,
+  origin: WayInNamesOrigin,
+): Promise<string[]> {
   if (titles.length === 0) return [];
   try {
     const { default: anthropic } = await import('../config/anthropic');

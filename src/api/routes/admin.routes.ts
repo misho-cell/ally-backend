@@ -500,6 +500,12 @@ import {
   runBackfill,
 } from '../../services/joinerFirstMessage.service';
 import { searchUserContacts, UserContactsOutcome } from '../../services/adminUserContacts.service';
+import {
+  MAX_EXPECTED as MAX_PROBE_EXPECTED,
+  probeCaseFrom,
+  ProbeOutcome,
+  probeResearch,
+} from '../../services/researchProbe';
 
 /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
 const MAX_SEAT_USER_ID = 2_147_483_647;
@@ -9836,6 +9842,60 @@ adminRouter.post('/ai-notifications/run', async (req: Request, res: Response) =>
     console.error('[ai-notifications/run]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The run did not complete' });
   }
+});
+
+/**
+ * Misho, 17 Nov („make the results measurably better"): one of the tester's
+ * cases through the full research; answers only whether each expected person
+ * was found, with the research's counts. Nothing is written to the chat.
+ */
+const PROBE_STATUS: Readonly<Record<ProbeOutcome, number>> = {
+  [ProbeOutcome.BadInput]: 400,
+  [ProbeOutcome.NotTheOwnersThread]: 403,
+  [ProbeOutcome.Ran]: 200,
+};
+
+const PROBE_ERROR: Readonly<Record<ProbeOutcome, string>> = {
+  [ProbeOutcome.BadInput]: `user_id, thread_id, words, owner_line and 1 to ${MAX_PROBE_EXPECTED} expected names`,
+  [ProbeOutcome.NotTheOwnersThread]: 'thread_id must be one of user_id’s own conversations',
+  [ProbeOutcome.Ran]: '',
+};
+
+adminRouter.post('/research-probes', async (req: Request, res: Response) => {
+  const probeCase = probeCaseFrom(req.body);
+  const label =
+    typeof (req.body as { label?: unknown }).label === 'string'
+      ? (req.body as { label: string }).label.slice(0, 40)
+      : 'probe';
+  try {
+    const check = await probeResearch(probeCase, { checkOnly: true });
+    if (check.outcome !== ProbeOutcome.Ran) {
+      res
+        .status(PROBE_STATUS[check.outcome])
+        .json({ success: false, error: PROBE_ERROR[check.outcome] });
+      return;
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[research-probes]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The probe could not start' });
+    return;
+  }
+  // The research takes up to half an hour: it runs on, and its line is read in the log.
+  res.status(202).json({ success: true, data: { started: label } });
+  void probeResearch(probeCase)
+    .then((probe) => {
+      // Who was found, by position in the request — the log never carries the names.
+      const found = Object.values(probe.found ?? {}).map(
+        (yes, i) => `#${i + 1} ${yes ? 'yes' : 'no'}`,
+      );
+      // eslint-disable-next-line no-console
+      console.log(`[research-probe] ${label}: found ${found.join(', ')} | ${probe.counts}`);
+    })
+    .catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(`[research-probe] ${label} failed:`, (error as Error).message);
+    });
 });
 
 /** #7729 / #7828 (plate v538): the joiner's first message, now, on fictional seats only. */

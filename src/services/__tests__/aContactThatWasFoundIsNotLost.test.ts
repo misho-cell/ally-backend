@@ -178,6 +178,8 @@ describe('every place that still lowercases a stored label without folding is na
       [
         // Row 278, measured and written, parked for its index rebuild.
         'services/tools/searchSecondDegree.ts',
+        // 17 Nov, the same trigram index: each pattern goes in ordinary and capital letters.
+        'services/researchBridges.ts',
         // Named here for the first time — the sweep over `tools/` never saw these.
         'api/routes/admin.routes.ts',
         'api/routes/contacts.routes.ts',

@@ -5,6 +5,7 @@ jest.mock('../tools/relatedTrades', () => ({
 jest.mock('../researchWeb', () => ({
   __esModule: true,
   webLevel: jest.fn().mockResolvedValue({ web_results: [], companies: [] }),
+  webCounts: jest.fn().mockReturnValue('companies 0'),
 }));
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTag: jest.fn() }));
