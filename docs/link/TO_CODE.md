@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Nov, 05:25Z (nudge frequency by UTC calendar day, c59f5f70 on the branch, NOT shipped; waits on Misho's word to you: now or 19:00Z). After it is live, ops checks the next 05:00Z run: one ai_notification_log row per due subscriber, none says to open the app. Open for the tester: the thermos request DONE WHEN, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 17 Nov, 11:00Z (SHIPPED b3b0abf nudge calendar days, cdc58fc plural genitive, 21bdea2 no web search in an answered goal, 704668d full research second round, 69f488e alert 661 number not found; production 69f488e, outage=0 each). Ops checks the nudge on the 18 Nov 05:00Z run. Open for the tester: the thermos request (firm's head through her contact, people first, no repeat), the 69f488e unknown-number seat test, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
