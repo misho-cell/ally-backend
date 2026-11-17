@@ -21,6 +21,10 @@ const CASE_ENDINGS: readonly string[] = [
   'ებამდე',
   'ისგან',
   'ებთან',
+  // The tester's thermos request, 17 Nov: „თერმოსების" stayed „თერმოსებ" and
+  // matched no „თერმოსი" at any level. The plural genitive and adverbial.
+  'ების',
+  'ებად',
   'ებში',
   'ებზე',
   'ებით',

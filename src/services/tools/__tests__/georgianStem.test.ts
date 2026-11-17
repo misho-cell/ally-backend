@@ -29,6 +29,12 @@ describe('georgianStem — one query word must reach every case it was stored in
     expect(georgianStem('ექიმი')).toBe('ექიმ');
   });
 
+  it('trims the plural genitive, so „თერმოსების" finds „თერმოსი" (tester, 17 Nov)', () => {
+    expect(georgianStem('თერმოსების')).toBe('თერმოს');
+    expect('თერმოსი'.startsWith(georgianStem('თერმოსების'))).toBe(true);
+    expect(georgianStem('ფოტოგრაფებად')).toBe('ფოტოგრაფ');
+  });
+
   it('never touches a non-Georgian word', () => {
     expect(georgianStem('investor')).toBe('investor');
     expect(georgianStem('CFO')).toBe('CFO');
