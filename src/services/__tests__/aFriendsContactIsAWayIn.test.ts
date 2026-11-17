@@ -10,6 +10,7 @@ import { getExcludedPhones } from '../block.service';
 import {
   firmPeopleThroughContacts,
   firmSpellings,
+  heardSpellings,
   namedPeopleThroughContacts,
   nameParts,
   savedAsThisPerson,
@@ -32,10 +33,15 @@ describe('a person a contact holds is a way in to a firm', () => {
   });
 
   it('spells the firm as found, in the other alphabet, as its site, and without spaces', () => {
-    expect(firmSpellings('ბრენდჰენდი', ['brandhand'])).toEqual([
-      'ბრენდჰენდი',
-      'brendhendi',
+    expect(firmSpellings('ბრენდჰენდი', ['brandhand'])).toEqual(
+      expect.arrayContaining(['ბრენდჰენდი', 'brendhendi', 'brandhand', 'brendhend']),
+    );
+    // The probe, 17 Nov: the head's tie read „brendhendi" — an „a" heard as „e".
+    expect(heardSpellings('brandhand')).toEqual([
       'brandhand',
+      'brandhend',
+      'brendhand',
+      'brendhend',
     ]);
     expect(firmSpellings('Brand Hand')).toEqual(
       expect.arrayContaining(['brand hand', 'brandhand', 'ბრანდ ჰანდ']),
