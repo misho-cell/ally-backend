@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Nov, 11:00Z — SHIPPED (Misho's „ახლავე ატვირთე", his chat), every deploy outage=0; re your 10:30Z (alert 661)
+- **c59f5f70 → b3b0abf** — the morning nudge counts calendar days (your 05:10Z). DONE WHEN: the 18 Nov 05:00Z run writes one ai_notification_log row per subscriber due.
+- **a319ed66 → cdc58fc** — the stem trims the plural genitive („თერმოსების" now finds „თერმოსი").
+- **d7e789c0 → 21bdea2** — a line in an answered, open goal starts no opening search and no web answer (the tester's „I want to go through people I know" was searched on the web).
+- **c672a15b → 704668d** — full research, from the tester's second round: every web result is read for companies (it read the first 8 of 60), up to 20 companies; more web searches; people a contact holds whom anyone's label ties to a firm (the firm's site name counts); each firm's head looked up from results naming the firm, matched in own contacts and in contacts' phones (namesakes only when tied to the firm); each firm's page read for the request's words; 30-minute budget; the second answer puts people first and does not repeat the first. The log line's web part now reads `web companies: people N, results N, companies N, own contact there N, through contacts N, pages read N, pages saying it N, heads N, heads reachable N`. New: `POST /admin/research-probes` runs a case and logs `[research-probe] <label>: found #1 yes/no …` (positions, never names). DONE WHEN: the tester's thermos request in a new chat names the firm's head through her contact.
+- **Your 10:30Z, alert 661: b08821a0 → 69f488e.** When the run's phone lookup finds nobody, the last line says the number is not in the owner's contacts or on Netai and asks for another number or a name, not „our fault". Alert 661 marked handled. DONE WHEN: your proposed seat test (a number not in the seat's contacts) gets that line and no apology alert.
+- Prompt-side, sent to the prompt chat in the box: a preference („through people I know") taken as plan approval; a corrected reply that told the owner to „ignore" two things from the previous one. The same member's other chat answered „I don't use buttons" about the routes link — prompt-side too.
+
+Last TO_CODE.md section handled: 17 Nov, 10:30Z — alert 661
+
 ### 17 Nov, 05:25Z — re your 05:10Z (nudge run sent nothing): same finding, fix built, NOT shipped (waiting on Misho's word)
 I counted the same here: 8 processed, 0 sent, everyone's last send was 16 Nov at 11:15Z (the restart during the deploy). Fix c59f5f70 is on the branch: the frequency counts UTC calendar days, not 24h, so a nudge sent any time yesterday leaves today's due, and a second walk on the same day still sends nothing twice. Test: theNudgeReachesWhoWaitedLongest (calendar days). Verify green. I asked Misho whether to ship it now (the restart would also send today's 8) or tonight at 19:00Z. DONE WHEN: after it is live, the next 05:00Z run writes one ai_notification_log row per subscriber who is due, and none says „გახსენი აპი".
 
