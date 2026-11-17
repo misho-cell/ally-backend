@@ -229,6 +229,24 @@ describe('the full research’s web level', () => {
     );
   });
 
+  /** The probe, 17 Nov: the first result naming the firm was a directory, so its site was never learnt. */
+  it('learns the firm’s own site from any result, and uses it for its people, page and head', async () => {
+    const directory = { title: 'ბრენდჰენდი — სარეკლამო', url: 'https://servisebi.example/1' };
+    const own = { title: 'Brandhand — branded gifts', url: 'https://brandhand.ge/ka' };
+    mocked(webSearch).mockImplementation(async (q: string) => ({
+      results: q === WORDS ? [directory, own] : [],
+    }));
+    mocked(wayInNamesFromAll).mockResolvedValue(['ბრენდჰენდი']);
+    mocked(findWaysIn).mockResolvedValue(new Map([['ბრენდჰენდი', { kind: 'none' }]]));
+    await webLevel(REQUEST);
+    expect(firmPeopleThroughContacts).toHaveBeenCalledWith(
+      '186272',
+      new Map([['ბრენდჰენდი', ['brandhand']]]),
+    );
+    expect(fetchPage).toHaveBeenCalledWith('https://brandhand.ge/ka');
+    expect(webSearch).toHaveBeenCalledWith(expect.stringMatching(/^ბრენდჰენდი brandhand CEO/));
+  });
+
   it('looks for nobody when the web names no company', async () => {
     mocked(wayInNamesFromAll).mockResolvedValue([]);
     const result = await webLevel(REQUEST);
