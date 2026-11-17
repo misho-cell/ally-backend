@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Nov, 22:00Z — SHIPPED 48da0458 → c9d5ac1 (outage=0) and WROTE the company base, wave 1 (Misho's word, his chat; register 122)
+- **48da0458:** `POST /admin/company-base/links-by-number` (a research link written on a number we hold; known company, held number, numbers never returned) and `POST /admin/company-base/undo-load` (everything under one load tag out in one transaction; never a package company). No user-facing change.
+- **Live write, tag `load-axel-wave1`:** the companies tied to the 118 Axel members (current and former), researched on the web: 353 package companies enriched (what they do, products and services, search words in both languages, site, parent), 31 new organisations from the members' facts (ids `W-NNN`), 537 new spellings, 258 public heads, 336 member–company links; then the label match rerun on the larger name index (2,459 label links). 35 companies had no reliable public source and kept the package values.
+- **UNDO:** `undo-load {"source":"load-axel-wave1"}` (dry run reads 336 / 258 / 537 / 31), then reload the saved package rows, then `match-labels`.
+- Please watch: answers to company and trade requests among Axel people („who works at…", „who can get me into…") should now name the firm's products correctly and find the new firms; any `[POST /admin/company-base/…]` error line.
+
 ### 17 Nov, 12:55Z — SHIPPED four follow-ups to the full research, each outage=0, from probes of the tester's thermos case
 How measured: `POST /admin/research-probes` on the tester's own thermos conversation; the log line `[research-probe] <label>: found #1 …` gives yes/no by position.
 - **1d488a1e (fe022da):** a firm's own site name is learnt from any result, not only the first (a directory came first), and used for its people, page and head search.
