@@ -67,6 +67,9 @@ describe('a person a contact holds is a way in to a firm', () => {
     // Parameterized: the spellings go as values, never into the SQL text.
     const [sql, params] = mocked(query).mock.calls[0] as [string, string[]];
     expect(sql).not.toContain('brandhand');
+    // The third probe, 17 Nov: joined by OR the patterns left the index (17 s, timed out).
+    expect(sql).not.toMatch(/LIKE \$\d+ OR/u);
+    expect(sql).toContain('UNION ALL');
     expect(params).toContain('%brandhand%');
   });
 
