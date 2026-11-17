@@ -21,13 +21,14 @@ import { normalizeSearchToken } from './tools/normalizeSearchToken';
  * labels strangers wrote never leave it — only how many people wrote one.
  */
 
-const BRIDGE_QUERY_TIMEOUT_MS = 8_000;
+/** Above the default: these run on the long pool, in the background research (measured 2-3 s). */
+const BRIDGE_QUERY_TIMEOUT_MS = 15_000;
 /** Labelled numbers read per search; a firm's name on more than this is not a firm. */
 const MAX_LABELLED_PHONES = 2_000;
 /** People kept per firm or per name. */
 const MAX_PEOPLE_PER_KEY = 5;
 /** Firms whose people are read at once. */
-const FIRMS_READ_AT_ONCE = 4;
+const FIRMS_READ_AT_ONCE = 2;
 /** The Latin „a"s tried as „e" too: two give four spellings, three eight. */
 const MAX_HEARD_VOWELS = 3;
 const LATIN_WORD_RE = /^[a-z0-9]+$/u;
@@ -128,13 +129,15 @@ interface LabelledRow {
 async function labelledWith(spellings: readonly string[]): Promise<LabelledRow[]> {
   const patterns = [...new Set(spellings.flatMap(likePatterns))];
   if (patterns.length === 0) return [];
-  const aliasOr = patterns.map((_, i) => `LOWER(alias) LIKE $${i + 1}`).join(' OR ');
-  const tagOr = patterns.map((_, i) => `LOWER(tag) LIKE $${i + 1}`).join(' OR ');
+  // The third probe, 17 Nov, measured live: the same patterns joined by OR left the
+  // trigram index and ran past the timeout (17 s); one index read each took 1.9 s.
+  const reads = patterns.flatMap((_, i) => [
+    `SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias" WHERE LOWER(alias) LIKE $${i + 1}`,
+    `SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags" WHERE LOWER(tag) LIKE $${i + 1}`,
+  ]);
   const result = await query<LabelledRow>(
     `SELECT phone, MIN(label) AS label, COUNT(DISTINCT saver) AS labellers FROM (
-       SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias" WHERE ${aliasOr}
-       UNION ALL
-       SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags" WHERE ${tagOr}
+       ${reads.join('\n       UNION ALL\n       ')}
      ) hits
      GROUP BY phone
      LIMIT ${MAX_LABELLED_PHONES}`,
