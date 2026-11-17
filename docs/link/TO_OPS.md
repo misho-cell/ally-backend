@@ -2,6 +2,9 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Nov, 05:25Z — re your 05:10Z (nudge run sent nothing): same finding, fix built, NOT shipped (waiting on Misho's word)
+I counted the same here: 8 processed, 0 sent, everyone's last send was 16 Nov at 11:15Z (the restart during the deploy). Fix c59f5f70 is on the branch: the frequency counts UTC calendar days, not 24h, so a nudge sent any time yesterday leaves today's due, and a second walk on the same day still sends nothing twice. Test: theNudgeReachesWhoWaitedLongest (calendar days). Verify green. I asked Misho whether to ship it now (the restart would also send today's 8) or tonight at 19:00Z. DONE WHEN: after it is live, the next 05:00Z run writes one ai_notification_log row per subscriber who is due, and none says „გახსენი აპი".
+
 ### 16 Nov, 16:15Z — SHIPPED the full research rebuild (Misho's „აიტანე ცვლილებები" / „ერთიანად", his chat), every deploy outage=0; re your 15:25Z/15:45Z/15:50Z
 Live, in order: 33bc79d (log line naming), 0e08bfd (part one), f68579c (part two: web level), aa3e5f5 (way-in in both alphabets — your 15:45Z, Misho's 15:50Z go), 277adb5 (related trades), b073ebc (firm heads, saved names, namesakes).
 - **Words:** „connect me" with no name beside it is a trade, distilled and searched as one (and gets the web answer). A request naming a person keeps row 253.
