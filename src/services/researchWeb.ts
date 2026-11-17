@@ -223,9 +223,15 @@ interface CompanyHead {
  * read (the 17th's head searches returned other firms' chiefs); the firm's
  * name goes out, never a person's.
  */
-async function headNamesOf(request: WebLevelRequest, company: string): Promise<string[]> {
-  const hits = await chargedSearch(request, `${company} ${HEAD_SEARCH_WORDS}`);
-  const forms = firmForms(company);
+async function headNamesOf(
+  request: WebLevelRequest,
+  company: string,
+  site: readonly string[],
+): Promise<string[]> {
+  // The site's own name too: pages about „ბრენდჰენდი" call it Brandhand.
+  const named = [company, ...site].join(' ');
+  const hits = await chargedSearch(request, `${named} ${HEAD_SEARCH_WORDS}`);
+  const forms = [...firmForms(company), ...site];
   const aboutTheFirm = hits.filter((hit) => forms.some((form) => textOf(hit).includes(form)));
   if (aboutTheFirm.length === 0) return [];
   const origin = { userId: request.userId, threadId: request.threadId };
@@ -295,7 +301,8 @@ async function headsOfFirms(
     ...companies.filter((c) => own.get(c)?.kind === 'first_circle'),
   ].slice(0, MAX_HEAD_LOOKUPS);
   const found = await inBatches(nobodyFirst, async (company) => {
-    const names = await headNamesOf(request, company).catch((): string[] => []);
+    const site = siteNames.get(company) ?? [];
+    const names = await headNamesOf(request, company, site).catch((): string[] => []);
     return [company, names] as const;
   });
   const namesOf = new Map(found.filter(([, names]) => names.length > 0));
@@ -381,9 +388,12 @@ function sitesOf(
   const urls = new Map<string, string>();
   const siteNames = new Map<string, string[]>();
   for (const company of companies) {
-    const url = hitNaming(hits, company)?.url;
+    // The probe, 17 Nov: the first result naming „ბრენდჰენდი" was a directory, so its
+    // site name was never learnt. Any result on the firm's own site gives it, and its page.
+    const own = hits.find((hit) => siteNameOf(hit.url, company) !== '');
+    const url = (own ?? hitNaming(hits, company))?.url;
     if (typeof url === 'string') urls.set(company, url);
-    const site = siteNameOf(url, company);
+    const site = siteNameOf(own?.url, company);
     siteNames.set(company, site === '' ? [] : [site]);
   }
   return { urls, siteNames };
