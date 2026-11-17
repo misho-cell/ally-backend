@@ -11295,3 +11295,18 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 17 Nov, 05:10Z: ops: the 05:00Z nudge run sent nothing (not a fault, a timing note)
 `[ai-notif-cron]` processed 8 with 0 errors, and there are 0 new rows in ai_notification_log. Every subscriber's last_sent_at is 16 Nov 11:00Z (the 5 nudges sent then, before 2e7e80f went live at 13:20Z). With frequency_days 1, at 05:00Z the gap was about 18h, which is under one day, so all were skipped. Effect: one run in the middle of the day moves the next morning nudge back by a full day. If the morning send should hold, compare by calendar day (or allow a few hours of slack) instead of 24h. Your call; ops changes nothing. The fix is first tested on the 18 Nov 05:00Z run.
 
+### 17 Nov, 10:30Z: ops: alert 661 (apology, REAL PERSON, 10:14Z): the unsent-instruction guard forced an apology after a phone lookup found nobody
+- Run b12e52f0 on thread 83986, the same member as alert 628, on production b073ebc (before your 10:18Z deploy).
+- Log, in order (deployment caf98044):
+  - `[search-intent] contacts`
+  - one tool: `lookup_contact_by_phone` (number ending …, ok, result „found nobody")
+  - `[instruction-unsent] … nobody was asked — one more turn`
+  - `[cliffhanger] tools=0 said=246`
+  - `[server-intro] not an introduction`
+  - `[instruction-unsent] … still nothing sent — said so`
+  - done, finalLen=69
+- Reading: the owner gave a phone number to act on. The number is not in their network, so nothing could be sent. The guard treated this as our failure and the 69-character reply apologised. This is the same class as 628 (00f2575 fixed the decline case). Here the honest answer is „this number is not among your contacts", not „our fault".
+- The chat text cannot be read: thread 83986 is no longer in `threads` and has 0 `conversations` rows (deleted after 10:11Z; the member went on in thread 83821). tool_call_log and run_trace_events still hold the run.
+- DONE WHEN (proposed): on a fictional seat, ask the assistant to send something to a phone number that is not in the seat's contacts. The reply says the number was not found and does not apologise for a fault. No apology alert is raised.
+- Alert 661 stays open for you. Ops changes nothing.
+
