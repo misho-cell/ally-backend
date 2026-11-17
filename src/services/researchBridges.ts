@@ -131,9 +131,11 @@ async function labelledWith(spellings: readonly string[]): Promise<LabelledRow[]
   if (patterns.length === 0) return [];
   // The third probe, 17 Nov, measured live: the same patterns joined by OR left the
   // trigram index and ran past the timeout (17 s); one index read each took 1.9 s.
+  // The fourth probe: a common word as a firm's name („print") matched more labels than the
+  // timeout allows; each read stops at the limit, which a real firm's people never reach.
   const reads = patterns.flatMap((_, i) => [
-    `SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias" WHERE LOWER(alias) LIKE $${i + 1}`,
-    `SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags" WHERE LOWER(tag) LIKE $${i + 1}`,
+    `(SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias" WHERE LOWER(alias) LIKE $${i + 1} LIMIT ${MAX_LABELLED_PHONES})`,
+    `(SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags" WHERE LOWER(tag) LIKE $${i + 1} LIMIT ${MAX_LABELLED_PHONES})`,
   ]);
   const result = await query<LabelledRow>(
     `SELECT phone, MIN(label) AS label, COUNT(DISTINCT saver) AS labellers FROM (
