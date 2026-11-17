@@ -435,6 +435,12 @@ import { applyMembershipList } from '../../services/basePeople/membershipList.se
 import { loadEmployment, removeEmployment } from '../../services/basePeople/employment.service';
 import { fillBasePhonesByPhonebookName } from '../../services/basePeople/phonebookPhones.service';
 import { matchMemberLabels } from '../../services/companyBase/labelMatch.service';
+import {
+  MAX_LINKS_PER_REQUEST,
+  isLoadSource,
+  linkByNumber,
+  undoLoad,
+} from '../../services/companyBase/companyLoadByNumber.service';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
 import { cancelOneAsk } from '../../services/taskAsks.service';
@@ -9413,6 +9419,65 @@ adminRouter.post('/company-base/match-labels', async (req: Request, res: Respons
     // eslint-disable-next-line no-console
     console.error('[POST /admin/company-base/match-labels]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The match did not run; nothing was written' });
+  }
+});
+
+/**
+ * Misho, 17 Nov — research found which of OUR people sit at which company; each
+ * link is written on the number we already hold, under the load's own tag.
+ * Body: { source: "load-…", dry_run, links: [{ phone, company_id, person_name,
+ * role, evidence, status: confirmed | possible }] }. Numbers never come back.
+ *
+ *   200  { dry_run, rows_in_request, rows_written, skipped }
+ *   400  bad source, dry_run missing, or links not a list of at most 5,000
+ *   500  the load did not run
+ */
+adminRouter.post('/company-base/links-by-number', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { source, dry_run: dryRun, links } = body;
+  if (
+    !isLoadSource(source) ||
+    typeof dryRun !== 'boolean' ||
+    !Array.isArray(links) ||
+    links.length > MAX_LINKS_PER_REQUEST
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `source ("load-…"), dry_run (true or false) and links (a list of at most ${MAX_LINKS_PER_REQUEST}) are required`,
+    });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await linkByNumber(links, source, dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/company-base/links-by-number]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * The UNDO of a research load: removes everything written under its tag — links,
+ * public people, names, and the companies it created (never a package company).
+ * Body: { source: "load-…", dry_run }.
+ *
+ *   200  { dry_run, source, links, public_people, names, companies }
+ *   400  bad source or dry_run missing
+ *   500  nothing was removed
+ */
+adminRouter.post('/company-base/undo-load', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { source, dry_run: dryRun } = body;
+  if (!isLoadSource(source) || typeof dryRun !== 'boolean') {
+    res.status(400).json({ success: false, error: 'source ("load-…") and dry_run are required' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await undoLoad(source, dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/company-base/undo-load]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The undo did not run; nothing was removed' });
   }
 });
 
