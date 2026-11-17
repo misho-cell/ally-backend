@@ -26,6 +26,11 @@ const BRIDGE_QUERY_TIMEOUT_MS = 8_000;
 const MAX_LABELLED_PHONES = 2_000;
 /** People kept per firm or per name. */
 const MAX_PEOPLE_PER_KEY = 5;
+/** Firms whose people are read at once. */
+const FIRMS_READ_AT_ONCE = 4;
+/** The Latin „a"s tried as „e" too: two give four spellings, three eight. */
+const MAX_HEARD_VOWELS = 3;
+const LATIN_WORD_RE = /^[a-z0-9]+$/u;
 const MIN_NAME_PART_LETTERS = 2;
 const SPACES_RE = /[\s\-_.]+/gu;
 
@@ -57,7 +62,25 @@ export function firmSpellings(firm: string, other: readonly string[] = []): stri
     .map((f) => f.trim().toLocaleLowerCase())
     .filter((f) => f !== '');
   const joined = forms.map((f) => f.replace(SPACES_RE, ''));
-  return [...new Set([...forms, ...joined])].filter((f) => [...f].length >= 3);
+  const heard = joined.filter((f) => LATIN_WORD_RE.test(f)).flatMap(heardSpellings);
+  return [...new Set([...forms, ...joined, ...heard])].filter((f) => [...f].length >= 3);
+}
+
+/**
+ * The probe, 17 Nov: the head's tie to „Brandhand" was a label written
+ * „brendhendi" — as the name sounds in Georgian. An English „a" is heard and
+ * written „e" (brand → brend, hand → hend), so the Latin spelling's first few
+ * „a"s are tried both ways.
+ */
+export function heardSpellings(latin: string): string[] {
+  let spellings = [''];
+  let swapped = 0;
+  for (const letter of latin) {
+    const both = letter === 'a' && swapped < MAX_HEARD_VOWELS;
+    if (both) swapped += 1;
+    spellings = spellings.flatMap((s) => (both ? [`${s}a`, `${s}e`] : [`${s}${letter}`]));
+  }
+  return spellings;
 }
 
 /** LIKE patterns for a lower-case word, in ordinary and capital Georgian letters. */
@@ -121,40 +144,48 @@ async function labelledWith(spellings: readonly string[]): Promise<LabelledRow[]
   return result.rows;
 }
 
+/** One firm's people the owner's contacts hold, the most corroborated first. */
+async function oneFirmsPeople(userId: string, spellings: readonly string[]): Promise<FirmPerson[]> {
+  const labelled = await labelledWith(spellings);
+  const byPhone = new Map(labelled.map((row) => [row.phone, Number(row.labellers)]));
+  const held = await heldByContacts(userId, [...byPhone.keys()]);
+  const labellers = (row: HeldRow): number => byPhone.get(row.phone) ?? 0;
+  return held
+    .sort((a, b) => labellers(b) - labellers(a))
+    .slice(0, MAX_PEOPLE_PER_KEY)
+    .map((row) => ({
+      saved_by_your_contact_as: row.saved_as,
+      your_contact: row.bridge,
+      labelled_with_the_firm_by: labellers(row),
+    }));
+}
+
 /**
  * For each firm, the people the owner's contacts hold whom anyone labelled
- * with the firm's name. One read for all the firms; a firm that fails to read
- * has nobody, never an error.
+ * with the firm's name. Each firm is read on its own (the probe, 17 Nov: one
+ * read for all twenty filled its limit with the common names' people, and
+ * the small firm's were cut); a firm that fails to read has nobody, and says so.
  */
 export async function firmPeopleThroughContacts(
   userId: string,
   firms: ReadonlyMap<string, readonly string[]>,
 ): Promise<Map<string, FirmPerson[]>> {
-  const spellingsOf = new Map(
-    [...firms].map(([firm, other]) => [firm, firmSpellings(firm, other)] as const),
-  );
-  const labelled = await labelledWith([...spellingsOf.values()].flat());
-  const byPhone = new Map(labelled.map((row) => [row.phone, row]));
-  const held = await heldByContacts(userId, [...byPhone.keys()]);
-  // The most corroborated first: more people tying them to the firm.
-  const labellers = (row: HeldRow): number => Number(byPhone.get(row.phone)?.labellers ?? 0);
-  held.sort((a, b) => labellers(b) - labellers(a));
   const found = new Map<string, FirmPerson[]>();
-  for (const row of held) {
-    const hit = byPhone.get(row.phone);
-    if (hit === undefined) continue;
-    const label = hit.label.replace(SPACES_RE, '');
-    for (const [firm, spellings] of spellingsOf) {
-      if (!spellings.some((s) => label.includes(s.replace(SPACES_RE, '')))) continue;
-      const people = found.get(firm) ?? [];
-      if (people.length >= MAX_PEOPLE_PER_KEY) continue;
-      people.push({
-        saved_by_your_contact_as: row.saved_as,
-        your_contact: row.bridge,
-        labelled_with_the_firm_by: Number(hit.labellers),
-      });
-      found.set(firm, people);
-    }
+  const all = [...firms];
+  for (let at = 0; at < all.length; at += FIRMS_READ_AT_ONCE) {
+    const batch = all.slice(at, at + FIRMS_READ_AT_ONCE);
+    const read = await Promise.all(
+      batch.map(async ([firm, other]): Promise<readonly [string, FirmPerson[]]> => {
+        try {
+          return [firm, await oneFirmsPeople(userId, firmSpellings(firm, other))] as const;
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('[research-bridges] a firm’s people not read:', (err as Error).message);
+          return [firm, []];
+        }
+      }),
+    );
+    for (const [firm, people] of read) if (people.length > 0) found.set(firm, people);
   }
   return found;
 }
@@ -269,18 +300,11 @@ export async function namedPeopleThroughContacts(
     surnames.filter((s) => s !== ''),
   );
   if (rows.length === 0) return new Map();
-  const labelled = await labelledWith([...new Set(usable.flatMap((h) => h.firm))]);
   const found = new Map<string, HeadThroughAContact[]>();
   for (const head of usable) {
-    const tied = new Set(
-      labelled
-        .filter((row) =>
-          head.firm.some((s) =>
-            row.label.replace(SPACES_RE, '').includes(s.replace(SPACES_RE, '')),
-          ),
-        )
-        .map((row) => row.phone),
-    );
+    // Only a head someone saved under that name: their firm's labels are read for them alone.
+    if (!rows.some((row) => savedAsThisPerson(row.saved_as, head.parts))) continue;
+    const tied = new Set((await labelledWith(head.firm)).map((row) => row.phone));
     const people = theHead(rows, head.parts, tied);
     if (people.length > 0) found.set(head.name, people);
   }
