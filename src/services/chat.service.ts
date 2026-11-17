@@ -14698,6 +14698,35 @@ async function postWorldAnswer(
   );
 }
 
+/**
+ * The tester's thermos goal, 17 Nov: her answer to the plan („I want to go
+ * through people I know") was searched on the web as a new request, and its
+ * results' names were looked up in her contacts. A line in a conversation
+ * whose goal is already open, and already answered, is a turn of that goal,
+ * not a new question — exactly what the rule above says the opening searches
+ * are not for. A goal opened from the goal box has no answer yet: its first
+ * line is still the question, and is searched.
+ */
+const FOLLOW_UP_READ_TIMEOUT_MS = 3_000;
+
+async function isAFollowUpInAGoal(threadId: number): Promise<boolean> {
+  try {
+    if ((await getOpenTaskByThread(threadId)) === null) return false;
+    const answered = await query<{ answered: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM conversations
+                       WHERE thread_id = $1 AND role = 'assistant'
+                         AND TRIM(COALESCE(content, '')) <> '') AS answered`,
+      [threadId],
+      FOLLOW_UP_READ_TIMEOUT_MS,
+    );
+    return answered.rows[0]?.answered === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[opening-search] thread ${threadId}: goal not read:`, (err as Error).message);
+    return false;
+  }
+}
+
 interface LateOpeningSearch {
   /** The prompt section, once the search has landed — once, and never twice. */
   takeIfReady(): string | null;
@@ -18787,15 +18816,16 @@ export async function processChat(
    */
   // #8779 group 4: no word list skips the opening searches on a goal any more.
   // Misho, 13 Nov: a request that opens no goal still gets the web, when it asks for one.
+  const followUp = autoGoalId === null && (await isAFollowUpInAGoal(threadId));
   const lateSearch =
     autoGoalId !== null
       ? startOpeningSearches(userId, userMessage, runId, threadId, autoGoalId)
-      : ownerAbsent || userMessage.trim() === ''
+      : ownerAbsent || followUp || userMessage.trim() === ''
         ? null
         : startOpeningSearches(userId, userMessage, runId, threadId);
   // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
   const worldAnswerWork =
-    !ownerAbsent && worldAnswerIsDue(autoGoalId !== null, userMessage)
+    !ownerAbsent && !followUp && worldAnswerIsDue(autoGoalId !== null, userMessage)
       ? worldAnswerFor(userId, threadId, runId, userMessage, language)
       : Promise.resolve(null);
   // #397: the opening searches are the run's first search; the line says so.

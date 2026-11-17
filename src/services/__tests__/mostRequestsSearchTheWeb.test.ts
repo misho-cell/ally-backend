@@ -68,7 +68,8 @@ describe('the web in the chat', () => {
 
   it('is searched for a request that opens no goal, when the owner is there and wrote something', () => {
     expect(chat).toContain(': startOpeningSearches(userId, userMessage, runId, threadId);');
-    expect(chat).toContain(": ownerAbsent || userMessage.trim() === ''");
+    // 17 Nov: a follow-up in an answered goal is not a new request (aFollowUpIsNotANewSearch).
+    expect(chat).toContain(": ownerAbsent || followUp || userMessage.trim() === ''");
   });
 
   it('only when the message asks for it', () => {
