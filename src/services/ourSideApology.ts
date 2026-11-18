@@ -19,8 +19,26 @@ const OUR_SIDE_RE =
   /ჩვენს მხარეს|შეფერხებ|ტექნიკურ(ი|მა)? (ხარვეზ|შეცდომ|პრობლემ)|on our side|something went wrong|technical (issue|problem|error)|с нашей стороны|техническ|por nuestra parte|problema técnico/iu;
 const SENTENCE_SPLIT_KEEP_RE = /((?<=[.!?…])\s+|\n)/u;
 
+/**
+ * Each sentence blaming our side becomes the checking line, said once; when it
+ * replaces one it says so in the log. Alert 694 (18 Nov): the run watch found
+ * the checking line in a scheduled check that made no tool call, and nothing
+ * showed whether the model wrote it or the server put it in place of a „technical
+ * fault" the model had made up.
+ */
+export function withoutOurSideApology(text: string, language: RunLanguage, runId?: string): string {
+  const out = replaceOurSideApology(text, language);
+  if (out !== text) {
+    // eslint-disable-next-line no-console
+    console.info(
+      `[our-side] run ${runId ?? '?'}: a sentence blaming our side became the checking line`,
+    );
+  }
+  return out;
+}
+
 /** Pure: each sentence blaming our side becomes the checking line, said once. */
-export function withoutOurSideApology(text: string, language: RunLanguage): string {
+function replaceOurSideApology(text: string, language: RunLanguage): string {
   if (!OUR_SIDE_RE.test(text)) return text;
   const parts = text.split(SENTENCE_SPLIT_KEEP_RE);
   let said = false;

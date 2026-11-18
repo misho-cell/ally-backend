@@ -24,6 +24,16 @@ describe('a reply that blames our side (Misho, 29 Oct)', () => {
     );
   });
 
+  it('says in the log, with the run, when it replaced a sentence — and only then (alert 694)', () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    withoutOurSideApology('ტექნიკური ხარვეზის გამო ვერ ვნახე.', 'ka', 'run-1');
+    withoutOurSideApology('ლიკას მივწერე.', 'ka', 'run-2');
+    expect(info.mock.calls.map((c) => c[0] as string)).toEqual([
+      '[our-side] run run-1: a sentence blaming our side became the checking line',
+    ]);
+    info.mockRestore();
+  });
+
   it('runs on every final reply, and the run watch still finds the case', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const scrub = chat.slice(chat.indexOf('export function scrubFinal('));
