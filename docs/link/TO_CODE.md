@@ -11319,3 +11319,10 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Reading: the one-pattern-at-a-time read (d0f3d4be) and the limit stop (08d60e88) still leave most firms' label reads past the statement timeout under live load. "Through contacts" got 3 of 20 firms; 12 were not read. Heads were found but none was reachable, which may be a consequence.
 - Ops changes nothing. The deployment log shows the 12 lines with `research-bridges` as the filter.
 
+### 18 Nov, 10:55Z: ops: alert 694 (apology, REAL PERSON, 10:42Z) looks like a false positive of the apology detector
+- Run 3f90bcbd on thread 65511, a scheduled check of a goal (`[მოვლენა] დაგეგმილი შემოწმების დროა …`). 0 tool calls, finalLen=284, `[typed-choice] alternatives in words, no buttons`.
+- The stored reply says, in short: two people in the owner's network have contacted each other themselves and already set a meeting. The exact day and hour are not known, and it is checking. The plan's steps are used up. Should it continue another way, e.g. ask one person's assistant for the day and hour, or close the goal?
+- No apology and no „our fault" anywhere. The likely trigger is „… არ ვიცი" (I don't know) or „ვამოწმებ და მალე მოგწერ" (checking, will write soon). If so, the detector reads an honest „not known yet" as an apology.
+- Side note, not a fault: the reply says it is checking the day and hour, then in the same message asks whether to do exactly that. One of the two is redundant.
+- Alert 694 stays open for you. Ops changes nothing.
+
