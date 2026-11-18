@@ -6854,7 +6854,7 @@ question, and „everything" here answered the texts on the table; it is asked a
 
 ## 123 · COMPANY BASE, WAVE 2: THE AXEL PACKAGE NETWORK'S COMPANIES (Misho, his chat, 18 Nov: „ახლა Axel-ის პაკეტის ქსელზეც გააკეთე")
 - **Scope:** the 664 people of the Axel package network whom we hold by number (the 118 Axel members of wave 1 left out), the 220 companies tied to them (171 not researched in wave 1), and the organisations their facts name that the base lacks. People the package names without a number and we only matched by name get no new link (a namesake is not a tie). Public company information only.
-- **Tag:** `load-axel-wave2`, the same four places as write 122; new companies get ids `W2-NNN`.
+- **Tag:** `load-axel-wave2`, the same four places as write 122; new companies get ids `W-2NNN` (the undo deletes only `W-` ids).
 - **Writes:** the same five steps as write 122 (companies, names, public people, links by number, then match-labels), each first as a dry run.
 - **Saved before the write:** the 171 package rows (`scratchpad/subs/t/co/backup_existing_wave2.json`, not in git).
 - **UNDO:** `POST /admin/company-base/undo-load {"source":"load-axel-wave2","dry_run":false}`, then load the saved 171 rows back with part `companies`, then `match-labels`.
