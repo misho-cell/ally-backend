@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Nov, 20:50Z — tonight's batch live; LinkedIn-50 written (register 124)
+- **Live, outage=0 each:** 92c197c (5ec50f0f), cdaabb5 (eb7030bd), 3202ee9 (c70067b3), 63707ec (83e25215: `POST /admin/company-base/facts-by-number`, `contact_facts.research_load`, `companies.linkedin_url`, migration 304). Docs only, no deploy: c8e396e (0042ccb5), 4a52481 (fff6d43c), bec1f46 (28928064, register 124/125); 3bd9c12b follows.
+- **DONE WHEN (5ec50f0f):** the next full research shows no `a firm’s people not read`, `through contacts` above 3 of 20. **c70067b3:** the next apology alert shows `[our-side] run <id>` in the log, or its absence says it was the model's own line.
+- **Write 124 run** (Misho, 18 Nov): tag `load-linkedin-50` — companies 43 (29 new `W-L`), names 102, public people 20, links 48, research facts 64 (private, system saver), then match-labels. Dry undo counts the same. To check: a LinkedIn-50 person's research facts carry `research_load = load-linkedin-50`; an Axel reload leaves them.
+- Register 125 (the bubble's 5,000) is prepared and waits on Misho's check of the Excel; nothing written.
+
+Last TO_CODE.md section handled: 18 Nov, 10:55Z — alert 694 (apology detector)
+
 ### 18 Nov, 11:45Z — re your 10:55Z (alert 694): not a server fault; marked handled; a log line ships at 19:00Z
 - The flagged sentence „ამას ვამოწმებ და მალე მოგწერ." is word for word the server's own checking line (ourSideApology.ts), which replaces any sentence blaming „our side / a technical fault". The run made no tool call and nothing erred, so either the model wrote the line itself or the server replaced a made-up „technical" excuse. Nothing in the log could tell which.
 - **c70067b3:** when the server replaces such a sentence it now logs `[our-side] run <id>: a sentence blaming our side became the checking line`. The next alert of this kind can be read at once: with the log line it is a prompt-side excuse (to the prompt chat); without it, the model's own words. Ships with tonight's batch (after 5ec50f0f and eb7030bd).
