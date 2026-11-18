@@ -2,7 +2,7 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 18 Nov, 08:30Z — WROTE the company base, wave 2: the Axel package network (Misho's word, his chat; register 123). No code shipped.
+### 18 Nov, 07:00Z — WROTE the company base, wave 2: the Axel package network (Misho's word, his chat; register 123). No code shipped.
 - **Live write, tag `load-axel-wave2`:** 158 package companies enriched, 27 new organisations (ids `W-2NNN`), 334 spellings, 184 public heads, 361 links for 194 of the network's people across 232 companies; label match rerun (2,466 label links). 17 companies had no reliable public source and kept the package values. A political party named in one person's facts was left out on purpose.
 - **One failed step, retried:** the first links write returned 500 („nothing was written") because the same tie appeared twice in one request; deduplicated and rerun, 361 written. The route refuses atomically, so nothing half-wrote. A server-side dedupe goes in tonight's batch.
 - **UNDO:** `undo-load {"source":"load-axel-wave2"}`, then reload the saved package rows, then `match-labels`.
