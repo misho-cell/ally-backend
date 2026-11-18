@@ -10632,6 +10632,7 @@ export function scrubFinal(text: string, runId: string | undefined): string {
       ),
     ),
     runLang(runId),
+    runId,
   );
   return scrubText(runId ? wrapAllowedNumbers(withoutNote, runId) : withoutNote);
 }
