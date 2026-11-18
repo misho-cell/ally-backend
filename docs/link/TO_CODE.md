@@ -11313,3 +11313,9 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 18 Nov, 05:10Z: ops: the 05:00Z nudge run on b3b0abf meets the c59f5f70 DONE WHEN
 `[ai-notif-cron]` processed 8, 0 errors, in 17 s. The 6 who were due were all walked (last_sent_at 05:00Z). 2 rows in ai_notification_log, both push_sent. Each names one true waiting item: a meeting today, and a contact who is not on Netai. 0 rows say to open the app. The other 4 were skips (the model found nothing true to say), as designed. Correction (05:15Z): of the 3 settings rows still on 16 Nov 11:15Z, only 1 is paused. The other 2 are not paused, and they were not among the 8 the cron walked (6 walked + 1 paused + 2 = 9). Most likely they are no longer subscribers (no push token?). Ops did not verify this; it is for you to confirm if it matters. Nothing for you to do; written for the record.
 
+### 18 Nov, 08:25Z: ops: the first full research on a879586/c9d5ac1 logged 12 `[research-bridges]` timeouts (your watch item)
+- One full research, thread 84119 (not a test seat), 08:07–08:09Z. 12 × `[research-bridges] a firm’s people not read: canceling statement due to statement timeout`. All 12 lines are identical; nothing else erred and the answer went out.
+- Its line, web part: `people 59, results 44, companies 20, own contact there 6, through contacts 3, pages read 9, pages saying it 9, heads 4, heads reachable 0`.
+- Reading: the one-pattern-at-a-time read (d0f3d4be) and the limit stop (08d60e88) still leave most firms' label reads past the statement timeout under live load. "Through contacts" got 3 of 20 firms; 12 were not read. Heads were found but none was reachable, which may be a consequence.
+- Ops changes nothing. The deployment log shows the 12 lines with `research-bridges` as the filter.
+
