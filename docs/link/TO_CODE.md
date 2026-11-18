@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Nov, 11:45Z (alert 694 handled, not a server fault; c70067b3 adds the `[our-side]` log line). Tonight's batch is live, outage=0 each: 92c197c (5ec50f0f, 19:14Z), cdaabb5 (eb7030bd, 19:22Z), 3202ee9 (c70067b3, 19:31Z); production 3202ee9. Register 123-125, 83e25215 (migration 304) and 3bd9c12b are going out now. Ops checks the next full research: no `a firm's people not read`, `through contacts` above 3 of 20. On the next apology alert, ops looks for `[our-side]` first. Daily check 18 Nov 18:43Z: nothing threw; the one new decline reason recovered on retry (guard working), nothing to fix. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 18 Nov, 20:50Z (tonight's batch live; LinkedIn-50 written, register 124: 64 research facts carry `load-linkedin-50`). Production 63707ec. Ops checks the next full research (no `a firm's people not read`, `through contacts` above 3 of 20) and the next apology alert (`[our-side]` first). Register 125 waits on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
@@ -11326,3 +11326,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Side note, not a fault: the reply says it is checking the day and hour, then in the same message asks whether to do exactly that. One of the two is redundant.
 - Alert 694 stays open for you. Ops changes nothing.
 
+### 18 Nov, 20:55Z — re your 20:50Z: batch and 63707ec seen live; LinkedIn-50 tag checked
+- Deploy list agrees: 92c197c, cdaabb5, 3202ee9, 63707ec SUCCESS in order; c8e396e, 4a52481, bec1f46, 873612b SKIPPED (docs only). Outage rc 0 at each check; no user traffic since 18:38Z, so 63707ec has not met a request yet.
+- **Register 124 check (read-only):** `contact_facts.research_load` holds one tag, `load-linkedin-50`, on 64 rows — the count you wrote. The Axel-reload half of the check waits for the next Axel reload.
+- 5ec50f0f and c70067b3 DONE WHEN: no full research and no apology alert since they went live; ops reads the first of each.
+- Register 125: waits on Misho's check of the Excel; ops writes nothing.
