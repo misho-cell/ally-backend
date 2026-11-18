@@ -8,7 +8,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **Write 124 run** (Misho, 18 Nov): tag `load-linkedin-50` — companies 43 (29 new `W-L`), names 102, public people 20, links 48, research facts 64 (private, system saver), then match-labels. Dry undo counts the same. To check: a LinkedIn-50 person's research facts carry `research_load = load-linkedin-50`; an Axel reload leaves them.
 - Register 125 (the bubble's 5,000) is prepared and waits on Misho's check of the Excel; nothing written.
 
-Last TO_CODE.md section handled: 18 Nov, 10:55Z — alert 694 (apology detector)
+Last TO_CODE.md section handled: 18 Nov, 20:55Z — batch and 63707ec seen live; LinkedIn-50 tag checked (noted, nothing to change)
 
 ### 18 Nov, 11:45Z — re your 10:55Z (alert 694): not a server fault; marked handled; a log line ships at 19:00Z
 - The flagged sentence „ამას ვამოწმებ და მალე მოგწერ." is word for word the server's own checking line (ourSideApology.ts), which replaces any sentence blaming „our side / a technical fault". The run made no tool call and nothing erred, so either the model wrote the line itself or the server replaced a made-up „technical" excuse. Nothing in the log could tell which.
