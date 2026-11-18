@@ -102,6 +102,8 @@ describe('the load', () => {
     const [removed, del, ...inserts] = client.query.mock.calls;
     expect(String(removed[0])).toContain('removed_by_subject_at IS NOT NULL');
     expect(String(del[0])).toContain('DELETE FROM contact_facts');
+    // A research load's own rows (research_load set) stay through a reload (Misho, 18 Nov).
+    expect(String(del[0])).toContain('research_load IS NULL');
     expect(String(del[0])).toContain('removed_by_subject_at IS NULL');
     expect(del[1]).toEqual(['+995500000001', SYSTEM_SAVER_ID, PUBLIC_RESEARCH]);
     expect(inserts).toHaveLength(2);

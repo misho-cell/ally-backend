@@ -34,6 +34,7 @@ export interface NumberLinkReport {
 export interface UndoReport {
   readonly dry_run: boolean;
   readonly source: string;
+  readonly facts: number;
   readonly links: number;
   readonly public_people: number;
   readonly names: number;
@@ -170,24 +171,34 @@ export async function linkByNumber(
   };
 }
 
-/** What one load tag wrote, table by table. Names carry the tag as their kind. */
+/**
+ * What one load tag wrote, table by table. Names carry the tag as their kind;
+ * research facts carry it in research_load (researchFactsByNumber.service).
+ */
 const LOAD_PARTS = {
+  facts: `FROM contact_facts WHERE research_load = $1 AND source = 'public_research'`,
   links: 'FROM person_company_links WHERE source = $1',
   public_people: 'FROM company_public_people WHERE source = $1',
   names: 'FROM company_names WHERE kind = $1',
   companies: `FROM companies WHERE confidence = $1 AND company_id LIKE '${LOADED_COMPANY_PREFIX}%'`,
 } as const;
 type LoadPart = keyof typeof LOAD_PARTS;
-const PART_ORDER: readonly LoadPart[] = ['links', 'public_people', 'names', 'companies'];
+const PART_ORDER: readonly LoadPart[] = ['facts', 'links', 'public_people', 'names', 'companies'];
 
 /**
- * Takes one load back out, in one transaction: its links, public people and
- * names, then the companies it created. A package company is never deleted —
+ * Takes one load back out, in one transaction: its research facts, links,
+ * public people and names, then the companies it created. A package company is never deleted —
  * an updated package row is restored by loading its saved copy again.
  */
 export async function undoLoad(source: string, dryRun: boolean): Promise<UndoReport> {
   const counts = await withTransaction(async (client) => {
-    const out: Record<LoadPart, number> = { links: 0, public_people: 0, names: 0, companies: 0 };
+    const out: Record<LoadPart, number> = {
+      facts: 0,
+      links: 0,
+      public_people: 0,
+      names: 0,
+      companies: 0,
+    };
     for (const part of PART_ORDER) {
       const sql = dryRun
         ? `SELECT COUNT(*)::int AS n ${LOAD_PARTS[part]}`

@@ -98,6 +98,7 @@ describe('a researched company link sits on our number', () => {
     expect(report).toEqual({
       dry_run: false,
       source: SOURCE,
+      facts: 2,
       links: 2,
       public_people: 2,
       names: 2,
@@ -105,7 +106,8 @@ describe('a researched company link sits on our number', () => {
     });
     const sqls = mockClientQuery.mock.calls.map((c) => c[0] as string);
     expect(sqls.every((s) => s.includes('DELETE'))).toBe(true);
-    expect(sqls[3]).toContain("company_id LIKE 'W-%'");
+    expect(sqls[0]).toContain('research_load = $1');
+    expect(sqls[4]).toContain("company_id LIKE 'W-%'");
     expect(mockClientQuery.mock.calls.every((c) => (c[1] as string[])[0] === SOURCE)).toBe(true);
   });
 

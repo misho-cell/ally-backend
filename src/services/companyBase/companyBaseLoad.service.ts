@@ -83,10 +83,21 @@ const COMPANY_COLUMNS = [
   'what_it_does',
   'service_words',
   'website',
+  'linkedin_url',
   'parent_group',
   'confidence',
   'search_text',
 ] as const;
+
+/**
+ * A column a file may leave out: an empty value keeps what the row holds. A
+ * package reload, which knows no LinkedIn pages, never erases one research found.
+ */
+const KEPT_WHEN_BLANK: ReadonlySet<string> = new Set(['linkedin_url']);
+
+function keptWhenBlank(column: string): string {
+  return `${column} = COALESCE(NULLIF(EXCLUDED.${column}, ''), companies.${column})`;
+}
 
 function companyValues(r: CompanyRow): (string | null)[] {
   return [
@@ -105,6 +116,7 @@ function companyValues(r: CompanyRow): (string | null)[] {
     r.whatItDoes,
     r.serviceWords,
     r.website,
+    r.linkedinUrl,
     r.parentGroup,
     r.confidence,
     r.searchText,
@@ -115,7 +127,7 @@ async function writeCompanies(rows: readonly CompanyRow[]): Promise<number> {
   const columns = COMPANY_COLUMNS.join(', ');
   const arrays = COMPANY_COLUMNS.map((_, i) => `$${i + 1}::text[]`).join(', ');
   const updates = COMPANY_COLUMNS.slice(1)
-    .map((c) => `${c} = EXCLUDED.${c}`)
+    .map((c) => (KEPT_WHEN_BLANK.has(c) ? keptWhenBlank(c) : `${c} = EXCLUDED.${c}`))
     .join(', ');
   for (const b of batches(rows)) {
     const values = b.map(companyValues);

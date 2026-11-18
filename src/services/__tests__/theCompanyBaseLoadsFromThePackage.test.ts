@@ -92,6 +92,21 @@ describe('the company base loads from the package', () => {
     const [sql] = mockQuery.mock.calls[0] as [string];
     expect(sql).toContain('ON CONFLICT (industry_id) DO UPDATE');
   });
+
+  it('keeps a company’s LinkedIn page when a later file leaves it blank (Misho, 18 Nov)', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+    const csv =
+      'company_id,name_en,website,linkedin_url\n' +
+      'W-001,Colibri,https://colibri.ge,https://www.linkedin.com/company/colibri\n';
+    const report = await loadCompanyBasePart(CompanyBasePart.Companies, csv, false);
+    expect(report.rows_written).toBe(1);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, string[][]];
+    expect(sql).toContain(
+      "linkedin_url = COALESCE(NULLIF(EXCLUDED.linkedin_url, ''), companies.linkedin_url)",
+    );
+    expect(sql).toContain('website = EXCLUDED.website');
+    expect(params).toContainEqual(['https://www.linkedin.com/company/colibri']);
+  });
 });
 
 /** #7525 (Misho, 29 Oct): the old key is gone, so the list is made again from the members' phonebooks. */

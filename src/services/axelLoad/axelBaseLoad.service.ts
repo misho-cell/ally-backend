@@ -21,7 +21,8 @@ import { basePlan, ResearchFact } from './axelBasePlan';
  *
  * IDEMPOTENT. A number's research rows are replaced whole, inside one
  * transaction: the same file loaded twice doubles nothing, and a changed row
- * replaces the old value.
+ * replaces the old value. Rows another research load wrote (research_load set,
+ * researchFactsByNumber.service) are that load's, and stay.
  */
 export const SYSTEM_SAVER_ID = '0';
 export const PUBLIC_RESEARCH = 'public_research';
@@ -95,7 +96,7 @@ async function replaceNumber(
   await client.query(
     `DELETE FROM contact_facts
       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3
-        AND removed_by_subject_at IS NULL`,
+        AND removed_by_subject_at IS NULL AND research_load IS NULL`,
     [phone, SYSTEM_SAVER_ID, PUBLIC_RESEARCH],
   );
   const kept = facts.filter((f) => !removed.has(removedKey(f.key, f.value)));
