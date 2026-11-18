@@ -6858,3 +6858,22 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Writes:** the same five steps as write 122 (companies, names, public people, links by number, then match-labels), each first as a dry run.
 - **Saved before the write:** the 171 package rows (`scratchpad/subs/t/co/backup_existing_wave2.json`, not in git).
 - **UNDO:** `POST /admin/company-base/undo-load {"source":"load-axel-wave2","dry_run":false}`, then load the saved 171 rows back with part `companies`, then `match-labels`.
+
+## 124 · LINKEDIN: THE 50 PEOPLE'S PROFILES AND THEIR COMPANIES (Misho, his chat, 18 Nov: „LinkedIn-ის სია ვნახე, ბაზაში ჩაწერე")
+- **Scope:** the 24 of the 50 people (the 18 Nov web-ties test) whose own LinkedIn profile was found and matched to our base (11 confirmed, 13 probable; the ambiguous one and the 25 not found get nothing). Professional facts only: positions, education, headline, the profile's link. Nothing about family, politics, health, an address or a contact.
+- **Tag:** `load-linkedin-50`, in the four company places of write 122 and in `contact_facts.research_load` (new column, migration 304). New companies get ids `W-LNNN`; a company's own LinkedIn page goes in `companies.linkedin_url` (new column, migration 304).
+- **Writes, in order** (each first with `dry_run: true`):
+  1. `POST /admin/company-base/load` part `companies`: the 36 employers the base lacks (found only after a name check against the whole name index, so none is a second copy), and the 14 it has with the researched description and LinkedIn page merged in; part `names` for the new ones.
+  2. `POST /admin/company-base/links-by-number`: each position on the person's number; a confirmed profile → `confirmed`, a probable one → `possible`.
+  3. `POST /admin/company-base/facts-by-number` (new route, after migration 304 is live): headline, education, past roles and the LinkedIn link as private research facts (one system saver, `public_research`), each with its page.
+  4. `match-labels`.
+- **Saved before the write:** the 14 package rows as they were (`scratchpad/subs/t/co/lk/existing14.json`, not in git).
+- **UNDO:** `POST /admin/company-base/undo-load {"source":"load-linkedin-50","dry_run":false}` (facts, links, public people, names, the `W-L` companies, one transaction), then load the 14 saved rows back with part `companies`, then `match-labels`.
+
+## 125 · THE BUBBLE'S 5,000: BASE FIRST, THEN COMPANIES, IN WAVES (Misho, his chat, 18 Nov: „ბაბლთან ყველაზე ახლოს მდგომი 5000 კაცი დააიდენტიფიცირო … გაითვალისწინო მონაცემები ჩვენი ბაზიდან … კომპანიები არ დაგიდუბლირდეს … როგორც კომპანიის ასევე პიროვნებების ლინქდინები"; „მოდი ვცადოთ … 5000-ზე")
+- **The list:** the 1,053 people of the target lists (Axel, campaigns, GTW, Founder Institute, Impact Hub, BAG), then the 3,947 people saved by the most of the 182 among them who have an account and a phonebook (the last kept are saved by 4). Kept in the scratchpad only (`subs/b5/list5000.json`, not in git).
+- **Method:** our base first (own profile, facts, labels, company links); the web is searched for COMPANIES (what they sell, site, LinkedIn page, the people they name themselves), never by a private person's name in bulk. Every company is checked against the whole name index first, so none is written twice.
+- **Tags:** one per wave, `load-bubble-wN`, the same five places as write 124; new companies `W-BN-NNNN`.
+- **Writes per wave:** the four steps of write 124, each first as a dry run, after Misho has seen the wave's Excel.
+- **Saved before each wave:** every package row it changes (`subs/b5/wN/backup.json`, not in git).
+- **UNDO per wave:** `POST /admin/company-base/undo-load {"source":"load-bubble-wN","dry_run":false}`, then load that wave's saved rows back with part `companies`, then `match-labels`.
