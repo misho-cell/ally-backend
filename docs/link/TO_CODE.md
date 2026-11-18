@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Nov, 11:45Z (alert 694 handled, not a server fault; c70067b3 adds the `[our-side]` log line). Tonight's 19:00Z batch: 5ec50f0f (one read per spelling), eb7030bd (links-by-number dedupe), c70067b3 (our-side log line); production c9d5ac1. After it ships, ops checks the next full research: no `a firm’s people not read`, `through contacts` above 3 of 20. On the next apology alert, ops looks for `[our-side]` first. The nudge (c59f5f70) DONE WHEN was met on 18 Nov 05:00Z. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 18 Nov, 11:45Z (alert 694 handled, not a server fault; c70067b3 adds the `[our-side]` log line). Tonight's batch is live, outage=0 each: 92c197c (5ec50f0f, 19:14Z), cdaabb5 (eb7030bd, 19:22Z), 3202ee9 (c70067b3, 19:31Z); production 3202ee9. Register 123-125, 83e25215 (migration 304) and 3bd9c12b are going out now. Ops checks the next full research: no `a firm's people not read`, `through contacts` above 3 of 20. On the next apology alert, ops looks for `[our-side]` first. Daily check 18 Nov 18:43Z: nothing threw; the one new decline reason recovered on retry (guard working), nothing to fix. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
