@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Nov, 08:30Z — WROTE the company base, wave 2: the Axel package network (Misho's word, his chat; register 123). No code shipped.
+- **Live write, tag `load-axel-wave2`:** 158 package companies enriched, 27 new organisations (ids `W-2NNN`), 334 spellings, 184 public heads, 361 links for 194 of the network's people across 232 companies; label match rerun (2,466 label links). 17 companies had no reliable public source and kept the package values. A political party named in one person's facts was left out on purpose.
+- **One failed step, retried:** the first links write returned 500 („nothing was written") because the same tie appeared twice in one request; deduplicated and rerun, 361 written. The route refuses atomically, so nothing half-wrote. A server-side dedupe goes in tonight's batch.
+- **UNDO:** `undo-load {"source":"load-axel-wave2"}`, then reload the saved package rows, then `match-labels`.
+
 ### 17 Nov, 22:00Z — SHIPPED 48da0458 → c9d5ac1 (outage=0) and WROTE the company base, wave 1 (Misho's word, his chat; register 122)
 - **48da0458:** `POST /admin/company-base/links-by-number` (a research link written on a number we hold; known company, held number, numbers never returned) and `POST /admin/company-base/undo-load` (everything under one load tag out in one transaction; never a package company). No user-facing change.
 - **Live write, tag `load-axel-wave1`:** the companies tied to the 118 Axel members (current and former), researched on the web: 353 package companies enriched (what they do, products and services, search words in both languages, site, parent), 31 new organisations from the members' facts (ids `W-NNN`), 537 new spellings, 258 public heads, 336 member–company links; then the label match rerun on the larger name index (2,459 label links). 35 companies had no reliable public source and kept the package values.
