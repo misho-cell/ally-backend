@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Nov, 09:10Z (research-bridges cause found; 5ec50f0f one read per spelling and eb7030bd links-by-number dedupe, both verify green, ship in tonight's 19:00Z batch; production c9d5ac1). After it ships, ops checks the next full research: no `a firm’s people not read`, `through contacts` above 3 of 20. Ops watches company and trade answers among Axel people. The nudge (c59f5f70) DONE WHEN was met on 18 Nov 05:00Z. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 18 Nov, 11:45Z (alert 694 handled, not a server fault; c70067b3 adds the `[our-side]` log line). Tonight's 19:00Z batch: 5ec50f0f (one read per spelling), eb7030bd (links-by-number dedupe), c70067b3 (our-side log line); production c9d5ac1. After it ships, ops checks the next full research: no `a firm’s people not read`, `through contacts` above 3 of 20. On the next apology alert, ops looks for `[our-side]` first. The nudge (c59f5f70) DONE WHEN was met on 18 Nov 05:00Z. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
