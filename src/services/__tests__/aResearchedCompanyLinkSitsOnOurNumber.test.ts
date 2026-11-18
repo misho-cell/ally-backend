@@ -56,6 +56,12 @@ describe('a researched company link sits on our number', () => {
     expect(skipped).toEqual({ bad_status: 1, bad_phone: 1, no_company_id: 1, not_an_object: 1 });
   });
 
+  it('keeps one row per tie: the wave-2 load, 18 Nov, failed on one tie sent twice', () => {
+    const { links, skipped } = parseLinks([ROW, { ...ROW }, { ...ROW, role: 'director' }]);
+    expect(links).toHaveLength(2);
+    expect(skipped).toEqual({ duplicate: 1 });
+  });
+
   it('writes only a known company on a number Netai holds, under its tag, as parameters', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ v: 'W-GE-001' }] })
