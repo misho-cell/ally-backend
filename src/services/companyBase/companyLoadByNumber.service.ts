@@ -81,16 +81,26 @@ function parseLink(raw: unknown): NumberLink | string {
   };
 }
 
+/** The upsert's own key: the same tie twice in one statement is refused by Postgres. */
+function linkKey(link: NumberLink): string {
+  return [link.phone, link.companyId, link.evidence, link.role].join('\u0000');
+}
+
 export function parseLinks(rows: readonly unknown[]): {
   links: NumberLink[];
   skipped: Record<string, number>;
 } {
   const skipped: Record<string, number> = {};
   const links: NumberLink[] = [];
+  const seen = new Set<string>();
   for (const raw of rows) {
     const parsed = parseLink(raw);
     if (typeof parsed === 'string') bump(skipped, parsed);
-    else links.push(parsed);
+    else if (seen.has(linkKey(parsed))) bump(skipped, 'duplicate');
+    else {
+      seen.add(linkKey(parsed));
+      links.push(parsed);
+    }
   }
   return { links, skipped };
 }
