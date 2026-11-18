@@ -6867,7 +6867,7 @@ question, and „everything" here answered the texts on the table; it is asked a
   2. `POST /admin/company-base/links-by-number`: each position on the person's number; a confirmed profile → `confirmed`, a probable one → `possible`.
   3. `POST /admin/company-base/facts-by-number` (new route, after migration 304 is live): headline, education, past roles and the LinkedIn link as private research facts (one system saver, `public_research`), each with its page.
   4. `match-labels`.
-- **Saved before the write:** the 14 package rows as they were (`scratchpad/subs/t/co/lk/existing14.json`, not in git).
+- **Saved before the write:** the 14 package rows as they were (`scratchpad/subs/t/co/lk/existing14_full.json`, not in git).
 - **UNDO:** `POST /admin/company-base/undo-load {"source":"load-linkedin-50","dry_run":false}` (facts, links, public people, names, the `W-L` companies, one transaction), then load the 14 saved rows back with part `companies`, then `match-labels`.
 
 ## 125 · THE BUBBLE'S 5,000: BASE FIRST, THEN COMPANIES, IN WAVES (Misho, his chat, 18 Nov: „ბაბლთან ყველაზე ახლოს მდგომი 5000 კაცი დააიდენტიფიცირო … გაითვალისწინო მონაცემები ჩვენი ბაზიდან … კომპანიები არ დაგიდუბლირდეს … როგორც კომპანიის ასევე პიროვნებების ლინქდინები"; „მოდი ვცადოთ … 5000-ზე")
