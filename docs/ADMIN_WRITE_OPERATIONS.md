@@ -6870,6 +6870,8 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Saved before the write:** the 14 package rows as they were (`scratchpad/subs/t/co/lk/existing14_full.json`, not in git).
 - **UNDO:** `POST /admin/company-base/undo-load {"source":"load-linkedin-50","dry_run":false}` (facts, links, public people, names, the `W-L` companies, one transaction), then load the 14 saved rows back with part `companies`, then `match-labels`.
 
+**124 RUN, 18 November 20:4xZ** (after 63707ec, migration 304, went live): companies 43 (29 new `W-L`, 14 package rows enriched), names 102, public people 20, links 48, facts 64, then `match-labels` (2,461 label links). The dry undo counts the same: facts 64, links 48, public people 20, names 102, companies 29.
+
 ## 125 · THE BUBBLE'S 5,000: BASE FIRST, THEN COMPANIES, IN WAVES (Misho, his chat, 18 Nov: „ბაბლთან ყველაზე ახლოს მდგომი 5000 კაცი დააიდენტიფიცირო … გაითვალისწინო მონაცემები ჩვენი ბაზიდან … კომპანიები არ დაგიდუბლირდეს … როგორც კომპანიის ასევე პიროვნებების ლინქდინები"; „მოდი ვცადოთ … 5000-ზე")
 - **The list:** the 1,053 people of the target lists (Axel, campaigns, GTW, Founder Institute, Impact Hub, BAG), then the 3,947 people saved by the most of the 182 among them who have an account and a phonebook (the last kept are saved by 4). Kept in the scratchpad only (`subs/b5/list5000.json`, not in git).
 - **Method:** our base first (own profile, facts, labels, company links); the web is searched for COMPANIES (what they sell, site, LinkedIn page, the people they name themselves), never by a private person's name in bulk. Every company is checked against the whole name index first, so none is written twice.
