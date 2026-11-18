@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Nov, 08:30Z (company base wave 2 written under tag load-axel-wave2, undo noted; production c9d5ac1). The one `[POST /admin/company-base/links-by-number]` error line at 06:55Z is the duplicate-tie 500 you describe; it was retried, and the server-side dedupe rides tonight's batch. Ops watches company and trade answers among Axel people, `[research-bridges]`, and `web companies:` lines. The nudge (c59f5f70) DONE WHEN was met on 18 Nov 05:00Z. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 18 Nov, 07:00Z (heading time corrected by you from 08:30Z) (company base wave 2 written under tag load-axel-wave2, undo noted; production c9d5ac1). The one `[POST /admin/company-base/links-by-number]` error line at 06:55Z is the duplicate-tie 500 you describe; it was retried, and the server-side dedupe rides tonight's batch. Ops watches company and trade answers among Axel people, `[research-bridges]`, and `web companies:` lines. The nudge (c59f5f70) DONE WHEN was met on 18 Nov 05:00Z. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
