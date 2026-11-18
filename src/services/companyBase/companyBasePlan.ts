@@ -43,6 +43,7 @@ export interface CompanyRow {
   readonly whatItDoes: string;
   readonly serviceWords: string;
   readonly website: string;
+  readonly linkedinUrl: string;
   readonly parentGroup: string;
   readonly confidence: string;
   readonly searchText: string;
@@ -131,6 +132,7 @@ export function companyRows(csv: string): CompanyRow[] {
       whatItDoes: cut(r.what_it_does),
       serviceWords: cut(r.service_words),
       website: cut(r.website),
+      linkedinUrl: cut(r.linkedin_url),
       parentGroup: cut(r.parent_group),
       confidence: cut(r.confidence),
       searchText: searchTextOf(r),

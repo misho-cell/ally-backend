@@ -441,6 +441,10 @@ import {
   linkByNumber,
   undoLoad,
 } from '../../services/companyBase/companyLoadByNumber.service';
+import {
+  MAX_FACTS_PER_REQUEST,
+  factsByNumber,
+} from '../../services/companyBase/researchFactsByNumber.service';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
 import { cancelOneAsk } from '../../services/taskAsks.service';
@@ -9457,11 +9461,47 @@ adminRouter.post('/company-base/links-by-number', async (req: Request, res: Resp
 });
 
 /**
- * The UNDO of a research load: removes everything written under its tag — links,
+ * Misho, 18 Nov („LinkedIn-ის სია … ბაზაში ჩაწერე"): what research found about
+ * one of our people — LinkedIn link, headline, schooling, past roles — written on
+ * the number their facts sit on: private, one system saver, each with its page.
+ * Body: { source: "load-…", dry_run, facts: [{ phone, key, value, source_url, status }] }
+ * key: linkedin | headline | occupation | employer | past_roles | education |
+ *      expertise | certification | language; status: confirmed | possible.
+ *
+ *   200  { dry_run, rows_in_request, rows_written, skipped }
+ *   400  bad source, dry_run missing, or facts not a list of at most MAX_FACTS_PER_REQUEST
+ *   500  nothing was written
+ */
+adminRouter.post('/company-base/facts-by-number', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { source, dry_run: dryRun, facts } = body;
+  if (
+    !isLoadSource(source) ||
+    typeof dryRun !== 'boolean' ||
+    !Array.isArray(facts) ||
+    facts.length > MAX_FACTS_PER_REQUEST
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `source ("load-…"), dry_run (true or false) and facts (a list of at most ${MAX_FACTS_PER_REQUEST}) are required`,
+    });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await factsByNumber(facts, source, dryRun) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/company-base/facts-by-number]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * The UNDO of a research load: removes everything written under its tag — facts, links,
  * public people, names, and the companies it created (never a package company).
  * Body: { source: "load-…", dry_run }.
  *
- *   200  { dry_run, source, links, public_people, names, companies }
+ *   200  { dry_run, source, facts, links, public_people, names, companies }
  *   400  bad source or dry_run missing
  *   500  nothing was removed
  */
