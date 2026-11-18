@@ -11,6 +11,7 @@ import {
   firmPeopleThroughContacts,
   firmSpellings,
   heardSpellings,
+  labelPatterns,
   namedPeopleThroughContacts,
   nameParts,
   savedAsThisPerson,
@@ -48,15 +49,33 @@ describe('a person a contact holds is a way in to a firm', () => {
     );
   });
 
+  /** Label reads answer by the pattern they get; the holders read answers with `held`. */
+  const labelsAndHolders = (
+    labels: Readonly<Record<string, readonly { phone: string; saver: number }[]>>,
+    held: readonly object[],
+  ): void => {
+    mocked(query).mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes('LIKE $1')) {
+        const hits = labels[params[0] as string] ?? [];
+        return { rows: hits.map((h) => ({ ...h, label: params[0] })) };
+      }
+      return { rows: held };
+    });
+  };
+
   it('finds someone a contact holds whom other people tied to the firm', async () => {
-    mocked(query)
-      .mockResolvedValueOnce({
-        rows: [{ phone: '+995555000009', label: 'brandhand lasha', labellers: 2 }],
-      })
-      .mockResolvedValueOnce({
-        rows: [{ phone: '+995555000009', saved_as: 'Levan Japaridze', bridge: 'Nino Beridze' }],
-      });
+    labelsAndHolders(
+      {
+        '%brandhand%': [
+          { phone: '+995555000009', saver: 1 },
+          { phone: '+995555000009', saver: 2 },
+        ],
+        '%ბრენდჰენდი%': [{ phone: '+995555000009', saver: 2 }],
+      },
+      [{ phone: '+995555000009', saved_as: 'Levan Japaridze', bridge: 'Nino Beridze' }],
+    );
     const found = await firmPeopleThroughContacts(OWNER, new Map([['ბრენდჰენდი', ['brandhand']]]));
+    // Two people labelled him; the same labeller under two spellings counts once.
     expect(found.get('ბრენდჰენდი')).toEqual([
       {
         saved_by_your_contact_as: 'Levan Japaridze',
@@ -64,26 +83,50 @@ describe('a person a contact holds is a way in to a firm', () => {
         labelled_with_the_firm_by: 2,
       },
     ]);
-    // Parameterized: the spellings go as values, never into the SQL text.
-    const [sql, params] = mocked(query).mock.calls[0] as [string, string[]];
-    expect(sql).not.toContain('brandhand');
-    // The third probe, 17 Nov: joined by OR the patterns left the index (17 s, timed out).
-    expect(sql).not.toMatch(/LIKE \$\d+ OR/u);
-    expect(sql).toContain('UNION ALL');
-    expect(params).toContain('%brandhand%');
+    const labelReads = mocked(query).mock.calls.filter(([sql]) => (sql as string).includes('LIKE'));
+    // Parameterized: the spelling goes as a value, never into the SQL text.
+    expect(labelReads.every(([sql]) => !(sql as string).includes('brandhand'))).toBe(true);
+    // The ops watch, 18 Nov: one statement for every spelling timed out under load;
+    // each spelling is its own read, and a firm reads at most eight.
+    expect(labelReads.every(([, params]) => (params as unknown[]).length === 1)).toBe(true);
+    expect(labelReads.length).toBeLessThanOrEqual(8);
+    expect(labelReads.map(([, params]) => (params as string[])[0])).toContain('%brandhand%');
+  });
+
+  it('a spelling that times out loses only itself, not the firm', async () => {
+    mocked(query).mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes('LIKE $1')) {
+        if (params[0] === '%ბრენდჰენდი%')
+          throw new Error('canceling statement due to statement timeout');
+        return params[0] === '%brandhand%'
+          ? { rows: [{ phone: '+995555000009', label: 'brandhand', saver: 3 }] }
+          : { rows: [] };
+      }
+      return {
+        rows: [{ phone: '+995555000009', saved_as: 'Levan Japaridze', bridge: 'Nino Beridze' }],
+      };
+    });
+    const found = await firmPeopleThroughContacts(OWNER, new Map([['ბრენდჰენდი', ['brandhand']]]));
+    expect(found.get('ბრენდჰენდი')?.[0]?.labelled_with_the_firm_by).toBe(1);
+  });
+
+  it('reads the likeliest spellings first and at most eight', () => {
+    const patterns = labelPatterns(firmSpellings('Brand Hand Art Agency', ['brandhand']));
+    expect(patterns.length).toBeLessThanOrEqual(8);
+    expect(patterns[0]).toBe('%brand hand art agency%');
   });
 
   it('never shows someone the owner blocked', async () => {
     mocked(getExcludedPhones).mockResolvedValue(['+995555000009']);
-    mocked(query)
-      .mockResolvedValueOnce({
-        rows: [{ phone: '+995555000009', label: 'brandhand', labellers: 1 }],
-      })
-      .mockResolvedValueOnce({
-        rows: [{ phone: '+995555000009', saved_as: 'Levan', bridge: 'Nino Beridze' }],
-      });
+    labelsAndHolders({ '%brandhand%': [{ phone: '+995555000009', saver: 1 }] }, [
+      { phone: '+995555000009', saved_as: 'Levan', bridge: 'Nino Beridze' },
+    ]);
     const found = await firmPeopleThroughContacts(OWNER, new Map([['Brandhand', []]]));
     expect(found.size).toBe(0);
+    // The holders read did run: the person is dropped for the block, not for an error.
+    expect(mocked(query).mock.calls.some(([sql]) => (sql as string).includes('bridges'))).toBe(
+      true,
+    );
   });
 
   it('matches a head by first name and surname, in either alphabet, never by one word', () => {

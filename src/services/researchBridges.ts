@@ -23,6 +23,10 @@ import { normalizeSearchToken } from './tools/normalizeSearchToken';
 
 /** Above the default: these run on the long pool, in the background research (measured 2-3 s). */
 const BRIDGE_QUERY_TIMEOUT_MS = 15_000;
+/** One spelling's label read (measured live 0.3-2 s each, 18 Nov). */
+const LABEL_READ_TIMEOUT_MS = 6_000;
+/** Spellings a firm's labels are read under, the likeliest first (each is two index reads). */
+const MAX_LABEL_PATTERNS = 8;
 /** Labelled numbers read per search; a firm's name on more than this is not a firm. */
 const MAX_LABELLED_PHONES = 2_000;
 /** People kept per firm or per name. */
@@ -125,28 +129,54 @@ interface LabelledRow {
   readonly labellers: string | number;
 }
 
-/** Every number anyone labelled with one of the spellings, and by how many people. */
+interface LabelHit {
+  readonly phone: string;
+  readonly label: string;
+  readonly saver: string | number;
+}
+
+/** The patterns a firm's labels are read under: spellings come likeliest first, so the cap keeps those. */
+export function labelPatterns(spellings: readonly string[]): string[] {
+  return [...new Set(spellings.flatMap(likePatterns))].slice(0, MAX_LABEL_PATTERNS);
+}
+
+/** One pattern's labels in both tables; a pattern that cannot be read in time adds nobody. */
+async function hitsFor(pattern: string): Promise<LabelHit[]> {
+  try {
+    const result = await query<LabelHit>(
+      `(SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias" WHERE LOWER(alias) LIKE $1 LIMIT ${MAX_LABELLED_PHONES})
+       UNION ALL
+       (SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags" WHERE LOWER(tag) LIKE $1 LIMIT ${MAX_LABELLED_PHONES})`,
+      [pattern],
+      LABEL_READ_TIMEOUT_MS,
+    );
+    return result.rows;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[research-bridges] one spelling’s labels not read:', (err as Error).message);
+    return [];
+  }
+}
+
+/**
+ * Every number anyone labelled with one of the spellings, and by how many people.
+ * The ops watch, 18 Nov: read as one statement, a firm's 20-40 index reads (0.3-2 s
+ * each) passed the timeout under live load and the whole firm was lost, 12 firms of 20
+ * in one real search. Each spelling is now its own short read, one after another.
+ */
 async function labelledWith(spellings: readonly string[]): Promise<LabelledRow[]> {
-  const patterns = [...new Set(spellings.flatMap(likePatterns))];
-  if (patterns.length === 0) return [];
-  // The third probe, 17 Nov, measured live: the same patterns joined by OR left the
-  // trigram index and ran past the timeout (17 s); one index read each took 1.9 s.
-  // The fourth probe: a common word as a firm's name („print") matched more labels than the
-  // timeout allows; each read stops at the limit, which a real firm's people never reach.
-  const reads = patterns.flatMap((_, i) => [
-    `(SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias" WHERE LOWER(alias) LIKE $${i + 1} LIMIT ${MAX_LABELLED_PHONES})`,
-    `(SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags" WHERE LOWER(tag) LIKE $${i + 1} LIMIT ${MAX_LABELLED_PHONES})`,
-  ]);
-  const result = await query<LabelledRow>(
-    `SELECT phone, MIN(label) AS label, COUNT(DISTINCT saver) AS labellers FROM (
-       ${reads.join('\n       UNION ALL\n       ')}
-     ) hits
-     GROUP BY phone
-     LIMIT ${MAX_LABELLED_PHONES}`,
-    patterns,
-    BRIDGE_QUERY_TIMEOUT_MS,
-  );
-  return result.rows;
+  const savers = new Map<string, { label: string; savers: Set<string> }>();
+  for (const pattern of labelPatterns(spellings)) {
+    for (const hit of await hitsFor(pattern)) {
+      const entry = savers.get(hit.phone) ?? { label: hit.label, savers: new Set<string>() };
+      entry.savers.add(String(hit.saver));
+      if (hit.label < entry.label) entry.label = hit.label;
+      savers.set(hit.phone, entry);
+    }
+  }
+  return [...savers]
+    .slice(0, MAX_LABELLED_PHONES)
+    .map(([phone, e]) => ({ phone, label: e.label, labellers: e.savers.size }));
 }
 
 /** One firm's people the owner's contacts hold, the most corroborated first. */
