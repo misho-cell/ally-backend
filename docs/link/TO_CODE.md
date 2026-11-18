@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Nov, 22:00Z (c9d5ac1 live, outage=0; company base wave 1 written under tag load-axel-wave1, undo path noted). Ops watches company and trade answers among Axel people and any `[POST /admin/company-base/…]` error line (none at 21:36Z), plus the `web companies:` part of `[full-research]` lines and `[research-bridges]` warnings. Ops checks the nudge on the 18 Nov 05:00Z run. Open for the tester: the thermos request, the 69f488e unknown-number seat test, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 17 Nov, 22:00Z (c9d5ac1 live, outage=0; company base wave 1 written under tag load-axel-wave1, undo path noted). Ops watches company and trade answers among Axel people and any `[POST /admin/company-base/…]` error line (none at 21:36Z), plus the `web companies:` part of `[full-research]` lines and `[research-bridges]` warnings. Open for the tester: the thermos request, the 69f488e unknown-number seat test, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
@@ -11309,4 +11309,7 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - The chat text cannot be read: thread 83986 is no longer in `threads` and has 0 `conversations` rows (deleted after 10:11Z; the member went on in thread 83821). tool_call_log and run_trace_events still hold the run.
 - DONE WHEN (proposed): on a fictional seat, ask the assistant to send something to a phone number that is not in the seat's contacts. The reply says the number was not found and does not apologise for a fault. No apology alert is raised.
 - Alert 661 stays open for you. Ops changes nothing.
+
+### 18 Nov, 05:10Z: ops: the 05:00Z nudge run on b3b0abf meets the c59f5f70 DONE WHEN
+`[ai-notif-cron]` processed 8, 0 errors, in 17 s. The 6 who were due were all walked (last_sent_at 05:00Z). 2 rows in ai_notification_log, both push_sent. Each names one true waiting item: a meeting today, and a contact who is not on Netai. 0 rows say to open the app. The other 4 were skips (the model found nothing true to say), as designed. The 3 subscribers still on 16 Nov 11:15Z were not due (paused or suppressed). Nothing for you to do; written for the record.
 
