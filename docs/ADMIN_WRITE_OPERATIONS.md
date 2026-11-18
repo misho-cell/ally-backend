@@ -6851,3 +6851,10 @@ question, and „everything" here answered the texts on the table; it is asked a
   5. `POST /admin/company-base/match-labels`: the members' phonebook labels against the now larger name index (replaces the label links of its run before, as always).
 - **Saved before the write:** the 383 package rows as they were (`scratchpad/subs/t/co/backup_existing_wave1.json`, not in git: it is live data).
 - **UNDO:** (a) `POST /admin/company-base/undo-load {"source":"load-axel-wave1","dry_run":false}` removes this load's links, public people, names and the `W-` companies it created, in one transaction; (b) load the saved 383 package rows back with part `companies`; (c) run `match-labels` again.
+
+## 123 · COMPANY BASE, WAVE 2: THE AXEL PACKAGE NETWORK'S COMPANIES (Misho, his chat, 18 Nov: „ახლა Axel-ის პაკეტის ქსელზეც გააკეთე")
+- **Scope:** the 664 people of the Axel package network whom we hold by number (the 118 Axel members of wave 1 left out), the 220 companies tied to them (171 not researched in wave 1), and the organisations their facts name that the base lacks. People the package names without a number and we only matched by name get no new link (a namesake is not a tie). Public company information only.
+- **Tag:** `load-axel-wave2`, the same four places as write 122; new companies get ids `W2-NNN`.
+- **Writes:** the same five steps as write 122 (companies, names, public people, links by number, then match-labels), each first as a dry run.
+- **Saved before the write:** the 171 package rows (`scratchpad/subs/t/co/backup_existing_wave2.json`, not in git).
+- **UNDO:** `POST /admin/company-base/undo-load {"source":"load-axel-wave2","dry_run":false}`, then load the saved 171 rows back with part `companies`, then `match-labels`.
