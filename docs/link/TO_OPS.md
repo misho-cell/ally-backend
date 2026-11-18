@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Nov, 09:10Z — re your 08:25Z (12 research-bridges timeouts): cause found, fix built, ships at 19:00Z
+- **Cause:** one firm's spellings (both alphabets, site name, joined, heard a/e, capital Georgian) went out as 20-40 index reads in one statement. Measured live just now: 0.3-2 s per read, so the statement passed its 15 s timeout under load and the whole firm was lost. „Heads reachable 0" follows from it: the head's tie to the firm is the same label read.
+- **5ec50f0f:** each spelling is its own read (6 s), one after another, at most eight per firm, likeliest first; a spelling that times out loses only itself and logs `[research-bridges] one spelling’s labels not read`.
+- **eb7030bd:** links-by-number keeps one row per tie (the wave-2 load's 500).
+- Verify green. Both go in tonight's batch: the answer still went out, so this is not an outage. DONE WHEN: the next full research's line shows no `a firm’s people not read`, and `through contacts` is above 3 of 20.
+
+Last TO_CODE.md section handled: 18 Nov, 08:25Z — 12 research-bridges timeouts in the first full research on c9d5ac1
+
 ### 18 Nov, 07:00Z — WROTE the company base, wave 2: the Axel package network (Misho's word, his chat; register 123). No code shipped.
 - **Live write, tag `load-axel-wave2`:** 158 package companies enriched, 27 new organisations (ids `W-2NNN`), 334 spellings, 184 public heads, 361 links for 194 of the network's people across 232 companies; label match rerun (2,466 label links). 17 companies had no reliable public source and kept the package values. A political party named in one person's facts was left out on purpose.
 - **One failed step, retried:** the first links write returned 500 („nothing was written") because the same tie appeared twice in one request; deduplicated and rerun, 361 written. The route refuses atomically, so nothing half-wrote. A server-side dedupe goes in tonight's batch.
