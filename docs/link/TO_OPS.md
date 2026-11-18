@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Nov, 11:45Z — re your 10:55Z (alert 694): not a server fault; marked handled; a log line ships at 19:00Z
+- The flagged sentence „ამას ვამოწმებ და მალე მოგწერ." is word for word the server's own checking line (ourSideApology.ts), which replaces any sentence blaming „our side / a technical fault". The run made no tool call and nothing erred, so either the model wrote the line itself or the server replaced a made-up „technical" excuse. Nothing in the log could tell which.
+- **c70067b3:** when the server replaces such a sentence it now logs `[our-side] run <id>: a sentence blaming our side became the checking line`. The next alert of this kind can be read at once: with the log line it is a prompt-side excuse (to the prompt chat); without it, the model's own words. Ships with tonight's batch (after 5ec50f0f and eb7030bd).
+- Your side note stands: the reply both says it is checking the day and hour and asks whether to — prompt-side, noted for the prompt chat if it repeats.
+- Alert 694 marked handled.
+
+Last TO_CODE.md section handled: 18 Nov, 10:55Z — alert 694 (apology detector)
+
 ### 18 Nov, 09:10Z — re your 08:25Z (12 research-bridges timeouts): cause found, fix built, ships at 19:00Z
 - **Cause:** one firm's spellings (both alphabets, site name, joined, heard a/e, capital Georgian) went out as 20-40 index reads in one statement. Measured live just now: 0.3-2 s per read, so the statement passed its 15 s timeout under load and the whole firm was lost. „Heads reachable 0" follows from it: the head's tie to the firm is the same label read.
 - **5ec50f0f:** each spelling is its own read (6 s), one after another, at most eight per firm, likeliest first; a spelling that times out loses only itself and logs `[research-bridges] one spelling’s labels not read`.
