@@ -445,6 +445,12 @@ import {
   MAX_FACTS_PER_REQUEST,
   factsByNumber,
 } from '../../services/companyBase/researchFactsByNumber.service';
+import { researchByNumber } from '../../services/deepResearch/deepResearch.service';
+import { providerKeysSet } from '../../services/deepResearch/searchProviders';
+import {
+  DEFAULT_USD_PER_PERSON,
+  MAX_USD_PER_PERSON,
+} from '../../services/deepResearch/researchSpend';
 import { exportPhoneHash } from '../../services/axelExport/exportHash';
 import { matchOutsideNumbers, OutsideNumber } from '../../services/axelExport/outsideNumbers';
 import { cancelOneAsk } from '../../services/taskAsks.service';
@@ -9501,7 +9507,7 @@ adminRouter.post('/company-base/facts-by-number', async (req: Request, res: Resp
  * public people, names, and the companies it created (never a package company).
  * Body: { source: "load-…", dry_run }.
  *
- *   200  { dry_run, source, facts, links, public_people, names, companies }
+ *   200  { dry_run, source, research_runs, facts, links, public_people, names, companies }
  *   400  bad source or dry_run missing
  *   500  nothing was removed
  */
@@ -9520,6 +9526,67 @@ adminRouter.post('/company-base/undo-load', async (req: Request, res: Response) 
     res.status(500).json({ success: false, error: 'The undo did not run; nothing was removed' });
   }
 });
+
+/** Deep research runs a person at a time; a batch is many calls, each a minute or two. */
+const DEEP_RESEARCH_WINDOW_MS = 60_000;
+const DEEP_RESEARCH_PER_WINDOW = 30;
+
+/** The request's per-person ceiling, or null when it is not a number in (0, MAX_USD_PER_PERSON]. */
+function personCeiling(raw: unknown): number | null {
+  if (raw === undefined) return DEFAULT_USD_PER_PERSON;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return null;
+  return raw > 0 && raw <= MAX_USD_PER_PERSON ? raw : null;
+}
+
+/**
+ * Misho, 19 Nov: the people deep-research brief. Researches ONE member or public
+ * office-holder (Exa, Linkup, Firecrawl, read by the model) and, unless dry_run,
+ * writes the facts on their number under the load tag — undo-load takes them out.
+ * Body: { phone, source: "load-…", dry_run, max_usd? }.
+ *
+ *   200  { phone_last4, kind, steps_run, stopped, sources_seen, facts_found, facts_written, cost_usd, facts }
+ *   400  bad phone, source, dry_run or max_usd
+ *   403  a private contact, or a person who removed a researched fact: never researched
+ *   503  a service key is not set
+ *   500  the research did not run
+ */
+adminRouter.post(
+  '/deep-research/people',
+  rateLimit({ windowMs: DEEP_RESEARCH_WINDOW_MS, max: DEEP_RESEARCH_PER_WINDOW }),
+  async (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const { phone, source, dry_run: dryRun } = body;
+    const maxUsd = personCeiling(body.max_usd);
+    if (
+      typeof phone !== 'string' ||
+      !isLoadSource(source) ||
+      typeof dryRun !== 'boolean' ||
+      maxUsd === null
+    ) {
+      res.status(400).json({
+        success: false,
+        error: `phone, source ("load-…"), dry_run (true or false) and max_usd (above 0, at most ${MAX_USD_PER_PERSON}) are required`,
+      });
+      return;
+    }
+    if (!providerKeysSet()) {
+      res.status(503).json({ success: false, error: 'The research services are not set up' });
+      return;
+    }
+    try {
+      const report = await researchByNumber(phone, { load: source, dryRun, maxUsd });
+      if (typeof report === 'string') {
+        res.status(403).json({ success: false, error: `Not researched: ${report}` });
+        return;
+      }
+      res.status(200).json({ success: true, data: report });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /admin/deep-research/people]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'The research did not run' });
+    }
+  },
+);
 
 /**
  * §120 — an account nothing holds is deleted; anything anywhere is a 409 that

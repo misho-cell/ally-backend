@@ -34,6 +34,7 @@ export interface NumberLinkReport {
 export interface UndoReport {
   readonly dry_run: boolean;
   readonly source: string;
+  readonly research_runs: number;
   readonly facts: number;
   readonly links: number;
   readonly public_people: number;
@@ -173,9 +174,11 @@ export async function linkByNumber(
 
 /**
  * What one load tag wrote, table by table. Names carry the tag as their kind;
- * research facts carry it in research_load (researchFactsByNumber.service).
+ * research facts carry it in research_load (researchFactsByNumber.service), and
+ * so does a deep-research run's record (deepResearch.service).
  */
 const LOAD_PARTS = {
+  research_runs: 'FROM deep_research_runs WHERE research_load = $1',
   facts: `FROM contact_facts WHERE research_load = $1 AND source = 'public_research'`,
   links: 'FROM person_company_links WHERE source = $1',
   public_people: 'FROM company_public_people WHERE source = $1',
@@ -183,7 +186,14 @@ const LOAD_PARTS = {
   companies: `FROM companies WHERE confidence = $1 AND company_id LIKE '${LOADED_COMPANY_PREFIX}%'`,
 } as const;
 type LoadPart = keyof typeof LOAD_PARTS;
-const PART_ORDER: readonly LoadPart[] = ['facts', 'links', 'public_people', 'names', 'companies'];
+const PART_ORDER: readonly LoadPart[] = [
+  'research_runs',
+  'facts',
+  'links',
+  'public_people',
+  'names',
+  'companies',
+];
 
 /**
  * Takes one load back out, in one transaction: its research facts, links,
@@ -193,6 +203,7 @@ const PART_ORDER: readonly LoadPart[] = ['facts', 'links', 'public_people', 'nam
 export async function undoLoad(source: string, dryRun: boolean): Promise<UndoReport> {
   const counts = await withTransaction(async (client) => {
     const out: Record<LoadPart, number> = {
+      research_runs: 0,
       facts: 0,
       links: 0,
       public_people: 0,
