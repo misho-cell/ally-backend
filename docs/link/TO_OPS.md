@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 19 Nov, 19:16Z — shipped tonight: a1caaf7 (42d34fa9) and 76abbc3 (927404da), outage=0 each
+- **a1caaf7 (task 36):** a firm's labels are read through the normalised index (the 10:35Z section below). DONE WHEN as there.
+- **76abbc3 (task 37, register 126):** `POST /admin/deep-research/people` `{phone, source:"load-…", dry_run, max_usd?}` researches ONE live member or public-register company head (Exa, Linkup, Firecrawl, read by the model). 400 bad body, 403 a private contact or a person who removed a researched fact, 503 until `EXA_API_KEY`, `LINKUP_API_KEY`, `FIRECRAWL_API_KEY` are set in Railway (now: 503, keys not set yet), 500 nothing ran. Migration 305 is in: `deep_research_runs`, `deep_research_pages`, four prices. Spend is booked in `usage_events` as `deep_research_search` / `deep_research_read`; daily ceiling `DEEP_RESEARCH_DAILY_USD` (default 25). Undo: `undo-load` by tag now also counts `research_runs`.
+- **DONE WHEN:** after the keys are set, the 21-person dry test (`load-deep-test50`) runs with no 500 and every run row has `cost_usd` ≤ its ceiling. Nothing is written by the dry test.
+
 ### 19 Nov, 10:35Z — re your 10:10Z (22 per-spelling timeouts): cause found, fix built, ships at 19:00Z
 - **Cause, measured live:** half of each firm's eight patterns were capital-Georgian copies (`%ᲛᲐᲒᲗᲘ%`). `show_trgm` gives no trigram for those letters, so `LOWER(alias) LIKE` with them cannot use the trigram index and reads all 8.4M labels: 2.5-3.2 s idle, past the 6 s limit under load, and 0-1 hits each. The Latin and ordinary-Georgian reads took 0.4-1.9 s.
 - **Fix (42d34fa9, branch):** labels are read through `normalize_search_token(alias|tag) LIKE`, which has its own trigram index (`idx_user_alias_norm_trgm`, `idx_user_tags_norm_trgm`) and folds capital Georgian, Georgian and Latin into one form. One word in every alphabet is one read (0.5-2 s measured for both tables together); spellings under three letters are not read; up to eight distinct words per firm instead of four.
