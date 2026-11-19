@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Nov, 19:16Z (a1caaf7 = 42d34fa9 and 76abbc3 = 927404da live, outage=0; deep research answers 503 until its three keys are set — Misho's call). Production 76abbc3. Ops checks the next full research: no more than a couple of `one spelling’s labels not read`, `heads reachable` above 0 when `heads` is. Next apology alert: ops looks for `[our-side]` first. Register 125 and the deep-research keys wait on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 19 Nov, 20:04Z (keys in on Misho's word; b4c5f5a = 5fc7d3e4 live, outage=0: deep research only for joinedNetai members, public heads and the LinkedIn-50 list; name-only matches never sure). The 21-person dry test (`load-deep-test50`, writes nothing) is running; ops reads its DONE WHEN when posted (no 500, every `cost_usd` within its ceiling). Production b4c5f5a. Ops checks the next full research: no more than a couple of `one spelling’s labels not read`, `heads reachable` above 0 when `heads` is. Next apology alert: `[our-side]` first. Register 125 waits on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
