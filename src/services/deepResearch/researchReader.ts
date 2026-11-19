@@ -136,11 +136,31 @@ export function linkedinProfile(url: string): string {
   return `${LINKEDIN_PROFILE_BASE}${readable.toLowerCase()}`;
 }
 
-/** A page that is the person's own LinkedIn profile is the linkedin fact, whether the model listed it or not. */
-function profileFacts(verdicts: readonly SourceVerdict[]): FoundFact[] {
+const NAME_TOKEN_SPLIT_RE = /[\s.\-'’]+/u;
+const LATIN_TOKEN_RE = /^[a-z]+$/u;
+const MIN_NAME_TOKEN_CHARS = 3;
+
+/** The person's name as the words a profile address can carry: Latin, lower case, three letters or more. */
+function nameTokens(subject: ResearchSubject): string[] {
+  return subject.names
+    .flatMap((name) => name.toLowerCase().split(NAME_TOKEN_SPLIT_RE))
+    .filter((t) => t.length >= MIN_NAME_TOKEN_CHARS && LATIN_TOKEN_RE.test(t));
+}
+
+/**
+ * A LinkedIn profile page judged to be about the person is their own profile —
+ * the linkedin fact, whether the model listed it or not — only when its
+ * address carries their name. The 21-person test (19 Nov): colleagues'
+ * profiles that mention the person were judged theirs and became 9 wrong
+ * linkedin facts.
+ */
+function profileFacts(verdicts: readonly SourceVerdict[], subject: ResearchSubject): FoundFact[] {
+  const tokens = nameTokens(subject);
   return verdicts.flatMap((v) => {
     const value = linkedinProfile(v.url);
     if (value === '' || v.samePerson === SamePerson.No) return [];
+    const slug = value.slice(LINKEDIN_PROFILE_BASE.length);
+    if (!tokens.some((t) => slug.includes(t))) return [];
     const status = v.samePerson === SamePerson.Yes ? 'confirmed' : 'possible';
     return [{ key: 'linkedin', value, source_url: v.url, status }];
   });
@@ -184,7 +204,10 @@ export function findingsFrom(
   subject: ResearchSubject,
 ): Findings {
   const verdicts = verdictsFrom(field(input, 'pages'), pages, nameOnly(subject));
-  const facts = [...profileFacts(verdicts), ...factsFrom(field(input, 'facts'), pages, verdicts)];
+  const facts = [
+    ...profileFacts(verdicts, subject),
+    ...factsFrom(field(input, 'facts'), pages, verdicts),
+  ];
   return { verdicts, facts };
 }
 
