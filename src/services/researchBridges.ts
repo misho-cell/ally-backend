@@ -3,7 +3,6 @@ import { getExcludedPhones } from './block.service';
 import { notAnExcludedHolder } from './excludedHolders.service';
 import { firmInTheOtherScript } from './openingSearch.service';
 import { phonebookPhones } from './tools/searchSecondDegree';
-import { toMtavruli } from './tools/georgianCase';
 import { normalizeSearchToken } from './tools/normalizeSearchToken';
 
 /**
@@ -23,10 +22,12 @@ import { normalizeSearchToken } from './tools/normalizeSearchToken';
 
 /** Above the default: these run on the long pool, in the background research (measured 2-3 s). */
 const BRIDGE_QUERY_TIMEOUT_MS = 15_000;
-/** One spelling's label read (measured live 0.3-2 s each, 18 Nov). */
+/** One spelling's label read (measured live 0.5-2 s each through the normalised index, 19 Nov). */
 const LABEL_READ_TIMEOUT_MS = 6_000;
 /** Spellings a firm's labels are read under, the likeliest first (each is two index reads). */
 const MAX_LABEL_PATTERNS = 8;
+/** A trigram index needs three letters; a shorter spelling would read every label. */
+const MIN_PATTERN_CHARS = 3;
 /** Labelled numbers read per search; a firm's name on more than this is not a firm. */
 const MAX_LABELLED_PHONES = 2_000;
 /** People kept per firm or per name. */
@@ -88,10 +89,9 @@ export function heardSpellings(latin: string): string[] {
   return spellings;
 }
 
-/** LIKE patterns for a lower-case word, in ordinary and capital Georgian letters. */
-function likePatterns(word: string): string[] {
-  const escaped = word.replace(/[\\%_]/gu, (c) => `\\${c}`);
-  return [...new Set([`%${escaped}%`, `%${toMtavruli(escaped)}%`])];
+/** A LIKE pattern for one normalised spelling, its wildcards taken literally. */
+function likePattern(normalised: string): string {
+  return `%${normalised.replace(/[\\%_]/gu, (c) => `\\${c}`)}%`;
 }
 
 /**
@@ -135,18 +135,33 @@ interface LabelHit {
   readonly saver: string | number;
 }
 
-/** The patterns a firm's labels are read under: spellings come likeliest first, so the cap keeps those. */
+/**
+ * The patterns a firm's labels are read under, in the database's normalised form
+ * (normalize_search_token: Georgian, capital Georgian and Latin fold to one), so
+ * every spelling of one word is one read, and every read can use the trigram
+ * index on that form. Spellings come likeliest first, so the cap keeps those.
+ *
+ * The ops watch, 19 Nov: 22 spellings timed out in one real research. The capital
+ * Georgian pattern was the cause — the database's trigram index holds no trigram
+ * for those letters, so `LOWER(alias) LIKE '%ᲛᲐᲒᲗᲘ%'` read all 8.4M labels (3 s
+ * idle, past 6 s under load) and found nothing; it also took half the eight reads.
+ */
 export function labelPatterns(spellings: readonly string[]): string[] {
-  return [...new Set(spellings.flatMap(likePatterns))].slice(0, MAX_LABEL_PATTERNS);
+  const normalised = spellings
+    .map((s) => normalizeSearchToken(s).trim())
+    .filter((s) => s.length >= MIN_PATTERN_CHARS);
+  return [...new Set(normalised)].slice(0, MAX_LABEL_PATTERNS).map(likePattern);
 }
 
 /** One pattern's labels in both tables; a pattern that cannot be read in time adds nobody. */
 async function hitsFor(pattern: string): Promise<LabelHit[]> {
   try {
     const result = await query<LabelHit>(
-      `(SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias" WHERE LOWER(alias) LIKE $1 LIMIT ${MAX_LABELLED_PHONES})
+      `(SELECT phone, LOWER(alias) AS label, "contactId" AS saver FROM "UserAlias"
+         WHERE normalize_search_token(alias) LIKE $1 LIMIT ${MAX_LABELLED_PHONES})
        UNION ALL
-       (SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags" WHERE LOWER(tag) LIKE $1 LIMIT ${MAX_LABELLED_PHONES})`,
+       (SELECT phone, LOWER(tag) AS label, "contactId" AS saver FROM "UserTags"
+         WHERE normalize_search_token(tag) LIKE $1 LIMIT ${MAX_LABELLED_PHONES})`,
       [pattern],
       LABEL_READ_TIMEOUT_MS,
     );

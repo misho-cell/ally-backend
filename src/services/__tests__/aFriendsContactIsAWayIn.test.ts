@@ -70,7 +70,7 @@ describe('a person a contact holds is a way in to a firm', () => {
           { phone: '+995555000009', saver: 1 },
           { phone: '+995555000009', saver: 2 },
         ],
-        '%ბრენდჰენდი%': [{ phone: '+995555000009', saver: 2 }],
+        '%brendhendi%': [{ phone: '+995555000009', saver: 2 }],
       },
       [{ phone: '+995555000009', saved_as: 'Levan Japaridze', bridge: 'Nino Beridze' }],
     );
@@ -96,7 +96,7 @@ describe('a person a contact holds is a way in to a firm', () => {
   it('a spelling that times out loses only itself, not the firm', async () => {
     mocked(query).mockImplementation(async (sql: string, params: unknown[]) => {
       if (sql.includes('LIKE $1')) {
-        if (params[0] === '%ბრენდჰენდი%')
+        if (params[0] === '%brendhendi%')
           throw new Error('canceling statement due to statement timeout');
         return params[0] === '%brandhand%'
           ? { rows: [{ phone: '+995555000009', label: 'brandhand', saver: 3 }] }
@@ -114,6 +114,16 @@ describe('a person a contact holds is a way in to a firm', () => {
     const patterns = labelPatterns(firmSpellings('Brand Hand Art Agency', ['brandhand']));
     expect(patterns.length).toBeLessThanOrEqual(8);
     expect(patterns[0]).toBe('%brand hand art agency%');
+  });
+
+  it('reads one word once in every alphabet, through the index (ops watch, 19 Nov)', () => {
+    // Capital Georgian, Georgian and Latin fold to one normalised spelling: one read,
+    // never a capital-Georgian pattern the trigram index cannot hold (22 timeouts).
+    expect(labelPatterns(['ᲛᲐᲒᲗᲘ', 'მაგთი', 'Magti'])).toEqual(['%magti%']);
+    // Too short for a trigram: it would read every label, so it is not read.
+    expect(labelPatterns(['ab', 'tbc'])).toEqual(['%tbc%']);
+    // A wildcard in a name is taken literally.
+    expect(labelPatterns(['100%_co'])).toEqual(['%100\\%\\_co%']);
   });
 
   it('never shows someone the owner blocked', async () => {
