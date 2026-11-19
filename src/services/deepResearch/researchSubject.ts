@@ -1,18 +1,30 @@
 import { query } from '../../db/postgres/client';
+import { joinedNetai } from '../netaiMembership';
 import { georgianToLatin, latinToGeorgian } from '../tools/transliterate';
 import { ResearchSubject, SubjectKind } from './deepResearch.types';
 
 /**
  * Who one number belongs to, for research — and whether they may be researched
- * at all. Only a member with a live account, or a company head a public
- * register names (matched to our number by a confirmed link), is. A private
- * contact, or a person who has removed a researched fact about themselves, is
- * never looked up.
+ * at all. Only three kinds of person are:
+ *   - a Netai member: someone who joined Netai (`joinedNetai` — a legacy Ally
+ *     account that never opened Netai is NOT one);
+ *   - a company head a public register names, matched to our number by a
+ *     confirmed link;
+ *   - a person on a list Misho gave by name (APPROVED_LISTS).
+ * A private contact, or a person who has removed a researched fact about
+ * themselves, is never looked up.
  *
- * The context is our base only — the member's own profile, the companies a
- * confirmed link ties them to — never an earlier research find, so a test
- * against what was found before measures the research and not its input.
+ * The context is our base only — the account's own profile, the companies a
+ * link ties them to (confirmed first) — never an earlier research find, so a
+ * test against what was found before measures the research and not its input.
  */
+
+/**
+ * Lists Misho gave by name, whose people may be researched though they are not
+ * members: the LinkedIn 50 (his list, 18 Nov; „გაუშვი ტესტი", 19 Nov).
+ * A person is on it when the list's load wrote a fact on their number.
+ */
+export const APPROVED_LISTS: readonly string[] = ['load-linkedin-50'];
 
 export enum SubjectRefusal {
   PrivateContact = 'private_contact',
@@ -26,11 +38,12 @@ const MAX_NAME_CHARS = 120;
 const GEORGIAN_RE = /\p{Script=Georgian}/u;
 const LATIN_RE = /\p{Script=Latin}/u;
 
-interface MemberRow {
+interface AccountRow {
   readonly name: string | null;
   readonly job: string | null;
   readonly employer: string | null;
   readonly city: string | null;
+  readonly joined: boolean;
 }
 
 interface HeadRow {
@@ -57,9 +70,9 @@ export function nameSpellings(names: readonly string[]): string[] {
   });
 }
 
-async function memberRow(phone: string): Promise<MemberRow | null> {
-  const result = await query<MemberRow>(
-    `SELECT u.name, u."jobPosition" AS job, u.employer, u.city
+async function accountRow(phone: string): Promise<AccountRow | null> {
+  const result = await query<AccountRow>(
+    `SELECT u.name, u."jobPosition" AS job, u.employer, u.city, ${joinedNetai('u')} AS joined
        FROM "UserPhone" p JOIN "User" u ON u.id = p."userId"
       WHERE p.phone = $1 AND u.status = 'ACTIVE'
         AND u."deletedAt" IS NULL AND u."disabledAt" IS NULL
@@ -86,14 +99,26 @@ async function headRows(phone: string): Promise<HeadRow[]> {
 
 async function linkedCompanies(phone: string): Promise<string[]> {
   const result = await query<{ name: string }>(
-    `SELECT DISTINCT COALESCE(NULLIF(co.name_en, ''), co.legal_name_ka) AS name
+    `SELECT COALESCE(NULLIF(co.name_en, ''), co.legal_name_ka) AS name
        FROM person_company_links l JOIN companies co ON co.company_id = l.company_id
-      WHERE l.phone = $1 AND l.status = 'confirmed'
+      WHERE l.phone = $1
+      GROUP BY 1
+      ORDER BY BOOL_OR(l.status = 'confirmed') DESC, 1
       LIMIT $2`,
     [phone, MAX_COMPANIES],
     SUBJECT_QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => r.name).filter((name) => name.trim() !== '');
+}
+
+async function onApprovedList(phone: string): Promise<boolean> {
+  const result = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM contact_facts
+      WHERE neo4j_contact_id = $1 AND research_load = ANY($2::text[])`,
+    [phone, [...APPROVED_LISTS]],
+    SUBJECT_QUERY_TIMEOUT_MS,
+  );
+  return (result.rows[0]?.n ?? 0) > 0;
 }
 
 async function removedByPerson(phone: string): Promise<boolean> {
@@ -106,37 +131,49 @@ async function removedByPerson(phone: string): Promise<boolean> {
   return (result.rows[0]?.n ?? 0) > 0;
 }
 
+/** What the base holds about one number, read before the subject is decided. */
+export interface BaseRecord {
+  readonly account: AccountRow | null;
+  readonly heads: readonly HeadRow[];
+  readonly companies: readonly string[];
+  readonly listed: boolean;
+}
+
+function kindOf(base: BaseRecord): SubjectKind | null {
+  if (base.account?.joined === true) return SubjectKind.Member;
+  if (base.heads.length > 0) return SubjectKind.PublicPerson;
+  return base.listed ? SubjectKind.Listed : null;
+}
+
 /** Pure: the subject from what the base holds, or the reason there is none. */
-export function subjectFrom(
-  phone: string,
-  member: MemberRow | null,
-  heads: readonly HeadRow[],
-  companies: readonly string[],
-): ResearchSubject | SubjectRefusal {
-  if (member === null && heads.length === 0) return SubjectRefusal.PrivateContact;
+export function subjectFrom(phone: string, base: BaseRecord): ResearchSubject | SubjectRefusal {
+  const kind = kindOf(base);
+  if (kind === null) return SubjectRefusal.PrivateContact;
+  const { account, heads } = base;
   const names = nameSpellings([
-    member?.name ?? '',
+    account?.name ?? '',
     ...heads.flatMap((h) => [h.name_latin, h.name_ka]),
   ]);
   if (names.length === 0) return SubjectRefusal.NoName;
-  const ownEmployer = member?.employer?.trim() ?? '';
+  const ownEmployer = account?.employer?.trim() ?? '';
   return {
     phone,
-    kind: member !== null ? SubjectKind.Member : SubjectKind.PublicPerson,
+    kind,
     names,
-    companies: [...new Set([ownEmployer, ...companies].filter((c) => c !== ''))],
-    role: member?.job?.trim() || heads[0]?.role || '',
-    city: member?.city?.trim() ?? '',
+    companies: [...new Set([ownEmployer, ...base.companies].filter((c) => c !== ''))],
+    role: account?.job?.trim() || heads[0]?.role || '',
+    city: account?.city?.trim() ?? '',
   };
 }
 
 export async function researchSubject(phone: string): Promise<ResearchSubject | SubjectRefusal> {
-  const [member, heads, companies, removed] = await Promise.all([
-    memberRow(phone),
+  const [account, heads, companies, listed, removed] = await Promise.all([
+    accountRow(phone),
     headRows(phone),
     linkedCompanies(phone),
+    onApprovedList(phone),
     removedByPerson(phone),
   ]);
   if (removed) return SubjectRefusal.RemovedByPerson;
-  return subjectFrom(phone, member, heads, companies);
+  return subjectFrom(phone, { account, heads, companies, listed });
 }

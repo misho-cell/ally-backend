@@ -25,7 +25,8 @@ const READER_MAX_TOKENS = 4_000;
 const MAX_FACT_CHARS = 300;
 const TOOL_NAME = 'report_findings';
 const URL_RE = /^https?:\/\/\S+$/u;
-const LINKEDIN_PROFILE_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[^/?#\s]+/iu;
+const LINKEDIN_PROFILE_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/([^/?#\s]+)/iu;
+const LINKEDIN_PROFILE_BASE = 'https://www.linkedin.com/in/';
 
 enum Certainty {
   Stated = 'stated',
@@ -100,23 +101,56 @@ function field(row: unknown, name: string): unknown {
   return typeof row === 'object' && row !== null ? (row as Record<string, unknown>)[name] : null;
 }
 
-function verdictsFrom(raw: unknown, pages: readonly SourceHit[]): SourceVerdict[] {
+/**
+ * The 19 Nov test: a person the base knew by name alone was matched, sure, to
+ * a namesake at another firm. With nothing but a name to compare, no page can
+ * be sure: a yes becomes unsure, and its facts possible.
+ */
+export function nameOnly(subject: ResearchSubject): boolean {
+  return subject.companies.length === 0 && subject.role === '' && subject.city === '';
+}
+
+function verdictsFrom(raw: unknown, pages: readonly SourceHit[], capped: boolean): SourceVerdict[] {
   const allowed = new Set<string>(Object.values(SamePerson));
   const verdicts: SourceVerdict[] = [];
   for (const row of Array.isArray(raw) ? raw : []) {
     const page = pages[Number(field(row, 'page')) - 1];
     const same = field(row, 'same_person');
     if (page === undefined || typeof same !== 'string' || !allowed.has(same)) continue;
-    verdicts.push({ url: page.url, samePerson: same as SamePerson });
+    const samePerson = capped && same === SamePerson.Yes ? SamePerson.Unsure : (same as SamePerson);
+    verdicts.push({ url: page.url, samePerson });
   }
   return verdicts;
+}
+
+/** A LinkedIn profile address in one form, so the same profile is one fact; '' when it is not one. */
+export function linkedinProfile(url: string): string {
+  const slug = LINKEDIN_PROFILE_RE.exec(url.trim())?.[2];
+  if (slug === undefined) return '';
+  let readable = slug;
+  try {
+    readable = decodeURIComponent(slug);
+  } catch {
+    // A malformed escape stays as written: the address is still the profile's.
+  }
+  return `${LINKEDIN_PROFILE_BASE}${readable.toLowerCase()}`;
+}
+
+/** A page that is the person's own LinkedIn profile is the linkedin fact, whether the model listed it or not. */
+function profileFacts(verdicts: readonly SourceVerdict[]): FoundFact[] {
+  return verdicts.flatMap((v) => {
+    const value = linkedinProfile(v.url);
+    if (value === '' || v.samePerson === SamePerson.No) return [];
+    const status = v.samePerson === SamePerson.Yes ? 'confirmed' : 'possible';
+    return [{ key: 'linkedin', value, source_url: v.url, status }];
+  });
 }
 
 /** A fact's value in the form its key needs, or '' when it does not fit. */
 function valueFor(key: string, raw: unknown): string {
   if (typeof raw !== 'string') return '';
   const value = raw.trim().slice(0, MAX_FACT_CHARS);
-  if (key === 'linkedin') return LINKEDIN_PROFILE_RE.exec(value)?.[0] ?? '';
+  if (key === 'linkedin') return linkedinProfile(value);
   if (key === 'website') return URL_RE.test(value) ? value : '';
   return value;
 }
@@ -143,10 +177,15 @@ function factsFrom(
   return facts;
 }
 
-/** Pure: the model's answer, checked against the pages it was given. */
-export function findingsFrom(input: unknown, pages: readonly SourceHit[]): Findings {
-  const verdicts = verdictsFrom(field(input, 'pages'), pages);
-  return { verdicts, facts: factsFrom(field(input, 'facts'), pages, verdicts) };
+/** Pure: the model's answer, checked against the pages it was given and how much the base knew. */
+export function findingsFrom(
+  input: unknown,
+  pages: readonly SourceHit[],
+  subject: ResearchSubject,
+): Findings {
+  const verdicts = verdictsFrom(field(input, 'pages'), pages, nameOnly(subject));
+  const facts = [...profileFacts(verdicts), ...factsFrom(field(input, 'facts'), pages, verdicts)];
+  return { verdicts, facts };
 }
 
 function toolInput(content: readonly Anthropic.ContentBlock[]): unknown {
@@ -181,5 +220,5 @@ export async function readPages(
     usage: response.usage,
     runId,
   });
-  return findingsFrom(toolInput(response.content), pages);
+  return findingsFrom(toolInput(response.content), pages, subject);
 }

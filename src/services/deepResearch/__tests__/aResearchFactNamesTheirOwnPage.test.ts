@@ -8,7 +8,7 @@ import {
   widenSearches,
   SearchEngine,
 } from '../researchQueries';
-import { findingsFrom, readerInput } from '../researchReader';
+import { findingsFrom, linkedinProfile, nameOnly, readerInput } from '../researchReader';
 
 const SUBJECT = {
   phone: '+995599000001',
@@ -66,9 +66,17 @@ describe('a research fact names its own page', () => {
         ],
       },
       PAGES,
+      SUBJECT,
     );
+    const profile = {
+      key: 'linkedin',
+      value: 'https://www.linkedin.com/in/nino-beridze-1',
+      source_url: PAGES[2].url,
+      status: 'possible',
+    };
     expect(findings.verdicts).toHaveLength(3);
     expect(findings.facts).toEqual([
+      profile,
       { key: 'employer', value: 'Colibri', source_url: PAGES[0].url, status: 'confirmed' },
       { key: 'expertise', value: 'B2B sales', source_url: PAGES[0].url, status: 'possible' },
       {
@@ -81,7 +89,38 @@ describe('a research fact names its own page', () => {
   });
 
   it('reads nothing from an answer without the tool call', () => {
-    expect(findingsFrom(null, PAGES)).toEqual({ verdicts: [], facts: [] });
+    expect(findingsFrom(null, PAGES, SUBJECT)).toEqual({ verdicts: [], facts: [] });
+  });
+
+  it('is never sure of a page when the base knows the person by name alone (the 19 Nov namesake)', () => {
+    const nameOnlySubject = { ...SUBJECT, companies: [], role: '' };
+    const findings = findingsFrom(
+      {
+        pages: [
+          { page: 1, same_person: 'yes' },
+          { page: 3, same_person: 'yes' },
+        ],
+        facts: [{ key: 'employer', value: 'Colibri', page: 1, certainty: 'stated' }],
+      },
+      PAGES,
+      nameOnlySubject,
+    );
+    expect(findings.verdicts.map((v) => v.samePerson)).toEqual([
+      SamePerson.Unsure,
+      SamePerson.Unsure,
+    ]);
+    expect(findings.facts.every((f) => f.status === 'possible')).toBe(true);
+    expect(nameOnly(SUBJECT)).toBe(false);
+  });
+
+  it('writes one profile in one form, whatever the address it was found under', () => {
+    expect(linkedinProfile('https://ge.linkedin.com/in/Nino-Beridze-1/?trk=x')).toBe(
+      'https://www.linkedin.com/in/nino-beridze-1',
+    );
+    expect(linkedinProfile('https://www.linkedin.com/posts/nino_x')).toBe('');
+    expect(linkedinProfile('https://linkedin.com/in/%E0%A4bad')).toBe(
+      'https://www.linkedin.com/in/%e0%a4bad',
+    );
   });
 
   it('gives the model the person and numbered pages', () => {
