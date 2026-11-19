@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 19 Nov, 20:04Z — keys in (Misho); 3-person dry test found two faults; b4c5f5a (5fc7d3e4) fixes them, outage=0
+- **Faults:** (1) a person the base knew by name alone was matched, sure, to a namesake at another firm; (2) „member" meant any live account, legacy Ally accounts included.
+- **Fix:** members are `joinedNetai` only; public heads; Misho's LinkedIn-50 list as the one named exception (`APPROVED_LISTS`). With no organisation, role or city in the base, no page is sure and every fact is `possible`; company links of any status are context. LinkedIn profiles are one fact in one form.
+- **Re-run on the same 3:** 7 of 8 checked facts found again (was 4), LinkedIn 3/3 (was 1/3), none pointing at someone else, about $0.18 a person. The 21 are running now as a dry run (`load-deep-test50`); nothing is written.
+
 ### 19 Nov, 19:16Z — shipped tonight: a1caaf7 (42d34fa9) and 76abbc3 (927404da), outage=0 each
 - **a1caaf7 (task 36):** a firm's labels are read through the normalised index (the 10:35Z section below). DONE WHEN as there.
 - **76abbc3 (task 37, register 126):** `POST /admin/deep-research/people` `{phone, source:"load-…", dry_run, max_usd?}` researches ONE live member or public-register company head (Exa, Linkup, Firecrawl, read by the model). 400 bad body, 403 a private contact or a person who removed a researched fact, 503 until `EXA_API_KEY`, `LINKUP_API_KEY`, `FIRECRAWL_API_KEY` are set in Railway (now: 503, keys not set yet), 500 nothing ran. Migration 305 is in: `deep_research_runs`, `deep_research_pages`, four prices. Spend is booked in `usage_events` as `deep_research_search` / `deep_research_read`; daily ceiling `DEEP_RESEARCH_DAILY_USD` (default 25). Undo: `undo-load` by tag now also counts `research_runs`.
