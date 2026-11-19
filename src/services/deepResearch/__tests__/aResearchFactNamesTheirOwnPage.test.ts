@@ -113,6 +113,34 @@ describe('a research fact names its own page', () => {
     expect(nameOnly(SUBJECT)).toBe(false);
   });
 
+  it('takes a profile page as the person’s own only when its address carries their name', () => {
+    const colleague = {
+      url: 'https://www.linkedin.com/in/levan-japaridze-77',
+      title: 'Levan Japaridze',
+      text: 'Worked with Nino Beridze at Colibri',
+      provider: ProviderName.Exa,
+    };
+    const findings = findingsFrom(
+      {
+        pages: [
+          { page: 1, same_person: 'yes' },
+          { page: 2, same_person: 'yes' },
+        ],
+        facts: [],
+      },
+      [colleague, { ...PAGES[2], url: 'https://www.linkedin.com/in/nino-beridze-1' }],
+      SUBJECT,
+    );
+    expect(findings.facts).toEqual([
+      {
+        key: 'linkedin',
+        value: 'https://www.linkedin.com/in/nino-beridze-1',
+        source_url: 'https://www.linkedin.com/in/nino-beridze-1',
+        status: 'confirmed',
+      },
+    ]);
+  });
+
   it('writes one profile in one form, whatever the address it was found under', () => {
     expect(linkedinProfile('https://ge.linkedin.com/in/Nino-Beridze-1/?trk=x')).toBe(
       'https://www.linkedin.com/in/nino-beridze-1',
