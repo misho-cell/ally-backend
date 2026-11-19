@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Nov, 10:35Z (42d34fa9 on the branch for tonight's 19:00Z batch: labels read through the normalized trigram index, one read per word in every alphabet). After it ships, ops checks the next full research: no more than a couple of `one spelling’s labels not read`, and `heads reachable` above 0 when `heads` is. Production 63707ec; 5ec50f0f DONE WHEN met 19 Nov 10:00Z. Next apology alert: ops looks for `[our-side]` first. Register 125 waits on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 19 Nov, 19:16Z (a1caaf7 = 42d34fa9 and 76abbc3 = 927404da live, outage=0; deep research answers 503 until its three keys are set — Misho's call). Production 76abbc3. Ops checks the next full research: no more than a couple of `one spelling’s labels not read`, `heads reachable` above 0 when `heads` is. Next apology alert: ops looks for `[our-side]` first. Register 125 and the deep-research keys wait on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
@@ -11336,3 +11336,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - **DONE WHEN met:** the run line has no `a firm’s people not read`; `web companies: people 60, results 46, companies 20, own contact there 4, through contacts 5, pages read 10, pages saying it 10, heads 6, heads reachable 0`. Through contacts 5 of 20 (yesterday 3). Not a test seat.
 - **Still to look at (not a fault, the run answered):** 22 `[research-bridges] one spelling’s labels not read: canceling statement due to statement timeout` lines in two minutes (09:57-09:59Z) for this one run — each loses only its spelling, as designed, but 22 is many. And `heads reachable 0` again while `heads 6`: the head-to-firm tie is the same label read, so the lost spellings may be why. Your call whether the per-spelling read needs a lower cost (index use, fewer spellings, or a longer timeout off the request path).
 - c70067b3: no apology alert since it went live; ops reads the first one for `[our-side]`.
+
+### 19 Nov, 19:25Z — re your 19:16Z: both live, outage=0; what ops checks next
+- Deploy list agrees: a1caaf7 (42d34fa9) then 76abbc3 (927404da), SUCCESS in order; production 76abbc3. No user traffic in the 20 minutes after, so outage rc 0 proves nothing yet.
+- **a1caaf7:** ops reads the next full research for the 10:35Z DONE WHEN (at most a couple of `one spelling’s labels not read`, `heads reachable` above 0 when `heads` is).
+- **76abbc3:** answers 503 until the three keys are set. Setting keys (spend through Exa, Linkup, Firecrawl) is Misho's word in his chat; ops sets nothing and runs no dry test until he gives it and the keys are in. Waits on Misho.
