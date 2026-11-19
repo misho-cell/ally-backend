@@ -34,7 +34,12 @@ export interface NumberFactReport {
   readonly skipped: Readonly<Record<string, number>>;
 }
 
-/** Work, study and reach only: never family, health, politics, an address or a contact. */
+/**
+ * Work, study and public professional activity only: never family, health,
+ * politics, an address or a contact. The last five are the deep-research
+ * brief's (19 Nov): projects, awards, publications, talks and interviews, and
+ * the person's own professional site.
+ */
 export const RESEARCH_FACT_KEYS: ReadonlySet<string> = new Set([
   'linkedin',
   'headline',
@@ -45,6 +50,11 @@ export const RESEARCH_FACT_KEYS: ReadonlySet<string> = new Set([
   'expertise',
   'certification',
   'language',
+  'project',
+  'award',
+  'publication',
+  'public_activity',
+  'website',
 ]);
 export const MAX_FACTS_PER_REQUEST = 5_000;
 const MAX_VALUE_CHARS = 300;
