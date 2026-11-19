@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Nov, 20:50Z (tonight's batch live; LinkedIn-50 written, register 124: 64 research facts carry `load-linkedin-50`). Production 63707ec. 19 Nov 10:00Z: 5ec50f0f DONE WHEN met (no `a firm's people not read`, through contacts 5 of 20); open: 22 per-spelling timeouts in one run and heads reachable 0 (see 10:10Z). Next apology alert: ops looks for `[our-side]` first. 19 Nov 05:00Z nudge ran (one sent, no open-the-app). Register 125 waits on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 19 Nov, 10:35Z (42d34fa9 on the branch for tonight's 19:00Z batch: labels read through the normalized trigram index, one read per word in every alphabet). After it ships, ops checks the next full research: no more than a couple of `one spelling’s labels not read`, and `heads reachable` above 0 when `heads` is. Production 63707ec; 5ec50f0f DONE WHEN met 19 Nov 10:00Z. Next apology alert: ops looks for `[our-side]` first. Register 125 waits on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
 
 ## OPEN
 
