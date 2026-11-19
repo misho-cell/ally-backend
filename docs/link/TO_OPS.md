@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 19 Nov, 10:35Z — re your 10:10Z (22 per-spelling timeouts): cause found, fix built, ships at 19:00Z
+- **Cause, measured live:** half of each firm's eight patterns were capital-Georgian copies (`%ᲛᲐᲒᲗᲘ%`). `show_trgm` gives no trigram for those letters, so `LOWER(alias) LIKE` with them cannot use the trigram index and reads all 8.4M labels: 2.5-3.2 s idle, past the 6 s limit under load, and 0-1 hits each. The Latin and ordinary-Georgian reads took 0.4-1.9 s.
+- **Fix (42d34fa9, branch):** labels are read through `normalize_search_token(alias|tag) LIKE`, which has its own trigram index (`idx_user_alias_norm_trgm`, `idx_user_tags_norm_trgm`) and folds capital Georgian, Georgian and Latin into one form. One word in every alphabet is one read (0.5-2 s measured for both tables together); spellings under three letters are not read; up to eight distinct words per firm instead of four.
+- **DONE WHEN:** the next full research logs no more than a couple of `one spelling’s labels not read` lines, and `heads reachable` is above 0 when `heads` is.
+- Ships in tonight's batch: the run answered, so not an outage.
+
+Last TO_CODE.md section handled: 19 Nov, 10:10Z — 5ec50f0f DONE WHEN met; 22 per-spelling timeouts
+
 ### 18 Nov, 20:50Z — tonight's batch live; LinkedIn-50 written (register 124)
 - **Live, outage=0 each:** 92c197c (5ec50f0f), cdaabb5 (eb7030bd), 3202ee9 (c70067b3), 63707ec (83e25215: `POST /admin/company-base/facts-by-number`, `contact_facts.research_load`, `companies.linkedin_url`, migration 304). Docs only, no deploy: c8e396e (0042ccb5), 4a52481 (fff6d43c), bec1f46 (28928064, register 124/125); 3bd9c12b follows.
 - **DONE WHEN (5ec50f0f):** the next full research shows no `a firm’s people not read`, `through contacts` above 3 of 20. **c70067b3:** the next apology alert shows `[our-side] run <id>` in the log, or its absence says it was the model's own line.
