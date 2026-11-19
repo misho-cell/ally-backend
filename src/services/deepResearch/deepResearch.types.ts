@@ -6,10 +6,12 @@
 
 /** Who may be researched. Anyone else — a private contact — is never looked up. */
 export enum SubjectKind {
-  /** A Netai member with a live account: researched on their own professional trail. */
+  /** Someone who joined Netai (joinedNetai), not a legacy account: their own professional trail. */
   Member = 'member',
   /** A company head named in a public register, matched to our number: the professional role only. */
   PublicPerson = 'public_person',
+  /** A person on a list Misho gave by name (researchSubject's APPROVED_LISTS). */
+  Listed = 'listed',
 }
 
 export enum ProviderName {
