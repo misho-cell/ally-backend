@@ -27,6 +27,20 @@ export const DELETING_TOOLS: ReadonlySet<string> = new Set([
   'remove_contact_exclusion',
 ]);
 
+/**
+ * Misho, 19 Nov, his own chat: „Arci-სთან უკვე გავიარე და აღარ შემომთავაზო" was
+ * read as a delete request, the reply's „ARCi გამოვრიცხე" as „deleted", and the
+ * whole researched answer was replaced by „not deleted yet — confirm" — though
+ * the run had saved his instruction and searched without ARCi. „Don't offer it
+ * again" is honoured by recording it: a run that recorded the owner's
+ * instruction did what it says. Misho: „რამეს რომ გწერ ეს ნიშნავს რომ
+ * დადასტურებულია".
+ */
+export const RECORDING_TOOLS: ReadonlySet<string> = new Set([
+  'exclude_contact',
+  'save_private_context',
+]);
+
 // Every word is matched WHOLE (3565): the earlier list matched inside other
 // words — „quit[ée]" inside "quite", „elimin[ée]" inside "eliminate" — and
 // ordinary answers got the delete card. Spanish takes only the accented past
@@ -45,7 +59,7 @@ export function deletionClaimWithoutTool(
   return (
     claims.ownerAsks.has(OwnerAsk.Delete) &&
     makesClaim(claims, ClaimKind.Deleted) &&
-    !toolNamesUsed.some((name) => DELETING_TOOLS.has(name))
+    !toolNamesUsed.some((name) => DELETING_TOOLS.has(name) || RECORDING_TOOLS.has(name))
   );
 }
 

@@ -27,6 +27,14 @@ describe('a deletion is claimed only when one happened', () => {
     ).toBe(false);
   });
 
+  it('stands when the owner’s „don’t offer it again" was recorded (Misho, 19 Nov)', () => {
+    const excluded = claimsRead({ [ClaimKind.Deleted]: ['ARCi გამოვრიცხე.'] }, [OwnerAsk.Delete]);
+    expect(
+      deletionClaimWithoutTool(excluded, ['save_private_context', 'find_companies_for_need']),
+    ).toBe(false);
+    expect(deletionClaimWithoutTool(excluded, ['exclude_contact'])).toBe(false);
+  });
+
   it('a reply that claims no deletion is left alone', () => {
     expect(deletionClaimWithoutTool(claimsRead({}, [OwnerAsk.Delete]), [])).toBe(false);
   });
