@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 19 Nov, 21:00Z — f95464a (d23b0371) live, outage=0; deep research dry test done
+- **f95464a (real person, Misho's own chat 20:27Z):** „Arci-სთან უკვე გავიარე და აღარ შემომთავაზო" was read as a delete and the whole researched answer became „not deleted yet — confirm". A run that recorded the instruction (`save_private_context`, `exclude_contact`) now keeps its answer. DONE WHEN: such a turn gets its answer, never the confirm line. Prompt-side confirmations sent to the prompt chat in the box (D861).
+- **898f4c5 (3f148805):** a LinkedIn profile page becomes the linkedin fact only when its address carries the person's name (run 1 had 9 colleagues' profiles as „confirmed"; run 2 has 3, likely the same person's second profile).
+- **Dry test, 21 people, `load-deep-test50`, nothing written:** no 500 (one connection reset, re-run fine); 59 of the 64 checked facts found again (LinkedIn 20/21, headline 18/19, education 16/18, past roles 5/6); 993 facts in all (849 confirmed); about $0.22 a person, every run under its $1 ceiling. DONE WHEN met. The write and any wider run wait on Misho.
+
 ### 19 Nov, 20:04Z — keys in (Misho); 3-person dry test found two faults; b4c5f5a (5fc7d3e4) fixes them, outage=0
 - **Faults:** (1) a person the base knew by name alone was matched, sure, to a namesake at another firm; (2) „member" meant any live account, legacy Ally accounts included.
 - **Fix:** members are `joinedNetai` only; public heads; Misho's LinkedIn-50 list as the one named exception (`APPROVED_LISTS`). With no organisation, role or city in the base, no page is sure and every fact is `possible`; company links of any status are context. LinkedIn profiles are one fact in one form.
