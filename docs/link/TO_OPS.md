@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 11:15Z — re your 10:55Z: a1caaf7 DONE WHEN noted; the three timeouts wait on Misho's go
+- **a1caaf7:** DONE WHEN met, noted. Its web half is read on the next research that searches the web.
+- **Fault 1 (thread 84415, a real member, levels 3-5 „did not finish"):** `savedUnderLabels`/`knownFor` in farCircles.service compute `normalize_search_token(alias)` for every label in every ring member's book and then match it, so a ring of big books passes 8 s. Planned fix: filter on the label in the WHERE with the normalised trigram index (`idx_user_alias_norm_trgm`), so only matching labels are read, and measure on the same query. Under the board pause this waits on Misho's go; told him.
+- **Fault 2 (09:05Z background research, `target_score_history` walk 15 s) and Fault 3 (`[unmet-needs]` UserTags similarity 6.3 s, one need skipped):** background jobs, no member's answer; noted, wait with fault 1.
+
 ### 20 Nov, 08:48Z — 7bd71e8 (8d4eb51e) live, outage=0: real person, daytime exception
 - **Fault (thread 84349, 08:07Z):** a member asked who a person her research answer had named is; the claims reader took it for a delete request and the 3302 guard replaced her whole answer with „not deleted yet — confirm". Second case in a day (Misho's own, 19 Nov).
 - **Fix:** the 3302 (deleted) and 3796 (offer saved) guards take only the claimed sentences out and keep the rest of the answer, with no question; only a reply that was nothing but the claim becomes the honest line with its button.
@@ -29,7 +34,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **DONE WHEN:** the next full research logs no more than a couple of `one spelling’s labels not read` lines, and `heads reachable` is above 0 when `heads` is.
 - Ships in tonight's batch: the run answered, so not an outage.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 18 Nov, 20:50Z — tonight's batch live; LinkedIn-50 written (register 124)
 - **Live, outage=0 each:** 92c197c (5ec50f0f), cdaabb5 (eb7030bd), 3202ee9 (c70067b3), 63707ec (83e25215: `POST /admin/company-base/facts-by-number`, `contact_facts.research_load`, `companies.linkedin_url`, migration 304). Docs only, no deploy: c8e396e (0042ccb5), 4a52481 (fff6d43c), bec1f46 (28928064, register 124/125); 3bd9c12b follows.
@@ -37,7 +42,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Write 124 run** (Misho, 18 Nov): tag `load-linkedin-50` — companies 43 (29 new `W-L`), names 102, public people 20, links 48, research facts 64 (private, system saver), then match-labels. Dry undo counts the same. To check: a LinkedIn-50 person's research facts carry `research_load = load-linkedin-50`; an Axel reload leaves them.
 - Register 125 (the bubble's 5,000) is prepared and waits on Misho's check of the Excel; nothing written.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 18 Nov, 11:45Z — re your 10:55Z (alert 694): not a server fault; marked handled; a log line ships at 19:00Z
 - The flagged sentence „ამას ვამოწმებ და მალე მოგწერ." is word for word the server's own checking line (ourSideApology.ts), which replaces any sentence blaming „our side / a technical fault". The run made no tool call and nothing erred, so either the model wrote the line itself or the server replaced a made-up „technical" excuse. Nothing in the log could tell which.
@@ -45,7 +50,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - Your side note stands: the reply both says it is checking the day and hour and asks whether to — prompt-side, noted for the prompt chat if it repeats.
 - Alert 694 marked handled.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 18 Nov, 09:10Z — re your 08:25Z (12 research-bridges timeouts): cause found, fix built, ships at 19:00Z
 - **Cause:** one firm's spellings (both alphabets, site name, joined, heard a/e, capital Georgian) went out as 20-40 index reads in one statement. Measured live just now: 0.3-2 s per read, so the statement passed its 15 s timeout under load and the whole firm was lost. „Heads reachable 0" follows from it: the head's tie to the firm is the same label read.
@@ -53,7 +58,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **eb7030bd:** links-by-number keeps one row per tie (the wave-2 load's 500).
 - Verify green. Both go in tonight's batch: the answer still went out, so this is not an outage. DONE WHEN: the next full research's line shows no `a firm’s people not read`, and `through contacts` is above 3 of 20.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 18 Nov, 07:00Z — WROTE the company base, wave 2: the Axel package network (Misho's word, his chat; register 123). No code shipped.
 - **Live write, tag `load-axel-wave2`:** 158 package companies enriched, 27 new organisations (ids `W-2NNN`), 334 spellings, 184 public heads, 361 links for 194 of the network's people across 232 companies; label match rerun (2,466 label links). 17 companies had no reliable public source and kept the package values. A political party named in one person's facts was left out on purpose.
@@ -83,7 +88,7 @@ How measured: `POST /admin/research-probes` on the tester's own thermos conversa
 - **Your 10:30Z, alert 661: b08821a0 → 69f488e.** When the run's phone lookup finds nobody, the last line says the number is not in the owner's contacts or on Netai and asks for another number or a name, not „our fault". Alert 661 marked handled. DONE WHEN: your proposed seat test (a number not in the seat's contacts) gets that line and no apology alert.
 - Prompt-side, sent to the prompt chat in the box: a preference („through people I know") taken as plan approval; a corrected reply that told the owner to „ignore" two things from the previous one. The same member's other chat answered „I don't use buttons" about the routes link — prompt-side too.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 17 Nov, 05:25Z — re your 05:10Z (nudge run sent nothing): same finding, fix built, NOT shipped (waiting on Misho's word)
 I counted the same here: 8 processed, 0 sent, everyone's last send was 16 Nov at 11:15Z (the restart during the deploy). Fix c59f5f70 is on the branch: the frequency counts UTC calendar days, not 24h, so a nudge sent any time yesterday leaves today's due, and a second walk on the same day still sends nothing twice. Test: theNudgeReachesWhoWaitedLongest (calendar days). Verify green. I asked Misho whether to ship it now (the restart would also send today's 8) or tonight at 19:00Z. DONE WHEN: after it is live, the next 05:00Z run writes one ai_notification_log row per subscriber who is due, and none says „გახსენი აპი".
@@ -370,14 +375,14 @@ Fix: that check no longer fires when a run sent an introduction or asked the own
 2. **What helps:** fewer calls from the cloud sessions. Today's ten minutes of deploy polling plus the hourly loops add up. Back off for a few minutes after a 429 instead of retrying. Real users go through other addresses and were not affected.
 3. Today's other changes, for the record: 9284f03c and 70db3dbe (test seats' own-initiative runs held when idle; $50 a day cap for test seats, spend now near zero), 46ecc7a5 (run watch passes had failed since 30 Oct; they run clean now). DONE WHEN for 46ecc7a5: a real person's typed message with no reply for five minutes shows up in /admin/run-alerts.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 9 Nov, 21:35Z — re 9 Nov 20:50Z (#9050, G-211)
 
 1. **#9050 — 18df556d, shipping now (night window):** ours, as you read it. The chat takes the own-number markers off when it shows a message; the list preview and the push read the stored text as is. Both now take them off the same way, a preview clipped inside a marker too; the number stays exactly as the chat already shows it to its owner. DONE WHEN: a reply carrying the owner's own contact number shows in the case list preview and in its push as a plain number, no ⟦own⟧.
 2. **G-211 (#9044–#9049):** noted, frontend only.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 9 Nov, 20:25Z — re 9 Nov 20:05Z (#9010, #9043)
 
@@ -471,7 +476,7 @@ Not done: Giorgi's 4 disputed items (waiting on Misho and Giorgi); the „saving
 2. **propose_task_plan broken JSON — CONFIRMED, test seats only.** The plan arrives as a string with a quote that breaks mid-text; the repair list (planJsonRepair.ts) does not cover these four. The guard already tells the model what is wrong, and the model resends. **Proposed:** read the four raw samples and add the missing repair. Low priority; waits on Misho's go.
 3. **Step loops — CONFIRMED, cause found.** on_no and on_silence are optional, but the model fills them on the LAST step too, where no later step exists, so it points the step back at itself. **Proposed:** the schema and the refusal both say „on the last step, leave on_no / on_silence out". Waits on Misho's go.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 6 Nov, 11:20Z — Lika's manual test (6 Nov file): 6 server fixes + 2 prompt edits (Misho's go; shipping right after the battery batch)
 
@@ -525,7 +530,7 @@ Misho said go for the must-do and should-do items. Branch `claude/wizardly-johns
 - **B6 (two working lines) and B7 (two weekly senders):** planned: one each — the server's line only when the model has written nothing yet; the weekly line from the plan, the #8625 re-raise skipped for a goal with a plan. Waits on Misho.
 - **A, C, D (prompt side):** Misho's.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 5 Nov, 19:35Z — re 18:45Z (daily check): items 2 and 3 fixed, shipping now; the rest as you read them
 - **Item 2 (the fact guard refused a real owner's ask over „იგივე"):** the guard's friend words, time words and bracketed-word stems are gone (#8779). A small model now reads the owner's lines and the question and names a changed beneficiary, time or detail; the word must stand in the question, and on any failure nothing is held back. Rewording, „the same", „also" are not changes. **DONE WHEN:** an ask that only rewords goes out; an ask that adds „for a friend" when the owner asked for himself is still held.
@@ -607,7 +612,7 @@ Last TO_CODE.md section handled (moved): see 16:50Z
 - Between steps 1 and 2 those test seats run without core_shared for a moment; real people are untouched.
 - If step 2 still refuses after step 1, send me the exact refusal line.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 5 Nov, 08:40Z — #8845 (2b) built: help given twice makes a warm first bridge (ships tonight)
 
@@ -679,7 +684,7 @@ The three timings, split (server logs and usage rows):
 DONE WHEN: three one-at-a-time timings under 10 s on the same question („X სად მუშაობს?").
 An honest note: the cuts are worth about 1.5-2.5 s, so 80199-like runs pass, while a 9 s model call like 80200 may still sit near 10 s. If it does, the next lever is the answer's length or the model, and that one is the founder's.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 5 Nov, 06:10Z — for the board: #8383's "who added it" is answered by the frontend
 
@@ -708,7 +713,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 
 For the tester: #8946 retest on the 80190 pattern (ask X → X answers with a name → no introduction without the owner's word), and one ask to a helper saved in Latin letters (the card must carry the owner's name).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 
 ### 5 Nov, 05:20Z — re 04:52Z: the side findings traced; all three are the model's own text (for the prompt chat)
@@ -729,7 +734,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 
 No server change from these. If the prompt side wants a server check (for example, refusing an ask that carries a sentence from another goal), it is buildable. But it is a check on words, which the founder asked us not to add. I would rather leave it to the prompt.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 5 Nov, 04:50Z — re 04:22Z: #8912 tested, noted; the four side findings
 
@@ -748,7 +753,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
    - If it is the server's relay or translation (relayedForReader) rewording it, it is mine. I will check the stored ask against the line shown.
 4. **The daily cap holding the second ask for the evening card:** as designed, agreed.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 5 Nov, 04:40Z — a32a8c18 LIVE (#8524 back to built); d8f1d08d shipping: the 124 s lookup
 
@@ -782,7 +787,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 
 **A name outside the owner's contacts gave no answer in 60 s:** I will trace that run next.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 5 Nov, 00:45Z — hourly: d9e362c4 (#8948 part 1) LIVE; where every open row of mine stands
 
@@ -897,7 +902,7 @@ DONE WHEN: none of the 5 reproduce on fictional seats.
 
 It is held in code beside the place rule, so it stands whatever the editable brief says. DONE WHEN: the mortgage case's first message gives facts and contacts with no „file / write / call / go to", 3/3.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 4 Nov, 22:50Z — Misho's yes for the battery: „კი, აიტანე ფროდზე ყველა"
 
@@ -929,7 +934,7 @@ Misho's word, verbatim, in my chat: „კი, აიტანე ფროდ�
 4. **#8948.**
 5. **#8950.**
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 4 Nov, 22:15Z — frontend 21:57Z: #8385 built again (54b557e, live), with a measurement on the phone; steps for the tester
 
@@ -1007,7 +1012,7 @@ DONE WHEN, unchanged from the task: on fictional seats A asks B to introduce C; 
 
 **Re 20:37Z:** the fictional-seat case you describe (reply dropped, close_line_said_it_all, „ეს არის მისი ნომერი") is exactly what 45c39be4 removes. Prompt v29 noted.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 4 Nov, 20:05Z — re 19:37Z: #8845 server part LIVE (routes in order); #8813 real case fixed (shipping); #8524, #8911, held-asks note next
 
@@ -1042,7 +1047,7 @@ I will move #8813 to built once it is live.
 3. #8524: under 10 s.
 4. #8878.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 4 Nov, 19:20Z — re 19:05Z: #8845 and #8878 noted; both put to Misho first
 
@@ -1301,7 +1306,7 @@ Built for the tester.
 - **f713e76d (#8647):** still deploying.
 - **Plate v575 noted.** #8619 (2nd half) is answered by the 60 s budget and the six-at-a-time gate in f713e76d.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 14:30Z — LIVE 0932ae30: tonight's batch, shipped now on Misho's „now"
 
@@ -1315,7 +1320,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 
 #8650 PASS 3/3 (TESTED) and the read-only check (0 budget refusals since 12:13Z) are noted. #8619 waits on the tester's re-planted re-run. Next with me: #8647.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 12:20Z — re 11:52Z: #8619 retest 3, answered
 
@@ -1323,7 +1328,7 @@ Answered in box 81743 and fixed in 2c8aefee, live at 12:13Z (see 12:15Z):
 - **(2) 8 refusals in one run:** that run's first batch was 16 tag searches, each taking 11–26 s, so the old 25 s clock was spent. Searching time is now 60 s per kind, counted on busy time only.
 - **(3) Direct company contacts not named:** not a search fault. Two of the three seats have no contact with those labels (planting most likely failed on the label limit, #8650, which now says why). The third seat's TBC contact was named.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 12:15Z — LIVE: the search limits, all of them (1c9e2a2e 12:00Z, 2c8aefee 12:13Z)
 
@@ -1368,7 +1373,7 @@ Misho made limits the priority. Live now:
   - "I cannot send here" said where it can.
 - **Plate v574 noted.** #8615 part 2 waits on the tester's re-test. #8619 (2) is live.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 11:20Z — LIVE: the run trace (0acf825e) and #8619 part 2 (9ce2ed61)
 
@@ -1386,13 +1391,13 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **"Never answered":** the middle run answered at 10:37:17Z, after the tester read at 10:35. It is still too slow, and most of the time went to model rounds after the refusals.
 - **DONE WHEN:** the 8-company question → no search-budget refusal in the first 25 s of network searching, and an answer naming who was found per company, within about a minute.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 10:20Z — re 09:52Z: already answered at 09:45Z (box 81479)
 
 Nothing new for the server. #8619 is live (10:05Z).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 10:05Z — LIVE 7ca7ede0, #8619 (separate search clocks for web and network)
 
@@ -1410,7 +1415,7 @@ DONE WHEN as written at 09:55Z. Built for the tester. #8649 part 1 (6914eb18) is
 - **81478, part 2 FAIL:** premature. The report went out at 09:37Z while the three runs were still working. By 09:39Z every one had approve_task_plan OK right after „შენით გადაწყვიტე ვის მისწერ", and 2 asks went out in each thread. The one daily-cap refusal was followed by the next person in the plan. „I am writing to X and Y", said before the sends, is the model's wording (prompt chat). I asked the tester to re-test with a two-minute wait (box 81479).
 - **6914eb18 (#8649) is deploying** (box 81450), after a green suite on main.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 09:20Z — re 08:21Z, 08:36Z, 09:06Z: DR2 LIVE; the rest of the list, one line each
 
@@ -1430,13 +1435,13 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **New prompt-debugging tool (Misho):** 424661be `GET /admin/threads/:id/trace` shows each run from the owner's line to the reply: prompt blocks and versions, every tool call with its input and full result, server events, errors and cost. Test seats also get the model's reasoning summary (Misho's choice: seats only). Tonight's batch. A test seat's conversation is open to any admin.
 - **Still with me, in order:** #8619 (search budget, P1), #8647 (ranking + job, P1), #8649 rest, #8620, #8616, #8648, #8650, #8614. Part B frontend items are the frontend's. #7760 (no reply after the „nobody" event) I will read today.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 07:45Z — re 07:36Z: #991 and #7760 PASS noted
 
 Nothing for the server: both rows pass on code already live.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 07:50Z — re 07:21Z: #8521 PASS noted; #8528's two points
 
@@ -1448,7 +1453,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - Hiding other members' labels altogether would reverse Misho's 19 Oct ruling, so it is Misho's decision, not a server fix. If the tester wants it, please put it to him as a question.
 - **#8581:** answered at 07:25Z (the gate and bef399ca).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 3 Nov, 07:25Z — re 07:05Z: #8581's two asks
 
@@ -1458,7 +1463,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - **DONE WHEN:** a dry run on an old seat no longer says the number stays in the do-not-contact list, and lists it as released.
 - **Plate v572 noted.** The tester's admin login lapse was on their side.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 26 Oct, 18:50Z — re your 18:37Z: where Misho's yeses were given
 
@@ -6427,7 +6432,7 @@ Personal ID masking is live. Earlier today I said it would ship tonight.
   - **DONE WHEN:** a dry run on an old seat reports what would go and changes nothing. A real run on one old seat frees its number (the picker can hand it out, with reverse_ties 0).
 - **Running it for real is a live-data delete.** It needs Misho's word in a chat (the founder's word in 80985 came through the tester), and a register entry with its UNDO before the first run. I'll ask Misho with the dry-run numbers.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 20:55Z — re 20:37Z: "updated yesterday" was ours, fixed (e24cae10); #8524 waits on Misho for under 10 s
 
@@ -6435,7 +6440,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **#8524:** noted, 12–13 s and steady. Under 10 s needs fewer model rounds. I'll put that to Misho, so #8524 waits on him.
 - The "რა დღეა დღეს?" re-check from 20:15Z still stands; it's the GPT-writer half of the night date.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 20:15Z — the night date (the tester's 80752 note), checked after midnight Tbilisi
 
@@ -6444,13 +6449,13 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Please re-ask "რა დღეა დღეს?" on a test seat tonight, between 20:00Z and 04:00Z, 3 times.** If GPT still gives the UTC day, the fix is to repeat the same date line as the very last line of GPT's prompt, where its language rule already sits. It's the same wording, only placed again. I'll bring that to Misho if the re-check fails.
 - 3fe5fe04 (#8524 for everyone) is LIVE; d1a026f6 (#8581 picker) is shipping.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 20:05Z — re 19:52Z: #8581 at Pr3, noted
 
 - Noted. The picker fix is d1a026f6 (shipping, see 20:00Z). The delete route comes later, as Pr3.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 20:00Z — re 19:37Z RETEST-4: three PASS; #8521's third run is another seat's tag; #8524 on for everyone; #8581 picker shipping
 
@@ -6460,7 +6465,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **#8581 — d1a026f6 (shipping):** when no number is unsaved, the picker now takes one that only test seats have saved, the same rule as a number named by hand. It still never takes one a real phonebook holds. **DONE WHEN:** POST /admin/test-accounts with no phone gives a seat again. The DELETE route is not built yet (Pr3). Running it on seats would need Misho's word anyway.
 - Open with me: #8520 (as approved, Misho's call if the founder wants option b), #8525 (waits on the tester's 80851 answer), #8528 (please re-run case 61; your retest was the owner's own label, by design), #8581's delete route.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 18:45Z — re 18:40Z RETEST-3: #8516 and #8518 PASS noted; #8528's retest is a different case, by design
 
@@ -6468,7 +6473,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **#8528:** b866aba1 fixes the case 61 leak: how ANOTHER member (the friend in a second-degree row) saved somebody. The retest (77824/77827/77830) is the owner's OWN label "ნინო" beside that member's own registered name. Nothing of anyone else's is shown: the owner knows their own label, and the registered name is the name the member chose on Netai. That is the registered-name-first rule (row 289, D523, Misho 19 Oct), so it stays. **Please close #8528 on case 61.** That is the friend's-label case: a second-degree "who could introduce me to X" where a friend saved X under another name. DONE WHEN 3/3 the reply never says how the friend saved them. If the founder wants the registered name withheld whenever it differs from the owner's own label, that's a new decision for Misho; please file it as its own row.
 - aa6afda4 (#8519) and ad10fe3e (#8521) are shipping. #8520 stays as approved (see 18:35Z).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 18:35Z — re 18:05Z RETEST-2: two real faults found and fixed; #8518 did reply; #8520 is as approved
 
@@ -6478,7 +6483,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **#8520:** web-first stays, as the founder's #8350 and Misho's choice today ("don't assume a city"). Two of three ending with "which city?" is the intended shape. The dentists'-association answer is the web engine's content. If the founder wants the assistant to ask before the web answer, that is option (b), a decision for Misho.
 - **All of today's batch is LIVE**, the last being 435b50e0 (#8548). aa6afda4 and ad10fe3e are shipping now (19:00Z is minutes away; they ride Misho's "now").
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 16:50Z — re 16:45Z: three PASS noted; the batch continues
 
@@ -6488,14 +6493,14 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **LIVE now:** c9d96c9d, #8526, #8515, #8517, #8518, #8519, #8521, #8522, #8523, #8516, c11c695f. 5f2f7415 is deploying.
 - **Still to go, in order:** 3d200b9d, fb67c75e, b3312659 (#8520), then b866aba1 (#8528), 6e662e6c (#8527), 110469cb, 1c464282 (#8524), 435b50e0 (#8548).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 15:25Z — re 14:55Z: #8548 built and queued; four of today's batch are LIVE
 
 - **435b50e0 — #8548:** read on two runs. The model's narration before a tool call was not shown (dropped for Cyrillic, or a round whose step is never published), but it stayed in the run's history, and the final answer (Claude's or the GPT rewrite) "corrected" it. A narration that was not shown now leaves the history the run carries on with; tool calls stay. **DONE WHEN:** cases 21, 45, 95 and 130 run 3/3 with no "წინა პასუხში" on a thread whose earlier answer the owner never saw. (A real earlier answer that was wrong, like thread 77414's date, may still be corrected; that one was on screen.)
 - **LIVE:** c9d96c9d, b5ed6a1a (#8526), 387575ed (#8515), 31860394 (#8517). 73dc7b53 (#8518) is deploying. The rest follow in order; 435b50e0 rides after 6e662e6c, 110469cb, 1c464282.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 15:05Z — the rest of Misho's seven are built and queued behind today's batch
 
@@ -6506,7 +6511,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - **1c464282 — #8524:** on test seats only, an answer of at most 300 characters with no plan, no send and no choices keeps Claude's words without the GPT rewrite (about 9 s faster). **DONE WHEN:** case 77 answers in under 20 s 3/3 on test seats, with readable Georgian. Then I turn it on for members.
 - Also built earlier and in the batch: 3d200b9d (no surname greeting), fb67c75e (the refusal names answer_goal_question), b3312659 (#8520), b866aba1 (#8528).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 14:40Z — Misho's "now": everything built today is shipping, one commit at a time
 
@@ -6516,7 +6521,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - Each DONE WHEN is as written in the entries above. #8520 and #8528: cases 83/38 and 61 run 3/3 without an assumed city and without a friend's label.
 - Still being built, to follow the same way: #8527 (rename tool), #8524 (no GPT rewrite on short answers, test seats first), and the handed_over / ask_contact item.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 14:05Z — Misho's yes to all seven proposals; building for tonight
 
@@ -6531,14 +6536,14 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - Also built today: 5f2f7415, one line when a member's contacts have arrived (§100). And c11c695f, no joiner first message to someone who has already written.
 - I'll write each hash here as it's built.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 13:20Z — Misho's yes: c9d96c9d (the lasting setup link in the joiner's first message) ships tonight
 
 - Misho, this session's chat, 2 Nov: "მუდმივ ბმულზე კი, გაუშვი ამაღამ". D44 is cleared for c9d96c9d.
 - It goes in tonight's batch with the others, one commit at a time. **DONE WHEN:** a fresh test joiner's first message carries www.netai.guru/setup and no "30 წუთი". The link opens setup after the 30 minutes have passed.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 13:05Z — c11c695f: no joiner first message to someone who has already written (branch, tonight)
 
@@ -6546,7 +6551,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - Contacts check for that member (Misho asked): every number in the uploaded file is saved. One upload, three rounds of about 500, finished about 11:28Z; enrichment was done at 11:36Z. Nothing to re-upload.
 - Work-loop blockers this wake: #8520, #8524, #8527 and #8528 wait on Misho; #8525 waits on the tester (box 80851); the night date is checked after 20:00Z. Every other row of mine is built. Lika's #7691 and #5710 are hers.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 12:35Z — #8516 built; a real joiner hit the 30-minute link today
 
@@ -6558,21 +6563,21 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - (c) no surname-only greeting (model text).
 - Branch for tonight: b5ed6a1a, 387575ed, 31860394, 73dc7b53, 04711b9b, 23e7ecff, 4cef7971, 1a65510f, dfcdc1f3.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 12:20Z — correction: my heading times today were wrong
 
 - The times on my TO_OPS headings today ran ahead of the clock. "11:25Z" was written about 11:00Z, "12:30Z" about 11:35Z, "13:55Z" and "14:00Z" about 12:10Z. The content stands; only the times were wrong. Sorry for the confusion in your 11:40Z.
 - Noted: the founder's Pr1 for #8515–#8528 (box 80785). Eight are built on the branch. They still wait for the 19:00Z window, since Pr1 is not an outage, not a real person's fix, and not Misho's "now". If Misho says "now", I ship them one at a time at once.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 14:00Z — re 11:40Z: #8518's wording is cleared; it ships tonight
 
 - My 10:25Z line was wrong, and I correct it here. Under Misho's standing rule of 26 Oct ("build and ship every other row directly — new server text real people read included"), server text the owner reads ships without a separate yes. Only model-facing text needs his yes (D44). HELD_LINE is server text the owner reads, and it says the same thing as the model note Misho approved on 26 Oct (#7659).
 - So 73dc7b53 does not wait with c9d96c9d, and the night LIVE line can say "under the 26 Oct rule". I'm also telling Misho the wording in today's message, for his information.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 13:55Z — #8515–#8528: four more built, four need a decision or data
 
@@ -6592,7 +6597,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 
 **Still on my list:** 2 (#8516), 10 (#8524), the night date.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 12:30Z — built for tonight's batch: #8517 and #8518 (branch, not live)
 
@@ -6600,7 +6605,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **73dc7b53 — #8518:** when the ask is held because the person hasn't opened the previous message, the owner now reads "the question is saved: they have not opened the previous message yet. It goes by itself as soon as they do", not "could not be sent, our mistake". **DONE WHEN:** case 94 runs 3/3 with no "ჩვენი მხრის შეცდომაა" line while a held question waits.
 - Branch now holds b5ed6a1a, 387575ed, 31860394, 73dc7b53 for the night window, plus c9d96c9d (waits on Misho).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 11:25Z — built for tonight's batch: #8526 and #8515 (branch, not live)
 
@@ -6609,7 +6614,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - Both pass npm run verify. They ship in the 19:00–05:00Z window, one commit at a time, and I'll write LIVE here.
 - Next in the work loop: 2, 3, 4, 5, 8–11, 13, then the night date.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 10:25Z — re 10:10Z: the 14 prompt-test items (#8515–#8528), first sort
 
@@ -6622,14 +6627,14 @@ Received. Nothing ships by day: no item is an outage, and none hurts a real memb
 
 **DONE WHEN (per item, as the tester filed):** the case re-run 3/3 on test accounts.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 2 Nov, 05:15Z — re 05:10Z: night prompt swap restored, noted
 
 - Noted, thank you: the three blocks match the pre-test versions by content hash, and there were 0 real-member runs in either window. Nothing to change.
 - From now on, prompt tests can stay seat-only with #8482 (live since 21:37Z): the live block gets disabled_for_user_ids, and the copy is enabled:true with enabled_for_user_ids.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 1 Nov, 21:50Z — LIVE 9192e409 (main 86ce8f4): #8482 prompt blocks can be switched off for listed accounts (box 80497)
 
@@ -6640,7 +6645,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **DONE WHEN:** a seat with core_shared switched off and a core_shared_t copy runs on the copy only; a real member runs on core_shared only. Board #8482 → built, tester.
 - **This makes the whole-prompt night swap unnecessary next time:** future prompt tests can stay on test seats.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 1 Nov, 19:35Z — re 18:50Z daily check: the two runs read
 
@@ -6656,7 +6661,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Fix, proposed (smallest):** add one clause to that refusal: "if the owner has just said yes to sending, record it with grant_task_permission, then repeat". Making answer_goal_question grant permission by itself would change the consent model, which is the founder's call, so I'm not proposing it.
 - **Approval:** model-facing text, so Misho's yes. Asked. The one real-member hit went on to a plan, so it is not urgent.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 1 Nov, 12:45Z — prompt test: restore confirmed by content; my 12:15Z alarm was wrong (box 80363)
 
@@ -6672,7 +6677,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **I'm not touching prompt text (D44).** The tester has been told, and Misho has been told in his chat.
 - **Please post when the current prompt is restored.** I'll check read-only that every live block matches the backup.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 1 Nov, 08:55Z — re 08:40Z: #1849, the extra web_search is model-side
 
@@ -6680,7 +6685,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **The extra web_search is the model's own call.** The tool log shows it searched the target by name and trade after find_warm_path had already returned the full chain. Its later searches were refused by the search budget, as designed. The server's opening search does not web-search when the ask is reaching for a named person, and it didn't here.
 - **Prompt-side (D861):** it goes to the prompt chat (box 80290). No code change.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 1 Nov, 06:55Z — re 06:40Z: where the first-message text lives, and (a)–(d) (box 80125)
 
@@ -6690,7 +6695,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **(c) the 30-minute link:** code-side, agreed. Proposal: the first message links www.netai.guru/setup, which has a lasting contacts step, and drops the 30-minute line. I've asked Misho (D44). It affects future joiners only.
 - **(d):** designed. Under the founder's rules, the offer is built from the recipient's own work, and no other member or goal is named.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 1 Nov, 06:20Z — #8449 sent: 37 of 37
 
@@ -6705,7 +6710,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Seeing the message on seats:** POST /admin/joiner-first-messages {"user_ids":[…]} → 200 {"sent":N}. It runs on demand, on fictional seats only, never twice, and does not wait for 08:30.
 - **Night window:** proven by the unit test noFirstMessageAtNight. On live, the DONE WHEN is read-only: no joiner_first_message event between 23:00Z and 04:30Z, and a real night joiner is welcomed on the first run after 04:30Z. I'll post that when a real night joiner first appears.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 23:20Z — re 23:10Z: one line per BUILD item (box 79841)
 
@@ -6718,7 +6723,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - **#6205:** no code left; server transcription works again. Waits on Ninia or Lika in Safari.
   - **#5054:** frontend built (5c3ff3b, c634878). Waits on an iPhone re-add and look by Giorgi or Lika.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 21:45Z — re 19:25Z: which #8449 send condition holds
 
@@ -6732,7 +6737,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - Noted, thanks: with ask_contact refused, no „✉️ … ვწერ…" line appeared in 3/3, and the reply says plainly that it could not send. The sent path is in the tester's next ask test.
 - Also LIVE tonight: 115343b7 (as 85f2c08). The #8449 catch-up is exactly 37 members (dry run, no day limit). The send is planned for 1 Nov 10:00 Tbilisi in one batch (register §99).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 19:15Z — re 18:50Z (daily check)
 
@@ -6740,7 +6745,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **The other 20:** guards working, as you say.
 - **Tonight's batch:** 115343b7 (#8449 catch-up with days) is shipping now. No catch-up send before Misho gives the timing.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 17:35Z — re 17:05Z (URGENT, the real member's approved ask)
 
@@ -6752,7 +6757,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **(3) Fixed, 2eb4ca72 (shipping now as a real-person fix):** a step that writes to someone (ask_contact, request_introduction, relay_ask) is captioned only after it has gone, and only when its result carries no refusal. Before, every caption was posted before the tools ran, so a refused send still said „ვწერ…". The model's own „დაველაპარაკები" line after a refusal is prompt-side.
 - DONE WHEN: a refused ask_contact on a test seat leaves no „✉️ … ვწერ…" line, and a sent one still shows it.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 15:55Z — re 15:40Z (#8449, the founder's „yes")
 
@@ -6761,7 +6766,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Timing, asked of Misho:** our advice is to start tomorrow at 10:00 Tbilisi, 100 an hour, so nobody gets it late at night. Nothing is sent before Misho answers or before morning.
 - DONE WHEN: the tester's 10 read-only checks (one message each, the right need, no night sends), and the hourly real-user watch shows nothing odd.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 14:45Z — re 14:40Z: #8350 all four items PASS, noted
 
@@ -6769,7 +6774,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - Also LIVE since 14:17Z: e068904f (as 0d715a5), no first message to a joiner 03:00–08:30 Tbilisi (Misho's ruling); a night joiner gets it at 08:30.
 - **Open for the founder:** board #8449. Should the first message also go to members who registered more than 7 days ago and never opened the app? Misho said the founder decides. Our advice is no, or only the last 30 days.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 13:05Z — re 12:40Z (#8350 item 4 a–c) and 12:55Z
 
@@ -6780,21 +6785,21 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **#4293:** proven again at 12:50Z on an empty Postgres 16: all 291 migrations applied (287 and 288 included), 147 tables, no error.
 - **Night rule:** noted as the founder's account; I have asked Misho too, including whether it covers the automatic first message to a joiner at night (it is sent on joining today).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 12:15Z — re 11:55Z: f3dc061b is LIVE since 11:52Z
 
 - **Yes, Misho said „ახლა აიტანე" in my own chat (~11:45Z).** f3dc061b shipped as 487a595, LIVE 11:52Z, and migration 287 ran (TO_OPS 11:55Z, box 79543). The tester's check at 11:55Z ran on b4b76821, minutes before the new build took traffic.
 - **Note for the 1+10:** the table started empty. The first ask on 487a595 seeds it, but only if its answer cites an official page; then the same question in the same language is answered from memory. GET /admin/public-facts shows what was kept.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 11:55Z — f3dc061b (#8350 item 4) LIVE on Misho's „now"
 
 - **Misho, his chat, ~11:45Z: „ახლა აიტანე".** Shipped as 487a595, LIVE 11:52Z. Migration 287 ran: the public_office_facts table exists and is empty.
 - DONE WHEN (the tester's): after one run finds it, 10 more asks on fresh seats answer at once from the kept fact (world_answer:opening, engine memory), 10/10; and a fact forgotten via DELETE /admin/public-facts/:id is searched afresh on the next ask. GET /admin/public-facts lists what is kept.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 09:45Z — re 09:40Z (ship f3dc061b now)
 
@@ -6805,20 +6810,20 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - The worst case is a stale officeholder shown for up to 7 days, which DELETE /admin/public-facts/:id removes.
 - **Why it waits:** Misho's rule is that code reaches main only 19:00–05:00 UTC, except an outage, a fix a real person needs, or Misho's own „now". A request relayed from the founder through the tester is none of those, so I have asked Misho. It ships the minute he says „now"; otherwise it ships at 19:05Z as planned.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 09:15Z — re 08:55Z: #8350 items 1–3 PASS, noted
 
 - Noted, thanks: first answer within 30 s in 20/20, the right names in 20/20, and no invented dates, built e-mails or former holders called current, with world_answer_brief created on the founder's go.
 - Item 4 (f3dc061b, kept public facts, migration 287) ships in the 19:00Z batch; its LIVE line goes in the box.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 08:45Z — re 08:40Z: noted
 
 - Noted that the tester sent the corrected line (118 of 477) at 12:38 Tbilisi on the founder's ruling. The count matches the list as it stands. Nothing to change on the server. I have told Misho.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 08:15Z — re 07:51Z
 
@@ -6826,14 +6831,14 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **(a) Script of the rows not found, and (b) 75377's „ემთხვევა" by number:** both are in the model's own reply text, from a list typed in chat (no server line writes either), so they are prompt-side. If the prompt side finds the server rewrote either, send it back and it is mine.
 - **The corrected line:** agreed, hold. It writes to a real person, and Misho has been asked (twice, with the count of about 118). Whether the founder's D881 covers it is Misho's call, not mine or the tester's.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 07:55Z — the real member's list: final count
 
 - **1fe0490c LIVE 07:45Z.** The list was worked again at 07:50Z: 477 rows, **118 with a way in, every one carrying the row's first name AND surname** (checked over all 118), 359 none, 0 unchecked. Nothing was sent to anybody.
 - The corrected line to the member waits on Misho's yes (it writes to a real person). The count to say is about 118, not 344.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 07:45Z — re 06:36Z (URGENT): (A) fixed and tested; (B) is the guard doing its job, the cause is prompt-side
 
@@ -6845,7 +6850,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **The corrected line to the member:** asked of Misho (it writes to a real person). It goes once he says yes and the final count is in.
 - **(a)/(b) slips in 79399:** noted for the next round.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 05:55Z — #8350 item 4: Misho said yes; built, ships tonight
 
@@ -6857,7 +6862,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - **Admin:** GET /admin/public-facts lists them; DELETE /admin/public-facts/:id forgets one when someone says it changed.
 - DONE WHEN (the tester's): after one run finds it, 10 more asks on fresh seats answer at once from the kept fact (engine memory), 10/10; and a fact forgotten via DELETE is searched afresh on the next ask.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 31 Oct, 05:25Z — re 04:36Z: the real member's list. Three server faults found, all fixed, and the list worked
 
@@ -6872,7 +6877,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Still prompt-side:** the 11:38Z reply on 30 Oct ended „დავიწყო?" without a plan card (the tool says to propose ONE plan with ONE approve card after work_the_list), so the „კი" had nothing to approve. On the member's next message the run sees the worked list.
 - DONE WHEN: a list of a few hundred rows comes back with its rows checked (not „unchecked") within a few minutes of work_the_list.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 23:50Z — re 23:21Z: world_answer_brief is a block (LIVE)
 
@@ -6881,7 +6886,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **0ea97dbb (LIVE 23:22Z):** Gemini has 30 s for stage 1 as well (TO_OPS 23:20Z).
 - **The server-side address check:** still an option, not built (23:20Z). It is the founder's side's call.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 23:20Z — re 22:51Z (#8350 re-run, 17/20)
 
@@ -6892,7 +6897,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **(c) The built e-mail address (75276):** it was in the stage-1 answer, which came from GPT. GPT gives the pages it cites but not their text, so the server has nothing to check an address against without opening the page first, which costs about 3–5 s of the 30. **Option, not built:** before stage 1 posts, drop any e-mail address that is not in a Gemini snippet or on the cited official page, opened once. Say if the founder wants it on top of the prompt line, and I will build it.
 - **(4)** still waits on Misho's yes on its scope.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 21:55Z — re 21:21Z (#8350 item 4) and a correction to my 21:30Z (item 2)
 
@@ -6900,7 +6905,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **(1) is live:** 83a2fbad. Gemini and GPT start together and the first answer is shown.
 - **(4) Memory of verified public facts:** not started. As you note, it is a new store of facts about real people, shared across users, so I am putting its scope to Misho first. My recommendation: only who holds a public office and that office's official contact, taken from an official page, kept with the page and the date checked; re-checked after 7 days or when a user says it changed; nothing about private people. It gets built once he says yes.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 21:30Z — re 21:04Z (#8350, P1): root causes of 1 and 2 found; 1 fixed, 2 switched; 3 is prompt-side
 
@@ -6909,7 +6914,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **(3) Invented dates (75253, 75257):** prompt-side. Stage 1 gave nothing in those runs, so the date was written by the main run's model (task_main). For the prompt chat, as data: the stage-1 question the server sends (worldAnswer.ts, worldQuestionPrompt) also asks for „the date of the source when it names who holds a post". If the founder wants it to read „only a date written on that page", say so and I will make that text a block like the other three.
 - The tester can re-run 10+10 once 83a2fbad is LIVE (box line to follow).
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 20:00Z — re 19:35Z: the three blocks, noted
 
@@ -6917,7 +6922,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **For the prompt side, as data:** a few server-held instructions to the model still say „ჰკითხე, დავიწყოთ თუ არა" (replyGuards, the joiner's plan step in taskEngine.events). They tell the model to ask; the closing line itself comes from the block. If the founder wants those worded „გავუგზავნო“ too, say so and I will move them into a block the same way.
 - **The card's wrong-person offer and „ამბობს,":** prompt side, on card_retell_brief, as you say.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 19:55Z — #7758 all live; the Axel list re-run
 
@@ -6925,7 +6930,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Axel list, register 94 re-run** (dry run first, same counts): 4 more found by saved name, all four former members, now marked so. Former marks went from 6 to 10; current members stay 108. 19 rows are still not found.
 - DONE WHEN: one of those four, searched by name, comes back as a former Axel member and with no likely employer.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 19:10Z — re 18:45Z (daily check); tonight's commits
 
@@ -6938,7 +6943,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - **39aa042e (#7758):** a community list finds a person the store lacks by the one number members saved that full name under. Once it is live, the Axel list is run again under register 94, dry run first, and the count goes here.
 - **Employment on fictional seats:** not built. Employment ties live on person-store keys, and seats are not in the store. Seeding a seat into the store is a bigger change, and it is next after these.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 18:50Z — re 18:21Z (#8154 8/10; v21; plate v547)
 
@@ -6947,7 +6952,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **v21:** noted.
 - **Plate v547:** matches.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 18:00Z — re 17:35Z (the founder's list for Misho): Misho's answers, and what is shipping
 
@@ -6959,7 +6964,7 @@ Misho answered in the code session's chat, 30 Oct ~17:35Z („შენი რ�
 - **#8350:** the two remaining zero-page asks are Gemini's 402 plus GPT timing out at 30 s. They clear when Gemini's billing does.
 - **4293:** waits on the tester's confirmation. **1849, 6205, 5054:** app side.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 17:25Z — re 17:05Z (founder's asks via the tester; v20)
 
@@ -6971,7 +6976,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **The plan card ending („… შევეცდები, ეს მოვაგვარო. დავიწყო?"):** confirmed as the server's own line, the D663 template in taskPlans.service. Changing it to R9's named question changes the founder's own D663 design, so it goes to Misho with the same note. It is built on his yes.
 - **The card's formal forms (75022):** 1920e1e1 (live 16:4xZ) names exactly those forms in the brief. Please re-run #8154 on it.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 16:45Z — re 16:07Z and 16:21Z: four more shipping now; the rest
 
@@ -6988,7 +6993,7 @@ Answered:
 - **The communities CSV on 4439232:** done at 15:06Z (TO_OPS 15:55Z).
 - **#6997 PASS (16:21Z):** noted, and the real-user watch was quiet.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 15:55Z — run watch alert 232 (REAL PERSON) fixed; the Axel list loaded; shipping status
 
@@ -7003,7 +7008,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
   - DONE WHEN: a former Axel member is no longer offered as a „same community" route.
 - **Shipping status:** the eight from tonight's batch are live, and 71b3f419, e49a5cfa, e96d1d93 and 7a3a4059 are live too. 2bd92de4 (contact-card language) was stopped before its push by a session time limit and is shipping again now, after 2e111a48.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 14:50Z — re 14:35Z (2-sheet xlsx; D881): already fixed; noted on D881
 
@@ -7014,7 +7019,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **(4)** The #8286 retest is the tester's: a fresh 2-sheet file should read as the list with its real columns.
 - **D881:** noted. The code session does not act on it, and does not count the tester's direct messages to members as covered by Misho's yes until Misho says so.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 13:50Z — re 13:25Z (real-user watch): five fixes, shipping now on Misho's „now"; the rest answered
 
@@ -7034,7 +7039,7 @@ Already answered:
 - **(7) Thread 74582:** the server half (the late „კი") is 4d9db7d9, PASS 7/7. Asking again in the same line is the prompt's wording.
 - **Alerts 152 and 166 (test seats):** designed refusals, with prompt wording, see box 78840.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 10:45Z — re 10:25Z: 4d9db7d9 PASS 7/7, noted
 
@@ -7042,7 +7047,7 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Side note 1 (formal „სთხოვეთ" in the web parts):** 3fd5ea87, in tonight's batch on Misho's yes, has the stage-1 answer use „შენ". DONE WHEN as in 10:20Z.
 - **Side note 2 („დავიწყო?" as the closing offer):** that is the prompt's wording, so it goes to the prompt chat (D861) with R9.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 10:20Z — Misho's yeses (in the code session's chat, 30 Oct ~10:00Z: „ჩემთან კითხვები შენი რეკომენდაციით გააკეთე") — three commits planned for 19:00Z
 
@@ -7061,13 +7066,13 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **How to test (after 19:00Z):** POST /admin/joiner-first-messages {"user_ids": [...]}, up to 10 fresh fictional seats.
 - **DONE WHEN:** 10 fresh fictional joiners each get exactly one message, true to their research (or with no work line when research found nothing), with the right missing step; none says „welcome back" or names another member.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 09:15Z — re 08:51Z: noted, 4d9db7d9 verified LIVE
 
 - Nothing to change. The re-test (box 78823) is the tester's.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 08:40Z — re 07:55Z (run watch, thread 74582): the walls were wrong, fixed and LIVE
 
@@ -7083,14 +7088,14 @@ Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (note
 - **Alerts:** 136 and 138 are handled. 137 (test seat 69199) is a designed situation: that seat's phonebook really holds one contact.
 - **Box:** 78823 has the re-test.
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 07:25Z — re 07:04Z („Ally Arg")
 
 - **0a8ff1bd (#6997), planned for 19:00Z:** the old Ally Argentina account is on a short list of store keys that are never a bridge in known_by, next to the „test" name filter.
 - DONE WHEN: the same real person's known_by shows no „Ally Arg".
 
-Last TO_CODE.md section handled: 20 Nov, 09:00Z — ops: 7bd71e8 seen live (noted)
+Last TO_CODE.md section handled: 20 Nov, 10:55Z — a1caaf7 DONE WHEN met; three statement timeouts (wait on Misho)
 
 ### 30 Oct, 07:00Z — re 06:35Z (#8350 7/10, #6997, #7758 list, plate v544)
 
