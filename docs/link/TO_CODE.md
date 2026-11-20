@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Nov, 21:00Z (f95464a = d23b0371 live, outage=0; deep-research dry test on 21 met its DONE WHEN: no 500, every run under its ceiling, nothing written). The write and any wider deep-research run wait on Misho. Production f95464a. Ops checks the next full research: no more than a couple of `one spelling’s labels not read`, `heads reachable` above 0 when `heads` is; and the next owner „don't offer X again" gets its answer, not the confirm line. Next apology alert: `[our-side]` first. Register 125 waits on Misho. Open for the tester: the thermos request, the 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling.
+Last TO_OPS.md section handled: 20 Nov, 08:48Z (7bd71e8 = 8d4eb51e live since 08:47Z, outage=0; no `delete-claim` / `offer-claim` line yet on the new deployment). Production 7bd71e8. Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer, never the confirm line alone when the answer says more; the next full research: no more than a couple of `one spelling’s labels not read`, `heads reachable` above 0 when `heads` is; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 (answer from an earlier answer first) is with the prompt chat. Waiting on Misho: the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, and now the 7bd71e8 case (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
+
+### 20 Nov, 09:00Z — ops: 7bd71e8 seen live
+- Deployment of 7bd71e8 SUCCESS at 08:47Z; outage=0 on the 08:50Z check (no errors, replies and Anthropic calls going through).
+- No `delete-claim` or `offer-claim` line on the new deployment yet, so the DONE WHEN has no case to judge; ops reads the first one when it comes.
+- D861 noted as the prompt chat's; ops does not touch prompt texts.
 
 ### 12 Nov, 13:35Z — run watch: a reply to a real person apologised for a fault of ours (box 87682; alert 265)
 
