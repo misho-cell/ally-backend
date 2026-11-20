@@ -1,7 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type OpenAI from 'openai';
 import { openaiClient } from '../config/openai';
-import { finalAnswerModel, toLedgerUsage, unusableReason } from './finalAnswer.service';
+import { finalAnswerModel, unusableReason } from './finalAnswer.service';
+import type { ClaudeUsage } from './costLedger.service';
 import { plainSystemPrompt } from './systemPromptParts';
 
 /**
@@ -11,6 +12,12 @@ import { plainSystemPrompt } from './systemPromptParts';
  * run loop is unchanged: this file translates the step it would have sent to
  * Claude into OpenAI's function-calling form and the reply back into Claude's
  * message shape, so every guard, tool and ledger row downstream works as before.
+ *
+ * The Responses API, not chat completions: the first live run (20 Nov, 15:28Z)
+ * was refused on every step — „Function tools with reasoning_effort are not
+ * supported for gpt-6.2-sol in /v1/chat/completions". A step that decides what
+ * to do next is worth the model's reasoning, so it goes where tools and
+ * reasoning go together.
  *
  * A failed, empty or unreadable GPT step returns null and that one step is
  * Claude's, as the final writer already does: a second provider must not be
@@ -28,11 +35,11 @@ export function agentModel(): string {
 const REQUEST_TIMEOUT_MS = 120_000;
 const NO_RESULT = 'No result was returned for this call.';
 const ID_PREFIX = 'gpt_';
-const NO_TOOL_CHOICE = 'none';
+const SAFE_ID_RE = /^[A-Za-z0-9_-]+$/u;
+const MAX_OUTPUT_REASON = 'max_output_tokens';
 
-type ChatMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
-type ChatTool = OpenAI.Chat.Completions.ChatCompletionTool;
-type ToolCall = OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
+type InputItem = OpenAI.Responses.ResponseInputItem;
+type FunctionCall = OpenAI.Responses.ResponseFunctionToolCall;
 
 interface Block {
   readonly type?: string;
@@ -55,16 +62,15 @@ export interface AgentStepRequest {
 }
 
 /** Pure: the run's tools as OpenAI functions; a tool without a schema is not one GPT can call. */
-export function toChatTools(tools: AgentStepRequest['tools']): ChatTool[] {
+export function toFunctionTools(tools: AgentStepRequest['tools']): OpenAI.Responses.FunctionTool[] {
   return tools
     .filter((t) => typeof t.input_schema === 'object' && t.input_schema !== null)
     .map((t) => ({
       type: 'function' as const,
-      function: {
-        name: t.name,
-        description: t.description ?? '',
-        parameters: t.input_schema as Record<string, unknown>,
-      },
+      name: t.name,
+      description: t.description ?? '',
+      parameters: t.input_schema as Record<string, unknown>,
+      strict: false,
     }));
 }
 
@@ -89,75 +95,77 @@ function joinedText(blocks: readonly Block[]): string {
     .trim();
 }
 
-function assistantMessage(blocks: readonly Block[]): ChatMessage {
-  const calls: ToolCall[] = blocks
+function assistantItems(blocks: readonly Block[]): InputItem[] {
+  const text = joinedText(blocks);
+  const calls: InputItem[] = blocks
     .filter((b) => b.type === 'tool_use')
     .map((b) => ({
-      id: b.id ?? '',
-      type: 'function' as const,
-      function: { name: b.name ?? '', arguments: JSON.stringify(b.input ?? {}) },
+      type: 'function_call' as const,
+      call_id: b.id ?? '',
+      name: b.name ?? '',
+      arguments: JSON.stringify(b.input ?? {}),
     }));
-  const text = joinedText(blocks);
-  return calls.length > 0
-    ? { role: 'assistant', content: text === '' ? null : text, tool_calls: calls }
-    : { role: 'assistant', content: text };
+  return text === '' ? calls : [{ role: 'assistant', content: text }, ...calls];
 }
 
-function userMessages(blocks: readonly Block[]): ChatMessage[] {
-  const results: ChatMessage[] = blocks
+function userItems(blocks: readonly Block[]): InputItem[] {
+  const results: InputItem[] = blocks
     .filter((b) => b.type === 'tool_result')
     .map((b) => ({
-      role: 'tool',
-      tool_call_id: b.tool_use_id ?? '',
-      content: resultText(b.content),
+      type: 'function_call_output' as const,
+      call_id: b.tool_use_id ?? '',
+      output: resultText(b.content),
     }));
   const text = joinedText(blocks);
   return text === '' ? results : [...results, { role: 'user', content: text }];
 }
 
-/**
- * OpenAI refuses a history where a call has no result or a result has no call;
- * Claude's history can carry either after a trimmed or interrupted turn. A lone
- * call gets a „no result" line, a lone result becomes plain text.
- */
-export function pairedCalls(sent: readonly ChatMessage[]): ChatMessage[] {
-  const out: ChatMessage[] = [];
-  let open = new Set<string>();
-  const closeOpen = (): void => {
-    for (const id of open) out.push({ role: 'tool', tool_call_id: id, content: NO_RESULT });
-    open = new Set();
-  };
-  for (const m of sent) {
-    if (m.role === 'tool') {
-      if (open.delete(m.tool_call_id)) out.push(m);
-      else out.push({ role: 'user', content: `[result] ${String(m.content)}` });
-      continue;
-    }
-    closeOpen();
-    out.push(m);
-    if (m.role === 'assistant') open = new Set((m.tool_calls ?? []).map((c) => c.id));
-  }
-  closeOpen();
-  return out;
+function callIdOf(item: InputItem): string | null {
+  return 'type' in item && item.type === 'function_call' ? item.call_id : null;
 }
 
-/** Pure: the system prompt and Claude's history as an OpenAI conversation. */
-export function toChatMessages(
+function outputIdOf(item: InputItem): string | null {
+  return 'type' in item && item.type === 'function_call_output' ? (item.call_id ?? '') : null;
+}
+
+/**
+ * OpenAI refuses a history where a call has no output or an output has no call;
+ * Claude's history can carry either after a trimmed or interrupted turn. A lone
+ * call gets a „no result" output, a lone output becomes plain text.
+ */
+export function pairedCalls(items: readonly InputItem[]): InputItem[] {
+  const called = new Set(items.map(callIdOf).filter((id): id is string => id !== null));
+  const answered = new Set(items.map(outputIdOf).filter((id): id is string => id !== null));
+  return items.flatMap((item): InputItem[] => {
+    const callId = callIdOf(item);
+    if (callId !== null && !answered.has(callId)) {
+      return [item, { type: 'function_call_output', call_id: callId, output: NO_RESULT }];
+    }
+    const outputId = outputIdOf(item);
+    if (outputId !== null && !called.has(outputId)) {
+      const output = 'output' in item ? String(item.output) : '';
+      return [{ role: 'user', content: `[result] ${output}` }];
+    }
+    return [item];
+  });
+}
+
+/** Pure: the system prompt and Claude's history as Responses input. */
+export function toInputItems(
   systemPrompt: string,
   messages: readonly Anthropic.MessageParam[],
-): ChatMessage[] {
-  const sent: ChatMessage[] = [{ role: 'system', content: plainSystemPrompt(systemPrompt) }];
+): InputItem[] {
+  const items: InputItem[] = [{ role: 'system', content: plainSystemPrompt(systemPrompt) }];
   for (const m of messages) {
     const blocks = blocksOf(m.content);
-    if (m.role === 'assistant') sent.push(assistantMessage(blocks));
-    else sent.push(...userMessages(blocks));
+    items.push(...(m.role === 'assistant' ? assistantItems(blocks) : userItems(blocks)));
   }
-  return pairedCalls(sent);
+  return pairedCalls(items);
 }
 
-function toolChoice(req: AgentStepRequest): OpenAI.Chat.Completions.ChatCompletionToolChoiceOption {
-  if (req.forceText) return NO_TOOL_CHOICE;
-  if (req.forceTool !== undefined) return { type: 'function', function: { name: req.forceTool } };
+function toolChoice(req: AgentStepRequest): OpenAI.Responses.ResponseCreateParams['tool_choice'] {
+  if (req.forceText) return 'none';
+  if (req.forceTool !== undefined) return { type: 'function', name: req.forceTool };
   return 'auto';
 }
 
@@ -172,27 +180,20 @@ function parsedInput(args: string): Record<string, unknown> | null {
   }
 }
 
-function toolUseBlocks(calls: readonly ToolCall[]): Anthropic.ToolUseBlock[] | null {
+function toolUseBlocks(calls: readonly FunctionCall[]): Anthropic.ToolUseBlock[] | null {
   const blocks: Anthropic.ToolUseBlock[] = [];
   for (const call of calls) {
-    if (call.type !== 'function') return null;
-    const input = parsedInput(call.function.arguments);
+    const input = parsedInput(call.arguments);
     if (input === null) return null;
-    const id = /^[A-Za-z0-9_-]+$/u.test(call.id) ? call.id : `${ID_PREFIX}${blocks.length}`;
-    blocks.push({
-      type: 'tool_use',
-      id,
-      name: call.function.name,
-      input,
-      caller: { type: 'direct' },
-    });
+    const id = SAFE_ID_RE.test(call.call_id) ? call.call_id : `${ID_PREFIX}${blocks.length}`;
+    blocks.push({ type: 'tool_use', id, name: call.name, input, caller: { type: 'direct' } });
   }
   return blocks;
 }
 
-function stopReason(finish: string | null, calls: number): Anthropic.StopReason {
+function stopReason(response: OpenAI.Responses.Response, calls: number): Anthropic.StopReason {
   if (calls > 0) return 'tool_use';
-  return finish === 'length' ? 'max_tokens' : 'end_turn';
+  return response.incomplete_details?.reason === MAX_OUTPUT_REASON ? 'max_tokens' : 'end_turn';
 }
 
 /** Why GPT's step cannot stand in for Claude's, or null when it can. */
@@ -201,46 +202,66 @@ export function unusableStep(text: string, calls: number, language: string): str
   return text.trim() === '' ? null : unusableReason(text, language);
 }
 
+function answerText(output: readonly OpenAI.Responses.ResponseOutputItem[]): string {
+  return output
+    .flatMap((item) => (item.type === 'message' ? item.content : []))
+    .flatMap((part) => (part.type === 'output_text' ? [part.text] : []))
+    .join('');
+}
+
+function ledgerUsage(usage: OpenAI.Responses.ResponseUsage | undefined): ClaudeUsage {
+  const cached = usage?.input_tokens_details?.cached_tokens ?? 0;
+  return {
+    input_tokens: Math.max(0, (usage?.input_tokens ?? 0) - cached),
+    output_tokens: usage?.output_tokens ?? 0,
+    cache_read_input_tokens: cached,
+    cache_creation_input_tokens: 0,
+  };
+}
+
+function claudeUsage(usage: ClaudeUsage): Anthropic.Usage {
+  return {
+    input_tokens: usage.input_tokens ?? 0,
+    output_tokens: usage.output_tokens ?? 0,
+    cache_creation: null,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+    inference_geo: null,
+    output_tokens_details: null,
+    server_tool_use: null,
+    service_tier: null,
+  } as Anthropic.Usage;
+}
+
 /**
  * Pure: GPT's reply as the message Claude would have returned, or null when it
- * cannot stand in for one (no choice, a broken call, unreadable text).
+ * cannot stand in for one (a failed response, a broken call, unreadable text).
  */
 export function toAnthropicMessage(
-  completion: OpenAI.Chat.Completions.ChatCompletion,
+  response: OpenAI.Responses.Response,
   model: string,
   language: string,
 ): Anthropic.Message | null {
-  const choice = completion.choices[0];
-  if (choice === undefined) return null;
-  const text = choice.message.content ?? '';
-  const calls = choice.message.tool_calls ?? [];
+  if (response.status === 'failed') return null;
+  const text = answerText(response.output);
+  const calls = response.output.filter((i): i is FunctionCall => i.type === 'function_call');
   const tools = toolUseBlocks(calls);
   if (tools === null || unusableStep(text, calls.length, language) !== null) return null;
   const content: Anthropic.ContentBlock[] = [
     ...(text.trim() === '' ? [] : [{ type: 'text' as const, text, citations: null }]),
     ...tools,
   ];
-  const usage = toLedgerUsage(completion.usage);
   return {
-    id: completion.id,
+    id: response.id,
     type: 'message',
     role: 'assistant',
     model,
     container: null,
     content,
     stop_details: null,
-    stop_reason: stopReason(choice.finish_reason, calls.length),
+    stop_reason: stopReason(response, calls.length),
     stop_sequence: null,
-    usage: {
-      ...usage,
-      cache_creation: null,
-      cache_creation_input_tokens: 0,
-      cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
-      inference_geo: null,
-      output_tokens_details: null,
-      server_tool_use: null,
-      service_tier: null,
-    },
+    usage: claudeUsage(ledgerUsage(response.usage)),
   } as Anthropic.Message;
 }
 
@@ -250,20 +271,21 @@ export async function gptAgentStep(req: AgentStepRequest): Promise<Anthropic.Mes
   const client = openaiClient();
   if (model === '' || client === null) return null;
   try {
-    const tools = toChatTools(req.tools);
-    const completion = await client.chat.completions.create(
+    const tools = toFunctionTools(req.tools);
+    const response = await client.responses.create(
       {
         model,
-        max_completion_tokens: req.maxTokens,
-        messages: toChatMessages(req.systemPrompt, req.messages),
+        store: false,
+        max_output_tokens: req.maxTokens,
+        input: toInputItems(req.systemPrompt, req.messages),
         ...(tools.length > 0 ? { tools, tool_choice: toolChoice(req) } : {}),
       },
       { timeout: REQUEST_TIMEOUT_MS },
     );
-    const message = toAnthropicMessage(completion, model, req.language);
+    const message = toAnthropicMessage(response, model, req.language);
     if (message === null) {
       // eslint-disable-next-line no-console
-      console.warn(`[gpt-agent] ${model} step not usable — Claude takes it`);
+      console.warn(`[gpt-agent] ${model} step not usable (${response.status}) — Claude takes it`);
     }
     return message;
   } catch (err) {
