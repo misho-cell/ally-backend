@@ -1,13 +1,11 @@
 /**
  * Misho, 20 Nov: GPT makes the run's decisions, not only the last answer
- * (GPT_RUNS_AGENT=true). Each main step crosses to OpenAI and back in Claude's
- * shape; a step GPT cannot take is Claude's.
+ * (GPT_RUNS_AGENT=true). Each main step crosses to OpenAI's Responses API and
+ * back in Claude's shape; a step GPT cannot take is Claude's.
  */
 const mockCreate = jest.fn();
 jest.mock('../../config/openai', () => ({
-  openaiClient: () => ({
-    chat: { completions: { create: (...a: unknown[]) => mockCreate(...a) } },
-  }),
+  openaiClient: () => ({ responses: { create: (...a: unknown[]) => mockCreate(...a) } }),
 }));
 
 import type Anthropic from '@anthropic-ai/sdk';
@@ -18,8 +16,8 @@ import {
   gptRunsTheAgent,
   pairedCalls,
   toAnthropicMessage,
-  toChatMessages,
-  toChatTools,
+  toFunctionTools,
+  toInputItems,
 } from '../gptAgentStep.service';
 
 const SEARCH_TOOL = {
@@ -50,30 +48,41 @@ const REQUEST = {
   language: 'ka',
 };
 
-function completion(
-  message: Partial<OpenAI.Chat.Completions.ChatCompletionMessage>,
-  finish = 'stop',
-): OpenAI.Chat.Completions.ChatCompletion {
+function textItem(text: string): OpenAI.Responses.ResponseOutputItem {
   return {
-    id: 'chatcmpl-1',
-    object: 'chat.completion',
-    created: 0,
-    model: 'gpt-6.2-sol',
-    choices: [
-      {
-        index: 0,
-        finish_reason: finish,
-        logprobs: null,
-        message: { role: 'assistant', content: null, refusal: null, ...message },
-      },
-    ],
+    type: 'message',
+    id: 'msg_1',
+    role: 'assistant',
+    status: 'completed',
+    content: [{ type: 'output_text', text, annotations: [] }],
+  } as unknown as OpenAI.Responses.ResponseOutputItem;
+}
+
+function callItem(callId: string, name: string, args: string): OpenAI.Responses.ResponseOutputItem {
+  return {
+    type: 'function_call',
+    call_id: callId,
+    name,
+    arguments: args,
+  } as OpenAI.Responses.ResponseOutputItem;
+}
+
+function response(
+  output: OpenAI.Responses.ResponseOutputItem[],
+  status = 'completed',
+): OpenAI.Responses.Response {
+  return {
+    id: 'resp_1',
+    status,
+    incomplete_details: null,
+    output,
     usage: {
-      prompt_tokens: 100,
-      completion_tokens: 20,
+      input_tokens: 100,
+      input_tokens_details: { cached_tokens: 40 },
+      output_tokens: 20,
       total_tokens: 120,
-      prompt_tokens_details: { cached_tokens: 40 },
     },
-  } as OpenAI.Chat.Completions.ChatCompletion;
+  } as unknown as OpenAI.Responses.Response;
 }
 
 beforeEach(() => {
@@ -92,63 +101,54 @@ describe('GPT makes the decisions', () => {
   });
 
   it('offers the run’s tools as functions, leaving out one without a schema', () => {
-    const tools = toChatTools([SEARCH_TOOL, { name: 'web_search' }]);
-    expect(tools).toEqual([
+    expect(toFunctionTools([SEARCH_TOOL, { name: 'web_search' }])).toEqual([
       {
         type: 'function',
-        function: {
-          name: 'search_network',
-          description: 'Search the network.',
-          parameters: SEARCH_TOOL.input_schema,
-        },
+        name: 'search_network',
+        description: 'Search the network.',
+        parameters: SEARCH_TOOL.input_schema,
+        strict: false,
       },
     ]);
   });
 
-  it('carries the calls and what they found as calls and results', () => {
-    const sent = toChatMessages('შენ ხარ ასისტენტი.', HISTORY);
-    expect(sent.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'tool']);
-    expect(sent[2]).toMatchObject({
-      content: 'ვეძებ.',
-      tool_calls: [
-        { id: 'toolu_1', function: { name: 'search_network', arguments: '{"query":"ბუღალტერი"}' } },
-      ],
-    });
-    expect(sent[3]).toEqual({
-      role: 'tool',
-      tool_call_id: 'toolu_1',
-      content: 'Nino Beridze — ბუღალტერი',
-    });
+  it('carries the calls and what they found as calls and outputs', () => {
+    const items = toInputItems('შენ ხარ ასისტენტი.', HISTORY);
+    expect(items).toEqual([
+      { role: 'system', content: 'შენ ხარ ასისტენტი.' },
+      { role: 'user', content: 'ვინ იცნობს ბუღალტერს?' },
+      { role: 'assistant', content: 'ვეძებ.' },
+      {
+        type: 'function_call',
+        call_id: 'toolu_1',
+        name: 'search_network',
+        arguments: '{"query":"ბუღალტერი"}',
+      },
+      { type: 'function_call_output', call_id: 'toolu_1', output: 'Nino Beridze — ბუღალტერი' },
+    ]);
   });
 
-  it('gives a call without a result a „no result" line, and a lone result becomes text', () => {
+  it('gives a call without an output a „no result" line, and a lone output becomes text', () => {
     const out = pairedCalls([
+      { type: 'function_call', call_id: 'a', name: 'x', arguments: '{}' },
+      { role: 'user', content: 'შემდეგი' },
+      { type: 'function_call_output', call_id: 'zzz', output: 'stray' },
+    ]);
+    expect(out).toEqual([
+      { type: 'function_call', call_id: 'a', name: 'x', arguments: '{}' },
       {
-        role: 'assistant',
-        content: null,
-        tool_calls: [{ id: 'a', type: 'function', function: { name: 'x', arguments: '{}' } }],
+        type: 'function_call_output',
+        call_id: 'a',
+        output: 'No result was returned for this call.',
       },
       { role: 'user', content: 'შემდეგი' },
-      { role: 'tool', tool_call_id: 'zzz', content: 'stray' },
+      { role: 'user', content: '[result] stray' },
     ]);
-    expect(out.map((m) => m.role)).toEqual(['assistant', 'tool', 'user', 'user']);
-    expect(out[3]).toEqual({ role: 'user', content: '[result] stray' });
   });
 
   it('returns GPT’s tool call as Claude’s tool_use, with the cache counted apart', () => {
     const msg = toAnthropicMessage(
-      completion(
-        {
-          tool_calls: [
-            {
-              id: 'call_9',
-              type: 'function',
-              function: { name: 'search_network', arguments: '{"query":"იურისტი"}' },
-            },
-          ],
-        },
-        'tool_calls',
-      ),
+      response([callItem('call_9', 'search_network', '{"query":"იურისტი"}')]),
       'gpt-6.2-sol',
       'ka',
     );
@@ -171,39 +171,38 @@ describe('GPT makes the decisions', () => {
 
   it('returns GPT’s answer as Claude’s text, ending the turn', () => {
     const msg = toAnthropicMessage(
-      completion({ content: 'Nino Beridze ბუღალტერია, მას გიცნობს.' }),
+      response([textItem('Nino Beridze ბუღალტერია, მას იცნობ.')]),
       'gpt-6.2-sol',
       'ka',
     );
     expect(msg?.stop_reason).toBe('end_turn');
     expect(msg?.content).toEqual([
-      { type: 'text', text: 'Nino Beridze ბუღალტერია, მას გიცნობს.', citations: null },
+      { type: 'text', text: 'Nino Beridze ბუღალტერია, მას იცნობ.', citations: null },
     ]);
   });
 
-  it('will not stand in for Claude with an empty answer, broken arguments or the wrong alphabet', () => {
-    expect(toAnthropicMessage(completion({ content: '' }), 'm', 'ka')).toBeNull();
-    const broken = completion({
-      tool_calls: [{ id: 'c', type: 'function', function: { name: 'x', arguments: '{bad' } }],
-    });
-    expect(toAnthropicMessage(broken, 'm', 'ka')).toBeNull();
+  it('will not stand in for Claude with an empty answer, broken arguments, the wrong alphabet or a failure', () => {
+    expect(toAnthropicMessage(response([]), 'm', 'ka')).toBeNull();
+    expect(toAnthropicMessage(response([callItem('c', 'x', '{bad')]), 'm', 'ka')).toBeNull();
     const english =
       'This answer is written entirely in English and carries no Georgian letter at all, so it is refused.';
-    expect(toAnthropicMessage(completion({ content: english }), 'm', 'ka')).toBeNull();
+    expect(toAnthropicMessage(response([textItem(english)]), 'm', 'ka')).toBeNull();
+    expect(toAnthropicMessage(response([textItem('კარგი.')], 'failed'), 'm', 'ka')).toBeNull();
   });
 
-  it('forces a text turn as tool_choice none and a named tool as that function', async () => {
-    mockCreate.mockResolvedValue(completion({ content: 'კარგი, ვწერ.' }));
+  it('forces a text turn as tool_choice none and a named tool as that function, stored nowhere', async () => {
+    mockCreate.mockResolvedValue(response([textItem('კარგი, ვწერ.')]));
     await gptAgentStep({ ...REQUEST, forceText: true });
     expect(mockCreate.mock.calls[0][0]).toMatchObject({
       model: 'gpt-6.2-sol',
+      store: false,
       tool_choice: 'none',
-      max_completion_tokens: 1000,
+      max_output_tokens: 1000,
     });
     await gptAgentStep({ ...REQUEST, forceTool: 'search_network' });
     expect(mockCreate.mock.calls[1][0].tool_choice).toEqual({
       type: 'function',
-      function: { name: 'search_network' },
+      name: 'search_network',
     });
     expect(typeof mockCreate.mock.calls[1][1].timeout).toBe('number');
   });
