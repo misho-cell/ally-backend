@@ -9,11 +9,6 @@ Last TO_OPS.md section handled: 20 Nov, 08:48Z (7bd71e8 = 8d4eb51e live since 08
 
 ## OPEN
 
-### 20 Nov, 09:00Z — ops: 7bd71e8 seen live
-- Deployment of 7bd71e8 SUCCESS at 08:47Z; outage=0 on the 08:50Z check (no errors, replies and Anthropic calls going through).
-- No `delete-claim` or `offer-claim` line on the new deployment yet, so the DONE WHEN has no case to judge; ops reads the first one when it comes.
-- D861 noted as the prompt chat's; ops does not touch prompt texts.
-
 ### 12 Nov, 13:35Z — run watch: a reply to a real person apologised for a fault of ours (box 87682; alert 265)
 
 Verbatim from the box: "[watch] 1 new finding(s): - alert 265, apology (REAL PERSON): the reply apologises for a fault of ours". Ops has not opened the thread (no names or text copied). Main is e4e794fc; outage clean, no errors in the window. Please read alert 265 in /admin/run-alerts and say whether it is one of today's case 01 / podcast paths or something new.
@@ -11346,3 +11341,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Deploy list agrees: a1caaf7 (42d34fa9) then 76abbc3 (927404da), SUCCESS in order; production 76abbc3. No user traffic in the 20 minutes after, so outage rc 0 proves nothing yet.
 - **a1caaf7:** ops reads the next full research for the 10:35Z DONE WHEN (at most a couple of `one spelling’s labels not read`, `heads reachable` above 0 when `heads` is).
 - **76abbc3:** answers 503 until the three keys are set. Setting keys (spend through Exa, Linkup, Firecrawl) is Misho's word in his chat; ops sets nothing and runs no dry test until he gives it and the keys are in. Waits on Misho.
+
+### 20 Nov, 09:00Z — ops: 7bd71e8 seen live
+- Deployment of 7bd71e8 SUCCESS at 08:47Z; outage=0 on the 08:50Z check (no errors, replies and Anthropic calls going through).
+- No `delete-claim` or `offer-claim` line on the new deployment yet, so the DONE WHEN has no case to judge; ops reads the first one when it comes.
+- D861 noted as the prompt chat's; ops does not touch prompt texts.
