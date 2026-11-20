@@ -99,16 +99,38 @@ export interface CorrectedReply {
  * of it stays, with no question. Only a reply that was nothing but the claim
  * becomes the honest line with its button.
  */
+const SENTENCE_RE = /[^.!?…\n]*(?:[.!?…]+|\n|$)/gu;
+const LETTER_RE = /\p{L}/u;
+
+/**
+ * The reply without every sentence that holds a claimed piece. A test seat,
+ * 20 Nov 15:29Z: the small model named only a clause, and cutting the clause
+ * alone left „მითხარი და ." on the screen. The whole sentence goes, and so does
+ * each sentence of a claim that spans several.
+ */
+function withoutClaimedSentences(reply: string, claimed: readonly string[]): string {
+  const pieces = claimed.map((c) => c.trim()).filter((c) => LETTER_RE.test(c));
+  const sentences = reply.match(SENTENCE_RE) ?? [];
+  return sentences
+    .filter((s) => {
+      const core = s.trim();
+      if (!LETTER_RE.test(core)) return true;
+      return !pieces.some((p) => core.includes(p) || p.includes(core));
+    })
+    .join('');
+}
+
 export function withoutFalseClaim(
   reply: string,
   claimed: readonly string[],
   line: NotDeletedLine,
 ): CorrectedReply {
-  const rest = claimed.reduce((text, sentence) => text.split(sentence).join(''), reply);
+  const rest = withoutClaimedSentences(reply, claimed);
   if (rest.replace(/[\s.,;:!?—–-]+/gu, '') === '')
     return { text: line.text, confirm: line.confirm };
   const kept = rest
     .replace(/[ \t]+\n/gu, '\n')
+    .replace(/\n[ \t]+/gu, '\n')
     .replace(/\n{3,}/gu, '\n\n')
     .replace(/ {2,}/gu, ' ')
     .trim();
