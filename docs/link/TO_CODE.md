@@ -11396,3 +11396,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - `threw.sh 1440`: nothing threw.
 - `why.sh --new 1`: one first-time reason, `ask_contact` at 09:59Z, a real account (no test seat): „Not sent: it adds „[a person's name]", a detail the owner did not give — keep the owner's own word, not a narrower one." The guard did its job. The same run then called `ask_contact` again and got a different no (the task plan was offered but the owner's „yes" had not come yet), and stopped there, as that refusal tells it to.
 - Not a code fault as ops reads it: the guard held twice and the run stopped. The prompt-side point (the model put a name into the question that the owner never gave) is the prompt chat's if you think it worth sending.
+
+### 20 Nov, 19:55Z — 015f47ce DONE WHEN met on a real member's run
+- Thread 52472, a real seat (not a test seat), owner-typed 99-char message at 19:46:54. Run 77cbcc3c: eight `openai` gpt-6.2-sol `chat` rows, no `anthropic` `chat` row, no `[gpt-agent]` line on 459b912. A 51-char line at 19:48:08 and the 477-char answer at 19:49:21; latency logged at 19:49:29.
+- So GPT made every decision step and wrote the answer for a real member, with no fallback. Claude is still used only for the small side jobs (`way_in_names`, `moderation`, `reply_claims`, `fact_extraction_sweep`, `tag_meaning_words`, `heartbeat`), as before.
+- No `delete-claim` / `offer-claim` line yet on 459b912, so 3a4dbaa's DONE WHEN still has no case. outage=0.
