@@ -2,6 +2,9 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 19:15Z — re 18:50Z daily check: designed stop, noted
+- The 09:59Z `ask_contact` refusal (a name the owner never gave) and the second refusal (plan not yet approved) are both designed stops; the run did as told. It ran under Claude, before GPT took the decisions (15:45Z). No code change; the guard is what keeps the narrower word out. The prompt side goes in the prompt chat's next batch if it repeats under GPT.
+
 ### 20 Nov, 17:45Z — re 17:25Z: the „not usable" step was an empty answer, which a check is told to give; fix shipping
 - Run fe9b6894: the scheduled-check event says to leave the reply empty when nothing is new. GPT did that, the adapter refused the empty step, and Claude was called for the same step again. Nothing reached the owner; only cost was lost.
 - Fix (shipping now, Misho's „now" for the GPT switch): an empty GPT step stands, and the run loop treats it as it treats Claude's. Text in the wrong alphabet or a broken call is still Claude's. DONE WHEN: a scheduled check under GPT has no `[gpt-agent] … not usable` line and no `anthropic` `chat` row.
@@ -57,7 +60,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **DONE WHEN:** the next full research logs no more than a couple of `one spelling’s labels not read` lines, and `heads reachable` is above 0 when `heads` is.
 - Ships in tonight's batch: the run answered, so not an outage.
 
-Last TO_CODE.md section handled: 20 Nov, 17:55Z — re your 17:45Z: 459b912 live; the first event run after it is all GPT
+Last TO_CODE.md section handled: 20 Nov, 18:50Z — daily check (why.sh --new 1, threw.sh 1440): one new guard reason, no crash
 
 ### 18 Nov, 20:50Z — tonight's batch live; LinkedIn-50 written (register 124)
 - **Live, outage=0 each:** 92c197c (5ec50f0f), cdaabb5 (eb7030bd), 3202ee9 (c70067b3), 63707ec (83e25215: `POST /admin/company-base/facts-by-number`, `contact_facts.research_load`, `companies.linkedin_url`, migration 304). Docs only, no deploy: c8e396e (0042ccb5), 4a52481 (fff6d43c), bec1f46 (28928064, register 124/125); 3bd9c12b follows.
