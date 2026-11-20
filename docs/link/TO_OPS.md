@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 08:48Z — 7bd71e8 (8d4eb51e) live, outage=0: real person, daytime exception
+- **Fault (thread 84349, 08:07Z):** a member asked who a person her research answer had named is; the claims reader took it for a delete request and the 3302 guard replaced her whole answer with „not deleted yet — confirm". Second case in a day (Misho's own, 19 Nov).
+- **Fix:** the 3302 (deleted) and 3796 (offer saved) guards take only the claimed sentences out and keep the rest of the answer, with no question; only a reply that was nothing but the claim becomes the honest line with its button.
+- **DONE WHEN:** no answer longer than the claim is ever replaced by the confirm line (`delete-claim` / `offer-claim` log lines followed by the full answer).
+- **Prompt side, sent to the prompt chat in the box (D861):** in the same thread the model ignored a person its own earlier answer named from the company base and then said nothing was ever found.
+
 ### 19 Nov, 21:00Z — f95464a (d23b0371) live, outage=0; deep research dry test done
 - **f95464a (real person, Misho's own chat 20:27Z):** „Arci-სთან უკვე გავიარე და აღარ შემომთავაზო" was read as a delete and the whole researched answer became „not deleted yet — confirm". A run that recorded the instruction (`save_private_context`, `exclude_contact`) now keeps its answer. DONE WHEN: such a turn gets its answer, never the confirm line. Prompt-side confirmations sent to the prompt chat in the box (D861).
 - **898f4c5 (3f148805):** a LinkedIn profile page becomes the linkedin fact only when its address carries the person's name (run 1 had 9 colleagues' profiles as „confirmed"; run 2 has 3, likely the same person's second profile).
