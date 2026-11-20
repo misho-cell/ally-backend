@@ -65,4 +65,13 @@ describe('a deletion is claimed only when one happened', () => {
       confirm: null,
     });
   });
+
+  it('takes out the whole sentence when only a clause of it was named (test seat, 20 Nov)', () => {
+    const answer =
+      'შენს ნაცნობებში ხუთი ადამიანია.\n\nთუ ვინმეზე იცი, რას საქმიანობს, მითხარი და შევინახავ. ეს დამეხმარება.';
+    expect(withoutFalseClaim(answer, ['შევინახავ'], notDeletedLine('ka'))).toEqual({
+      text: 'შენს ნაცნობებში ხუთი ადამიანია.\n\nეს დამეხმარება.',
+      confirm: null,
+    });
+  });
 });
