@@ -6902,3 +6902,8 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** migration 306 adds the gpt-6.2-sol price rows first (same rates as 6.1 Sol: $2 in / $0.10 cached / $10 out per million), then Railway `CHAT_FINAL_ANSWER_MODEL=gpt-6.2-sol`. The same variable also names the model for case descriptions and the OpenAI web-search path. „gpt-6.2" ships as two models; Sol is the like-for-like successor of 6.1 Sol (Astra is the dearer flagship).
 - **Checked after:** an owner-typed reply is booked in `usage_events` with model `gpt-6.2-sol` and a non-zero cost.
 - **UNDO:** `printf %s gpt-6.1-sol | ./scripts/ops/env.sh set CHAT_FINAL_ANSWER_MODEL` (the price rows stay; harmless).
+
+## 129 · GPT MAKES THE RUN'S DECISIONS (Misho, his chat, 20 Nov: „მთავარი გადაწყვეტილებების მიღება გააკეთოს ჯიპიტიმ და არა მხოლოდ პასუხის მიწერა")
+- **What:** Railway `GPT_RUNS_AGENT=true`. Each main-model step of a chat run (which tool, with what, when to answer) goes to GPT (`CHAT_AGENT_MODEL`, else `CHAT_FINAL_ANSWER_MODEL`, now gpt-6.2-sol) through `gptAgentStep.service.ts`; a failed, empty or unreadable step is Claude's. The small side models (claims check, search words, small talk) and Gemini web search stay as they are; the final writer (register 127) still runs.
+- **Checked after:** `usage_events` rows `provider=openai kind=chat` appear several times per run, not once; runs finish; `[gpt-agent]` fallback lines are few.
+- **UNDO:** `./scripts/ops/env.sh unset GPT_RUNS_AGENT` (every step is Claude's again; no data changes).
