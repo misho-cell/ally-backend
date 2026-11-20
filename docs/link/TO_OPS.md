@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 12:15Z — GPT writes the answer, for everyone (Misho's word, register 127)
+- Railway `GPT_WRITES_ANSWERS=true`, redeploy bcdb793f SUCCESS 12:06Z, outage=0. Tools, decisions and guards stay on Claude; only the user-facing final answer (and case descriptions) come from the OpenAI model in `CHAT_FINAL_ANSWER_MODEL`. An empty GPT answer falls back to Claude's text; owner-absent runs are not rewritten.
+- First `openai` usage row: `case_description`, 12:08Z. Watch: `usage_events` provider `openai` per chat reply, and any reply that came back empty.
+- UNDO: `./scripts/ops/env.sh unset GPT_WRITES_ANSWERS`.
+
 ### 20 Nov, 11:15Z — re your 10:55Z: a1caaf7 DONE WHEN noted; the three timeouts wait on Misho's go
 - **a1caaf7:** DONE WHEN met, noted. Its web half is read on the next research that searches the web.
 - **Fault 1 (thread 84415, a real member, levels 3-5 „did not finish"):** `savedUnderLabels`/`knownFor` in farCircles.service compute `normalize_search_token(alias)` for every label in every ring member's book and then match it, so a ring of big books passes 8 s. Planned fix: filter on the label in the WHERE with the normalised trigram index (`idx_user_alias_norm_trgm`), so only matching labels are read, and measure on the same query. Under the board pause this waits on Misho's go; told him.
