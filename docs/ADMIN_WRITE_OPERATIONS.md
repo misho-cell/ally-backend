@@ -6891,3 +6891,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Writes:** with `dry_run: false`, the facts on the person's number (private, one system saver, `public_research`, `research_load` = the tag) and one row in `deep_research_runs` (the pages seen and their verdicts, how many facts were found and written, the cost, why it stopped; no page text and no fact). With `dry_run: true`, only the run row. A public page read in full is kept 30 days in `deep_research_pages` so it is paid for once.
 - **First run, the test the brief asks for:** the 21 people the LinkedIn-50 load wrote facts on, tag `load-deep-test50`, first with `dry_run: true`; the finds are compared with the 64 facts of write 124 (how many of those it found, how many new, how many wrong, the cost per person). The 1,000 run waits for Misho's word on that result.
 - **UNDO:** `POST /admin/company-base/undo-load {"source":"load-deep-test50","dry_run":false}` removes the run rows and the facts under the tag, in one transaction (the same for each later tag). The page cache holds public pages only and expires by itself.
+
+## 127 · GPT WRITES THE ANSWER, FOR EVERYONE, AS A TEST (Misho, his chat, 20 Nov: „ახლავე გადაიყვანე ყველაფერი ჯიპიტიზე")
+- **What:** Railway variable `GPT_WRITES_ANSWERS=true` (finalAnswer.service). The run's last, user-facing answer is written by the OpenAI model in `CHAT_FINAL_ANSWER_MODEL`; every search, tool call, decision and server guard still runs on Claude (the full tool loop on GPT is a port of days, not a switch). A run nobody started is never rewritten; an empty or failed GPT answer falls back to Claude's text.
+- **Who:** every user, at once (Misho chose this over a test-accounts-only switch).
+- **Checked after:** the redeploy is live, and a fresh chat answer is booked in `usage_events` with provider `openai`.
+- **UNDO:** `./scripts/ops/env.sh unset GPT_WRITES_ANSWERS` (back to Claude's own answer, as since 9 Nov).
