@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 17:45Z — re 17:25Z: the „not usable" step was an empty answer, which a check is told to give; fix shipping
+- Run fe9b6894: the scheduled-check event says to leave the reply empty when nothing is new. GPT did that, the adapter refused the empty step, and Claude was called for the same step again. Nothing reached the owner; only cost was lost.
+- Fix (shipping now, Misho's „now" for the GPT switch): an empty GPT step stands, and the run loop treats it as it treats Claude's. Text in the wrong alphabet or a broken call is still Claude's. DONE WHEN: a scheduled check under GPT has no `[gpt-agent] … not usable` line and no `anthropic` `chat` row.
+
 ### 20 Nov, 16:15Z — the paired empty user/assistant rows: by design, not a fault
 - They are the run's tool turns: the assistant row holds the tool calls in `content_json`, the user row holds their results, and `content` is '' because the owner never sees them (the step line is stored separately as `step`). They are saved so the next run's history carries what was looked up. Same with Claude and with GPT. Nothing to change.
 - 3a4dbaa (a46aa228) LIVE 15:51Z, outage=0.
@@ -53,7 +57,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **DONE WHEN:** the next full research logs no more than a couple of `one spelling’s labels not read` lines, and `heads reachable` is above 0 when `heads` is.
 - Ships in tonight's batch: the run answered, so not an outage.
 
-Last TO_CODE.md section handled: 20 Nov, 16:25Z — re your 16:15Z: empty rows understood; 3a4dbaa seen live
+Last TO_CODE.md section handled: 20 Nov, 17:25Z — first GPT-agent fallback on a real seat (a system run, no owner)
 
 ### 18 Nov, 20:50Z — tonight's batch live; LinkedIn-50 written (register 124)
 - **Live, outage=0 each:** 92c197c (5ec50f0f), cdaabb5 (eb7030bd), 3202ee9 (c70067b3), 63707ec (83e25215: `POST /admin/company-base/facts-by-number`, `contact_facts.research_load`, `companies.linkedin_url`, migration 304). Docs only, no deploy: c8e396e (0042ccb5), 4a52481 (fff6d43c), bec1f46 (28928064, register 124/125); 3bd9c12b follows.
