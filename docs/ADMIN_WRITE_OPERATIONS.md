@@ -6897,3 +6897,8 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Who:** every user, at once (Misho chose this over a test-accounts-only switch).
 - **Checked after:** the redeploy is live, and a fresh chat answer is booked in `usage_events` with provider `openai`.
 - **UNDO:** `./scripts/ops/env.sh unset GPT_WRITES_ANSWERS` (back to Claude's own answer, as since 9 Nov).
+
+## 128 · GPT-6.2 SOL WRITES THE ANSWER (Misho, his chat, 20 Nov: „ახალ ვერსიაზე გადაიყვანე, gpt-6.2")
+- **What:** migration 306 adds the gpt-6.2-sol price rows first (same rates as 6.1 Sol: $2 in / $0.10 cached / $10 out per million), then Railway `CHAT_FINAL_ANSWER_MODEL=gpt-6.2-sol`. The same variable also names the model for case descriptions and the OpenAI web-search path. „gpt-6.2" ships as two models; Sol is the like-for-like successor of 6.1 Sol (Astra is the dearer flagship).
+- **Checked after:** an owner-typed reply is booked in `usage_events` with model `gpt-6.2-sol` and a non-zero cost.
+- **UNDO:** `printf %s gpt-6.1-sol | ./scripts/ops/env.sh set CHAT_FINAL_ANSWER_MODEL` (the price rows stay; harmless).
