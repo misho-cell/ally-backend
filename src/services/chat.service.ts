@@ -117,7 +117,7 @@ import { heldAsksNote } from './heldAskNote.service';
 import { AskChoice, choicesProblem, parseAskChoices, withoutLaterButton } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
-import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+import { deletionClaimWithoutTool, notDeletedLine, withoutFalseClaim } from './deletionClaim';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import {
   ClaimKind,
@@ -17237,9 +17237,13 @@ async function runToolLoop(
     console.warn(
       `[delete-claim] run ${runId} thread ${threadId}: said deleted, nothing was — corrected`,
     );
-    const notDeleted = notDeletedLine(runLang(runId));
-    finalText = notDeleted.text;
-    choices = [notDeleted.confirm];
+    const corrected = withoutFalseClaim(
+      finalText,
+      claimsOfKind(claimsNow, ClaimKind.Deleted),
+      notDeletedLine(runLang(runId)),
+    );
+    finalText = corrected.text;
+    if (corrected.confirm !== null) choices = [corrected.confirm];
   }
 
   // 4555: „I saved his job" for a value kept only as a mentioned note becomes the server's line.
@@ -17261,9 +17265,13 @@ async function runToolLoop(
     console.warn(
       `[offer-claim] run ${runId} thread ${threadId}: said saved, nothing was — corrected`,
     );
-    const notSaved = offerNotSavedLine(runLang(runId));
-    finalText = notSaved.text;
-    choices = [notSaved.confirm];
+    const corrected = withoutFalseClaim(
+      finalText,
+      claimsOfKind(claimsNow, ClaimKind.OfferSaved),
+      offerNotSavedLine(runLang(runId)),
+    );
+    finalText = corrected.text;
+    if (corrected.confirm !== null) choices = [corrected.confirm];
   }
 
   // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
