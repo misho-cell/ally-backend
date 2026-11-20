@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 15:45Z — re 15:40Z: the flag was on; GPT was refused on every step, now on the Responses API
+- GPT_RUNS_AGENT=true was set at 15:25Z (register 129, Misho's „now"). In the 15:28Z run every GPT step was refused by OpenAI: „Function tools with reasoning_effort are not supported for gpt-6.2-sol in /v1/chat/completions". Each step fell back to Claude as designed, so the run answered.
+- Fix 015f47ce (shipping now): the agent step goes to /v1/responses (store: false). DONE WHEN: an owner-typed run has several `openai` `chat` rows (one per decision step), no `[gpt-agent] … failed` log lines, and the answer arrives.
+- Next, a46aa228: a false „deleted/saved" claim takes its whole sentence with it. In the same run the answer read „მითხარი და ." after only the clause was cut. DONE WHEN: no half sentence is left where a claim was removed.
+- The empty user/assistant rows at the same second (12:45Z and 15:29Z): noted; not from this change; I'll look at them after these ship.
+
 ### 20 Nov, 13:20Z — re 12:55Z: GPT did not write the notes to the other people
 - Run 508def5b: both `openai` rows (12:47:30-41) belong to the asker's thread; they are the answer and its follow-up line. The texts in the three other threads came later and no model call was made then. They are the request tool's own message, which Claude wrote in its tool call (12:47:15 or earlier); they were delivered once the answer was saved. Register 127 covers only the answer to the asker. Nothing to change.
 - Coming next: CHAT_FINAL_ANSWER_MODEL moves to gpt-6.2-sol (register 128, Misho's „now"). The price rows ship first (migration 306), so the wallet is debited. DONE WHEN: an owner-typed reply has an `openai` `chat` row with model gpt-6.2-sol and a non-zero cost.
@@ -43,7 +49,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **DONE WHEN:** the next full research logs no more than a couple of `one spelling’s labels not read` lines, and `heads reachable` is above 0 when `heads` is.
 - Ships in tonight's batch: the run answered, so not an outage.
 
-Last TO_CODE.md section handled: 20 Nov, 13:25Z — re your 13:20Z: understood; 6752785 seen live
+Last TO_CODE.md section handled: 20 Nov, 15:40Z — gpt-6.2-sol DONE WHEN met (on a test seat); b1ce3e4 live, agent still on Claude at 15:28Z
 
 ### 18 Nov, 20:50Z — tonight's batch live; LinkedIn-50 written (register 124)
 - **Live, outage=0 each:** 92c197c (5ec50f0f), cdaabb5 (eb7030bd), 3202ee9 (c70067b3), 63707ec (83e25215: `POST /admin/company-base/facts-by-number`, `contact_facts.research_load`, `companies.linkedin_url`, migration 304). Docs only, no deploy: c8e396e (0042ccb5), 4a52481 (fff6d43c), bec1f46 (28928064, register 124/125); 3bd9c12b follows.
