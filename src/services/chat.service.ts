@@ -581,6 +581,7 @@ import { questionHeldOnThread } from './paceUntilSeen';
 import { ABOUT_THE_NAME_FIELD, registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
 import { SUMMARIZED_THINKING, tracedInFull } from './reasoningSummary';
+import { gptAgentStep, gptRunsTheAgent } from './gptAgentStep.service';
 import {
   creditSearchTime,
   forgetSearchClocks,
@@ -14318,6 +14319,50 @@ async function callClaudeLate(
   }
 }
 
+/**
+ * Misho, 20 Nov: GPT makes the run's decisions (GPT_RUNS_AGENT=true). The main
+ * model's step goes to GPT first; null means GPT could not take it and Claude does.
+ */
+async function stepByGpt(
+  messages: Anthropic.MessageParam[],
+  systemPrompt: string,
+  tools: AnthropicTool[],
+  ctx: RunContext,
+  opts: CallOptions,
+): Promise<Anthropic.Message | null> {
+  const startedAt = Date.now();
+  const response = await gptAgentStep({
+    messages,
+    systemPrompt,
+    tools: tools as unknown as { name: string; description?: string; input_schema?: unknown }[],
+    maxTokens: opts.maxTokens ?? MAX_TOKENS,
+    forceText: opts.forceText === true,
+    forceTool: opts.forceText === true ? undefined : opts.forceTool,
+    language: runLang(ctx.runId),
+  });
+  if (response === null) return null;
+  const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
+  if (text !== '') opts.onText?.(text);
+  await recordClaudeUsage({
+    userId: ctx.userId,
+    kind: 'chat',
+    provider: 'openai',
+    model: response.model,
+    usage: response.usage,
+    runId: ctx.runId,
+    threadId: ctx.threadId,
+  }).catch(() => {});
+  void recordModelCall(ctx.runId, {
+    model: response.model,
+    stop_reason: response.stop_reason ?? null,
+    duration_ms: Date.now() - startedAt,
+    input_tokens: response.usage.input_tokens,
+    output_tokens: response.usage.output_tokens,
+    cache_read_tokens: response.usage.cache_read_input_tokens ?? 0,
+  });
+  return response;
+}
+
 async function callClaude(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
@@ -14326,6 +14371,10 @@ async function callClaude(
   opts: CallOptions = {},
 ): Promise<Anthropic.Message> {
   const model = opts.model ?? MODEL;
+  if (model === MODEL && gptRunsTheAgent()) {
+    const byGpt = await stepByGpt(messages, systemPrompt, tools, ctx, opts);
+    if (byGpt !== null) return byGpt;
+  }
   // Misho, 3 Nov: real people's runs are debugged in full for now (not the test seats) —
   // a readable reasoning summary, only on the main model and never beside a forced tool,
   // which thinking cannot accompany; and the exact prompt this round was sent.
