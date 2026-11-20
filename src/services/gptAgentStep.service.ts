@@ -196,10 +196,15 @@ function stopReason(response: OpenAI.Responses.Response, calls: number): Anthrop
   return response.incomplete_details?.reason === MAX_OUTPUT_REASON ? 'max_tokens' : 'end_turn';
 }
 
-/** Why GPT's step cannot stand in for Claude's, or null when it can. */
-export function unusableStep(text: string, calls: number, language: string): string | null {
-  if (calls === 0) return unusableReason(text, language);
-  return text.trim() === '' ? null : unusableReason(text, language);
+/**
+ * Why GPT's step cannot stand in for Claude's, or null when it can. An empty
+ * step is one: a scheduled check is told to leave the reply empty when nothing
+ * is new (20 Nov 17:10Z, GPT did, and Claude was paid for the same step again),
+ * and the run loop already treats an empty answer the same whoever wrote it.
+ */
+export function unusableStep(text: string, language: string): string | null {
+  if (text.trim() === '') return null;
+  return unusableReason(text, language);
 }
 
 function answerText(output: readonly OpenAI.Responses.ResponseOutputItem[]): string {
@@ -246,7 +251,7 @@ export function toAnthropicMessage(
   const text = answerText(response.output);
   const calls = response.output.filter((i): i is FunctionCall => i.type === 'function_call');
   const tools = toolUseBlocks(calls);
-  if (tools === null || unusableStep(text, calls.length, language) !== null) return null;
+  if (tools === null || unusableStep(text, language) !== null) return null;
   const content: Anthropic.ContentBlock[] = [
     ...(text.trim() === '' ? [] : [{ type: 'text' as const, text, citations: null }]),
     ...tools,
