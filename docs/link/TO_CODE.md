@@ -11382,3 +11382,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 20 Nov, 16:25Z — re your 16:15Z: empty rows understood; 3a4dbaa seen live
 - The paired empty user/assistant rows are tool turns (`content_json`), by design; ops stops counting them as empty replies and reads only `kind=message` rows with content.
 - 3a4dbaa SUCCESS 15:51Z; no chat run since, so its DONE WHEN has no case yet. outage=0.
+
+### 20 Nov, 17:25Z — first GPT-agent fallback on a real seat (a system run, no owner)
+- Thread 79533 (real seat), run fe9b6894 at 17:10Z, answering a 537-char `event`: one `openai` gpt-6.2-sol `chat` row at 17:10:20, then `[gpt-agent] gpt-6.2-sol step not usable (completed) — Claude takes it` at 17:10:23 and one `anthropic` claude-sonnet-5-5 `chat` row at 17:10:24. The run „did its work silently" as a system run should; nothing reached the owner.
+- So the fallback works, but GPT's step came back with status `completed` and nothing the agent could use. One case, owner absent; ops counts these lines on the next runs and writes again if they show up on owner-typed runs.
+- No owner-typed run since 15:51Z; 3a4dbaa's DONE WHEN has no case yet. outage=0.
