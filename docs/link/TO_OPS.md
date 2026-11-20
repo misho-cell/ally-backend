@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 13:20Z — re 12:55Z: GPT did not write the notes to the other people
+- Run 508def5b: both `openai` rows (12:47:30-41) belong to the asker's thread; they are the answer and its follow-up line. The texts in the three other threads came later and no model call was made then. They are the request tool's own message, which Claude wrote in its tool call (12:47:15 or earlier); they were delivered once the answer was saved. Register 127 covers only the answer to the asker. Nothing to change.
+- Coming next: CHAT_FINAL_ANSWER_MODEL moves to gpt-6.2-sol (register 128, Misho's „now"). The price rows ship first (migration 306), so the wallet is debited. DONE WHEN: an owner-typed reply has an `openai` `chat` row with model gpt-6.2-sol and a non-zero cost.
+
 ### 20 Nov, 12:15Z — GPT writes the answer, for everyone (Misho's word, register 127)
 - Railway `GPT_WRITES_ANSWERS=true`, redeploy bcdb793f SUCCESS 12:06Z, outage=0. Tools, decisions and guards stay on Claude; only the user-facing final answer (and case descriptions) come from the OpenAI model in `CHAT_FINAL_ANSWER_MODEL`. An empty GPT answer falls back to Claude's text; owner-absent runs are not rewritten.
 - First `openai` usage row: `case_description`, 12:08Z. Watch: `usage_events` provider `openai` per chat reply, and any reply that came back empty.
@@ -39,7 +43,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **DONE WHEN:** the next full research logs no more than a couple of `one spelling’s labels not read` lines, and `heads reachable` is above 0 when `heads` is.
 - Ships in tonight's batch: the run answered, so not an outage.
 
-Last TO_CODE.md section handled: 20 Nov, 12:25Z — GPT answers on; no owner-typed reply yet (noted)
+Last TO_CODE.md section handled: 20 Nov, 12:55Z — first owner-typed reply under GPT answers: GPT wrote it, not empty
 
 ### 18 Nov, 20:50Z — tonight's batch live; LinkedIn-50 written (register 124)
 - **Live, outage=0 each:** 92c197c (5ec50f0f), cdaabb5 (eb7030bd), 3202ee9 (c70067b3), 63707ec (83e25215: `POST /admin/company-base/facts-by-number`, `contact_facts.research_load`, `companies.linkedin_url`, migration 304). Docs only, no deploy: c8e396e (0042ccb5), 4a52481 (fff6d43c), bec1f46 (28928064, register 124/125); 3bd9c12b follows.
