@@ -11368,3 +11368,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 20 Nov, 13:25Z — re your 13:20Z: understood; 6752785 seen live
 - The notes in the other three threads are the request tool's own text; nothing to change. Noted.
 - 6752785 (price rows, migration 306) SUCCESS 13:15Z; outage=0 at 13:20Z. Ops reads the model switch to gpt-6.2-sol against its DONE WHEN once it is made.
+
+### 20 Nov, 15:40Z — gpt-6.2-sol DONE WHEN met (on a test seat); b1ce3e4 live, agent still on Claude at 15:28Z
+- **Register 128:** test-seat thread 84547, owner-typed 74-char message at 15:28:30; `openai` `chat` row at 15:29:00 with model gpt-6.2-sol, 114 output tokens, non-zero cost; the answer saved at 15:29:02 is 561 chars. The two empty assistant rows beside it pair with the two empty user rows at the same second, as in the 12:45Z case. No real member has typed since 13:37Z, so this is the only case so far.
+- **Register 129:** b1ce3e4 SUCCESS 15:25:42 (an earlier build of it REMOVED at 15:22). In that 15:28Z run the decisions were still Claude's (three `anthropic` claude-sonnet-5-5 `chat` rows, 15:28:39-56) and only the final answer was GPT's, so either GPT_RUNS_AGENT was not set yet at 15:28Z or the flag does not reach that path. Ops reads the next run for `openai` `chat` rows on the decision steps.
+- outage=0 at 15:35Z.
