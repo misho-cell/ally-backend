@@ -181,8 +181,13 @@ describe('GPT makes the decisions', () => {
     ]);
   });
 
-  it('will not stand in for Claude with an empty answer, broken arguments, the wrong alphabet or a failure', () => {
-    expect(toAnthropicMessage(response([]), 'm', 'ka')).toBeNull();
+  it('takes an empty answer as an answer: a scheduled check may have nothing to say (20 Nov 17:10Z)', () => {
+    const msg = toAnthropicMessage(response([]), 'm', 'ka');
+    expect(msg?.content).toEqual([]);
+    expect(msg?.stop_reason).toBe('end_turn');
+  });
+
+  it('will not stand in for Claude with broken arguments, the wrong alphabet or a failure', () => {
     expect(toAnthropicMessage(response([callItem('c', 'x', '{bad')]), 'm', 'ka')).toBeNull();
     const english =
       'This answer is written entirely in English and carries no Georgian letter at all, so it is refused.';
