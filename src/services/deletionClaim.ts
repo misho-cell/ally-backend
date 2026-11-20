@@ -84,3 +84,33 @@ const NOT_DELETED: Readonly<Record<RunLanguage, NotDeletedLine>> = {
 export function notDeletedLine(language: RunLanguage): NotDeletedLine {
   return NOT_DELETED[language] ?? NOT_DELETED.ka;
 }
+
+/** The reply after a false claim is taken out, and the button it needs, if any. */
+export interface CorrectedReply {
+  readonly text: string;
+  readonly confirm: string | null;
+}
+
+/**
+ * Lika, 20 Nov (thread 84349): she asked who a person the research had named
+ * is, the claims reader took it for a delete request, and her whole answer
+ * became „not deleted yet — confirm". Misho, 19 Nov: „რამეს რომ გწერ ეს ნიშნავს
+ * რომ დადასტურებულია". A false claim is taken out of the answer and the rest
+ * of it stays, with no question. Only a reply that was nothing but the claim
+ * becomes the honest line with its button.
+ */
+export function withoutFalseClaim(
+  reply: string,
+  claimed: readonly string[],
+  line: NotDeletedLine,
+): CorrectedReply {
+  const rest = claimed.reduce((text, sentence) => text.split(sentence).join(''), reply);
+  if (rest.replace(/[\s.,;:!?—–-]+/gu, '') === '')
+    return { text: line.text, confirm: line.confirm };
+  const kept = rest
+    .replace(/[ \t]+\n/gu, '\n')
+    .replace(/\n{3,}/gu, '\n\n')
+    .replace(/ {2,}/gu, ' ')
+    .trim();
+  return { text: kept, confirm: null };
+}

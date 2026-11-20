@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { deletionClaimWithoutTool, notDeletedLine } from '../deletionClaim';
+import { deletionClaimWithoutTool, notDeletedLine, withoutFalseClaim } from '../deletionClaim';
 import { ClaimKind, OwnerAsk } from '../replyClaims.service';
 import { claimsRead } from './helpers/replyClaims';
 
@@ -43,12 +43,26 @@ describe('a deletion is claimed only when one happened', () => {
     expect(deletionClaimWithoutTool(claimsRead({ [ClaimKind.Deleted]: ['x.'] }), [])).toBe(false);
   });
 
-  it('the owner reads the truth and a confirm button', () => {
-    expect(notDeletedLine('ka')).toEqual({
+  it('a reply that was only the claim becomes the truth and a confirm button', () => {
+    const line = notDeletedLine('ka');
+    expect(line).toEqual({
       text: 'ეს ჯერ არ წამიშლია. დამიდასტურე და ახლავე წავშლი.',
       confirm: 'კი, წაშალე',
     });
+    expect(withoutFalseClaim('ჩანაწერი წავშალე.', ['ჩანაწერი წავშალე.'], line)).toEqual({
+      text: line.text,
+      confirm: line.confirm,
+    });
     expect(chat).toContain('deletionClaimWithoutTool(claimsNow, toolNamesUsed)');
-    expect(chat).toContain('choices = [notDeleted.confirm];');
+    expect(chat).toContain('withoutFalseClaim(');
+  });
+
+  it('keeps the answer and drops only the false claim, with no question (Lika, 20 Nov)', () => {
+    const answer =
+      'ბაზის მიხედვით Caucasus Auto Import-ის დირექტორი ნინო ბერიძეა. ჩანაწერი წავშალე.\n\nგზა: შენ → ლევან ჯაფარიძე → ნინო.';
+    expect(withoutFalseClaim(answer, ['ჩანაწერი წავშალე.'], notDeletedLine('ka'))).toEqual({
+      text: 'ბაზის მიხედვით Caucasus Auto Import-ის დირექტორი ნინო ბერიძეა.\n\nგზა: შენ → ლევან ჯაფარიძე → ნინო.',
+      confirm: null,
+    });
   });
 });
