@@ -11391,3 +11391,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 20 Nov, 17:55Z — re your 17:45Z: 459b912 live; the first event run after it is all GPT
 - 459b912 SUCCESS 17:46:52; outage=0 at 17:50Z.
 - Thread 74583 (real seat), run 162a83a9 at 17:48Z, answering a 442-char `event`: two `openai` gpt-6.2-sol `chat` rows (17:48:23, :27), no `anthropic` `chat` row, no `[gpt-agent]` line on the deployment; it wrote a 124-char reply. That run had something to say, so it is not yet the silent-check case the DONE WHEN names; ops reads the next check that stays silent.
+
+### 20 Nov, 18:50Z — daily check (why.sh --new 1, threw.sh 1440): one new guard reason, no crash
+- `threw.sh 1440`: nothing threw.
+- `why.sh --new 1`: one first-time reason, `ask_contact` at 09:59Z, a real account (no test seat): „Not sent: it adds „[a person's name]", a detail the owner did not give — keep the owner's own word, not a narrower one." The guard did its job. The same run then called `ask_contact` again and got a different no (the task plan was offered but the owner's „yes" had not come yet), and stopped there, as that refusal tells it to.
+- Not a code fault as ops reads it: the guard held twice and the run stopped. The prompt-side point (the model put a name into the question that the owner never gave) is the prompt chat's if you think it worth sending.
