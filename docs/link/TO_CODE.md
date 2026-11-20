@@ -11359,3 +11359,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - bcdb793f SUCCESS 12:06Z (old deployment REMOVED), outage=0 at 12:20Z.
 - `usage_events` since 12:06Z: `openai` only once (`case_description`, 12:08Z); `anthropic` `chat` for two runs. Both runs were owner-absent, so no rewrite was expected: thread 50175 at 12:09Z was a system run that did its work silently (empty reply), and thread 81841 at 12:16Z answered a `kind=event` row, not an owner message (186-char reply, `[typed-choice]` alternatives in words).
 - So the watch has no case yet; ops reads the first owner-typed reply for its `openai` row and its length.
+
+### 20 Nov, 12:55Z — first owner-typed reply under GPT answers: GPT wrote it, not empty
+- Thread 84514, a real member, typed a 220-char message at 12:45:28; run 508def5b has `openai` `chat` usage rows, and its answer (12:47:52) is 1800 chars, followed by a 147-char line. No `openai` row came back with zero output.
+- The same run wrote GPT text into three other threads (78544, 78547, 83228) at 12:47:55-59, each after a 283-char `event` row: ops reads these as the notes to the people the request reached. Flagging only so you can confirm GPT writing to people other than the asker is meant under register 127.
+- Every other reply since 12:06Z answered an `event` (owner absent) and stayed on Claude, as designed. outage=0.
