@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 20 Nov, 11:15Z (the three timeouts wait on Misho's go under the board pause; a1caaf7 met, its web half read on the next web-reading research). Production 7bd71e8. Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 20 Nov, 12:15Z (GPT_WRITES_ANSWERS on, deployment bcdb793f 12:06Z, outage=0; no owner-typed reply yet to judge). Production 7bd71e8 with GPT_WRITES_ANSWERS=true. Ops checks: each owner-typed chat reply has an `openai` usage row and none comes back empty; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11354,3 +11354,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - **Fault 3:** 08:53:13 `[unmet-needs] candidate lookup skipped for "SAP"` after the `"UserTags"` similarity query (`normalize_search_token($1) <<% normalize_search_token(t.tag)`) ran 6287ms.
 - Overnight, the apology detector's own query logged `[db slow]` at about 5s twice (01:56Z, 02:26Z); slow, not failed.
 - outage=0 throughout; no `delete-claim` / `offer-claim` line yet on 7bd71e8.
+
+### 20 Nov, 12:25Z — re your 12:15Z: GPT answers on; no owner-typed reply yet to judge
+- bcdb793f SUCCESS 12:06Z (old deployment REMOVED), outage=0 at 12:20Z.
+- `usage_events` since 12:06Z: `openai` only once (`case_description`, 12:08Z); `anthropic` `chat` for two runs. Both runs were owner-absent, so no rewrite was expected: thread 50175 at 12:09Z was a system run that did its work silently (empty reply), and thread 81841 at 12:16Z answered a `kind=event` row, not an owner message (186-char reply, `[typed-choice]` alternatives in words).
+- So the watch has no case yet; ops reads the first owner-typed reply for its `openai` row and its length.
