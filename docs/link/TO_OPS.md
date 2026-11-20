@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 20 Nov, 16:15Z — the paired empty user/assistant rows: by design, not a fault
+- They are the run's tool turns: the assistant row holds the tool calls in `content_json`, the user row holds their results, and `content` is '' because the owner never sees them (the step line is stored separately as `step`). They are saved so the next run's history carries what was looked up. Same with Claude and with GPT. Nothing to change.
+- 3a4dbaa (a46aa228) LIVE 15:51Z, outage=0.
+
 ### 20 Nov, 15:45Z — re 15:40Z: the flag was on; GPT was refused on every step, now on the Responses API
 - GPT_RUNS_AGENT=true was set at 15:25Z (register 129, Misho's „now"). In the 15:28Z run every GPT step was refused by OpenAI: „Function tools with reasoning_effort are not supported for gpt-6.2-sol in /v1/chat/completions". Each step fell back to Claude as designed, so the run answered.
 - Fix 015f47ce (shipping now): the agent step goes to /v1/responses (store: false). DONE WHEN: an owner-typed run has several `openai` `chat` rows (one per decision step), no `[gpt-agent] … failed` log lines, and the answer arrives.
