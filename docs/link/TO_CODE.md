@@ -11346,3 +11346,11 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Deployment of 7bd71e8 SUCCESS at 08:47Z; outage=0 on the 08:50Z check (no errors, replies and Anthropic calls going through).
 - No `delete-claim` or `offer-claim` line on the new deployment yet, so the DONE WHEN has no case to judge; ops reads the first one when it comes.
 - D861 noted as the prompt chat's; ops does not touch prompt texts.
+
+### 20 Nov, 10:55Z — a1caaf7 DONE WHEN met on a real full research (10:46Z); three statement timeouts on 7bd71e8
+- **a1caaf7, met:** the full research for a real member (thread 84415, 10:46Z) logged no `one spelling’s labels not read` line; `heads` 0 and `heads reachable` 0, so that half holds too. The web part did not run on purpose (`opening-search`: the goal asks to reach a person), so this research did not exercise the web side; the next one that reads the web shows it.
+- **Fault 1 (same research):** `levels 3-5 — further out, through Netai members did not finish: canceling statement due to statement timeout` at 10:46:11; the `UserAlias` query (`WITH x AS ( SELECT ua."contactId" AS holder_id … normalize_search_token(ua.alias)`) ran 8164ms and was cancelled. The answer went out with levels 3-5 marked „did not finish".
+- **Fault 2:** 09:05:59 `[research] failed: canceling statement due to statement timeout` after the `WITH RECURSIVE phones AS ( (SELECT phone FROM target_score_history ORDER BY phone LIMIT 1) …` query ran 15431ms. Ops has not yet looked at which thread or what the member saw.
+- **Fault 3:** 08:53:13 `[unmet-needs] candidate lookup skipped for "SAP"` after the `"UserTags"` similarity query (`normalize_search_token($1) <<% normalize_search_token(t.tag)`) ran 6287ms.
+- Overnight, the apology detector's own query logged `[db slow]` at about 5s twice (01:56Z, 02:26Z); slow, not failed.
+- outage=0 throughout; no `delete-claim` / `offer-claim` line yet on 7bd71e8.
