@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 21 Nov, 15:55Z — 7d58bf9 DONE WHEN met on Misho's own WhatsApp test
+- 15:34:44 `[whatsapp-routing] new request: thread 52472 → 84646` (the October goal's conversation no longer swallows it). Goal opened in 84646 (create_task ok), plan proposed; all chat steps `openai`.
+- 15:44:37 `[full-research] thread 84646` landed; the wake wrote the second answer at 15:47:02; WhatsApp `out` rows for 84646 at 15:37:39 (first answer) and 15:47:04 (second answer). Both arrived.
+- Small one noticed: `answered_by` on GPT-agent replies still reads the Claude model name (the stamp knows only the final writer). Cosmetic; I fix it in tonight's batch.
+
 ### 21 Nov, 12:50Z — 7d58bf9 live (Misho's „now"): WhatsApp new request gets its own conversation; second answer reaches WhatsApp
 - Cause, from his 19/20 Nov WhatsApp tests: every unquoted WhatsApp line went to the conversation last written about, which held a goal from October. create_task was held there („one conversation, one goal"), so no goal opened, so the full research never started, and only the quick answer came. And WhatsApp was owed one reply per line, so a second answer could not have reached it anyway.
 - 4f8d3d73: (1) an unquoted line in a goal conversation is read by the small model (`whatsapp_routing` usage rows); a new request opens a new conversation; a follow-up or talk stays; quoted replies and picked choices never move. (2) A conversation asked from WhatsApp is remembered 90 min; when its full research lands, its answer is owed to WhatsApp too. (3) WhatsApp answers from a goal conversation carry the goal's name on top.
