@@ -660,8 +660,8 @@ export async function wakeTask(
               : preview || RUN_STRINGS[language].goalNewsPush.body,
           url: `/chat/${thread.id}`,
         },
-        // News on the owner's own goal is worth a WhatsApp template.
-        { highValue: true },
+        // Misho, 21 Nov: never in WhatsApp — the app only.
+        { notInWhatsapp: true },
       ).catch(() => undefined);
       return 'woken';
     } catch (err) {

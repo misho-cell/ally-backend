@@ -107,6 +107,12 @@ export interface PushOptions {
    * their goal). Everything else reaches WhatsApp only inside the window.
    */
   readonly highValue?: boolean;
+  /**
+   * Misho, 21 Nov: „Netai — დავალებაზე სიახლეა" with a link came to WhatsApp
+   * right after the two answers it announced, and he wants it there never. A
+   * notice marked so rings the app only; WhatsApp gets nothing for it.
+   */
+  readonly notInWhatsapp?: boolean;
 }
 
 /** The device the owner asked from is still connected: they are reading it there. */
@@ -435,6 +441,7 @@ export async function sendPushNotification(
   // whether or not app notifications are on. A Netai tab left open somewhere
   // does not hold it back; only the device that asked being in use does.
   if (await onlyWhatsappNotifies(Number(userId))) {
+    if (options.notInWhatsapp === true) return;
     void mirrorToWhatsapp(
       Number(userId),
       payload,
@@ -447,12 +454,14 @@ export async function sendPushNotification(
   // Misho, 25 Oct: the same notice in WhatsApp for a person who chose it —
   // before the push subscriptions, so a person with none still gets it there.
   // Not for an answer asked from WhatsApp: the answer itself goes back there.
-  void mirrorToWhatsapp(
-    Number(userId),
-    payload,
-    whatsappCopyHeldBack(options.askedFrom, askerReading),
-    options.highValue === true,
-  );
+  if (options.notInWhatsapp !== true) {
+    void mirrorToWhatsapp(
+      Number(userId),
+      payload,
+      whatsappCopyHeldBack(options.askedFrom, askerReading),
+      options.highValue === true,
+    );
+  }
 
   const result = await query<SubscriptionRow>(
     `SELECT ${SUBSCRIPTION_COLUMNS} FROM push_subscriptions WHERE user_id = $1`,
