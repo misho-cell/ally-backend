@@ -16,6 +16,16 @@ interface OwedReply {
   readonly cards: string[];
 }
 const owedReplies = new Map<string, OwedReply>();
+/**
+ * Misho, 21 Nov: the full research's second answer never reached WhatsApp — a
+ * line is owed ONE reply, and the quick answer took it. A conversation asked
+ * from WhatsApp is remembered for a while, so the second answer is owed too.
+ */
+const ASKED_FROM_WHATSAPP_MS = 90 * 60_000;
+const SECOND_ANSWER_TTL_MS = 45 * 60_000;
+const askedFromWhatsapp = new Map<string, { readonly phone: string; readonly until: number }>();
+/** The goal each conversation is about, so one WhatsApp chat says which goal an answer is for. */
+const threadLabels = new Map<number, string>();
 /** The choices last offered, so a typed „2" means the second one. */
 const lastChoices = new Map<number, readonly string[]>();
 
@@ -32,6 +42,35 @@ export function oweWhatsappReply(
     until: now + OWED_REPLY_TTL_MS,
     cards: [],
   });
+  askedFromWhatsapp.set(owedKey(userId, threadId), { phone, until: now + ASKED_FROM_WHATSAPP_MS });
+}
+
+/** The full research landed: its answer goes to WhatsApp too, when the line came from there. */
+export function oweSecondWhatsappReply(
+  userId: number,
+  threadId: number,
+  now: number = Date.now(),
+): boolean {
+  const asked = askedFromWhatsapp.get(owedKey(userId, threadId));
+  if (asked === undefined || asked.until < now) return false;
+  owedReplies.set(owedKey(userId, threadId), {
+    phone: asked.phone,
+    until: now + SECOND_ANSWER_TTL_MS,
+    cards: [],
+  });
+  return true;
+}
+
+/** Names the goal a conversation is about; its WhatsApp answers carry the name on top. */
+export function labelWhatsappThread(threadId: number, goalTitle: string): void {
+  const label = goalTitle.trim();
+  if (label === '') threadLabels.delete(threadId);
+  else threadLabels.set(threadId, label);
+}
+
+/** Pure: the answer under its goal's name, so one chat can hold several goals. */
+export function labelled(text: string, label: string | undefined): string {
+  return label === undefined || label === '' ? text : `*${label}*\n${text}`;
 }
 
 /**
@@ -96,7 +135,10 @@ export async function deliverOwedWhatsappReply(
     await replyInWhatsapp(
       userId,
       owed.phone,
-      withCards(replyText(reply, choices, buttons !== null), owed.cards),
+      labelled(
+        withCards(replyText(reply, choices, buttons !== null), owed.cards),
+        threadLabels.get(threadId),
+      ),
       threadId,
       buttons,
     );
