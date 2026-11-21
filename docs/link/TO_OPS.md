@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 21 Nov, 20:05Z — 6680839 live (a4d1e7a2, task #40): answered_by names GPT when GPT wrote the step
+- With GPT_RUNS_AGENT the agent's own words are GPT's, but the stamp said the Claude model whenever no final rewrite stood. `stepWriter` reads the step's model; a promoted draft step carries its own writer. Deployed, outage=0.
+- DONE WHEN: a new run whose last agent step was GPT's stores `answered_by` = the GPT model when the writer's rewrite does not stand.
+
 ### 21 Nov, 19:10Z — 3db032e live (3c434dbd): WhatsApp routes by the need; a question read there is seen
 - Deployed 19:06Z, outage=0. What and DONE WHEN as in the 18:50Z section below.
 
