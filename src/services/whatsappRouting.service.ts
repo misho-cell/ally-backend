@@ -13,6 +13,11 @@ import { labelWhatsappThread } from './whatsappReplies.service';
  * full research never started, and only the quick answer came. A new request
  * now gets a conversation of its own, as a new chat in the app does; a line that
  * goes on with the goal, or is just talk, stays where it was.
+ *
+ * Misho, 21 Nov 18:17Z and 18:29Z: a goal named after the contact to ask
+ * („X, renovation") kept a house-architecture request and a teachers request
+ * that named the same contact, and both new goals were refused. The router
+ * judges by the need, not by the person named.
  */
 export enum LineKind {
   NewRequest = 'new_request',
@@ -29,9 +34,11 @@ const USAGE_KIND = 'whatsapp_routing';
 
 const ROUTER_PROMPT =
   'A person writes to their assistant in one WhatsApp chat. They have ONE open goal, named ' +
-  'below. Decide what their new line is. new_request: they ask for something the goal is not ' +
-  'about (a different person, service, product or task to find or do). same_goal: it goes on ' +
-  'with that goal (an answer, a change, „ask him too", a question about how it stands). talk: ' +
+  'below. Decide what their new line is. Judge by WHAT is needed, never by WHO is named: the ' +
+  'goal may name a person they want to ask, and the same person asked about a different need ' +
+  'is a new request. new_request: they need something the goal is not about (a different ' +
+  'service, product, specialist or task to find or do). same_goal: it goes on with that same ' +
+  'need (an answer, a change, „ask him too", a question about how it stands). talk: ' +
   'a greeting, thanks, or a question about the assistant itself. Answer with one word: ' +
   'new_request, same_goal or talk.';
 

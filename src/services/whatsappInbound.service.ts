@@ -20,6 +20,7 @@ import {
 } from './whatsappReplies.service';
 import { heardLine, voiceNoteText } from './whatsappVoice.service';
 import { conversationForLine, questionThreadForLine } from './whatsappRouting.service';
+import { recordReadReceipts, seenInWhatsapp } from './whatsappSeen.service';
 
 /**
  * Misho, 25 Oct: a person who chose WhatsApp can talk to Netai there as in the
@@ -197,6 +198,7 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
   const answered = routed ? await questionThreadForLine(userId, text) : null;
   const threadId =
     answered ?? (routed ? await conversationForLine(userId, current, text) : current);
+  await seenInWhatsapp(userId, threadId);
   oweWhatsappReply(userId, threadId, message.from);
   if (!(await postAsTheOwner(userId, threadId, text))) {
     forgetOwedWhatsappReply(userId, threadId);
@@ -226,6 +228,7 @@ export async function handleWhatsappWebhook(payload: unknown): Promise<void> {
   // eslint-disable-next-line no-console
   console.info(deliveryNote(channelOn, messages.length));
   if (!channelOn) return;
+  await recordReadReceipts(payload);
   for (const message of messages) {
     try {
       await handleInboundMessage(message);
