@@ -10,12 +10,15 @@ import { join } from 'path';
 describe('a result found by a goal’s own run', () => {
   const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
 
-  it('is news, so the push and the WhatsApp template go', () => {
+  it('is news, so the app push goes — never to WhatsApp (Misho, 21 Nov)', () => {
     const gate = engine.indexOf('const carriesResult = result.taskResult !== undefined;');
     expect(gate).toBeGreaterThan(-1);
     const after = engine.slice(gate);
     expect(after).toMatch(/wakeIsNews\(status, [^)]*carriesResult\)/u);
-    expect(after.slice(0, 2000)).toContain('{ highValue: true }');
+    expect(after.slice(0, 2000)).toContain('{ notInWhatsapp: true }');
+    const notices = readFileSync(join(__dirname, '..', 'notification.service.ts'), 'utf8');
+    expect(notices).toContain('if (options.notInWhatsapp === true) return;');
+    expect(notices).toContain('if (options.notInWhatsapp !== true) {');
   });
 
   it('still reaches the screen as the result card', () => {
