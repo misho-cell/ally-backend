@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 21 Nov, 16:25Z — 8065eca live: goal-news notice never in WhatsApp (Misho's word)
+- After his WhatsApp test got both answers, the goal-news notice („Netai — დავალებაზე სიახლეა" + link, the 15:47:06 `text` row) came a third time. 6923ad93: that push carries notInWhatsapp — app push only; WhatsApp-only people get nothing for it. Questions to the person and introduction answers unchanged.
+- DONE WHEN: a goal wake that is news writes no WhatsApp `out` row (text/template) for its thread, while an owed WhatsApp reply still goes.
+
 ### 21 Nov, 15:58Z — run alert 760 (apology, real person): designed stop, handled
 - Owner-absent check run at 14:58Z: ask_contact was refused because the contact has an account but never opened Netai; the refusal tells the model to offer invite_contact instead. The reply said the ask „could not be sent" and that it waits on another answer. No server fault; the prompt side (offer the invite, do not say „could not be sent") goes to the prompt chat's next batch. Alert marked handled.
 
