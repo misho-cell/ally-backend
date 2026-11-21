@@ -1,3 +1,4 @@
+import { query } from '../db/postgres/client';
 import { QUICK_MODEL, noThinkingFor } from './aiModels';
 import { recordClaudeUsage } from './costLedger.service';
 import { getOpenTaskByThread } from './taskStore.service';
@@ -105,5 +106,101 @@ export async function conversationForLine(
     // eslint-disable-next-line no-console
     console.error('[whatsapp-routing] line kept in its conversation:', (err as Error).message);
     return threadId;
+  }
+}
+
+/**
+ * Misho, 21 Nov: a question asked of someone reached their WhatsApp, and their
+ * answer, typed there without swiping the message, went to a chat of their own —
+ * so it never reached him. A line typed soon after we put a question or an
+ * introduction request to them goes to that question when it answers it.
+ */
+const WAITING_QUESTION_HOURS = 24;
+const QUERY_TIMEOUT_MS = 4_000;
+const ANSWERS = 'answers';
+
+const ANSWER_PROMPT =
+  'Someone was asked the QUESTION below in WhatsApp. Their next line is below. Does the line ' +
+  'reply to that question (an answer, a name, yes, no, „I do not know", a refusal, a question ' +
+  'back about it)? Answer with one word: answers or other.';
+
+export interface WaitingQuestion {
+  readonly threadId: number;
+  readonly question: string;
+}
+
+/** The newest question or introduction request we put to this person in WhatsApp, still open. */
+export async function questionAwaitingAnswer(userId: number): Promise<WaitingQuestion | null> {
+  const result = await query<{ thread_id: number; question: string | null }>(
+    `SELECT m.thread_id, COALESCE(a.question, ir.message) AS question
+       FROM whatsapp_messages m
+       JOIN threads t ON t.id = m.thread_id AND t.user_id = m.user_id
+       LEFT JOIN task_asks a
+         ON a.ask_thread_id = t.id AND a.to_user_id = m.user_id AND a.status = 'sent'
+       LEFT JOIN introduction_requests ir
+         ON ir.id = t.introduction_request_id AND ir.status = 'pending'
+      WHERE m.user_id = $1 AND m.direction = 'out'
+        AND t.type IN ('incoming_ask', 'incoming_request')
+        AND m.created_at > NOW() - make_interval(hours => $2)
+        AND (a.id IS NOT NULL OR ir.id IS NOT NULL)
+      ORDER BY m.created_at DESC
+      LIMIT 1`,
+    [userId, WAITING_QUESTION_HOURS],
+    QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  return row === undefined ? null : { threadId: row.thread_id, question: row.question ?? '' };
+}
+
+/** Pure: whether the small model says the line answers the question. */
+export function answersFrom(word: string): boolean {
+  return word.trim().toLowerCase().startsWith(ANSWERS);
+}
+
+async function lineAnswers(
+  userId: number,
+  waiting: WaitingQuestion,
+  line: string,
+): Promise<boolean> {
+  const { default: anthropic } = await import('../config/anthropic');
+  const response = await anthropic.messages.create(
+    {
+      model: ROUTER_MODEL,
+      ...noThinkingFor(ROUTER_MODEL),
+      max_tokens: ROUTER_MAX_TOKENS,
+      system: ANSWER_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `QUESTION: ${waiting.question.slice(0, MAX_LINE_CHARS)}\n\nLINE: ${line.slice(0, MAX_LINE_CHARS)}`,
+        },
+      ],
+    },
+    { timeout: ROUTER_TIMEOUT_MS },
+  );
+  await recordClaudeUsage({
+    userId: String(userId),
+    kind: USAGE_KIND,
+    model: ROUTER_MODEL,
+    usage: response.usage,
+    threadId: waiting.threadId,
+  }).catch(() => undefined);
+  return answersFrom(response.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));
+}
+
+/** The question this line answers, or null. Never throws; any failure leaves the line where it was. */
+export async function questionThreadForLine(userId: number, line: string): Promise<number | null> {
+  if (line.trim() === '') return null;
+  try {
+    const waiting = await questionAwaitingAnswer(userId);
+    if (waiting === null) return null;
+    if (!(await lineAnswers(userId, waiting, line))) return null;
+    // eslint-disable-next-line no-console
+    console.info(`[whatsapp-routing] answer to a question: thread ${waiting.threadId}`);
+    return waiting.threadId;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[whatsapp-routing] waiting question not read:', (err as Error).message);
+    return null;
   }
 }

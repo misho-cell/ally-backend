@@ -19,7 +19,7 @@ import {
   oweWhatsappReply,
 } from './whatsappReplies.service';
 import { heardLine, voiceNoteText } from './whatsappVoice.service';
-import { conversationForLine } from './whatsappRouting.service';
+import { conversationForLine, questionThreadForLine } from './whatsappRouting.service';
 
 /**
  * Misho, 25 Oct: a person who chose WhatsApp can talk to Netai there as in the
@@ -193,10 +193,10 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
   if (typed === null) return;
   const text = choiceByNumber(userId, typed);
   // A quoted reply or a picked choice was aimed at its conversation; an unquoted new request gets its own.
+  const routed = message.replyTo === null && text === typed;
+  const answered = routed ? await questionThreadForLine(userId, text) : null;
   const threadId =
-    message.replyTo === null && text === typed
-      ? await conversationForLine(userId, current, text)
-      : current;
+    answered ?? (routed ? await conversationForLine(userId, current, text) : current);
   oweWhatsappReply(userId, threadId, message.from);
   if (!(await postAsTheOwner(userId, threadId, text))) {
     forgetOwedWhatsappReply(userId, threadId);

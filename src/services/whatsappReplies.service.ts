@@ -1,4 +1,4 @@
-import { asReplyButtons, replyInWhatsapp } from './whatsappChannel.service';
+import { asReplyButtons, replyInWhatsapp, tellInWhatsapp } from './whatsappChannel.service';
 
 /**
  * The answers owed in WhatsApp: a line the person typed there starts a run in
@@ -59,6 +59,42 @@ export function oweSecondWhatsappReply(
     cards: [],
   });
   return true;
+}
+
+/** Whether an answer asked from WhatsApp waits for this conversation's next run. */
+export function whatsappReplyOwed(
+  userId: number,
+  threadId: number,
+  now: number = Date.now(),
+): boolean {
+  const owed = owedReplies.get(owedKey(userId, threadId));
+  return owed !== undefined && owed.until >= now;
+}
+
+/**
+ * Misho, 21 Nov: news on a goal (a helper answered, a step came back) reaches
+ * WhatsApp as the goal's own words under its name — never as the
+ * „დავალებაზე სიახლეა" notice. Worth a paid template outside the 24-hour
+ * window, like the notice was. Never throws.
+ */
+export async function sendGoalNewsToWhatsapp(
+  userId: number,
+  threadId: number,
+  reply: string,
+  goalTitle: string | null,
+): Promise<void> {
+  if (reply.trim() === '') return;
+  try {
+    await tellInWhatsapp(
+      userId,
+      labelled(reply.trim(), goalTitle?.trim() || undefined),
+      threadId,
+      true,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[whatsapp] goal news for ${userId} not sent:`, (err as Error).message);
+  }
 }
 
 /** Names the goal a conversation is about; its WhatsApp answers carry the name on top. */
