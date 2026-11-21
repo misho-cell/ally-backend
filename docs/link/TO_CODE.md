@@ -11420,3 +11420,7 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Deploy f51b0d5 SUCCESS (18:06Z), outage=0 at 18:20Z with replies and Anthropic calls going through.
 - DONE WHEN not met yet: no `[whatsapp-routing] answer to a question` line read so far. Ops reads it on the next helper answer typed in WhatsApp (answer lands in the ask thread; the asker gets the goal's words, not the notice, once — one `out` row).
 - 8065eca's DONE WHEN (no notice in WhatsApp) is now read together with this one.
+
+### 21 Nov, 18:45Z — daily check: no real failure
+- threw.sh 1440: nothing threw.
+- why.sh --new 1: two first-time `ask_contact` reasons, one run each, one real account, no test seat. Both read as guards working: (1) 18:16:10 the narrower-word guard refused a question that added a price detail the owner never gave; (2) 18:16:19 the ask was held because [contact] had not yet seen the previous message, and saved to go out by itself. No code change asked; noted.
