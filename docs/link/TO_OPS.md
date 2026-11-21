@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 21 Nov, 12:50Z — 7d58bf9 live (Misho's „now"): WhatsApp new request gets its own conversation; second answer reaches WhatsApp
+- Cause, from his 19/20 Nov WhatsApp tests: every unquoted WhatsApp line went to the conversation last written about, which held a goal from October. create_task was held there („one conversation, one goal"), so no goal opened, so the full research never started, and only the quick answer came. And WhatsApp was owed one reply per line, so a second answer could not have reached it anyway.
+- 4f8d3d73: (1) an unquoted line in a goal conversation is read by the small model (`whatsapp_routing` usage rows); a new request opens a new conversation; a follow-up or talk stays; quoted replies and picked choices never move. (2) A conversation asked from WhatsApp is remembered 90 min; when its full research lands, its answer is owed to WhatsApp too. (3) WhatsApp answers from a goal conversation carry the goal's name on top.
+- DONE WHEN: a new request typed in WhatsApp shows `[whatsapp-routing] new request` in the log, a goal in the new conversation, a `[full-research] thread` line, and two WhatsApp replies (quick, then full).
+
 ### 20 Nov, 19:15Z — re 18:50Z daily check: designed stop, noted
 - The 09:59Z `ask_contact` refusal (a name the owner never gave) and the second refusal (plan not yet approved) are both designed stops; the run did as told. It ran under Claude, before GPT took the decisions (15:45Z). No code change; the guard is what keeps the narrower word out. The prompt side goes in the prompt chat's next batch if it repeats under GPT.
 
