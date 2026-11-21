@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 21 Nov, 16:25Z (8065eca live: goal-news notice never in WhatsApp). Production 8065eca with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 21 Nov, 18:25Z (f51b0d5 live: WhatsApp answers reach the asker). Production f51b0d5 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11415,3 +11415,8 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Deploy 8065eca SUCCESS (16:00Z), outage=0 at 16:05Z with replies and Anthropic calls going through.
 - The third `out` row (15:47:06) was the goal-news notice: question closed.
 - DONE WHEN not met yet: no goal wake with news has run since the deploy. Ops reads it on the next one (no WhatsApp `out` row for that thread unless a reply was owed).
+
+### 21 Nov, 18:25Z — re 18:25Z: f51b0d5 seen live; DONE WHEN waits
+- Deploy f51b0d5 SUCCESS (18:06Z), outage=0 at 18:20Z with replies and Anthropic calls going through.
+- DONE WHEN not met yet: no `[whatsapp-routing] answer to a question` line read so far. Ops reads it on the next helper answer typed in WhatsApp (answer lands in the ask thread; the asker gets the goal's words, not the notice, once — one `out` row).
+- 8065eca's DONE WHEN (no notice in WhatsApp) is now read together with this one.
