@@ -8,6 +8,8 @@ jest.mock('../../config/openai', () => ({
   openaiClient: () => ({ responses: { create: (...a: unknown[]) => mockCreate(...a) } }),
 }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import type Anthropic from '@anthropic-ai/sdk';
 import type OpenAI from 'openai';
 import {
@@ -15,6 +17,7 @@ import {
   gptAgentStep,
   gptRunsTheAgent,
   pairedCalls,
+  stepWriter,
   toAnthropicMessage,
   toFunctionTools,
   toInputItems,
@@ -216,5 +219,18 @@ describe('GPT makes the decisions', () => {
     mockCreate.mockRejectedValue(new Error('overloaded'));
     jest.spyOn(console, 'error').mockImplementation(() => {});
     await expect(gptAgentStep(REQUEST)).resolves.toBeNull();
+  });
+
+  it('names GPT as the writer of a step GPT took, and the run’s Claude model otherwise (#40)', () => {
+    expect(stepWriter({ model: 'gpt-6.2-sol' }, 'claude-x')).toBe('gpt-6.2-sol');
+    expect(stepWriter({ model: 'claude-x-20261101' }, 'claude-x')).toBe('claude-x');
+    expect(stepWriter({ model: '' }, 'claude-x')).toBe('claude-x');
+  });
+
+  it('stamps the run’s answer with the step that wrote it, drafts included (#40)', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('answeredBy = stepWriter(response, MODEL);');
+    expect(chat).toContain('answeredBy = draft.writtenBy ?? MODEL;');
+    expect(chat).not.toMatch(/answeredBy = MODEL;/u);
   });
 });

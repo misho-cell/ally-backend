@@ -125,7 +125,7 @@ describe('both call sites actually consult it', () => {
     ['the first', () => FIRST],
     ['the second', () => SECOND],
   ])('%s keeps a withheld line out of the buried-answer rescue', (_name, at) => {
-    const block = chat.slice(at(), at() + 600);
+    const block = chat.slice(at(), at() + 700);
 
     expect(block).toContain('bestNarration = narration;');
   });

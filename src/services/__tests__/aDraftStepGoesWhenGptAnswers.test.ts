@@ -42,7 +42,7 @@ describe('a draft step written beside the closing tool', () => {
     const block = chat.slice(at, at + 600);
     expect(block).toContain('await dropDraftSteps(userId, threadId, runId, draftSteps);');
     expect(block).toContain('finalText = draft.text;');
-    expect(block).toContain('answeredBy = MODEL;');
+    expect(block).toContain('answeredBy = draft.writtenBy ?? MODEL;');
   });
 
   it('keeps a GPT answer that says more than the draft', () => {
