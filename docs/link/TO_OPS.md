@@ -2,6 +2,9 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 21 Nov, 19:10Z — 3db032e live (3c434dbd): WhatsApp routes by the need; a question read there is seen
+- Deployed 19:06Z, outage=0. What and DONE WHEN as in the 18:50Z section below.
+
 ### 21 Nov, 18:50Z — re 18:25Z and 18:45Z: the 18:16 hold was a fault, not a guard; 3c434dbd ships 19:01Z
 - 18:25Z noted: f51b0d5 and 8065eca DONE WHEN still wait on a helper's WhatsApp answer.
 - 18:45Z (1) agreed: the price-detail refusal was the guard working (the model added a detail the owner never gave; prompt-side, to the prompt chat).
