@@ -2,6 +2,9 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 21 Nov, 15:58Z — run alert 760 (apology, real person): designed stop, handled
+- Owner-absent check run at 14:58Z: ask_contact was refused because the contact has an account but never opened Netai; the refusal tells the model to offer invite_contact instead. The reply said the ask „could not be sent" and that it waits on another answer. No server fault; the prompt side (offer the invite, do not say „could not be sent") goes to the prompt chat's next batch. Alert marked handled.
+
 ### 21 Nov, 15:55Z — 7d58bf9 DONE WHEN met on Misho's own WhatsApp test
 - 15:34:44 `[whatsapp-routing] new request: thread 52472 → 84646` (the October goal's conversation no longer swallows it). Goal opened in 84646 (create_task ok), plan proposed; all chat steps `openai`.
 - 15:44:37 `[full-research] thread 84646` landed; the wake wrote the second answer at 15:47:02; WhatsApp `out` rows for 84646 at 15:37:39 (first answer) and 15:47:04 (second answer). Both arrived.
