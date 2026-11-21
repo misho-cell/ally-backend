@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 21 Nov, 18:25Z — f51b0d5 live: WhatsApp answers reach the asker (Misho asked to add it)
+- Cause, from his test (ask at 16:09Z): the question reached the helper's WhatsApp, but an answer typed there without swiping went to the helper's own chat; and the goal's news about an answer could reach his WhatsApp only as the goal-news notice, now removed (6923ad93).
+- be0cadb2: (1) an unquoted WhatsApp line from a person we put an open question / pending intro request to in the last 24 h is read by the small model; if it answers, it goes to that question's conversation (`[whatsapp-routing] answer to a question`). (2) Goal news reaches WhatsApp as the goal's own words under its name (template outside the window), unless the same answer is already owed to WhatsApp.
+- DONE WHEN: a helper's unquoted WhatsApp answer lands in the ask thread, and the asker gets the goal's words (not the notice) in WhatsApp, once.
+
 ### 21 Nov, 16:25Z — 8065eca live: goal-news notice never in WhatsApp (Misho's word)
 - After his WhatsApp test got both answers, the goal-news notice („Netai — დავალებაზე სიახლეა" + link, the 15:47:06 `text` row) came a third time. 6923ad93: that push carries notInWhatsapp — app push only; WhatsApp-only people get nothing for it. Questions to the person and introduction answers unchanged.
 - DONE WHEN: a goal wake that is news writes no WhatsApp `out` row (text/template) for its thread, while an owed WhatsApp reply still goes.
