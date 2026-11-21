@@ -32,6 +32,17 @@ export function agentModel(): string {
   return process.env.CHAT_AGENT_MODEL?.trim() || finalAnswerModel();
 }
 
+const CLAUDE_PREFIX = 'claude';
+
+/**
+ * Task #40: the run's answered_by stamp said Claude whenever the agent's own
+ * words stood, though with GPT_RUNS_AGENT those words were GPT's. A step GPT
+ * took carries GPT's model; any Claude step keeps the run's own model name.
+ */
+export function stepWriter(step: Pick<Anthropic.Message, 'model'>, claudeModel: string): string {
+  return step.model === '' || step.model.startsWith(CLAUDE_PREFIX) ? claudeModel : step.model;
+}
+
 const REQUEST_TIMEOUT_MS = 120_000;
 const NO_RESULT = 'No result was returned for this call.';
 const ID_PREFIX = 'gpt_';

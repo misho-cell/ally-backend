@@ -585,7 +585,7 @@ import { questionHeldOnThread } from './paceUntilSeen';
 import { ABOUT_THE_NAME_FIELD, registeredNameOnlyWhenAsked } from './registeredNameOnlyWhenAsked';
 import { delegatesTheChoiceOfPeople } from './delegatedChoice';
 import { SUMMARIZED_THINKING, tracedInFull } from './reasoningSummary';
-import { gptAgentStep, gptRunsTheAgent } from './gptAgentStep.service';
+import { gptAgentStep, gptRunsTheAgent, stepWriter } from './gptAgentStep.service';
 import {
   creditSearchTime,
   forgetSearchClocks,
@@ -15447,6 +15447,8 @@ export function isHousekeepingRound(roundToolNames: readonly string[]): boolean 
 interface SavedStep {
   readonly id: number;
   readonly text: string;
+  /** The model whose step this text was (task #40): GPT when it ran the agent step. */
+  readonly writtenBy?: string;
 }
 
 /** The fullest of the run's draft steps, or null when there is none. */
@@ -16331,7 +16333,7 @@ async function runToolLoop(
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         stepTexts.push(narration);
         if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
-          draftSteps.push({ id: stepId, text: narration });
+          draftSteps.push({ id: stepId, text: narration, writtenBy: stepWriter(response, MODEL) });
         if (isHousekeepingRound(roundTools))
           housekeepingSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {
@@ -16434,7 +16436,7 @@ async function runToolLoop(
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         stepTexts.push(narration);
         if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
-          draftSteps.push({ id: stepId, text: narration });
+          draftSteps.push({ id: stepId, text: narration, writtenBy: stepWriter(response, MODEL) });
         if (isHousekeepingRound(roundTools))
           housekeepingSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {
@@ -16532,6 +16534,7 @@ async function runToolLoop(
     const rewritten = keepShort ? null : await writeWith(writer);
     if (rewritten === null) await claudeFinalIfSkipped();
     if (rewritten === null) {
+      answeredBy = stepWriter(response, MODEL);
       // Row 155: the deltas were already on the screen before the answer could
       // be judged, so a refusal has to CLEAR them. Without this the person
       // keeps looking at „to=functions" while the real answer arrives in the
@@ -16552,7 +16555,7 @@ async function runToolLoop(
         console.warn(`[final-answer] run ${runId}: the rewrite was empty — Claude's answer stands`);
         await claudeFinalIfSkipped();
         finalText = scrubFinal(extractText(response.content), runId);
-        answeredBy = MODEL;
+        answeredBy = stepWriter(response, MODEL);
         finalIsRewrite = false;
       }
       // #8947: a rewrite that lost a link, a number or most of the text gives way to
@@ -16564,7 +16567,7 @@ async function runToolLoop(
           `[final-answer] run ${runId}: the rewrite lost facts — Claude's answer stands`,
         );
         finalText = scrubFinal(claudeWords, runId);
-        answeredBy = MODEL;
+        answeredBy = stepWriter(response, MODEL);
         finalIsRewrite = false;
       }
       // Misho, 3 Nov: Claude's answer and the writer's, side by side in the run trace.
@@ -16668,7 +16671,7 @@ async function runToolLoop(
       `[chat] run ${runId}: Claude's answer beside the closing tool stands (${draft.text.length} chars), GPT's line (${finalText.length}) goes`,
     );
     finalText = draft.text;
-    answeredBy = MODEL;
+    answeredBy = draft.writtenBy ?? MODEL;
     finalIsRewrite = false;
     promoted = true;
     if (finalText.length > LONG_DRAFT_CHARS) {

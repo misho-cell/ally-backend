@@ -14,7 +14,7 @@ describe('a rewrite that came back empty', () => {
     const block = chat.slice(at, at + 900);
     expect(block).toContain("if (finalText.trim() === '') {");
     expect(block).toContain('finalText = scrubFinal(extractText(response.content), runId);');
-    expect(block).toContain('answeredBy = MODEL;');
+    expect(block).toContain('answeredBy = stepWriter(response, MODEL);');
     expect(block).toContain("the rewrite was empty — Claude's answer stands");
   });
 });
