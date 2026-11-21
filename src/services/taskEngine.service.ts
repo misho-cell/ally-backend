@@ -1,3 +1,4 @@
+import { sendGoalNewsToWhatsapp, whatsappReplyOwed } from './whatsappReplies.service';
 import {
   closeQuestionNote,
   IdleDecision,
@@ -579,6 +580,8 @@ export async function wakeTask(
         );
         return 'woken';
       }
+      // Read before the answer goes out: delivering an owed reply consumes it.
+      const answerOwedInWhatsapp = whatsappReplyOwed(Number(ownerId), thread.id);
       emitRunComplete(ownerId, thread.id, runId, {
         reply: result.reply,
         ...(result.taskResult && { result: result.taskResult }),
@@ -663,6 +666,15 @@ export async function wakeTask(
         // Misho, 21 Nov: never in WhatsApp — the app only.
         { notInWhatsapp: true },
       ).catch(() => undefined);
+      // The goal's own words go to WhatsApp instead, unless they already went as an owed answer.
+      if (!answerOwedInWhatsapp) {
+        void sendGoalNewsToWhatsapp(
+          Number(ownerId),
+          thread.id,
+          scrubText(result.reply).trim(),
+          thread.title ?? null,
+        );
+      }
       return 'woken';
     } catch (err) {
       // eslint-disable-next-line no-console
