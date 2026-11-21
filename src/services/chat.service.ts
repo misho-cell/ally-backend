@@ -467,7 +467,11 @@ import {
 import { normalizePhone } from './phone';
 import { moderateReply } from './moderation.service';
 import { wayInNamesFrom } from './wayInNames.service';
-import { addCardToOwedReply } from './whatsappReplies.service';
+import {
+  addCardToOwedReply,
+  labelWhatsappThread,
+  oweSecondWhatsappReply,
+} from './whatsappReplies.service';
 import { EarlyVerdict, startEarlyModeration, verdictForShown } from './earlyModeration';
 import {
   applyOfficeholderGate,
@@ -11607,6 +11611,7 @@ async function executeToolCall(
       }
       const { id } = await createTask(userId, title, description, taskType, goalThreadId, autonomy);
       noteCreatedGoal(runId, id);
+      if (goalThreadId !== undefined) labelWhatsappThread(goalThreadId, title);
       // Two answers (13 Nov): a goal opened here gets the full research too.
       const researching = movedTo === undefined && goalOpenedInRun(runId, id);
       return {
@@ -14969,6 +14974,8 @@ function startFullResearch(
     )
     .then(async (landed) => {
       if (!landed) return;
+      // Misho, 21 Nov: asked from WhatsApp, the second answer goes there too.
+      oweSecondWhatsappReply(Number(userId), threadId);
       const { wakeWithFullResearch } = await import('./taskEngine.service');
       wakeWithFullResearch(taskId, FULL_RESEARCH_EVENT, async () => researchWaiting(threadId));
     })
