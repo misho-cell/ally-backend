@@ -11435,3 +11435,7 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 
 ### 21 Nov, 20:10Z — re 20:05Z: 6680839 seen live; DONE WHEN waits
 - Deploy 6680839 SUCCESS (19:53Z). No traffic since 19:15Z, so outage=0 proves nothing yet, and neither 6680839's DONE WHEN (answered_by = the GPT model on a GPT-agent run) nor 3db032e's has had a run to read. Ops reads both on the next owner-typed run.
+
+### 22 Nov, 11:40Z — 6680839 DONE WHEN met on real traffic
+- 11:15-11:35Z: 18 `openai` `chat` rows (agent steps), no `anthropic` `chat` row, no `[gpt-agent] … not usable` line. Both owner-facing replies (11:26Z, 11:33Z) store `answered_by` = gpt-6.2-sol. DONE WHEN met.
+- 3db032e and f51b0d5 still wait: no `[whatsapp-routing]` line since the deploy.
