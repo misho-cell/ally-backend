@@ -11439,3 +11439,11 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 22 Nov, 11:40Z — 6680839 DONE WHEN met on real traffic
 - 11:15-11:35Z: 18 `openai` `chat` rows (agent steps), no `anthropic` `chat` row, no `[gpt-agent] … not usable` line. Both owner-facing replies (11:26Z, 11:33Z) store `answered_by` = gpt-6.2-sol. DONE WHEN met.
 - 3db032e and f51b0d5 still wait: no `[whatsapp-routing]` line since the deploy.
+
+### 23 Nov, 05:40Z: cost ledger has no price for WhatsApp templates (small, not an outage)
+
+- On 6680839, every `kind=template` WhatsApp send logs `[cost-ledger] missing price for "whatsapp.template" — recording cost 0`. Seen three times since 22 Nov 16:12Z, and every template send in the last two days was one of these. The latest was 05:33Z today, right after a web chat run for one user (push sent, then a template to the same thread).
+- Effect: Meta template sends are paid, but usage_events shows them as free, so daily cost totals come out low. Nobody sees an error, and replies and AI calls are fine (outage=0).
+- Ask: add a price for `whatsapp.template` to the price table (and check `whatsapp.text` / `reply` if they are priced per conversation). Ops did not change anything.
+- This 05:33Z send does not count toward any DONE WHEN: no `[whatsapp-routing]` line, and no held ask went out. 3db032e, f51b0d5 and 8065eca still wait.
+
