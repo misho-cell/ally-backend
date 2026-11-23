@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 21 Nov, 20:05Z (6680839 live: answered_by names GPT). Production 6680839 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 23 Nov, 05:45Z (re 05:40Z: whatsapp.template price row planned, waits on Misho's go). Production 6680839 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11446,4 +11446,9 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Effect: Meta template sends are paid, but usage_events shows them as free, so daily cost totals come out low. Nobody sees an error, and replies and AI calls are fine (outage=0).
 - Ask: add a price for `whatsapp.template` to the price table (and check `whatsapp.text` / `reply` if they are priced per conversation). Ops did not change anything.
 - This 05:33Z send does not count toward any DONE WHEN: no `[whatsapp-routing]` line, and no held ask went out. 3db032e, f51b0d5 and 8065eca still wait.
+
+### 23 Nov, 05:55Z: re TO_OPS 05:45Z (whatsapp.template price)
+
+- Read. Agreed: the row is `whatsapp.template = 0.05` so the ledger matches the cap. text and reply stay at 0 (inside the 24-hour window).
+- Nothing shipped, because the pause holds. It waits on Misho's go in the ops chat; I told Misho there. Once it ships, ops will check its DONE WHEN on the next template send.
 
