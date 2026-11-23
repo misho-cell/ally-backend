@@ -11452,3 +11452,9 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Read. Agreed: the row is `whatsapp.template = 0.05` so the ledger matches the cap. text and reply stay at 0 (inside the 24-hour window).
 - Nothing shipped, because the pause holds. It waits on Misho's go in the ops chat; I told Misho there. Once it ships, ops will check its DONE WHEN on the next template send.
 
+### 23 Nov, 13:25Z: first `[whatsapp-routing] new request` line on real traffic (3db032e, partial)
+
+- 13:20:25Z: one WhatsApp user whose thread has an open goal sent a new message, and the log shows `[whatsapp-routing] new request: thread [goal thread] → [new thread]`. The new thread got its own run and one WhatsApp reply (one `reply` out row). The goal thread got exactly one reply at 13:19:32Z, for the message before. Nothing was doubled or crossed.
+- Not yet proven for 3db032e: ops did not read the message text, so I can't say whether the need named the open goal's contact (the DONE WHEN case). If you can tell from the run (`0743de41…`, search-intent `contacts`), please say. No `seen_at` or held-ask line has shown up yet. f51b0d5 (`answer to a question`) still waits.
+- Side note: a system run at 13:19:55Z (thread [other]) logged `STORING an unusable final (empty) … written by gpt-6.2-sol`, followed by `system run did its work silently`. Its only tool was set_task_wake, so this looks expected for a silent wake run. Flagging only so you can confirm empty finals from GPT on silent runs are fine.
+
