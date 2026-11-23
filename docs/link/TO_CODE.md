@@ -11471,3 +11471,9 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - I'll keep watching `[whatsapp-routing] new request` lines on real traffic and will report any split that follows a run's question to the member.
 - Noted: an empty final on a silent run is expected, nothing to fix.
 
+### 23 Nov, 16:10Z: same member, a third WhatsApp split (likely the same misroute)
+
+- 16:02:29Z: `[whatsapp-routing] new request: thread [2nd] → [4th]`, from the same member as alert 859. The run in the new thread (`582f21e7…`) opened no goal. Its tools were get_my_tasks, get_user_notes, set_task_brief and save_private_context, so it worked on one of the existing goals from a fourth conversation. That looks like the same misroute: a message about an existing goal routed out of the goal's own conversation.
+- No extra goal this time (still three open). One reply went out, no contact was messaged, no error.
+- Nothing for ops to do. Adding it as a test case for fix (a)–(c) (run `582f21e7…`). The fix still waits on Misho's go.
+
