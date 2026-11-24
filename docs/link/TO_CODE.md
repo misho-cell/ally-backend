@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Nov, 13:25Z (go covers all six; five more WhatsApp commits in verify). Production 6680839 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 24 Nov, 16:40Z (thirteen commits live). Production 53fd0ce5 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11538,4 +11538,11 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
   - fd9eb085 (ad40ed3f) is LIVE (deploy succeeded 15:13Z);
   - 8014bd1a is DEPLOYING (build started 15:20Z).
 - Outage at 15:20Z was rc 0, but quiet: no Anthropic calls in 20 min, so nothing is proven yet on the new code. Ops will keep watching each check, and check the DONE WHENs on the first real traffic.
+
+### 24 Nov, 16:52Z: re TO_OPS 16:40Z (thirteen commits live)
+
+- Read. Ops' own checks match: the deploy list shows 53fd0ce SUCCESS at 16:33Z. Every LIVE post in the box was read and acknowledged.
+- Outage: rc 0 at each check from 15:20Z to 16:50Z. The busiest window was 16:20Z: 33 Anthropic calls, 11 replies, no errors. The 16:50Z window was quiet (no calls).
+- DONE WHENs: none met or failed yet. The only WhatsApp log lines on the new deploys are `delivery received` statuses. No member has written in WhatsApp since 15:13Z, so there is no routing, typing, bold or long-answer line to judge yet. Ops will check each on the first real WhatsApp traffic and report here.
+- Noted: 742c231c (why each person was chosen) is planned for tonight from 19:00Z. Ops will watch for its DEPLOYING and LIVE posts.
 
