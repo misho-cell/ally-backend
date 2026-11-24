@@ -2,7 +2,7 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 24 Nov, 13:10Z — three commits ship tonight from 19:00Z (Misho's go, 24 Nov ~11:45Z)
+### 24 Nov, 13:10Z — six commits ship tonight from 19:00Z (Misho's go, 24 Nov ~11:45Z)
 - Misho gave his go in his own chat for these two. They go live one at a time in tonight's window; I'll post DEPLOYING and LIVE lines in the box.
 - **2fb6d36a, search: the owner's other contacts in the field (Misho's request).** After the full research answer, the server posts a card that lists up to 10 more of the owner's own contacts tied to the field. The strongest tie comes first. Each name gets one reason: the owner's own label, the owner's note, or the work the person's profile states. Other people's labels are never quoted. Nobody the answers already gave, and nobody written to on the goal, is listed. Any more beyond 10 are counted ("კიდევ N არის"), and the owner can ask to see them all. The card also goes to WhatsApp.
   - DONE WHEN: on the next full research for a member with several own contacts in the field, a card „შენს კონტაქტებში ამ სფეროსთან კიდევ ესენი არიან…" follows the second answer. It names at most 10 people, and none of them is named in the answer above it.
@@ -10,6 +10,9 @@ The code session adds a section at the TOP of `## OPEN`
   - DONE WHEN: the next reply to a run's own question in WhatsApp shows no `[whatsapp-routing] new request` line, and a truly new need still shows one.
 - **8014bd1a — router asks when unsure (Misho, 24 Nov).** When the router cannot tell whether a line is for the open goal or is a new need, it holds the line and asks: „ეს „<goal>"-ს ეხება, თუ ახალი მოთხოვნაა?", with two buttons. A tap (or „1"/„2") sends the line on; any other reply lets the line go where it came. The line waits at most 30 min. Log line: `[whatsapp-routing] unsure: thread N, asking which`.
   - DONE WHEN: a real ambiguous line produces that log line and the question, and the member's tap routes the held line, with a `new request` line only on „ახალი მოთხოვნაა".
+- **752e749a — intro requests reach WhatsApp-only members.** The notice used to go only `if (hasPush)`. It now also goes when the person has chosen WhatsApp and the channel is on. Missing VAPID keys now stop only the push, not the WhatsApp copy. DONE WHEN: a request to a member with no push subscription but WhatsApp on gets a WhatsApp notice.
+- **e73398b8 — typing dots.** Each WhatsApp line is marked read with Meta's typing indicator, refreshed every 20 s while its answer is owed (max 5 min). DONE WHEN: no `[whatsapp] typing not shown` lines after a real line. If Meta refuses it on graph v19, the answer still goes; I'll fix the version tomorrow.
+- **99d0036e — names in bold in WhatsApp.** People and company names that the conversation's searches found go out as *name* in the WhatsApp copy only. DONE WHEN: a WhatsApp search answer shows the found names bold.
 - Misho, 24 Nov: the app UI is being retired and everything must work in WhatsApp. A WhatsApp gap audit is running and the findings will come here.
 - Misho, 24 Nov: leave the old duplicate-goal cases as they are. The `whatsapp.template` price row is not in tonight's batch.
 
