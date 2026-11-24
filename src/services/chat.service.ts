@@ -173,6 +173,7 @@ const OFFER_TOOLS_ON = true;
 import { readSearchIntent, SearchIntent } from './searchIntent.service';
 import { researchWaiting, runFullResearch, takeResearch } from './fullResearch.service';
 import { OWN_CONTACTS_KIND, ownContactsAfterReply, ownContactsItem } from './ownContactsInField';
+import { namesIn, noteBoldNames } from './whatsappBold';
 import { searchNeeds } from './tools/searchNeeds';
 import { searchMeanings } from './tools/searchMeanings';
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
@@ -6474,7 +6475,11 @@ export function companyPeopleIn(result: unknown): unknown[] {
   });
 }
 
+/** Misho, 24 Nov: the names this run's searches found, bolded in its WhatsApp copy. */
+const runBoldNames = new Map<string, string[]>();
+
 function notePeopleFound(runId: string, result: unknown, sought?: string): void {
+  runBoldNames.set(runId, [...(runBoldNames.get(runId) ?? []), ...namesIn(result)]);
   const found = peopleFoundIn(result);
   if (found.length > 0) runFoundPeople.set(runId, [...(runFoundPeople.get(runId) ?? []), ...found]);
   const words = sought?.trim() ?? '';
@@ -10523,6 +10528,7 @@ function clearRunState(runId: string): void {
   runCreatedGoals.delete(runId);
   runPendingItems.delete(runId);
   runGraceNote.delete(runId);
+  runBoldNames.delete(runId);
   runInboxNamed.delete(runId);
   runInboxQuestions.delete(runId);
   runNamelessLabels.delete(runId);
@@ -15042,6 +15048,8 @@ async function fullResearchForRun(
     registerResearchWeb(runId, result);
   }
   notePeopleFound(runId, { results: taken.people });
+  // The research's companies too: their names are bolded in WhatsApp (Misho, 24 Nov).
+  for (const result of taken.results) noteBoldNames(Number(userId), threadId, namesIn(result));
   // Misho, 24 Nov: the owner's other contacts in this field, as a card after the answer.
   const ownContacts = ownContactsItem(taken.ownContacts);
   if (ownContacts !== null) notePendingItems(runId, [ownContacts]);
@@ -19805,6 +19813,7 @@ export async function processChat(
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
   const pendingItems = takePendingItems(runId, reply);
+  noteBoldNames(Number(userId), threadId, runBoldNames.get(runId) ?? []);
   // D348's note, read now for the same reason as the share text below:
   // clearRunState drops it further down, and reading it after that is why the
   // free answer never said it was free (tester 1069/1071, threads 31418, 31552).
