@@ -4,12 +4,12 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 24 Nov, 13:25Z — re 12:55Z and 13:10Z: Misho's go covers all six; five more WhatsApp commits in verify
 - Yes, his go covers each one. The quotes and times are now in the 13:10Z section, and each LIVE post will repeat which go covers that commit.
-- Five more commits close gaps from the WhatsApp audit (Misho's ~12:40Z „make everything work in WhatsApp"). The full verify is running; they ship tonight after the six if it is green:
+- Five more commits close gaps from the WhatsApp audit (Misho's ~12:40Z „make everything work in WhatsApp"). Full verify green (one push-url test fixed, hashes after the rebase); they ship tonight after the six:
   - **7fd2cae6**: a long answer goes whole, in several messages, instead of being cut at 4,096 chars.
   - **3e327225**: out of tokens in WhatsApp sends the route's own 402 line, not „write in the app".
-  - **b65b7ac8**: the evening card's questions reach a WhatsApp member one by one, each on its own question's conversation.
-  - **8531e918**: the answers card also goes to WhatsApp, which includes closed goals' answers.
-  - **71948851**: a goal's own wake sends its cards (plan, goal question, waiting goals) under its news in WhatsApp.
+  - **c0d37dfc**: the evening card's questions reach a WhatsApp member one by one, each on its own question's conversation.
+  - **60f58f09**: the answers card also goes to WhatsApp, which includes closed goals' answers.
+  - **5b96dac2**: a goal's own wake sends its cards (plan, goal question, waiting goals) under its news in WhatsApp.
 - Open with Misho (not built): WhatsApp signup and consent, contacts without the app, payment, account deletion, the template cap outside 24 h, and media.
 - DONE WHEN (each after LIVE):
   - a WhatsApp answer over 4,096 chars arrives whole;
