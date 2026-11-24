@@ -11,6 +11,8 @@ import { sendPushNotification } from './notification.service';
 import { personZone } from './personZone';
 import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
 import { userLanguage } from './threads.service';
+import { reachesInWhatsapp, tellInWhatsapp } from './whatsappChannel.service';
+import { RunLanguage } from './runLanguage';
 
 /**
  * #1850: the evening card's reads and writes. See eveningCard.ts for the rule.
@@ -130,15 +132,78 @@ async function openItemCount(cardId: number): Promise<number> {
   return result.rows[0]?.n ?? 0;
 }
 
-/** The one push for the card; nothing when every item is already answered. */
+interface OpenCardQuestion {
+  readonly ask_thread_id: number | null;
+  readonly from_name: string | null;
+  readonly question: string;
+}
+
+/** The card's questions still waiting, in the order they were asked. */
+async function openCardQuestions(cardId: number): Promise<OpenCardQuestion[]> {
+  const result = await query<OpenCardQuestion>(
+    `SELECT ta.ask_thread_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS from_name, ta.question
+       FROM task_asks ta
+      WHERE ta.evening_card_id = $1 AND ta.status = 'sent'
+        AND ta.offered_help_at IS NULL AND ta.later_at IS NULL AND ta.declined_at IS NULL
+      ORDER BY ta.id
+      LIMIT ${ITEMS_PER_CARD}`,
+    [cardId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** Pure: one card question as its own WhatsApp message, under whose assistant asks. */
+export function cardQuestionText(title: string, question: string): string {
+  return `*${title}*\n${question}`;
+}
+
+/**
+ * Misho, 24 Nov (the app is retired): the card is an app screen, so a member
+ * who chose WhatsApp got „N questions" and a link to it. Each question now
+ * goes to WhatsApp as its own message, on its own conversation, as any
+ * question to them does — so an answer swiped onto it reaches its asker.
+ */
+async function tellCardInWhatsapp(
+  userId: number,
+  cardId: number,
+  language: RunLanguage,
+): Promise<void> {
+  const { askPushTitle } = await import('./taskAsks.service');
+  for (const item of await openCardQuestions(cardId)) {
+    const title = askPushTitle(language, item.from_name ?? '');
+    await tellInWhatsapp(
+      userId,
+      cardQuestionText(title, item.question),
+      item.ask_thread_id,
+      true,
+    ).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[evening-card] a question did not reach WhatsApp:', (err as Error).message);
+    });
+  }
+}
+
+/** The one push for the card — in WhatsApp, its questions one by one; nothing when all are answered. */
 export async function ringForCard(card: DueCard): Promise<number> {
   const open = await openItemCount(card.id);
   if (open === 0) return 0;
   const language = await userLanguage(String(card.user_id));
-  await sendPushNotification(String(card.user_id), {
-    ...eveningCardPush(language, open),
-    url: EVENING_CARD_URL,
-  });
+  const inWhatsapp = await reachesInWhatsapp(card.user_id);
+  if (inWhatsapp) {
+    // The app's push alone; WhatsApp gets the questions themselves, below.
+    await sendPushNotification(
+      String(card.user_id),
+      { ...eveningCardPush(language, open), url: EVENING_CARD_URL },
+      { notInWhatsapp: true },
+    );
+  } else {
+    await sendPushNotification(String(card.user_id), {
+      ...eveningCardPush(language, open),
+      url: EVENING_CARD_URL,
+    });
+  }
+  if (inWhatsapp) await tellCardInWhatsapp(card.user_id, card.id, language);
   return open;
 }
 
