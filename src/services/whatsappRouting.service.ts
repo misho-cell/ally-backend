@@ -31,6 +31,8 @@ export enum LineKind {
   NewRequest = 'new_request',
   SameGoal = 'same_goal',
   Talk = 'talk',
+  /** Misho, 24 Nov: „when it is not sure whether this is the old goal or a new one, ask". */
+  Unsure = 'unsure',
 }
 
 const ROUTER_MODEL = process.env.WHATSAPP_ROUTER_MODEL?.trim() || QUICK_MODEL;
@@ -49,7 +51,9 @@ const ROUTER_PROMPT =
   'with that same need, or answers or reacts to LAST SHOWN (a reply to its question, a choice, ' +
   'a correction, „later", „first do X" about what it offered), or asks to remind, nudge or ' +
   'follow up with someone about it, or asks how it stands. talk: a greeting, thanks, or a ' +
-  'question about the assistant itself. Answer with one word: new_request, same_goal or talk.';
+  'question about the assistant itself. unsure: the line could as well be about the goal or ' +
+  'LAST SHOWN as a different need, and nothing in them settles which — the person will be ' +
+  'asked. Answer with one word: new_request, same_goal, talk or unsure.';
 /** The goal as the router reads it, at most this long. */
 const MAX_GOAL_CHARS = 600;
 /** What the member was last shown, at most this long. */
@@ -63,6 +67,7 @@ const SHOWN_KINDS = ['message', 'pending'];
 export function lineKindFrom(answer: string): LineKind {
   const word = answer.trim().toLowerCase();
   if (word.includes(LineKind.NewRequest)) return LineKind.NewRequest;
+  if (word.includes(LineKind.Unsure)) return LineKind.Unsure;
   if (word.includes(LineKind.Talk)) return LineKind.Talk;
   return LineKind.SameGoal;
 }
@@ -82,6 +87,22 @@ export function goalText(goal: {
 }): string {
   const said = [goal.brief, goal.description].find((t) => typeof t === 'string' && t.trim() !== '');
   return (said ?? goal.title).trim().slice(0, MAX_GOAL_CHARS);
+}
+
+/** A goal's name in a question: its brief's first sentence, else its title. */
+const MAX_GOAL_NAME_CHARS = 70;
+const BRIEF_LEAD = /^\s*(მიზანი|goal)\s*:\s*/iu;
+
+/** Pure: the goal as a short name the person recognises. */
+export function goalName(goal: { readonly title: string; readonly brief?: string | null }): string {
+  const brief = typeof goal.brief === 'string' ? goal.brief.replace(BRIEF_LEAD, '').trim() : '';
+  const first =
+    brief
+      .split(/(?<=[.!?])\s/u)[0]
+      ?.replace(/[.!?]$/u, '')
+      .trim() ?? '';
+  const name = first !== '' ? first : goal.title.trim();
+  return name.length > MAX_GOAL_NAME_CHARS ? `${name.slice(0, MAX_GOAL_NAME_CHARS)}…` : name;
 }
 
 /** The assistant's last lines in this conversation, oldest first; empty when unread. */
@@ -139,35 +160,72 @@ async function readLineKind(
   return lineKindFrom(text);
 }
 
+/** Where an unquoted WhatsApp line goes. */
+export enum RouteKind {
+  /** The conversation it came to. */
+  Stay = 'stay',
+  /** A new conversation, opened for it. */
+  New = 'new',
+  /** Not sure: the person is asked which, and the line waits for the answer. */
+  Ask = 'ask',
+}
+
+export interface LineRoute {
+  readonly kind: RouteKind;
+  readonly threadId: number;
+  /** With Ask: the open goal, as the question names it. */
+  readonly goal?: string;
+}
+
+/** Opens a conversation for a new request. */
+export async function newConversationFor(userId: number, from: number): Promise<number> {
+  const fresh = await createThread(String(userId), 'regular');
+  // eslint-disable-next-line no-console
+  console.info(`[whatsapp-routing] new request: thread ${from} → ${fresh.id}`);
+  return fresh.id;
+}
+
 /**
- * The conversation an unquoted WhatsApp line goes to: a new one when the line is
- * a new request and the current one already holds a goal, else the current one.
- * Never throws; any failure keeps the line where it was.
+ * Where an unquoted WhatsApp line goes: a new conversation when it is a new
+ * request beside a goal, a question to the person when the router cannot
+ * tell, else where it came. Never throws; any failure keeps the line put.
  */
+export async function routeLine(
+  userId: number,
+  threadId: number,
+  line: string,
+): Promise<LineRoute> {
+  const stay = { kind: RouteKind.Stay, threadId };
+  if (line.trim() === '') return stay;
+  try {
+    const goal = await getOpenTaskByThread(threadId);
+    if (goal === null) return stay;
+    const lastShown = await lastLinesShown(threadId);
+    const kind = await readLineKind(userId, threadId, goalText(goal), line, lastShown);
+    if (kind === LineKind.Unsure) {
+      // eslint-disable-next-line no-console
+      console.info(`[whatsapp-routing] unsure: thread ${threadId}, asking which`);
+      return { kind: RouteKind.Ask, threadId, goal: goalName(goal) };
+    }
+    if (kind !== LineKind.NewRequest) {
+      labelWhatsappThread(threadId, goal.title);
+      return stay;
+    }
+    return { kind: RouteKind.New, threadId: await newConversationFor(userId, threadId) };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[whatsapp-routing] line kept in its conversation:', (err as Error).message);
+    return stay;
+  }
+}
+
+/** The conversation for a line, asking nobody: an unsure line stays where it came. */
 export async function conversationForLine(
   userId: number,
   threadId: number,
   line: string,
 ): Promise<number> {
-  if (line.trim() === '') return threadId;
-  try {
-    const goal = await getOpenTaskByThread(threadId);
-    if (goal === null) return threadId;
-    const lastShown = await lastLinesShown(threadId);
-    const kind = await readLineKind(userId, threadId, goalText(goal), line, lastShown);
-    if (kind !== LineKind.NewRequest) {
-      labelWhatsappThread(threadId, goal.title);
-      return threadId;
-    }
-    const fresh = await createThread(String(userId), 'regular');
-    // eslint-disable-next-line no-console
-    console.info(`[whatsapp-routing] new request: thread ${threadId} → ${fresh.id}`);
-    return fresh.id;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[whatsapp-routing] line kept in its conversation:', (err as Error).message);
-    return threadId;
-  }
+  return (await routeLine(userId, threadId, line)).threadId;
 }
 
 /**
