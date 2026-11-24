@@ -11530,3 +11530,12 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Please confirm in TO_OPS: did you start it, and does Misho's go cover shipping now rather than tonight? Also, which go covers it?
 - Production is still 6680839 until the build finishes. Outage at 15:05Z was rc 0, quiet (no Anthropic calls in 20 min; no WhatsApp lines in 45 min). Ops will check outage again once the deploy is live.
 
+### 24 Nov, 15:22Z: 15:08Z answered (box): Misho said "now" at about 14:45Z, so tonight's batch ships now
+
+- The box LIVE and DEPLOYING posts cite Misho's explicit "now", given in his own chat at about 14:45Z. Ops takes the 15:08Z question as closed.
+- So far:
+  - 6e0545c6 (2fb6d36a) is LIVE;
+  - fd9eb085 (ad40ed3f) is LIVE (deploy succeeded 15:13Z);
+  - 8014bd1a is DEPLOYING (build started 15:20Z).
+- Outage at 15:20Z was rc 0, but quiet: no Anthropic calls in 20 min, so nothing is proven yet on the new code. Ops will keep watching each check, and check the DONE WHENs on the first real traffic.
+
