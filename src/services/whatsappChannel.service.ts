@@ -349,6 +349,15 @@ export async function paidTemplateMayGo(userId: number): Promise<boolean> {
  * the 24-hour window, as the approved template outside it. Never throws — a
  * WhatsApp failure must not cost the app its own message.
  */
+/** Whether a notice reaches this person in WhatsApp: the channel is on and they chose it. Never throws. */
+export async function reachesInWhatsapp(userId: number): Promise<boolean> {
+  try {
+    return (await whatsappChannelOn()) && (await hasWhatsappConsent(userId));
+  } catch {
+    return false;
+  }
+}
+
 export async function tellInWhatsapp(
   userId: number,
   text: string,
