@@ -210,16 +210,47 @@ export function asTemplateParameter(text: string): string {
     : flat;
 }
 
-function asTextBody(text: string): string {
-  return text.length > MAX_TEXT_CHARS ? `${text.slice(0, MAX_TEXT_CHARS - 1)}…` : text;
+/** The cut points a long message is split at, the most natural first. */
+const SPLIT_POINTS = ['\n\n', '\n', ' '];
+
+/** The last natural cut at or before the limit, else the limit itself. */
+function cutAt(text: string, limit: number): number {
+  for (const point of SPLIT_POINTS) {
+    const at = text.lastIndexOf(point, limit);
+    if (at > limit / 2) return at;
+  }
+  return limit;
 }
 
+/**
+ * Pure. Misho, 24 Nov (the app is retired): a long answer — a full research
+ * with many options — was cut at WhatsApp's 4,096 characters with „…" and the
+ * rest lost. It is sent whole, as several messages, each cut where a paragraph,
+ * else a line, else a word ends.
+ */
+export function textParts(text: string, limit: number = MAX_TEXT_CHARS): string[] {
+  const parts: string[] = [];
+  let rest = text.trim();
+  while (rest.length > limit) {
+    const at = cutAt(rest, limit);
+    parts.push(rest.slice(0, at).trimEnd());
+    rest = rest.slice(at).trimStart();
+  }
+  if (rest !== '') parts.push(rest);
+  return parts;
+}
+
+/** The text as one message or several; the last one's id stands for them all. */
 async function sendText(phone: string, text: string): Promise<string> {
-  return postToGraph({
-    to: phone.replace(/^\+/u, ''),
-    type: 'text',
-    text: { body: asTextBody(text), preview_url: true },
-  });
+  let wamid = '';
+  for (const body of textParts(text)) {
+    wamid = await postToGraph({
+      to: phone.replace(/^\+/u, ''),
+      type: 'text',
+      text: { body, preview_url: true },
+    });
+  }
+  return wamid;
 }
 
 /** An approved template, with its body's parameters in order (none for a fixed text). */
