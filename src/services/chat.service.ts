@@ -172,6 +172,7 @@ import { safetyReplyFor } from './safetyWorry';
 const OFFER_TOOLS_ON = true;
 import { readSearchIntent, SearchIntent } from './searchIntent.service';
 import { researchWaiting, runFullResearch, takeResearch } from './fullResearch.service';
+import { OWN_CONTACTS_KIND, ownContactsAfterReply, ownContactsItem } from './ownContactsInField';
 import { searchNeeds } from './tools/searchNeeds';
 import { searchMeanings } from './tools/searchMeanings';
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
@@ -8537,6 +8538,22 @@ function morePendingAfterNaming(
  * The founder's „skip, don't repeat" is filtered here for exactly the same
  * reason, one row further on: `check_my_inbox` can be called after it too.
  */
+/**
+ * Misho, 24 Nov: the card of the owner's other contacts in the field lists
+ * „the others" — whoever this very reply named comes off it, and a card left
+ * with nobody is not sent.
+ */
+function withOwnContactsAfterReply(
+  items: readonly PendingItemInput[],
+  reply: string,
+): PendingItemInput[] {
+  return items.flatMap((item) => {
+    if (item.kind !== OWN_CONTACTS_KIND) return [item];
+    const left = ownContactsAfterReply(item.payload, reply);
+    return left === null ? [] : [{ ...item, payload: left }];
+  });
+}
+
 function takePendingItems(runId: string, reply: string): PendingItemInput[] {
   const items = runPendingItems.get(runId) ?? [];
   const held = runHeldUpdates.get(runId);
@@ -15025,6 +15042,9 @@ async function fullResearchForRun(
     registerResearchWeb(runId, result);
   }
   notePeopleFound(runId, { results: taken.people });
+  // Misho, 24 Nov: the owner's other contacts in this field, as a card after the answer.
+  const ownContacts = ownContactsItem(taken.ownContacts);
+  if (ownContacts !== null) notePendingItems(runId, [ownContacts]);
   return `\n\n${taken.section}`;
 }
 
@@ -15627,7 +15647,9 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
  * no goal, so it was held as „not asked about other goals" — and nothing notes
  * it again, so it was lost (0 of 2). It goes out with its reply.
  */
-const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND, NEED_RECALL_KIND]);
+const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND, NEED_RECALL_KIND]).add(
+  OWN_CONTACTS_KIND,
+);
 
 export async function waitingItemsToDeliver(
   items: readonly PendingItemInput[],
@@ -19991,13 +20013,14 @@ export async function processChat(
   // tool at all is small talk: what waits is said when the owner asks or works,
   // not under a hello. Nothing is lost; the items are read again next run.
   const smallTalk = smallTalkTurn(ownerAbsent, userMessage, pending);
+  const replyItems = withOwnContactsAfterReply(pendingItems, reply);
   const toDeliver = smallTalk
     ? []
-    : await waitingItemsToDeliver(pendingItems, ownerAbsent, threadId, pending);
-  if (toDeliver.length < pendingItems.length) {
+    : await waitingItemsToDeliver(replyItems, ownerAbsent, threadId, pending);
+  if (toDeliver.length < replyItems.length) {
     // eslint-disable-next-line no-console
     console.log(
-      `[pending] run ${runId}: ${pendingItems.length - toDeliver.length} waiting item(s) held back — ` +
+      `[pending] run ${runId}: ${replyItems.length - toDeliver.length} waiting item(s) held back — ` +
         (smallTalk ? 'small talk' : 'not asked about other goals'),
     );
   }
