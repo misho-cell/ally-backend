@@ -422,12 +422,6 @@ export async function sendPushNotification(
     title: withoutAllowMarkers(raw.title),
     body: withoutAllowMarkers(raw.body),
   };
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    // eslint-disable-next-line no-console
-    console.error('[push] VAPID keys missing — push disabled');
-    return;
-  }
-
   // Row 111: the same words to the same person inside the window is the same
   // event told twice.
   if (sentThisAlready(userId, payload)) {
@@ -461,6 +455,14 @@ export async function sendPushNotification(
       whatsappCopyHeldBack(options.askedFrom, askerReading),
       options.highValue === true,
     );
+  }
+
+  // Misho, 24 Nov (the app is retired): missing push keys stop only the push —
+  // the WhatsApp copy above has already gone.
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    // eslint-disable-next-line no-console
+    console.error('[push] VAPID keys missing — push disabled');
+    return;
   }
 
   const result = await query<SubscriptionRow>(

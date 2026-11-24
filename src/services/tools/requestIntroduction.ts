@@ -14,6 +14,8 @@ import { bridgeAlreadyAsked, oneBridgeAtATimeNote, oneRequestAtATime } from '../
 import { foldedLower } from './georgianCase';
 import { buildSearchTerms } from './transliterate';
 import { sendPushNotification } from '../notification.service';
+import { whatsappChannelOn } from '../whatsappChannel.service';
+import { hasWhatsappConsent } from '../whatsappConsent.service';
 import { createIncomingRequestThread, createOutgoingRequestThread } from '../threads.service';
 import { emitThreadCreated } from '../sse.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
@@ -508,6 +510,9 @@ async function requestIntroductionInner(
         mediatorUserId,
       ])
     ).rows.length > 0;
+  // Misho, 24 Nov: the app is retired — a person who chose WhatsApp is told
+  // there, push subscription or not (the notice copies itself to WhatsApp).
+  const notified = hasPush || (await reachedInWhatsapp(Number(mediatorUserId)));
 
   // For a direct request the ANSWERER is the target; the duplicate check and
   // the insert both key on whoever will answer.
@@ -750,7 +755,7 @@ async function requestIntroductionInner(
       ? await deliverIntoNewThreads(stored)
       : await deliverIntoTheConversation(stored, conversation);
 
-  if (hasPush) {
+  if (notified) {
     await sendPushNotification(
       String(mediatorUserId),
       {
@@ -772,13 +777,22 @@ async function requestIntroductionInner(
   return {
     success: true,
     request_id: requestId,
-    push_sent: hasPush,
+    push_sent: notified,
     // G5: the server's „it has gone" line is in this thread already.
     ...(conversation !== null && { shown_in_thread: conversation.goalThreadId }),
-    message: hasPush
+    message: notified
       ? `მოთხოვნა გაიგზავნა ${mediatorName}-სთვის.`
       : `მოთხოვნა შეიქმნა. ${mediatorName}-ს ნოტიფიკაციები არ აქვს ჩართული — დაინახავს Netai-ს გახსნისას.`,
   };
+}
+
+/** Whether a notice reaches this person in WhatsApp. Never throws. */
+async function reachedInWhatsapp(userId: number): Promise<boolean> {
+  try {
+    return (await whatsappChannelOn()) && (await hasWhatsappConsent(userId));
+  } catch {
+    return false;
+  }
 }
 
 /** The one contact in the bridge's own phonebook the target's name points to; none on doubt. */
