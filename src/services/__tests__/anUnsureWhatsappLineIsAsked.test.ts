@@ -138,7 +138,9 @@ describe('the inbound route asks, then sends the line on', () => {
   const inbound = readFileSync(join(__dirname, '..', 'whatsappInbound.service.ts'), 'utf8');
 
   it('reads a held line’s answer first, and asks when the router is unsure', () => {
-    expect(inbound).toContain('if (await heldLineAnswered(userId, message.from, typed)) return;');
+    expect(inbound).toContain(
+      'if (await heldLineAnswered(userId, message.from, typed, message.wamid)) return;',
+    );
     expect(inbound).toContain('route.kind === RouteKind.Ask');
     expect(inbound).toContain('await askWhichGoal(');
   });

@@ -27,6 +27,7 @@ import {
   routeLine,
 } from './whatsappRouting.service';
 import { WhichAnswer, askWhichGoal, takeHeldLine } from './whatsappWhichGoal';
+import { keepTyping } from './whatsappTyping.service';
 import { recordReadReceipts, seenInWhatsapp } from './whatsappSeen.service';
 
 /**
@@ -178,9 +179,12 @@ async function postLine(
   phone: string,
   threadId: number,
   text: string,
+  wamid = '',
 ): Promise<void> {
   await seenInWhatsapp(userId, threadId);
   oweWhatsappReply(userId, threadId, phone);
+  // Misho, 24 Nov: the dots show while the answer is being written.
+  keepTyping(userId, threadId, wamid);
   if (!(await postAsTheOwner(userId, threadId, text))) {
     forgetOwedWhatsappReply(userId, threadId);
     await replyInWhatsapp(userId, phone, LINES.failed, threadId);
@@ -192,7 +196,12 @@ async function postLine(
  * answer sends it on; any other reply lets it go where it came, and goes on.
  * True when this reply was the answer and nothing more is to be done.
  */
-async function heldLineAnswered(userId: number, phone: string, reply: string): Promise<boolean> {
+async function heldLineAnswered(
+  userId: number,
+  phone: string,
+  reply: string,
+  wamid: string,
+): Promise<boolean> {
   const held = takeHeldLine(userId, reply);
   if (held === null) return false;
   if (held.answer === null) {
@@ -203,7 +212,7 @@ async function heldLineAnswered(userId: number, phone: string, reply: string): P
     held.answer === WhichAnswer.NewRequest
       ? await newConversationFor(userId, held.threadId)
       : held.threadId;
-  await postLine(userId, phone, target, held.line);
+  await postLine(userId, phone, target, held.line, wamid);
   return true;
 }
 
@@ -251,7 +260,7 @@ async function routeInboundLine(userId: number, message: InboundMessage): Promis
   const current = await conversationFor(userId, message.replyTo);
   const typed = await typedOrHeard(userId, message, current);
   if (typed === null) return;
-  if (await heldLineAnswered(userId, message.from, typed)) return;
+  if (await heldLineAnswered(userId, message.from, typed, message.wamid)) return;
   const text = choiceByNumber(userId, typed);
   // A quoted reply or a picked choice was aimed at its conversation; an unquoted new request gets its own.
   const routed = message.replyTo === null && text === typed;
@@ -261,7 +270,7 @@ async function routeInboundLine(userId: number, message: InboundMessage): Promis
     if (asked) return;
   }
   const threadId = route.threadId;
-  await postLine(userId, message.from, threadId, text);
+  await postLine(userId, message.from, threadId, text, message.wamid);
 }
 
 /**
