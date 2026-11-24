@@ -113,7 +113,7 @@ export function labelWhatsappThread(threadId: number, goalTitle: string): void {
 
 /** Pure: the answer under its goal's name, so one chat can hold several goals. */
 export function labelled(text: string, label: string | undefined): string {
-  return label === undefined || label === '' ? text : `*${label}*\n${text}`;
+  return label === undefined || label === '' ? text : `${label}\n${text}`;
 }
 
 /**

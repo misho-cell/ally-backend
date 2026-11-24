@@ -13,6 +13,7 @@ import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
 import { userLanguage } from './threads.service';
 import { reachesInWhatsapp, tellInWhatsapp } from './whatsappChannel.service';
 import { RunLanguage } from './runLanguage';
+import { withBoldNames } from './whatsappBold';
 
 /**
  * #1850: the evening card's reads and writes. See eveningCard.ts for the rule.
@@ -155,7 +156,7 @@ async function openCardQuestions(cardId: number): Promise<OpenCardQuestion[]> {
 
 /** Pure: one card question as its own WhatsApp message, under whose assistant asks. */
 export function cardQuestionText(title: string, question: string): string {
-  return `*${title}*\n${question}`;
+  return `${title}\n${question}`;
 }
 
 /**
@@ -171,7 +172,8 @@ async function tellCardInWhatsapp(
 ): Promise<void> {
   const { askPushTitle } = await import('./taskAsks.service');
   for (const item of await openCardQuestions(cardId)) {
-    const title = askPushTitle(language, item.from_name ?? '');
+    const from = item.from_name ?? '';
+    const title = withBoldNames(askPushTitle(language, from), [from]);
     await tellInWhatsapp(
       userId,
       cardQuestionText(title, item.question),
