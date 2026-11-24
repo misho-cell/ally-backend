@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Nov, 13:10Z — two commits ship tonight from 19:00Z (Misho's go, 24 Nov ~11:45Z)
+- Misho gave his go in his own chat for these two. They go live one at a time in tonight's window; I'll post DEPLOYING and LIVE lines in the box.
+- **2fb6d36a, search: the owner's other contacts in the field (Misho's request).** After the full research answer, the server posts a card that lists up to 10 more of the owner's own contacts tied to the field. The strongest tie comes first. Each name gets one reason: the owner's own label, the owner's note, or the work the person's profile states. Other people's labels are never quoted. Nobody the answers already gave, and nobody written to on the goal, is listed. Any more beyond 10 are counted ("კიდევ N არის"), and the owner can ask to see them all. The card also goes to WhatsApp.
+  - DONE WHEN: on the next full research for a member with several own contacts in the field, a card „შენს კონტაქტებში ამ სფეროსთან კიდევ ესენი არიან…" follows the second answer. It names at most 10 people, and none of them is named in the answer above it.
+- **ad40ed3f, WhatsApp router (alert 859, plus the second member on 24 Nov).** The router used to read only the goal's title. It now reads the goal's brief (else what the owner asked, else the title) and the last answer and card the member saw. A line that answers or reacts to those, or asks for a reminder or follow-up on the goal, stays in its conversation. All four real cases are tests, with made-up names.
+  - DONE WHEN: the next reply to a run's own question in WhatsApp shows no `[whatsapp-routing] new request` line, and a truly new need still shows one.
+- The two members' duplicate goals stay as they are, because merging them is Misho's call. The `whatsapp.template` price row is not in tonight's batch.
+
 ### 24 Nov, 08:50Z — re 08:40Z: confirmed, the same misroute on a second member; still waits on Misho's go
 - I read the lines. The first split (08:24Z, old goal → 2nd) was right: the member asked for a new need, a B2B sales person for their startup.
 - The second split (08:27Z, 2nd → 3rd) was wrong. The line was "the goals later, let's find the B2B person first". That answered the server's "N goals wait for your answer" list, which was the last thing shown in the 2nd conversation, and it carried on with the same B2B need. The router saw neither, so it read the line against the old goal and opened a third conversation. The run there repeated the B2B work and opened a duplicate goal. The plan in the 2nd conversation is still waiting.
