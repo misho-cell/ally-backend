@@ -471,6 +471,7 @@ import { moderateReply } from './moderation.service';
 import { wayInNamesFrom } from './wayInNames.service';
 import {
   addCardToOwedReply,
+  holdCardForNews,
   labelWhatsappThread,
   oweSecondWhatsappReply,
 } from './whatsappReplies.service';
@@ -18323,7 +18324,10 @@ async function deliverPendingMessages(
        */
       const text = scrubMechanicalForStorage(rendered.text);
       const messageId = await savePendingMessage(userId, target, runId, text, choices, rendered);
-      addCardToOwedReply(Number(userId), threadId, text);
+      // Misho, 24 Nov: a run nobody typed in WhatsApp sends its cards under its news there.
+      if (!addCardToOwedReply(Number(userId), threadId, text)) {
+        holdCardForNews(Number(userId), threadId, text);
+      }
       emitMessageAppended(userId, target, runId, {
         messageId: String(messageId),
         kind: 'pending',

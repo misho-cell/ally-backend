@@ -89,7 +89,10 @@ export async function sendGoalNewsToWhatsapp(
     await tellInWhatsapp(
       userId,
       labelled(
-        withBoldNames(reply.trim(), boldNamesFor(userId, threadId)),
+        withBoldNames(
+          withCards(reply.trim(), takeNewsCards(userId, threadId)),
+          boldNamesFor(userId, threadId),
+        ),
         goalTitle?.trim() || undefined,
       ),
       threadId,
@@ -119,6 +122,40 @@ export function labelled(text: string, label: string | undefined): string {
  * the model counted by itself. A run asked from WhatsApp now sends them there
  * too, as text under its answer. False when no answer is owed there.
  */
+/**
+ * Misho, 24 Nov (the app is retired): a card from a run nobody typed — a goal's
+ * own wake — went to the app only: no answer was owed in WhatsApp. It waits
+ * here for that run's news to WhatsApp and goes under it, as the owed answer's
+ * cards do. A card whose run sends no news within the window is not sent.
+ */
+const NEWS_CARD_TTL_MS = 10 * 60_000;
+const newsCards = new Map<string, { cards: string[]; until: number }>();
+
+export function holdCardForNews(
+  userId: number,
+  threadId: number,
+  text: string,
+  now: number = Date.now(),
+): void {
+  if (text.trim() === '') return;
+  const key = owedKey(userId, threadId);
+  const held = newsCards.get(key);
+  const cards = held !== undefined && held.until >= now ? held.cards : [];
+  newsCards.set(key, { cards: [...cards, text.trim()], until: now + NEWS_CARD_TTL_MS });
+}
+
+/** The cards waiting for this conversation's news, once; none when they went stale. */
+export function takeNewsCards(
+  userId: number,
+  threadId: number,
+  now: number = Date.now(),
+): string[] {
+  const key = owedKey(userId, threadId);
+  const held = newsCards.get(key);
+  newsCards.delete(key);
+  return held === undefined || held.until < now ? [] : held.cards;
+}
+
 export function addCardToOwedReply(userId: number, threadId: number, text: string): boolean {
   const owed = owedReplies.get(owedKey(userId, threadId));
   if (owed === undefined || text.trim() === '') return false;
