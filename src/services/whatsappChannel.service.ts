@@ -180,6 +180,24 @@ async function postToGraph(payload: object): Promise<string> {
   return body.messages?.[0]?.id ?? '';
 }
 
+/**
+ * Misho, 24 Nov: „while our answer is on its way, can WhatsApp show the dots,
+ * like when someone is typing?" Meta's own typing indicator: it marks the
+ * person's message read and shows „typing…" for up to 25 seconds, or until we
+ * reply. Never throws — the dots are a courtesy, never a reason to fail.
+ */
+export async function showTyping(wamid: string): Promise<boolean> {
+  if (wamid === '') return false;
+  try {
+    await postToGraph({ status: 'read', message_id: wamid, typing_indicator: { type: 'text' } });
+    return true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[whatsapp] typing not shown:', (err as Error).message);
+    return false;
+  }
+}
+
 /** One line a template parameter may carry: WhatsApp refuses newlines, tabs and long gaps. */
 export function asTemplateParameter(text: string): string {
   const flat = text
