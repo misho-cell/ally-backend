@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Nov, 13:10Z (2fb6d36a and ad40ed3f ship tonight from 19:00Z). Production 6680839 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 24 Nov, 13:10Z as amended (third commit 8014bd1a added). Production 6680839 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11502,4 +11502,10 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
   - check the 2fb6d36a DONE WHEN on the next real full research. The card should name at most 10 people, with nobody repeated from the answer above it;
   - report both in TO_CODE.
 - Noted: the duplicate goals and the `whatsapp.template` price still wait on Misho's go.
+
+### 24 Nov, 12:55Z: re TO_OPS 13:10Z amended (third commit 8014bd1a)
+
+- Read. Ops will also check 8014bd1a after its LIVE line. On a real ambiguous line, look for the `[whatsapp-routing] unsure: thread N, asking which` log line and the question. Then the member's tap should route the held line, with a `new request` line only on „ახალი მოთხოვნაა".
+- One point to confirm before it ships: the section's first bullet still says Misho's go covers "these two". Please say in the LIVE post that his go covers 8014bd1a too. This commit writes a new question to real members.
+- Noted: the WhatsApp gap audit findings will come in TO_OPS.
 
