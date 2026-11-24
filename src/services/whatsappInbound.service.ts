@@ -48,7 +48,8 @@ const LINES = {
   notChosen:
     'Netai-ს აქ გამოსაყენებლად აპში, პროფილში ჩართე „შეტყობინებები ვოთსაფში". მანამდე აქ ვერ გიპასუხებ.',
   stopped: 'კარგი — ვოთსაფში აღარაფერს მოგწერ. ხელახლა ჩართვა აპის პროფილიდან შეგიძლია.',
-  failed: 'ახლა ვერ მივიღე შენი შეტყობინება — სცადე ცოტა ხანში ან აპში მომწერე.',
+  // Misho, 24 Nov: the app is retired, so it is not offered as the way round.
+  failed: 'ახლა ვერ მივიღე შენი შეტყობინება — სცადე ცოტა ხანში თავიდან.',
 } as const;
 
 /** Verifies WhatsApp's signature over the raw body with the app secret; false when it is not set. */
@@ -135,8 +136,28 @@ async function conversationFor(userId: number, replyTo: string | null): Promise<
   return last ?? (await getOrCreateDefaultThread(String(userId)));
 }
 
+/** What the app's route said to a posted line: taken, or refused with a line for the person. */
+export interface PostOutcome {
+  readonly taken: boolean;
+  /** Out of tokens (402): the route's own words for it, which say when they come back. */
+  readonly refusal: string | null;
+}
+
+const OUT_OF_TOKENS = 402;
+
+/** Pure: the route's refusal text when it is one the person should read, else null. */
+export function refusalOf(status: number, body: unknown): string | null {
+  if (status !== OUT_OF_TOKENS) return null;
+  const error = (body as { error?: unknown } | null)?.error;
+  return typeof error === 'string' && error.trim() !== '' ? error.trim() : null;
+}
+
 /** Posts the line into the conversation through the app's own route, as the person. */
-async function postAsTheOwner(userId: number, threadId: number, text: string): Promise<boolean> {
+async function postAsTheOwner(
+  userId: number,
+  threadId: number,
+  text: string,
+): Promise<PostOutcome> {
   const secret = process.env.JWT_SECRET ?? '';
   const token = jwt.sign({ userId: String(userId), role: 'user' }, secret, {
     expiresIn: INTERNAL_TOKEN_TTL,
@@ -151,7 +172,9 @@ async function postAsTheOwner(userId: number, threadId: number, text: string): P
     },
     body: JSON.stringify({ message: text }),
   });
-  return response.status === 202 || response.status === 200;
+  if (response.status === 202 || response.status === 200) return { taken: true, refusal: null };
+  const body: unknown = await response.json().catch(() => null);
+  return { taken: false, refusal: refusalOf(response.status, body) };
 }
 
 /**
@@ -185,9 +208,11 @@ async function postLine(
   oweWhatsappReply(userId, threadId, phone);
   // Misho, 24 Nov: the dots show while the answer is being written.
   keepTyping(userId, threadId, wamid);
-  if (!(await postAsTheOwner(userId, threadId, text))) {
+  const posted = await postAsTheOwner(userId, threadId, text);
+  if (!posted.taken) {
     forgetOwedWhatsappReply(userId, threadId);
-    await replyInWhatsapp(userId, phone, LINES.failed, threadId);
+    // Misho, 24 Nov: out of tokens is said as it is, not as „write in the app".
+    await replyInWhatsapp(userId, phone, posted.refusal ?? LINES.failed, threadId);
   }
 }
 
