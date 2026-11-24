@@ -96,12 +96,7 @@ describe('a WhatsApp answer reaches the one who asked', () => {
 describe('news on a goal reaches WhatsApp as the goal’s own words', () => {
   it('sends the reply under the goal’s name, worth a template', async () => {
     await sendGoalNewsToWhatsapp(7, 900, 'ნინომ უპასუხა: ლევანს იცნობს.', 'ხელოსანი');
-    expect(mockTell).toHaveBeenCalledWith(
-      7,
-      '*ხელოსანი*\nნინომ უპასუხა: ლევანს იცნობს.',
-      900,
-      true,
-    );
+    expect(mockTell).toHaveBeenCalledWith(7, 'ხელოსანი\nნინომ უპასუხა: ლევანს იცნობს.', 900, true);
   });
 
   it('sends nothing for an empty reply', async () => {

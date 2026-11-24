@@ -60,7 +60,7 @@ describe('the evening card in WhatsApp', () => {
     expect(mockTell).toHaveBeenNthCalledWith(
       1,
       171,
-      '*Netai — Nino Beridze-ის ასისტენტი გეკითხება*\nკარგ ბუღალტერს იცნობ?',
+      'Netai — *Nino Beridze*-ის ასისტენტი გეკითხება\nკარგ ბუღალტერს იცნობ?',
       501,
       true,
     );
@@ -77,6 +77,6 @@ describe('the evening card in WhatsApp', () => {
   });
 
   it('puts whose assistant asks on top, in bold', () => {
-    expect(cardQuestionText('Title', 'Q?')).toBe('*Title*\nQ?');
+    expect(cardQuestionText('Title', 'Q?')).toBe('Title\nQ?');
   });
 });

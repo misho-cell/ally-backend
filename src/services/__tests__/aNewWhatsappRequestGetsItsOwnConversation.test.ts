@@ -101,7 +101,7 @@ describe('a new WhatsApp request gets its own conversation', () => {
     expect(oweSecondWhatsappReply(8, NEW_THREAD, 3_000)).toBe(true);
     await deliverOwedWhatsappReply(8, NEW_THREAD, 'სრული პასუხი', [], 4_000);
     expect(mockReplyInWhatsapp).toHaveBeenCalledTimes(2);
-    expect(mockReplyInWhatsapp.mock.calls[1][2]).toBe('*ფეხბურთის მწვრთნელი*\nსრული პასუხი');
+    expect(mockReplyInWhatsapp.mock.calls[1][2]).toBe('ფეხბურთის მწვრთნელი\nსრული პასუხი');
   });
 
   it('owes no second answer to a conversation not asked from WhatsApp, or asked long ago', () => {
