@@ -9,6 +9,7 @@ import {
   boldNamesFor,
   forgetBoldNames,
   namesIn,
+  namesInToolInput,
   noteBoldNames,
   withBoldNames,
 } from '../whatsappBold';
@@ -29,6 +30,36 @@ describe('which names', () => {
     expect(namesIn(result).sort()).toEqual(
       ['Build LLC', 'Levan Japaridze', 'Nino Beridze', 'Strata Group'].sort(),
     );
+  });
+});
+
+describe('names a run asks about without a search', () => {
+  it('takes the go-between, the person asked for and the contact written to', () => {
+    expect(
+      namesInToolInput({
+        mediator_name: 'თორნიკე აბულაძე',
+        target_name: 'ნინო ბერიძე',
+        message: 'not a name',
+      }),
+    ).toEqual(['თორნიკე აბულაძე', 'ნინო ბერიძე']);
+    expect(namesInToolInput({ contact_name: 'Levan Japaridze', phone: '+995555000002' })).toEqual([
+      'Levan Japaridze',
+    ]);
+    expect(namesInToolInput({ query: 'builder' })).toEqual([]);
+  });
+
+  it('is noted for every tool call the run makes', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('notePeopleNamed(runId, input);');
+  });
+
+  it('bolds them in the line that says who was asked', () => {
+    expect(
+      withBoldNames('ახლა თორნიკე აბულაძის ასისტენტს ვთხოვ ნინო ბერიძის გაცნობას.', [
+        'თორნიკე აბულაძე',
+        'ნინო ბერიძე',
+      ]),
+    ).toBe('ახლა *თორნიკე აბულაძის* ასისტენტს ვთხოვ *ნინო ბერიძის* გაცნობას.');
   });
 });
 

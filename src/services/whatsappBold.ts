@@ -30,6 +30,8 @@ const GEORGIAN_ENDING = '[\\u10D0-\\u10FF]{0,5}';
 /** A Georgian name's last vowel, which a case ending may drop („მეფარიშვილ-თან", „აბულაძ-ის"). */
 const DROPPED_VOWEL = /[აეიოუ]$/u;
 const LETTER = '\\p{L}';
+/** A tool's input fields that name the person the run writes to or about. */
+const PERSON_INPUT_FIELDS: readonly string[] = ['mediator_name', 'target_name', 'contact_name'];
 
 function usable(name: unknown): name is string {
   if (typeof name !== 'string') return false;
@@ -63,6 +65,17 @@ export function namesIn(value: unknown): string[] {
   };
   visit(value, null);
   return [...names];
+}
+
+/**
+ * Pure: the people a tool call names in its own input — the go-between and the
+ * person asked for, the contact written to — so a run that only asks, with no
+ * search of its own, still bolds them.
+ */
+export function namesInToolInput(input: Readonly<Record<string, unknown>>): string[] {
+  return PERSON_INPUT_FIELDS.map((field) => input[field])
+    .filter(usable)
+    .map((name) => name.trim());
 }
 
 function escaped(text: string): string {

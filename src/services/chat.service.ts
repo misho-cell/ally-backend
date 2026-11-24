@@ -173,7 +173,7 @@ const OFFER_TOOLS_ON = true;
 import { readSearchIntent, SearchIntent } from './searchIntent.service';
 import { researchWaiting, runFullResearch, takeResearch } from './fullResearch.service';
 import { OWN_CONTACTS_KIND, ownContactsAfterReply, ownContactsItem } from './ownContactsInField';
-import { namesIn, noteBoldNames } from './whatsappBold';
+import { namesIn, namesInToolInput, noteBoldNames } from './whatsappBold';
 import { searchNeeds } from './tools/searchNeeds';
 import { searchMeanings } from './tools/searchMeanings';
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
@@ -6479,6 +6479,13 @@ export function companyPeopleIn(result: unknown): unknown[] {
 /** Misho, 24 Nov: the names this run's searches found, bolded in its WhatsApp copy. */
 const runBoldNames = new Map<string, string[]>();
 
+/** The people a tool call names in its input, bolded in the run's WhatsApp copy. */
+function notePeopleNamed(runId: string | undefined, input: Record<string, unknown>): void {
+  if (runId === undefined) return;
+  const named = namesInToolInput(input);
+  if (named.length > 0) runBoldNames.set(runId, [...(runBoldNames.get(runId) ?? []), ...named]);
+}
+
 function notePeopleFound(runId: string, result: unknown, sought?: string): void {
   runBoldNames.set(runId, [...(runBoldNames.get(runId) ?? []), ...namesIn(result)]);
   const found = peopleFoundIn(result);
@@ -10818,6 +10825,7 @@ async function executeToolCall(
         'presses the button themselves. Do not tell them it was approved.',
     };
   }
+  notePeopleNamed(runId, input);
   // #8948 / #8524: a tool held back for this turn is refused here, not taken off the list.
   if (
     runId !== undefined &&
