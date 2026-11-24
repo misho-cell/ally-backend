@@ -9,6 +9,7 @@ import { emitMessageAppended } from './sse.service';
 import { saveServerLine, threadLanguage } from './threads.service';
 import { georgianFirstName, georgianNamesFor } from './georgianScriptName';
 import { registeredName } from './serverGreeting';
+import { reachesInWhatsapp, tellInWhatsapp } from './whatsappChannel.service';
 
 /**
  * ROW 322(a) — THE ANSWERS REACH THE OWNER'S SCREEN BEFORE THE MODEL SPEAKS.
@@ -227,7 +228,27 @@ async function markAnswersShown(askIds: readonly number[]): Promise<void> {
   );
 }
 
-/** Writes the card and pushes it to an open screen. */
+/**
+ * Misho, 24 Nov (the app is retired): the answers card reached only an open
+ * app screen, so a member on WhatsApp never saw a closed goal's answers, and
+ * on an open goal the reply that followed spoke of a card they had not seen.
+ * It goes to WhatsApp too, on its goal's conversation, as worth a template.
+ * Never throws.
+ */
+export async function answerCardToWhatsapp(
+  ownerId: number,
+  threadId: number,
+  card: string,
+): Promise<void> {
+  try {
+    if (await reachesInWhatsapp(ownerId)) await tellInWhatsapp(ownerId, card, threadId, true);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[answers] card did not reach WhatsApp:', (err as Error).message);
+  }
+}
+
+/** Writes the card and pushes it to an open screen, and to WhatsApp. */
 async function writeCard(target: AnswerCardTarget, answers: readonly CardAnswer[]): Promise<void> {
   const language = await threadLanguage(target.threadId);
   const names = language === 'ka' ? await georgianCardNames(target.ownerId, answers) : undefined;
@@ -240,6 +261,7 @@ async function writeCard(target: AnswerCardTarget, answers: readonly CardAnswer[
     choices: [],
     ref: {},
   });
+  await answerCardToWhatsapp(target.ownerId, target.threadId, saved.content);
 }
 
 /**
