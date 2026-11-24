@@ -575,8 +575,13 @@ export const FULL_RESEARCH_HEADER =
   '2. Then the options, numbered, best first: one that surely does this, with the shortest real ' +
   'path, comes first. For each option say:\n' +
   '   a) who or what it is — a person, or a company and who there;\n' +
-  '   b) why it fits — what is written about them and where (a note saved about them, the label ' +
-  'someone saved them under, a website, with its link);\n' +
+  '   b) why you chose them — ALWAYS, for every person you name, even in a one-line mention ' +
+  '(Misho, 24 Nov: „the answer is very good; the one thing missing is why these people were ' +
+  'sent"). One short sentence with the real tie the findings show: the company they work at or ' +
+  'are tied to and how („works at X", „heads X, its page names him"), the label someone saved ' +
+  'them under and whose phone it is in, a note saved about them, or a website with its link. ' +
+  'Say the tie itself, never only „they fit" or „they are related to this". A person whose tie ' +
+  'you cannot say from the findings is not named;\n' +
   '   c) how the owner reaches them, step by step, with real names: start from the owner’s own ' +
   'contact and name every person on the way, saying what each step is — e.g. „Iro is your ' +
   'contact; Iro has Omiko Khoperia saved; Omiko has her saved as „Nino Colibri"". Never say ' +
