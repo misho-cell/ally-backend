@@ -4,6 +4,7 @@ import { GOAL_FEEDBACK_QUESTIONS, GoalFeedbackKey, feedbackWording } from './goa
 import { GoalWaitReason } from './goalWaitReason';
 import { RunLanguage } from './runLanguage';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
+import { OWN_CONTACTS_KIND, OwnTieKind } from './ownContactsInField';
 
 /**
  * Ticket 16 Task 98: one answer answers one question.
@@ -186,6 +187,11 @@ interface PendingTexts {
   questionsWaiting: (count: number) => string;
   /** Nobody is written to without this being pressed. */
   someoneNew: string;
+  /** Misho, 24 Nov: the owner's other contacts in the searched field. */
+  ownContactsHead: string;
+  ownTie: (kind: OwnTieKind, value: string) => string | null;
+  ownContactsMore: (count: number) => string;
+  ownContactsShowAll: string;
 }
 
 /**
@@ -293,6 +299,24 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
         ? 'ერთი კითხვა შენს პასუხს ელოდება, თავის თემაში:'
         : `${count} კითხვა შენს პასუხს ელოდება, თითო თავის თემაში:`,
     someoneNew: 'ახალი მომხმარებელი',
+    ownContactsHead:
+      'შენს კონტაქტებში ამ სფეროსთან კიდევ ესენი არიან. ხომ არ დაგაინტერესებს რომელიმე?',
+    ownTie: (kind, value) => {
+      switch (kind) {
+        case OwnTieKind.Label:
+          return `შენ შენახული გყავს როგორც „${value}"`;
+        case OwnTieKind.Note:
+          return `შენი შენიშვნა: „${value}"`;
+        case OwnTieKind.Work:
+          return `სამსახური: ${value}`;
+        case OwnTieKind.OthersLabels:
+          return 'სხვების ტელეფონში ამ სფეროსთან არის შენახული';
+        default:
+          return null;
+      }
+    },
+    ownContactsMore: (count) => `კიდევ ${count} არის, თუ გინდა, ყველას გაჩვენებ.`,
+    ownContactsShowAll: 'ყველა მაჩვენე',
   },
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
@@ -373,6 +397,23 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
         ? 'One question is waiting for your answer, in its own thread:'
         : `${count} questions are waiting for your answer, each in its own thread:`,
     someoneNew: 'Somebody new',
+    ownContactsHead: 'These people in your contacts are also tied to this. Could any of them help?',
+    ownTie: (kind, value) => {
+      switch (kind) {
+        case OwnTieKind.Label:
+          return `you saved them as „${value}"`;
+        case OwnTieKind.Note:
+          return `your note: „${value}"`;
+        case OwnTieKind.Work:
+          return `works as ${value}`;
+        case OwnTieKind.OthersLabels:
+          return 'other people have them saved under this';
+        default:
+          return null;
+      }
+    },
+    ownContactsMore: (count) => `${count} more, and I can show you them all.`,
+    ownContactsShowAll: 'Show them all',
   },
 };
 
@@ -684,6 +725,8 @@ export function renderPendingMessage(
       if (text === null || choices.length === 0) return null;
       return { text, choices, ref: { kind: item.kind }, instruction };
     }
+    case OWN_CONTACTS_KIND:
+      return ownContactsCard(p, t, item.kind);
     case 'search_followup':
       return {
         text: t.searchFollowUp,
@@ -696,4 +739,42 @@ export function renderPendingMessage(
       // it in the answer, exactly as before. Nothing is lost by not knowing it.
       return null;
   }
+}
+
+/** The model-facing line behind „show them all": who is left, as the card would say them. */
+export const OWN_CONTACTS_REST_NOTE =
+  'The owner was shown some of their own contacts tied to what they searched for. If they ask ' +
+  'to see them all, list these too, one line each, as written:';
+
+function ownContactLine(contact: Record<string, unknown>, t: PendingTexts): string | null {
+  const name = str(contact, 'name');
+  if (name === null) return null;
+  const why = t.ownTie(str(contact, 'tie') as OwnTieKind, str(contact, 'value') ?? '');
+  return why === null ? `• ${name}` : `• ${name} — ${why}`;
+}
+
+/**
+ * Misho, 24 Nov: „show everyone in my contacts with a tie to this field". Ten
+ * are on the card (his number, in the app and in WhatsApp); the rest are
+ * counted, and handed to the next run in case the owner asks for them all.
+ */
+function ownContactsCard(
+  p: Record<string, unknown>,
+  t: PendingTexts,
+  kind: string,
+): RenderedPendingMessage | null {
+  const lines = (Array.isArray(p.contacts) ? (p.contacts as Record<string, unknown>[]) : [])
+    .map((c) => ownContactLine(c, t))
+    .filter((l): l is string => l !== null);
+  if (lines.length === 0) return null;
+  const rest = (Array.isArray(p.rest) ? (p.rest as Record<string, unknown>[]) : [])
+    .map((c) => ownContactLine(c, t))
+    .filter((l): l is string => l !== null);
+  const more = rest.length === 0 ? '' : `\n${t.ownContactsMore(rest.length)}`;
+  return {
+    text: `${t.ownContactsHead}\n${lines.join('\n')}${more}`,
+    choices: rest.length === 0 ? [] : [t.ownContactsShowAll],
+    ref: { kind },
+    instruction: rest.length === 0 ? '' : `${OWN_CONTACTS_REST_NOTE}\n${rest.join('\n')}`,
+  };
 }

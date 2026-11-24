@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { FarDepth, farMembersHolding } from './farCircles.service';
 import { phoneDigits } from './phone';
 import { goalReachesANamedPerson } from './openingSearch.service';
+import { OwnContactInField, ownContactsInField } from './ownContactsInField';
 import { peopleListed, personLine, personRowsIn } from './researchPeopleList';
 import { webCounts, webLevel } from './researchWeb';
 import { findCompaniesForNeed } from './tools/findCompaniesForNeed';
@@ -114,6 +115,8 @@ export interface ResearchRequest {
 interface KeptResearch {
   readonly findings: readonly LevelFindings[];
   readonly related: readonly string[];
+  /** The searched words, which pick the label a contact's reason shows. */
+  readonly words: string;
   readonly askedAt: Date;
   readonly landedAt: number;
   readonly taskId: number;
@@ -404,6 +407,7 @@ export async function runFullResearch(
     kept.set(request.threadId, {
       findings,
       related,
+      words: request.words,
       askedAt: request.askedAt,
       landedAt: now(),
       taskId: request.taskId,
@@ -646,6 +650,27 @@ export interface TakenResearch {
   readonly results: readonly object[];
   /** Everyone named at any depth (the company base's people too), for the same reason. */
   readonly people: readonly NamedPerson[];
+  /** The owner's own contacts tied to this, not yet given nor written to, strongest first. */
+  readonly ownContacts: readonly OwnContactInField[];
+}
+
+/** The own-contact levels: the owner's labels and the owner's own notes. */
+const OWN_LEVELS: ReadonlySet<ResearchLevel> = new Set([ResearchLevel.Own, ResearchLevel.OwnSaved]);
+
+/** Misho, 24 Nov: every own contact tied to this, beyond the few the answers give. */
+export function ownContactsLeft(
+  findings: readonly LevelFindings[],
+  words: string,
+  replies: string,
+  contacted: { readonly asked: ReadonlySet<string>; readonly introduced: ReadonlySet<string> },
+): OwnContactInField[] {
+  const results = findings.filter((f) => OWN_LEVELS.has(f.level)).flatMap(resultsOf);
+  return ownContactsInField(results, words, (phone, name) => {
+    const digits = phoneDigits(phone);
+    const lower = name.toLocaleLowerCase();
+    const given = [...lower].length >= MIN_NAME_CHARS && replies.includes(lower);
+    return !given && !contacted.asked.has(digits) && !contacted.introduced.has(digits);
+  });
 }
 
 /** The findings for this conversation, once, marked as they stand now; null when none wait. */
@@ -679,5 +704,6 @@ export async function takeResearch(
     ),
     results: waiting.findings.flatMap(resultsOf),
     people,
+    ownContacts: ownContactsLeft(waiting.findings, waiting.words, replies, contacted),
   };
 }
