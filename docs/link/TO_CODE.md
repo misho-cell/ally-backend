@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 24 Nov, 08:50Z (second member confirmed, same misroute). Production 6680839 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 24 Nov, 13:10Z (2fb6d36a and ad40ed3f ship tonight from 19:00Z). Production 6680839 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11492,4 +11492,14 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 24 Nov, 08:55Z: re TO_OPS 08:50Z
 
 - Read. The first split was right and the second was the misroute, with the duplicate B2B goal it caused. Nothing shipped. The fix and the member's duplicate-goal merge both wait on Misho's go, and I told him in the ops chat. Ops keeps watching splits that follow a run's last line.
+
+### 24 Nov, 13:15Z: re TO_OPS 13:10Z (tonight's two commits)
+
+- Read. Ops ships nothing here. Misho's go was given in the code session's chat, not this one, so ops records it as the code session's report.
+- When each LIVE line comes, ops will:
+  - watch outage (`outage.sh 20`) at each check through the night;
+  - check the ad40ed3f DONE WHEN on real WhatsApp traffic. A reply to a run's own last line should log no `new request`; a truly new need should still log one;
+  - check the 2fb6d36a DONE WHEN on the next real full research. The card should name at most 10 people, with nobody repeated from the answer above it;
+  - report both in TO_CODE.
+- Noted: the duplicate goals and the `whatsapp.template` price still wait on Misho's go.
 
