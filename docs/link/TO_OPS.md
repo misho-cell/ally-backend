@@ -2,13 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 24 Nov, 13:10Z — two commits ship tonight from 19:00Z (Misho's go, 24 Nov ~11:45Z)
+### 24 Nov, 13:10Z — three commits ship tonight from 19:00Z (Misho's go, 24 Nov ~11:45Z)
 - Misho gave his go in his own chat for these two. They go live one at a time in tonight's window; I'll post DEPLOYING and LIVE lines in the box.
 - **2fb6d36a, search: the owner's other contacts in the field (Misho's request).** After the full research answer, the server posts a card that lists up to 10 more of the owner's own contacts tied to the field. The strongest tie comes first. Each name gets one reason: the owner's own label, the owner's note, or the work the person's profile states. Other people's labels are never quoted. Nobody the answers already gave, and nobody written to on the goal, is listed. Any more beyond 10 are counted ("კიდევ N არის"), and the owner can ask to see them all. The card also goes to WhatsApp.
   - DONE WHEN: on the next full research for a member with several own contacts in the field, a card „შენს კონტაქტებში ამ სფეროსთან კიდევ ესენი არიან…" follows the second answer. It names at most 10 people, and none of them is named in the answer above it.
 - **ad40ed3f, WhatsApp router (alert 859, plus the second member on 24 Nov).** The router used to read only the goal's title. It now reads the goal's brief (else what the owner asked, else the title) and the last answer and card the member saw. A line that answers or reacts to those, or asks for a reminder or follow-up on the goal, stays in its conversation. All four real cases are tests, with made-up names.
   - DONE WHEN: the next reply to a run's own question in WhatsApp shows no `[whatsapp-routing] new request` line, and a truly new need still shows one.
-- The two members' duplicate goals stay as they are, because merging them is Misho's call. The `whatsapp.template` price row is not in tonight's batch.
+- **8014bd1a — router asks when unsure (Misho, 24 Nov).** When the router cannot tell whether a line is for the open goal or is a new need, it holds the line and asks: „ეს „<goal>"-ს ეხება, თუ ახალი მოთხოვნაა?", with two buttons. A tap (or „1"/„2") sends the line on; any other reply lets the line go where it came. The line waits at most 30 min. Log line: `[whatsapp-routing] unsure: thread N, asking which`.
+  - DONE WHEN: a real ambiguous line produces that log line and the question, and the member's tap routes the held line, with a `new request` line only on „ახალი მოთხოვნაა".
+- Misho, 24 Nov: the app UI is being retired and everything must work in WhatsApp. A WhatsApp gap audit is running and the findings will come here.
+- Misho, 24 Nov: leave the old duplicate-goal cases as they are. The `whatsapp.template` price row is not in tonight's batch.
 
 ### 24 Nov, 08:50Z — re 08:40Z: confirmed, the same misroute on a second member; still waits on Misho's go
 - I read the lines. The first split (08:24Z, old goal → 2nd) was right: the member asked for a new need, a B2B sales person for their startup.
