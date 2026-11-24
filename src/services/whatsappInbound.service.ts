@@ -19,7 +19,14 @@ import {
   oweWhatsappReply,
 } from './whatsappReplies.service';
 import { heardLine, voiceNoteText } from './whatsappVoice.service';
-import { conversationForLine, questionThreadForLine } from './whatsappRouting.service';
+import {
+  LineRoute,
+  RouteKind,
+  newConversationFor,
+  questionThreadForLine,
+  routeLine,
+} from './whatsappRouting.service';
+import { WhichAnswer, askWhichGoal, takeHeldLine } from './whatsappWhichGoal';
 import { recordReadReceipts, seenInWhatsapp } from './whatsappSeen.service';
 
 /**
@@ -165,6 +172,53 @@ async function typedOrHeard(
   return heard.text;
 }
 
+/** The line into its conversation, owed a WhatsApp answer; told plainly when it failed. */
+async function postLine(
+  userId: number,
+  phone: string,
+  threadId: number,
+  text: string,
+): Promise<void> {
+  await seenInWhatsapp(userId, threadId);
+  oweWhatsappReply(userId, threadId, phone);
+  if (!(await postAsTheOwner(userId, threadId, text))) {
+    forgetOwedWhatsappReply(userId, threadId);
+    await replyInWhatsapp(userId, phone, LINES.failed, threadId);
+  }
+}
+
+/**
+ * Misho, 24 Nov: a line the router was unsure of waited for „which is it". An
+ * answer sends it on; any other reply lets it go where it came, and goes on.
+ * True when this reply was the answer and nothing more is to be done.
+ */
+async function heldLineAnswered(userId: number, phone: string, reply: string): Promise<boolean> {
+  const held = takeHeldLine(userId, reply);
+  if (held === null) return false;
+  if (held.answer === null) {
+    await postLine(userId, phone, held.threadId, held.line);
+    return false;
+  }
+  const target =
+    held.answer === WhichAnswer.NewRequest
+      ? await newConversationFor(userId, held.threadId)
+      : held.threadId;
+  await postLine(userId, phone, target, held.line);
+  return true;
+}
+
+/** Where the line goes: the question it answers, else what the router reads. */
+async function routeOf(
+  userId: number,
+  current: number,
+  text: string,
+  routed: boolean,
+): Promise<LineRoute> {
+  const answered = routed ? await questionThreadForLine(userId, text) : null;
+  if (answered !== null) return { kind: RouteKind.Stay, threadId: answered };
+  return routed ? routeLine(userId, current, text) : { kind: RouteKind.Stay, threadId: current };
+}
+
 export async function handleInboundMessage(message: InboundMessage): Promise<void> {
   const userId = await userOfPhone(message.from);
   if (userId === null) {
@@ -189,21 +243,25 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
     await replyInWhatsapp(userId, message.from, LINES.notChosen, null);
     return;
   }
+  await routeInboundLine(userId, message);
+}
+
+/** A member's line, after consent: answered held line, question, or its conversation. */
+async function routeInboundLine(userId: number, message: InboundMessage): Promise<void> {
   const current = await conversationFor(userId, message.replyTo);
   const typed = await typedOrHeard(userId, message, current);
   if (typed === null) return;
+  if (await heldLineAnswered(userId, message.from, typed)) return;
   const text = choiceByNumber(userId, typed);
   // A quoted reply or a picked choice was aimed at its conversation; an unquoted new request gets its own.
   const routed = message.replyTo === null && text === typed;
-  const answered = routed ? await questionThreadForLine(userId, text) : null;
-  const threadId =
-    answered ?? (routed ? await conversationForLine(userId, current, text) : current);
-  await seenInWhatsapp(userId, threadId);
-  oweWhatsappReply(userId, threadId, message.from);
-  if (!(await postAsTheOwner(userId, threadId, text))) {
-    forgetOwedWhatsappReply(userId, threadId);
-    await replyInWhatsapp(userId, message.from, LINES.failed, threadId);
+  const route = await routeOf(userId, current, text, routed);
+  if (route.kind === RouteKind.Ask) {
+    const asked = await askWhichGoal(userId, message.from, route.threadId, route.goal ?? '', text);
+    if (asked) return;
   }
+  const threadId = route.threadId;
+  await postLine(userId, message.from, threadId, text);
 }
 
 /**
