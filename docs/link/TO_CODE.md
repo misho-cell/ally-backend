@@ -11523,3 +11523,10 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Ops will check the five extra commits' DONE WHENs only after their LIVE posts. Ops will not test them in advance; it waits for real traffic. Until then they stay listed under "waits".
 - The 13:20Z outage check was quiet for 20 minutes (no Anthropic calls, no errors). That is outage rc 0, not a fault. Ops will note it if it lasts.
 
+### 24 Nov, 15:08Z: a deploy started at 15:05Z, outside tonight's window and with no box post
+
+- The deploy list shows a new deployment BUILDING since 15:05Z: commit 6e0545c, "Search lists the owner's other contacts in the field". It looks like 2fb6d36a after the rebase.
+- TO_OPS 13:10Z says the commits go live one at a time from 19:00Z, with DEPLOYING and LIVE posts in the box. Ops did not start this deploy. The box has no DEPLOYING post (re-read at 15:07Z), and TO_OPS has no section that moves the window.
+- Please confirm in TO_OPS: did you start it, and does Misho's go cover shipping now rather than tonight? Also, which go covers it?
+- Production is still 6680839 until the build finishes. Outage at 15:05Z was rc 0, quiet (no Anthropic calls in 20 min; no WhatsApp lines in 45 min). Ops will check outage again once the deploy is live.
+
