@@ -18,6 +18,14 @@ import { labelWhatsappThread } from './whatsappReplies.service';
  * („X, renovation") kept a house-architecture request and a teachers request
  * that named the same contact, and both new goals were refused. The router
  * judges by the need, not by the person named.
+ *
+ * Alert 859 (23 Nov) and a second member on 24 Nov: the router read only the
+ * goal's title — one was a sentence the member typed („we talked about this
+ * before, start over") — and never what the member had just been shown. So a
+ * reminder on the goal, an answer to the run's own question and „the goals
+ * later, find the B2B person first" each opened a new conversation and a
+ * duplicate goal. It now reads the goal's own request and the last lines the
+ * member saw; a line answering those stays where it is.
  */
 export enum LineKind {
   NewRequest = 'new_request',
@@ -29,18 +37,27 @@ const ROUTER_MODEL = process.env.WHATSAPP_ROUTER_MODEL?.trim() || QUICK_MODEL;
 const ROUTER_TIMEOUT_MS = 4_000;
 const ROUTER_MAX_TOKENS = 20;
 const MAX_LINE_CHARS = 1_500;
-const MAX_TITLE_CHARS = 200;
 const USAGE_KIND = 'whatsapp_routing';
 
 const ROUTER_PROMPT =
-  'A person writes to their assistant in one WhatsApp chat. They have ONE open goal, named ' +
-  'below. Decide what their new line is. Judge by WHAT is needed, never by WHO is named: the ' +
-  'goal may name a person they want to ask, and the same person asked about a different need ' +
-  'is a new request. new_request: they need something the goal is not about (a different ' +
-  'service, product, specialist or task to find or do). same_goal: it goes on with that same ' +
-  'need (an answer, a change, „ask him too", a question about how it stands). talk: ' +
-  'a greeting, thanks, or a question about the assistant itself. Answer with one word: ' +
-  'new_request, same_goal or talk.';
+  'A person writes to their assistant in one WhatsApp chat. They have ONE open goal, described ' +
+  'below, and LAST SHOWN is what the assistant last wrote to them there. Decide what their new ' +
+  'line is. Judge by WHAT is needed, never by WHO is named: the goal may name a person they ' +
+  'want to ask, and the same person asked about a different need is a new request. ' +
+  'new_request: they need something the goal is not about and LAST SHOWN is not about either ' +
+  '(a different service, product, specialist or task to find or do). same_goal: it goes on ' +
+  'with that same need, or answers or reacts to LAST SHOWN (a reply to its question, a choice, ' +
+  'a correction, „later", „first do X" about what it offered), or asks to remind, nudge or ' +
+  'follow up with someone about it, or asks how it stands. talk: a greeting, thanks, or a ' +
+  'question about the assistant itself. Answer with one word: new_request, same_goal or talk.';
+/** The goal as the router reads it, at most this long. */
+const MAX_GOAL_CHARS = 600;
+/** What the member was last shown, at most this long. */
+const MAX_SHOWN_CHARS = 1_200;
+/** The last lines read: an answer and the card under it. */
+const LAST_LINES_READ = 2;
+/** The kinds of row a member reads as the assistant's words; progress captions are not. */
+const SHOWN_KINDS = ['message', 'pending'];
 
 /** Pure: the model's word, or SameGoal when it says nothing usable — staying put is the old behaviour. */
 export function lineKindFrom(answer: string): LineKind {
@@ -51,15 +68,51 @@ export function lineKindFrom(answer: string): LineKind {
 }
 
 /** Pure: what the small model reads. */
-export function routerInput(goalTitle: string, line: string): string {
-  return `OPEN GOAL: ${goalTitle.slice(0, MAX_TITLE_CHARS)}\n\nNEW LINE: ${line.slice(0, MAX_LINE_CHARS)}`;
+export function routerInput(goal: string, line: string, lastShown = ''): string {
+  const shown =
+    lastShown.trim() === '' ? '' : `\n\nLAST SHOWN: ${lastShown.slice(-MAX_SHOWN_CHARS)}`;
+  return `OPEN GOAL: ${goal.slice(0, MAX_GOAL_CHARS)}${shown}\n\nNEW LINE: ${line.slice(0, MAX_LINE_CHARS)}`;
+}
+
+/** Pure: the goal as its own words say it — the brief, else what was asked, else the title. */
+export function goalText(goal: {
+  readonly title: string;
+  readonly description?: string | null;
+  readonly brief?: string | null;
+}): string {
+  const said = [goal.brief, goal.description].find((t) => typeof t === 'string' && t.trim() !== '');
+  return (said ?? goal.title).trim().slice(0, MAX_GOAL_CHARS);
+}
+
+/** The assistant's last lines in this conversation, oldest first; empty when unread. */
+export async function lastLinesShown(threadId: number): Promise<string> {
+  try {
+    const result = await query<{ content: string | null }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = $1 AND role = 'assistant' AND kind = ANY($2::text[])
+          AND COALESCE(content, '') <> ''
+        ORDER BY created_at DESC, id DESC
+        LIMIT $3`,
+      [threadId, SHOWN_KINDS, LAST_LINES_READ],
+      QUERY_TIMEOUT_MS,
+    );
+    return result.rows
+      .map((row) => row.content ?? '')
+      .reverse()
+      .join('\n\n');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[whatsapp-routing] last lines not read:', (err as Error).message);
+    return '';
+  }
 }
 
 async function readLineKind(
   userId: number,
   threadId: number,
-  goalTitle: string,
+  goal: string,
   line: string,
+  lastShown: string,
 ): Promise<LineKind> {
   const { default: anthropic } = await import('../config/anthropic');
   const response = await anthropic.messages.create(
@@ -68,7 +121,7 @@ async function readLineKind(
       ...noThinkingFor(ROUTER_MODEL),
       max_tokens: ROUTER_MAX_TOKENS,
       system: ROUTER_PROMPT,
-      messages: [{ role: 'user', content: routerInput(goalTitle, line) }],
+      messages: [{ role: 'user', content: routerInput(goal, line, lastShown) }],
     },
     { timeout: ROUTER_TIMEOUT_MS },
   );
@@ -100,7 +153,8 @@ export async function conversationForLine(
   try {
     const goal = await getOpenTaskByThread(threadId);
     if (goal === null) return threadId;
-    const kind = await readLineKind(userId, threadId, goal.title, line);
+    const lastShown = await lastLinesShown(threadId);
+    const kind = await readLineKind(userId, threadId, goalText(goal), line, lastShown);
     if (kind !== LineKind.NewRequest) {
       labelWhatsappThread(threadId, goal.title);
       return threadId;

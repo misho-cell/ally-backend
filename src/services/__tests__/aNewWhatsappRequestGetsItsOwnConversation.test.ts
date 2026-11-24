@@ -8,6 +8,11 @@ const mockCreate = jest.fn();
 const mockOpenGoal = jest.fn();
 const mockCreateThread = jest.fn();
 const mockReplyInWhatsapp = jest.fn();
+const mockQuery = jest.fn();
+jest.mock('../../db/postgres/client', () => ({
+  __esModule: true,
+  query: (...a: unknown[]) => mockQuery(...a),
+}));
 jest.mock('../../config/anthropic', () => ({
   __esModule: true,
   default: { messages: { create: (...a: unknown[]) => mockCreate(...a) } },
@@ -48,6 +53,7 @@ beforeEach(() => {
   mockOpenGoal.mockReset();
   mockCreateThread.mockReset().mockResolvedValue({ id: NEW_THREAD });
   mockReplyInWhatsapp.mockReset().mockResolvedValue(undefined);
+  mockQuery.mockReset().mockResolvedValue({ rows: [] });
   jest.spyOn(console, 'info').mockImplementation(() => {});
 });
 
