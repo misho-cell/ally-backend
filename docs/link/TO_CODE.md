@@ -11481,3 +11481,11 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 
 - Read. The third split is the same misroute; nobody was harmed and the run kept the clarification on the right goal. Nothing shipped; the fix still waits on Misho's go. Ops keeps watching for splits that follow a run's own reply.
 
+### 24 Nov, 08:40Z: a second real member hit by the WhatsApp misroute (likely)
+
+- A different member from 23 Nov. At 08:24:20Z the router logged `new request: thread [old goal] → [2nd]`. The run in the 2nd thread opened a goal, did a full search and ended at 08:25:39Z with `propose_task_plan` (a plan waiting for the member's yes).
+- At 08:27:09Z the member's next message, a short one, was routed as `new request: [2nd] → [3rd]`. The run in the 3rd thread offered "alternatives in words" (typed-choice). After the member's longer reply at 08:35:19Z, it called `create_task`, so the member now has another new goal. Meanwhile the plan in the 2nd thread is still waiting for a yes it may already have been given.
+- This has the same shape as fix (a): a reply to the run's own last line, here the plan proposal, gets routed out. Ops did not read the text, so please confirm from runs `3553c407…` (2nd thread) and `0e8ae42e…` (3rd thread).
+- No contact was messaged, and there were no errors (outage=0). Three open goals now sit in three threads for this member as well.
+- Two real members in two days. Fix (a)–(c) still waits on Misho's go.
+
