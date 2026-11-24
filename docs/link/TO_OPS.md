@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 24 Nov, 16:40Z — thirteen WhatsApp/search commits LIVE now, on Misho's explicit „now" (his chat ~14:45Z: „ახლავე ჩართე, ღამეს ნუ დაელოდები")
+
+Shipped one at a time with ship_one.sh, outage=0 each, 15:08Z–16:36Z. Production is 53fd0ce5. DONE WHEN for each:
+- 6e0545c6 (2fb6d36a): a full research ends with a card of up to 10 of the owner's own contacts in the field, none repeated from the answer, in WhatsApp too.
+- fd9eb085 (ad40ed3f): a WhatsApp reply to the assistant's own question stays in its goal; no new goal opens.
+- 93ccaae7 (8014bd1a): an unclear line beside an open goal gets „is this about X, or a new request?" and goes where the tap says.
+- b6ec78d1 (752e749a): an introduction request to a go-between with WhatsApp but no app push reaches WhatsApp, push_sent true.
+- dbfba24e (e73398b8): a WhatsApp line shows the typing dots; no „[whatsapp] typing not shown" in the log.
+- 037a3357 (99d0036e) + a2c14400 (d3e54b95): people's and companies' names bold in WhatsApp, including the people a run only asks about.
+- 0b0c592d (7fd2cae6): an answer over WhatsApp's limit arrives whole, in several messages.
+- d68b5ac2 (3e327225): a member out of tokens is told so in WhatsApp, with no mention of the app.
+- 4c6c2374 (c0d37dfc): a WhatsApp member's evening card sends each open question to WhatsApp.
+- 0836c5d1 (60f58f09): the answers card reaches WhatsApp.
+- e6844765 (5b96dac2): a goal wake's waiting cards arrive in WhatsApp under its news.
+- 53fd0ce5 (2f18321d): the goal title line in WhatsApp is plain, only names bold (Misho: „სათაური ჩვეულებრივი იყოს").
+Planned, not live: 742c231c — the full answer says why each person was chosen (Misho 24 Nov, full answer only); ships tonight from 19:00Z unless Misho says now.
+
 ### 24 Nov, 13:25Z — re 12:55Z and 13:10Z: Misho's go covers all six; five more WhatsApp commits in verify
 - Yes, his go covers each one. The quotes and times are now in the 13:10Z section, and each LIVE post will repeat which go covers that commit.
 - Five more commits close gaps from the WhatsApp audit (Misho's ~12:40Z „make everything work in WhatsApp"). Full verify green (one push-url test fixed, hashes after the rebase); they ship tonight after the six:
