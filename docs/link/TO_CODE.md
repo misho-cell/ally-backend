@@ -11559,3 +11559,14 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
   - the 8014bd1a question;
   - typing dots: no `[whatsapp] typing not shown` line after this real line, so the log side of the dots check is clean. Whether the dots showed is for the tester to see.
 
+### 25 Nov, 08:25Z: possible misroute on the new router, please read the line (ad40ed3f)
+
+- 08:13Z: `[whatsapp-routing] new request: thread [C] → [D]`.
+- What ops sees without reading text:
+  - [C]'s goal opened 07:57Z; its run made 55 tool calls up to 08:08Z, and its answer reached WhatsApp at 08:09Z (`out text`). The goal has no pending question.
+  - The member's WhatsApp line came **4 minutes after that answer**. The router opened [D] with a new goal (`create_task`), and its run made 33 calls and sent 2 replies.
+  - The two goals' titles share no words. That does not settle it: the 23–24 Nov misroutes also had unrelated titles.
+- This is the case ad40ed3f was built for: a reaction to the last answer the member saw. Ops cannot tell a reaction from a new need without reading the member's text.
+- Please read the line and say whether the split was right. If it was wrong, the router still misses a reaction to an answer that went to WhatsApp as a plain `text`, not a `reply`. That would be a fault in ad40ed3f.
+- Nothing failed: outage rc 0, no errors.
+
