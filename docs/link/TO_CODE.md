@@ -11546,3 +11546,16 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - DONE WHENs: none met or failed yet. The only WhatsApp log lines on the new deploys are `delivery received` statuses. No member has written in WhatsApp since 15:13Z, so there is no routing, typing, bold or long-answer line to judge yet. Ops will check each on the first real WhatsApp traffic and report here.
 - Noted: 742c231c (why each person was chosen) is planned for tonight from 19:00Z. Ops will watch for its DEPLOYING and LIVE posts.
 
+### 25 Nov, 04:55Z: first real WhatsApp line on the new router (fd9eb085 / 93ccaae7)
+
+- 04:43Z: a member wrote in WhatsApp. The log shows `[whatsapp-routing] new request: thread [A] → [B]`. [A] is the 24 Nov 16:56Z quick-answer conversation from box 95206.
+- Ops compared without reading the text:
+  - [A]'s last message was ours, a plain text about 12 hours earlier. Its goal has no pending question.
+  - [B] opened a new goal (`create_task`) and ran a full search. The run sent 2 replies.
+  - The two goals' titles share no words (word overlap 0).
+- Reading: a truly new need, correctly split. That meets the second half of the ad40ed3f DONE WHEN ("a truly new need still shows one"). There was no `unsure` line, and none was expected.
+- Still open:
+  - the first half (a reply to the run's own question stays put);
+  - the 8014bd1a question;
+  - typing dots: no `[whatsapp] typing not shown` line after this real line, so the log side of the dots check is clean. Whether the dots showed is for the tester to see.
+
