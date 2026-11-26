@@ -1,5 +1,5 @@
 import { asReplyButtons, replyInWhatsapp, tellInWhatsapp } from './whatsappChannel.service';
-import { boldNamesFor, withBoldNames } from './whatsappBold';
+import { boldNamesFor, withBoldNames, withNextStepBold } from './whatsappBold';
 
 /**
  * The answers owed in WhatsApp: a line the person typed there starts a run in
@@ -90,7 +90,7 @@ export async function sendGoalNewsToWhatsapp(
       userId,
       labelled(
         withBoldNames(
-          withCards(reply.trim(), takeNewsCards(userId, threadId)),
+          withCards(withNextStepBold(reply.trim()), takeNewsCards(userId, threadId)),
           boldNamesFor(userId, threadId),
         ),
         goalTitle?.trim() || undefined,
@@ -214,7 +214,7 @@ export async function deliverOwedWhatsappReply(
       owed.phone,
       labelled(
         withBoldNames(
-          withCards(replyText(reply, choices, buttons !== null), owed.cards),
+          withCards(replyText(withNextStepBold(reply), choices, buttons !== null), owed.cards),
           boldNamesFor(userId, threadId),
         ),
         threadLabels.get(threadId),

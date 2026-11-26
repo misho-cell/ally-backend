@@ -105,7 +105,40 @@ export function withBoldNames(text: string, names: readonly string[]): string {
     `(?<![${LETTER}*])(?:${sorted.map(namePattern).join('|')})(?![${LETTER}*])`,
     'gu',
   );
-  return text.replace(pattern, (match) => `*${match}*`);
+  return text
+    .split('\n')
+    .map((line) => (BOLD_LINE_RE.test(line) ? line : line.replace(pattern, (m) => `*${m}*`)))
+    .join('\n');
+}
+
+/** A line already bold as a whole: a name inside it is not bolded again. */
+const BOLD_LINE_RE = /^\*[^*\s](?:.*[^*\s])?\*$/u;
+/** The next step is a sentence or two; a longer last paragraph is part of the answer. */
+const MAX_NEXT_STEP_CHARS = 300;
+/** A list line: a bullet, a dash or a number. The list is the answer, not the next step. */
+const LIST_LINE_RE = /^\s*(?:[•\-–*]|\d{1,2}[.)])\s/u;
+
+/**
+ * Misho, 26 Nov (point 7): „after the information, always say what the next
+ * step is — what Netai does itself and what the owner has to do — at the end,
+ * in bold, so they know exactly how to go on." The reply's last paragraph is
+ * that step: in the WhatsApp copy it is bold, line by line. A one-paragraph
+ * reply, a long last paragraph or a list is left as it is.
+ */
+export function withNextStepBold(text: string): string {
+  const paragraphs = text.trim().split(/\n{2,}/u);
+  const last = paragraphs[paragraphs.length - 1] ?? '';
+  const lines = last.split('\n').filter((line) => line.trim() !== '');
+  if (
+    paragraphs.length < 2 ||
+    last.length > MAX_NEXT_STEP_CHARS ||
+    lines.length === 0 ||
+    lines.some((line) => LIST_LINE_RE.test(line) || line.includes('*'))
+  ) {
+    return text;
+  }
+  const bold = lines.map((line) => `*${line.trim()}*`).join('\n');
+  return [...paragraphs.slice(0, -1), bold].join('\n\n');
 }
 
 interface KeptNames {
