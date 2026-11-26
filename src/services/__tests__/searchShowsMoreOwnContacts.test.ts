@@ -17,8 +17,9 @@ import {
   ownContactsItem,
   stemsOf,
   tieOf,
+  isInField,
 } from '../ownContactsInField';
-import { OWN_CONTACTS_REST_NOTE, renderPendingMessage } from '../pendingMessages';
+import { renderPendingMessage } from '../pendingMessages';
 
 const nino = { phone: '+995 555 000 001', name: 'Nino Beridze', tags: ['ძმაკაცი', 'არქიტექტორი'] };
 const levan = {
@@ -85,6 +86,41 @@ describe('who is listed', () => {
   });
 });
 
+describe('only the ones really in the field (Misho, 26 Nov)', () => {
+  const stems = stemsOf('სნოუბორდის ტრენერი');
+  const placeInName = {
+    phone: '+995 555 000 030',
+    name: 'Nino Bakuriani',
+    tags: ['მეზობელი'],
+  };
+
+  it('a request word only in the saved name, with tags about something else, is not a tie', () => {
+    expect(isInField({ ...placeInName, name: 'Nino სნოუბორდი' }, stems)).toBe(false);
+    const found = ownContactsInField(
+      [{ results: [{ ...placeInName, name: 'Nino სნოუბორდი' }] }],
+      'სნოუბორდის ტრენერი',
+      () => true,
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('a tag or job carrying the request, a note, others’ labels or their own work is a tie', () => {
+    expect(isInField({ ...placeInName, tags: ['ტრენერი'] }, stems)).toBe(true);
+    expect(
+      isInField({ ...placeInName, tags: [], jobPosition: 'სნოუბორდის ინსტრუქტორი' }, stems),
+    ).toBe(true);
+    expect(isInField({ ...placeInName, matched: ['ასწავლის'] }, stems)).toBe(true);
+    expect(isInField({ ...placeInName, found_by_others_labels: true }, stems)).toBe(true);
+    expect(isInField({ ...placeInName, found_by_their_own_work: 'note' }, stems)).toBe(true);
+  });
+
+  it('a row with nothing about their work at all is not a tie', () => {
+    expect(isInField({ phone: '+995 555 000 031', name: 'Levan Japaridze', tags: [] }, stems)).toBe(
+      false,
+    );
+  });
+});
+
 describe('the reason shown', () => {
   const stems = stemsOf('არქიტექტორი');
 
@@ -122,12 +158,12 @@ describe('the card', () => {
     hits: 1,
   }));
 
-  it('drops who the answer named, shows ten and counts the rest', () => {
+  it('drops who the answer named and shows the best ten, nothing more', () => {
     const item = ownContactsItem(many);
     expect(item?.kind).toBe(OWN_CONTACTS_KIND);
     const left = ownContactsAfterReply(item?.payload ?? {}, 'Person 1 is your best way in');
     expect((left?.contacts as unknown[]).length).toBe(MAX_OWN_CONTACTS_SHOWN);
-    expect((left?.rest as unknown[]).length).toBe(2);
+    expect(left).not.toHaveProperty('rest');
     expect(JSON.stringify(left)).not.toContain('"Person 1"');
   });
 
@@ -137,15 +173,16 @@ describe('the card', () => {
     expect(ownContactsAfterReply(one?.payload ?? {}, 'ask Person 1 first')).toBeNull();
   });
 
-  it('reads in Georgian with a reason per person, and hands the rest to the next run', () => {
+  it('reads in Georgian with a reason per person, ten at most, with no „show them all"', () => {
     const payload = ownContactsAfterReply(ownContactsItem(many)?.payload ?? {}, '') ?? {};
     const card = renderPendingMessage({ kind: OWN_CONTACTS_KIND, task_id: null, payload }, 'ka');
     expect(card?.text).toContain('შენს კონტაქტებში ამ სფეროსთან კიდევ ესენი არიან');
     expect(card?.text).toContain('• Person 1 — შენ შენახული გყავს როგორც „მშენებელი"');
-    expect(card?.text).toContain('კიდევ 3 არის, თუ გინდა, ყველას გაჩვენებ.');
-    expect(card?.choices).toEqual(['ყველა მაჩვენე']);
-    expect(card?.instruction).toContain(OWN_CONTACTS_REST_NOTE);
-    expect(card?.instruction).toContain('• Person 13');
+    expect(card?.text).toContain('• Person 10');
+    expect(card?.text).not.toContain('• Person 11');
+    expect(card?.text).not.toContain('ყველას გაჩვენებ');
+    expect(card?.choices).toEqual([]);
+    expect(card?.instruction).toBe('');
   });
 
   it('has no button when all fit', () => {
