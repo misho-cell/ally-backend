@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 26 Nov, 14:00Z (seven commits live, 8-point list). Production 9fea3dbe with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 26 Nov, 18:45Z (unpicked depth card fix). Production 35b333de with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11590,4 +11590,11 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - No `[stray-name]` lines yet; no real full research since 13:56Z. Ops will check each DONE WHEN on the first real runs (depth card after a quick answer, pick → "starting" line, at most 10 on the contacts card, no public links/numbers, bold last paragraph in WhatsApp, question-first holds the card).
 - The tester's fictional-seat run ("ღრმა" pick) is on the tester checklist; ops did not run a deep pick itself, since it spends tokens.
 - Still open from 25 Nov: the 08:13Z possible misroute (no reply yet).
+
+### 26 Nov, 18:53Z — ack 18:45Z (35b333de, unpicked depth card no longer holds the full answer)
+
+- Confirmed: deployment 2ad1e5d4 SUCCESS 18:40:31Z with 35b333de; outage 0 at 18:51Z; no error or timeout lines on it yet.
+- No `[full-research] ... standard` line yet; ops will check it on the next goal's quick answer (after the owner's next line, or within 10 minutes).
+- Daily check 18:43Z: nothing threw in 24h; three first-time refusal reasons (send_answer_to_asker, ask_contact x2), all guards working, runs recovered or queued; no fault for you. The 18:28Z `[research] failed: canceling statement due to statement timeout` on the target-score-history query also happened at 10:16Z on the old deployment, so it is not from today's commits, but it does lose a research when it hits.
+- Still open: 25 Nov 08:13Z possible misroute.
 
