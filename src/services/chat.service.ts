@@ -770,6 +770,13 @@ import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
+  askedForPublicContacts,
+  PUBLIC_CONTACTS_PARAM,
+  PUBLIC_CONTACTS_PARAM_DESCRIPTION,
+  withoutLinks,
+  withoutPublicContacts,
+} from './publicContacts';
+import {
   namesFromNowhere,
   nameSpans,
   ownerNamesAmong,
@@ -4648,6 +4655,10 @@ const FETCH_PAGE_TOOL: AnthropicTool = {
         description:
           'Start reading here. Pass the `next_from_character` from a partial read to continue the same page. Omit for the beginning.',
       },
+      [PUBLIC_CONTACTS_PARAM]: {
+        type: 'boolean',
+        description: PUBLIC_CONTACTS_PARAM_DESCRIPTION,
+      },
     },
     required: ['url'],
   },
@@ -4810,6 +4821,10 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
           type: 'string',
           description:
             'Search query. For person lookup include their name and company or job title for best results.',
+        },
+        [PUBLIC_CONTACTS_PARAM]: {
+          type: 'boolean',
+          description: PUBLIC_CONTACTS_PARAM_DESCRIPTION,
         },
       },
       required: ['query'],
@@ -6710,6 +6725,19 @@ async function answerSent(runId: string | undefined, outcome: Promise<object>): 
 }
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
 const runWebFound = new Set<string>();
+/** Misho, 26 Nov (point 5): runs whose web step was asked for public contact details. */
+const runPublicContacts = new Set<string>();
+
+/** A web result as the model sees it: contact details hidden unless the owner asked for them. */
+function webAsShown(
+  runId: string | undefined,
+  input: Readonly<Record<string, unknown>>,
+  result: object,
+): object {
+  if (!askedForPublicContacts(input)) return withoutPublicContacts(result) as object;
+  if (runId !== undefined) runPublicContacts.add(runId);
+  return result;
+}
 /** #893: the labels of the list this run worked, for the check that the reply names every row. */
 const runListLabels = new Map<string, string[]>();
 /** The tool names this many rows to the model; a longer list is not checked row by row. */
@@ -10623,6 +10651,7 @@ function clearRunState(runId: string): void {
   runPostponedAnAnswer.delete(runId);
   forgetFactHolds(runId);
   forgetWebSearches(runId);
+  runPublicContacts.delete(runId);
   openingRunEnded(runId);
 }
 
@@ -11114,17 +11143,21 @@ async function executeToolCall(
         threadId,
       }).catch(() => {});
       // 4720 (§134): a public profile among the top results is read here, not left as a link.
-      const found = await withPublicProfile(
-        await webSearch(input['query'] as string),
-        (url) => fetchPage(url),
-        async () =>
-          recordFixedUsage({
-            userId,
-            kind: 'web_search',
-            ...(await pageFetchLedger()),
-            runId,
-            threadId,
-          }).catch(() => {}),
+      const found = webAsShown(
+        runId,
+        input,
+        await withPublicProfile(
+          await webSearch(input['query'] as string),
+          (url) => fetchPage(url),
+          async () =>
+            recordFixedUsage({
+              userId,
+              kind: 'web_search',
+              ...(await pageFetchLedger()),
+              runId,
+              threadId,
+            }).catch(() => {}),
+        ),
       );
       if (runId !== undefined && hasWebResults(found)) runWebFound.add(runId);
       /**
@@ -11175,7 +11208,11 @@ async function executeToolCall(
         runId,
         threadId,
       }).catch(() => {});
-      return fetchPage(input['url'] as string, Number(input['from_character'] ?? 0));
+      return webAsShown(
+        runId,
+        input,
+        await fetchPage(input['url'] as string, Number(input['from_character'] ?? 0)),
+      );
     case 'save_contact_insight':
       // ⚠️ THIS is the live door — `tools/save_contact_insight.ts`'s `execute`
       // never runs; only its schema is read. The service refuses a call it
@@ -17346,6 +17383,11 @@ async function runToolLoop(
       console.log(`[saved-names] run ${runId}: a name was put back as saved`);
       finalText = asSaved;
     }
+  }
+
+  // Misho, 26 Nov (point 5): no public link or email unless the owner asked for one.
+  if (!ownerAbsent && !runPublicContacts.has(runId)) {
+    finalText = withoutLinks(finalText);
   }
 
   // Misho, 26 Nov: an own contact the run never read is not named in the reply.

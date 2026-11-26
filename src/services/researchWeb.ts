@@ -1,4 +1,5 @@
 import { recordFixedUsage } from './costLedger.service';
+import { withoutPublicContacts } from './publicContacts';
 import { FarDepth, farMembersHolding } from './farCircles.service';
 import { findWaysIn, firmInTheOtherScript, WayIn } from './openingSearch.service';
 import {
@@ -123,7 +124,7 @@ async function chargedSearch(request: WebLevelRequest, q: string): Promise<WebHi
     ...(await webSearchLedger()),
     threadId: request.threadId,
   }).catch(() => {});
-  return hitsOf(await webSearch(q));
+  return hitsOf(withoutPublicContacts(await webSearch(q)) as object);
 }
 
 /** One page read, charged as the one it is. */
@@ -134,7 +135,7 @@ async function chargedPage(request: WebLevelRequest, url: string): Promise<strin
     ...(await pageFetchLedger()),
     threadId: request.threadId,
   }).catch(() => {});
-  const page = (await fetchPage(url)) as { content?: unknown };
+  const page = withoutPublicContacts(await fetchPage(url)) as { content?: unknown };
   return typeof page.content === 'string' ? page.content : '';
 }
 

@@ -1,4 +1,5 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
+import { withoutPublicContacts } from './publicContacts';
 import { wayInNamesFrom } from './wayInNames.service';
 import { ExactMatch, exactMatchesForMany } from './tools/searchByTag';
 import { firmSearchName, sameFirstName, sameSurname, wayInSearchName } from './wayInName';
@@ -416,7 +417,8 @@ export async function runOpeningSearches(
     // whether the results were cached. They were not; I had broken the
     // measurement four hours earlier and reported the feature without
     // re-reading the row it writes.
-    const search = webSearch(searched.query);
+    // Misho, 26 Nov (point 5): the web's phone numbers and emails are hidden from the model.
+    const search = webSearch(searched.query).then((r) => withoutPublicContacts(r) as object);
     const serialised = await logged('web_search', search, true, searched);
     const raw = await search;
     webRaw = raw;
