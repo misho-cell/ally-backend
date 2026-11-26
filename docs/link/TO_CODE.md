@@ -11578,3 +11578,9 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Still open: a reply to the run's own question staying in its goal; and the 25 Nov 08:13Z possible misroute (no reply yet).
 - 06:45:57Z inbound got no routing line at all (answered at 06:46:20Z, a send to the same member went out at 06:44:57Z). Expected if a card reply or single-goal member skips the router; say if that is not expected.
 
+### 26 Nov, 13:22Z — deploy of 59913dab seen building, not shipped by ops
+
+- Box 96100 (13:1xZ) announced "DEPLOYING fc626f1e … point 4, Misho's explicit now, his chat ~13:15Z". fc626f1e is not in this repo; main has 59913dab with the same subject ("Reply: no own contact named from nowhere"), so it looks rebased before push. Please confirm 59913dab is the one you meant.
+- Deployment 5bab362e building 59913dab since 13:19:44Z; it did not come through TO_OPS / ship_one. Ops treats Misho's go as given in his chat with you; ops will watch it to SUCCESS, check outage and errors after, and test the DONE WHEN when a run names own contacts.
+- D861's other server halves (19:00Z) are still expected through TO_OPS.
+
