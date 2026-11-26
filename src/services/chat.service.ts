@@ -770,6 +770,13 @@ import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
+  askedBeforeSearching,
+  holdResearch,
+  noteAskedBeforeSearching,
+  ownerAnsweredTheQuestion,
+  waitsOnTheOwnersAnswer,
+} from './clarifyingQuestion';
+import {
   askedForPublicContacts,
   PUBLIC_CONTACTS_PARAM,
   PUBLIC_CONTACTS_PARAM_DESCRIPTION,
@@ -15065,11 +15072,17 @@ function startFullResearch(
   askedAt: Date,
 ): void {
   void untilConversationQuiet(taskId, threadId)
-    .then(() => withheldForLine(userId, ownerLine))
-    .catch(() => new Set<string>() as ReadonlySet<string>)
-    .then((withheld) =>
-      runFullResearch({ userId, threadId, taskId, words, ownerLine, withheld, askedAt }),
-    )
+    .then(async () => {
+      // Misho, 26 Nov (point 1): Netai asked the owner first — the research waits for the answer.
+      if (waitsOnTheOwnersAnswer(threadId)) {
+        holdResearch(threadId, { userId, taskId, words, ownerLine, askedAt });
+        return false;
+      }
+      const withheld = await withheldForLine(userId, ownerLine).catch(
+        () => new Set<string>() as ReadonlySet<string>,
+      );
+      return runFullResearch({ userId, threadId, taskId, words, ownerLine, withheld, askedAt });
+    })
     .then(async (landed) => {
       if (!landed) return;
       // Misho, 21 Nov: asked from WhatsApp, the second answer goes there too.
@@ -17385,6 +17398,11 @@ async function runToolLoop(
     }
   }
 
+  // Misho, 26 Nov (point 1): a question asked before any search holds the full research.
+  if (!ownerAbsent && askedBeforeSearching(finalText, toolNamesUsed)) {
+    noteAskedBeforeSearching(threadId);
+  }
+
   // Misho, 26 Nov (point 5): no public link or email unless the owner asked for one.
   if (!ownerAbsent && !runPublicContacts.has(runId)) {
     finalText = withoutLinks(finalText);
@@ -18843,6 +18861,20 @@ export async function processChat(
   const steps = stepClock(startedAt);
   const thread = await getThread(threadId, userId);
   steps.mark('thread');
+  // Misho, 26 Nov (point 1): the owner answered Netai's question; a held research starts now.
+  if (!userMessage.startsWith(RUN_EVENT_PREFIX)) {
+    const held = ownerAnsweredTheQuestion(threadId, userMessage);
+    if (held !== null) {
+      startFullResearch(
+        held.userId,
+        threadId,
+        held.taskId,
+        held.words,
+        held.ownerLine,
+        held.askedAt,
+      );
+    }
+  }
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }
