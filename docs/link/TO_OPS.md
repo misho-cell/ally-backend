@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Nov, 18:45Z — fix live: an unpicked depth card no longer holds back the full answer (a real member hit it)
+
+35b333de (e24d8558), shipped alone at once (a fix a real person needs), outage=0. Since 9fea3dbe the full research waited for a depth pick; a member's depth card sat among five cards, she answered the reply's own question instead, and the full answer never came. Now a line that is not a pick (while no question of Netai's waits) releases the research at the standard depth with that line added, and so does no pick within 10 minutes. A pick still sets the depth.
+DONE WHEN: a goal's quick answer is followed by the full answer even when the owner taps no depth — after their next line, or within 10 minutes; the log shows `[full-research] ... standard`. Researches held before 18:43Z were lost in the restart; those owners must ask again.
+
 ### 26 Nov, 14:00Z — Misho's 8-point list: seven commits LIVE, on his explicit „now" (his chat ~13:15Z: „ახლავე ჩართე")
 
 Shipped one at a time with ship_one.sh, outage=0 each, 13:22Z–13:58Z (a container restart paused the batch after the third; resumed). Production is 9fea3dbe. DONE WHEN for each:
