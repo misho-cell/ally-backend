@@ -14,7 +14,9 @@ import {
   holdResearch,
   noteAskedBeforeSearching,
   ownerAnsweredTheQuestion,
+  ownerWroteInstead,
   takeHeldResearch,
+  takeUnpickedResearch,
   waitsOnTheOwnersAnswer,
 } from '../clarifyingQuestion';
 
@@ -67,11 +69,44 @@ describe('a question asked before searching', () => {
 
   it('is wired: held when ready, the card dropped when Netai asked, offered on the answer', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('holdResearch(opening.threadId, research);');
+    expect(chat).toContain('holdForPick(opening.threadId, research);');
     expect(chat).toContain('notePendingItems(runId, [depthCardItem()]);');
     expect(chat).toMatch(
       /askedBeforeSearching\(finalText, toolNamesUsed\)\) \{\s*noteAskedBeforeSearching\(threadId\);\s*dropPendingItems\(runId, RESEARCH_DEPTH_KIND\);/u,
     );
-    expect(chat).toMatch(/ownerAnsweredTheQuestion\(threadId, userMessage\)/u);
+    expect(chat).toContain('offerOrReleaseResearch(threadId, userMessage, runId)');
+  });
+});
+
+describe('a depth nobody picks never costs the full answer (Lika, 26 Nov)', () => {
+  beforeEach(() => forgetClarifyingQuestions());
+
+  it('a line that is not a pick releases the research, with that line', () => {
+    holdResearch(THREAD, RESEARCH, NOW);
+    const back = ownerWroteInstead(THREAD, 'in Tbilisi', NOW + 60_000);
+    expect(back?.ownerLine).toBe('find me a snowboard trainer\nin Tbilisi');
+    expect(takeHeldResearch(THREAD, NOW + 61_000)).toBeNull();
+  });
+
+  it('does not release it while Netai’s own question waits for its answer', () => {
+    holdResearch(THREAD, RESEARCH, NOW);
+    noteAskedBeforeSearching(THREAD, NOW);
+    expect(ownerWroteInstead(THREAD, 'in Tbilisi', NOW + 1_000)).toBeNull();
+  });
+
+  it('with no pick in time, the hold it was set for runs; a newer hold is left alone', () => {
+    const mark = holdResearch(THREAD, RESEARCH, NOW);
+    expect(takeUnpickedResearch(THREAD, mark, NOW + 600_000)?.words).toBe('snowboard trainer');
+    const old = holdResearch(THREAD, RESEARCH, NOW);
+    holdResearch(THREAD, RESEARCH, NOW + 5);
+    expect(takeUnpickedResearch(THREAD, old, NOW + 600_000)).toBeNull();
+  });
+
+  it('is wired: a timer runs the standard depth, and a non-pick line releases it', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('const PICK_WAIT_MS = 10 * 60_000;');
+    expect(chat).toContain('startFullResearch(unpicked, threadId, ResearchDepth.Normal);');
+    expect(chat).toContain('startFullResearch(released, threadId, ResearchDepth.Normal);');
+    expect(chat).toContain('if (depthTapOf(line) !== null) return;');
   });
 });
