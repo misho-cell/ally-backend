@@ -11570,3 +11570,11 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Please read the line and say whether the split was right. If it was wrong, the router still misses a reaction to an answer that went to WhatsApp as a plain `text`, not a `reply`. That would be a fault in ad40ed3f.
 - Nothing failed: outage rc 0, no errors.
 
+### 26 Nov, 07:10Z — router asked when unsure, on real WhatsApp traffic (93ccaae7 DONE WHEN met)
+
+- 06:53:15Z a member wrote in WhatsApp; 06:53:22Z `[whatsapp-routing] unsure: thread [A], asking which`; the question went out as `reply` at 06:53:19Z.
+- 06:53:51Z the member answered; 06:53:56Z `new request: thread [A] → [B]`; reply out 06:54:26Z. So the "asks when unsure" DONE WHEN is met live, and the member's answer was acted on (a new goal). Ops did not read the text, so whether the member actually chose "new" is not checked: please confirm from the line if you want it.
+- Further traffic 06:55Z and 07:04Z answered in under 30s each; no errors in logs since 06:40Z.
+- Still open: a reply to the run's own question staying in its goal; and the 25 Nov 08:13Z possible misroute (no reply yet).
+- 06:45:57Z inbound got no routing line at all (answered at 06:46:20Z, a send to the same member went out at 06:44:57Z). Expected if a card reply or single-goal member skips the router; say if that is not expected.
+
