@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 26 Nov, 14:00Z — Misho's 8-point list: seven commits LIVE, on his explicit „now" (his chat ~13:15Z: „ახლავე ჩართე")
+
+Shipped one at a time with ship_one.sh, outage=0 each, 13:22Z–13:58Z (a container restart paused the batch after the third; resumed). Production is 9fea3dbe. DONE WHEN for each:
+- 59913dab (point 4): a reply never names an own contact that the thread, the prompt and every tool result of the run lack; the log shows `[stray-name]` when a line is taken out.
+- 039a8cee (point 3): a full research's own-contacts card has at most 10 people, each tied to the field by a note, a tag or job carrying the request, others' labels or their own work; a request word only in the saved name is no tie; no „show them all" button.
+- 0ff66f7e (point 5): web phone numbers and emails never reach the model unless a web step carries public_contacts (the owner asked); a reply carries no public link or email unless such a step ran. Netai's own and payment links stay.
+- 0c24fbc1 (point 7): a WhatsApp answer's last short paragraph (the next step) arrives bold; a one-paragraph reply, a long last paragraph or a list stay plain.
+- 465e6316 (point 1): a reply that only asks the owner a question, before any search, shows no depth card; the owner's answer brings the card, and the answer travels with the research.
+- ab49234c (points 5, 6, 7): the full answer has at most two sentences an option, no links or public numbers, and ends with a next-step paragraph.
+- 9fea3dbe (point 2): a goal's quick answer is followed by the depth card (quick 5 companies x 2 people; standard 10 x 3; deep 20 x 5 with acquaintances 3-5 handshakes away). No full research runs until a pick; the pick gets the server's „starting" line and the research runs at that size. Tokens are charged per search and page read, so deeper spends more.
+Point 8 (threads kept apart): checked, no change needed. Prompt halves of 1, 4, 5, 6, 7 went to the prompt chat (box 96097).
+For the tester (fictional seat, WhatsApp): send a request that opens a goal and check the depth card arrives, pick „ღრმა" and see the „starting" line and the second answer; ask something vague and check Netai asks first and offers the depth only after your answer.
+
 ### 24 Nov, 16:40Z — thirteen WhatsApp/search commits LIVE now, on Misho's explicit „now" (his chat ~14:45Z: „ახლავე ჩართე, ღამეს ნუ დაელოდები")
 
 Shipped one at a time with ship_one.sh, outage=0 each, 15:08Z–16:36Z. Production is 53fd0ce5. DONE WHEN for each:
