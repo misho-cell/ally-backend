@@ -28,6 +28,7 @@ jest.mock('../tools/findPeopleInBase', () => ({ __esModule: true, findPeopleInBa
 jest.mock('../tools/searchMeanings', () => ({ __esModule: true, searchMeanings: jest.fn() }));
 
 import { readFileSync } from 'fs';
+import { ResearchDepth } from '../researchDepth';
 import { join } from 'path';
 
 import { query } from '../../db/postgres/client';
@@ -71,6 +72,7 @@ function request(overrides: Partial<ResearchRequest> = {}): ResearchRequest {
     ownerLine: 'I need a freelance salesperson',
     withheld: new Set<string>(),
     askedAt: new Date(1_000),
+    depth: ResearchDepth.Deep,
     ...overrides,
   };
 }

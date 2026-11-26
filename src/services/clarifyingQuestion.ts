@@ -1,18 +1,22 @@
 /**
+ * The full research a conversation holds back, and why.
+ *
+ * Misho, 26 Nov (point 2): the owner picks how deep the full research goes,
+ * so it is held until the pick (researchDepth.ts).
+ *
  * Misho, 26 Nov (point 1): „before the task starts, Netai asks targeted
  * questions to understand as exactly as it can what the owner wants". What to
- * ask is the model's (prompt chat); what is the server's is the full research:
- * it must not start on the words of a request Netai has just asked about. A
- * reply that ends on a question, from a run that searched nothing itself,
- * holds the conversation's full research until the owner's next line, which
- * then travels with it.
+ * ask is the model's (prompt chat); the server's part is that nothing starts on
+ * a request Netai has just asked about. A reply that ends on a question, from
+ * a run that searched nothing itself, offers no depth yet: the owner's next
+ * line is added to the held research, and the depth is offered then.
  */
 
 /** A question mark, Latin or full-width. */
 const QUESTION_END_RE = /[?？]\s*$/u;
 /** A model tool that looks for people or for the web: a run that used one has answered. */
 const SEARCHING_TOOL_RE = /^(?:search_|web_search$|fetch_page$|find_)/u;
-/** How long a held research waits for the owner's answer. */
+/** How long a held research waits for the owner. */
 export const HELD_RESEARCH_MS = 24 * 60 * 60_000;
 
 /** Pure: whether the reply's last line is a question. */
@@ -37,8 +41,12 @@ export interface HeldResearch {
   readonly askedAt: Date;
 }
 
+interface Held extends HeldResearch {
+  readonly heldAt: number;
+}
+
 const askedAt = new Map<number, number>();
-const held = new Map<number, HeldResearch & { readonly heldAt: number }>();
+const held = new Map<number, Held>();
 
 /** This conversation's last reply asked the owner before searching. */
 export function noteAskedBeforeSearching(threadId: number, now: number = Date.now()): void {
@@ -51,7 +59,7 @@ export function waitsOnTheOwnersAnswer(threadId: number, now: number = Date.now(
   return at !== undefined && now - at < HELD_RESEARCH_MS;
 }
 
-/** Keeps the research until the owner answers. */
+/** Keeps the research until the owner picks its depth. */
 export function holdResearch(
   threadId: number,
   research: HeldResearch,
@@ -60,24 +68,42 @@ export function holdResearch(
   held.set(threadId, { ...research, heldAt: now });
 }
 
+function fresh(threadId: number, now: number): Held | null {
+  const research = held.get(threadId);
+  if (research === undefined) return null;
+  if (now - research.heldAt < HELD_RESEARCH_MS) return research;
+  held.delete(threadId);
+  return null;
+}
+
 /**
- * The owner wrote in this conversation: the question is answered. The held
- * research, if any, comes back once, with the answer added to its line.
+ * The owner wrote in this conversation. When they were answering Netai's
+ * question and a research is held, their answer joins its line and the depth
+ * is offered now: true.
  */
 export function ownerAnsweredTheQuestion(
   threadId: number,
   line: string,
   now: number = Date.now(),
-): HeldResearch | null {
+): boolean {
+  const waiting = waitsOnTheOwnersAnswer(threadId, now);
   askedAt.delete(threadId);
-  const research = held.get(threadId);
+  const research = fresh(threadId, now);
+  if (!waiting || research === null) return false;
+  held.set(threadId, { ...research, ownerLine: `${research.ownerLine}\n${line}` });
+  return true;
+}
+
+/** The held research, once: the owner picked its depth. */
+export function takeHeldResearch(threadId: number, now: number = Date.now()): HeldResearch | null {
+  const research = fresh(threadId, now);
   held.delete(threadId);
-  if (research === undefined || now - research.heldAt >= HELD_RESEARCH_MS) return null;
+  if (research === null) return null;
   return {
     userId: research.userId,
     taskId: research.taskId,
     words: research.words,
-    ownerLine: `${research.ownerLine}\n${line}`,
+    ownerLine: research.ownerLine,
     askedAt: research.askedAt,
   };
 }

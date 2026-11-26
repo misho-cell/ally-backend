@@ -774,8 +774,16 @@ import {
   holdResearch,
   noteAskedBeforeSearching,
   ownerAnsweredTheQuestion,
-  waitsOnTheOwnersAnswer,
+  takeHeldResearch,
+  type HeldResearch,
 } from './clarifyingQuestion';
+import {
+  depthCardItem,
+  depthStartedLine,
+  depthTapOf,
+  RESEARCH_DEPTH_KIND,
+  ResearchDepth,
+} from './researchDepth';
 import {
   askedForPublicContacts,
   PUBLIC_CONTACTS_PARAM,
@@ -8358,6 +8366,16 @@ function notePendingItems(runId: string | undefined, items: readonly PendingItem
   runPendingItems.set(runId, [...(runPendingItems.get(runId) ?? []), ...items]);
 }
 
+/** Takes back a card of this kind the run had noted. */
+function dropPendingItems(runId: string, kind: string): void {
+  const items = runPendingItems.get(runId);
+  if (items !== undefined)
+    runPendingItems.set(
+      runId,
+      items.filter((item) => item.kind !== kind),
+    );
+}
+
 /**
  * ⚠️ „SKIP, DON'T REPEAT" — the founder on our 639, 25 September ~00:30.
  *
@@ -15019,14 +15037,23 @@ function researchWhenReady(runId: string): void {
   const opening = runOpenings.get(runId);
   if (opening === undefined || opening.query === null || opening.taskId === null) return;
   runOpenings.delete(runId);
-  startFullResearch(
-    opening.userId,
-    opening.threadId,
-    opening.taskId,
-    opening.query,
-    opening.ownerLine,
-    opening.askedAt,
-  );
+  const research = {
+    userId: opening.userId,
+    taskId: opening.taskId,
+    words: opening.query,
+    ownerLine: opening.ownerLine,
+    askedAt: opening.askedAt,
+  };
+  if (opening.runEnded) {
+    // The run that could carry the depth card is over: the research goes at the standard depth.
+    // eslint-disable-next-line no-console
+    console.log(`[full-research] run ${runId}: no reply left to offer the depth; standard`);
+    startFullResearch(research, opening.threadId, ResearchDepth.Normal);
+    return;
+  }
+  // Misho, 26 Nov (point 2): the owner picks the depth; the research waits for the pick.
+  holdResearch(opening.threadId, research);
+  notePendingItems(runId, [depthCardItem()]);
 }
 
 /** The opening search's words have landed (none when it searched nothing). */
@@ -15063,26 +15090,14 @@ function openingRunEnded(runId: string): void {
  * the opening search has its words. The findings wait for the conversation's
  * next run; when none comes, the goal is woken to give them as the second answer.
  */
-function startFullResearch(
-  userId: string,
-  threadId: number,
-  taskId: number,
-  words: string,
-  ownerLine: string,
-  askedAt: Date,
-): void {
+function startFullResearch(research: HeldResearch, threadId: number, depth: ResearchDepth): void {
+  const { userId, taskId, words, ownerLine, askedAt } = research;
   void untilConversationQuiet(taskId, threadId)
-    .then(async () => {
-      // Misho, 26 Nov (point 1): Netai asked the owner first — the research waits for the answer.
-      if (waitsOnTheOwnersAnswer(threadId)) {
-        holdResearch(threadId, { userId, taskId, words, ownerLine, askedAt });
-        return false;
-      }
-      const withheld = await withheldForLine(userId, ownerLine).catch(
-        () => new Set<string>() as ReadonlySet<string>,
-      );
-      return runFullResearch({ userId, threadId, taskId, words, ownerLine, withheld, askedAt });
-    })
+    .then(() => withheldForLine(userId, ownerLine))
+    .catch(() => new Set<string>() as ReadonlySet<string>)
+    .then((withheld) =>
+      runFullResearch({ userId, threadId, taskId, words, ownerLine, withheld, askedAt, depth }),
+    )
     .then(async (landed) => {
       if (!landed) return;
       // Misho, 21 Nov: asked from WhatsApp, the second answer goes there too.
@@ -15743,9 +15758,12 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
  * no goal, so it was held as „not asked about other goals" — and nothing notes
  * it again, so it was lost (0 of 2). It goes out with its reply.
  */
-const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND, NEED_RECALL_KIND]).add(
+const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([
+  FACT_CONFIRM_KIND,
+  NEED_RECALL_KIND,
   OWN_CONTACTS_KIND,
-);
+  RESEARCH_DEPTH_KIND,
+]);
 
 export async function waitingItemsToDeliver(
   items: readonly PendingItemInput[],
@@ -16046,6 +16064,36 @@ async function answerMatchTap(
 }
 
 /** 1692 (A9): a tap on the thank-you card or on „would you ask them again?" is the server's. */
+/** The owner's pick of the full research's depth: it starts, and the server says so. */
+async function answerDepthTap(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  const depth = depthTapOf(userMessage);
+  if (depth === null) return null;
+  const research = takeHeldResearch(threadId);
+  if (research === null) return null;
+  try {
+    startFullResearch(research, threadId, depth);
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    const text = depthStartedLine(language, depth);
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    await saveThreadMessage(threadId, Number(userId), 'assistant', text, 'message', runId, null);
+    // eslint-disable-next-line no-console
+    console.log(`[full-research] run ${runId}: depth ${depth}`);
+    return { reply: text, language, requestCreated: false };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[full-research] depth tap not settled:', (err as Error).message);
+    return null;
+  }
+}
+
 async function answerThanksTap(
   userId: string,
   threadId: number,
@@ -17401,6 +17449,7 @@ async function runToolLoop(
   // Misho, 26 Nov (point 1): a question asked before any search holds the full research.
   if (!ownerAbsent && askedBeforeSearching(finalText, toolNamesUsed)) {
     noteAskedBeforeSearching(threadId);
+    dropPendingItems(runId, RESEARCH_DEPTH_KIND);
   }
 
   // Misho, 26 Nov (point 5): no public link or email unless the owner asked for one.
@@ -18861,19 +18910,12 @@ export async function processChat(
   const steps = stepClock(startedAt);
   const thread = await getThread(threadId, userId);
   steps.mark('thread');
-  // Misho, 26 Nov (point 1): the owner answered Netai's question; a held research starts now.
-  if (!userMessage.startsWith(RUN_EVENT_PREFIX)) {
-    const held = ownerAnsweredTheQuestion(threadId, userMessage);
-    if (held !== null) {
-      startFullResearch(
-        held.userId,
-        threadId,
-        held.taskId,
-        held.words,
-        held.ownerLine,
-        held.askedAt,
-      );
-    }
+  // Misho, 26 Nov (points 1, 2): the owner answered Netai's question — now the depth is offered.
+  if (
+    !userMessage.startsWith(RUN_EVENT_PREFIX) &&
+    ownerAnsweredTheQuestion(threadId, userMessage)
+  ) {
+    notePendingItems(runId, [depthCardItem()]);
   }
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
@@ -18967,6 +19009,11 @@ export async function processChat(
       ? await answerTargetQuestion(userId, threadId, userMessage, runId, intent)
       : null;
   if (targetAnswered !== null) return targetAnswered;
+  // Misho, 26 Nov (point 2): the owner picked how deep the full research goes.
+  const depthPicked = !ownerAbsent
+    ? await answerDepthTap(userId, threadId, userMessage, runId, intent)
+    : null;
+  if (depthPicked !== null) return depthPicked;
   // 1699 (A16): a tap on one of the two no-name match cards is the server's.
   const matchSettled = !ownerAbsent
     ? await answerMatchTap(userId, threadId, userMessage, runId, intent)
