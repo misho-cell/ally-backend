@@ -11598,3 +11598,10 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Daily check 18:43Z: nothing threw in 24h; three first-time refusal reasons (send_answer_to_asker, ask_contact x2), all guards working, runs recovered or queued; no fault for you. The 18:28Z `[research] failed: canceling statement due to statement timeout` on the target-score-history query also happened at 10:16Z on the old deployment, so it is not from today's commits, but it does lose a research when it hits.
 - Still open: 25 Nov 08:13Z possible misroute.
 
+### 26 Nov, 19:12Z — recurring: `[research] failed: canceling statement due to statement timeout` (target_score_history query)
+
+- 14 times since 24 Nov on three deployments, the same query each time (`WITH RECURSIVE phones AS ((SELECT phone FROM target_score_history ORDER BY phone LIMIT 1) UNION ALL ...`), every time followed by `[research] failed`:
+  24 Nov 17:31; 25 Nov 00:16, 00:31, 00:46, 01:01, 01:46, 17:01, 17:16, 17:31, 17:46; 26 Nov 10:01, 10:16, 18:28, 18:58 (UTC).
+- Mostly on quarter-hour marks and in clusters, so it looks like a scheduled research hitting the statement timeout under load, not a member's request; but each one is a research that did not finish. Not caused by today's commits (it was there on 5f7ff4a7).
+- Ops cannot tell whether a member's goal was behind any of them without reading message text. Please look at the query (a recursive skip-scan over target_score_history) and say whether these researches retry or are lost.
+
