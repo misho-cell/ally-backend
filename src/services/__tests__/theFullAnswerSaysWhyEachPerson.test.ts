@@ -20,3 +20,21 @@ describe('the full answer explains each person', () => {
     expect(FULL_RESEARCH_HEADER).toContain('never only „they fit"');
   });
 });
+
+describe('the full answer is short and ends on the next step (Misho, 26 Nov)', () => {
+  it('asks for a short answer with no account of the search', () => {
+    expect(FULL_RESEARCH_HEADER).toContain('at most two sentences for an option');
+    expect(FULL_RESEARCH_HEADER).toContain('no explanation of how you searched');
+  });
+
+  it('gives no public link, number or email, and never „contact them yourself"', () => {
+    expect(FULL_RESEARCH_HEADER).not.toContain('with its link');
+    expect(FULL_RESEARCH_HEADER).not.toContain('public contact.');
+    expect(FULL_RESEARCH_HEADER).toContain('never a public number, email or link');
+  });
+
+  it('ends with the next step as its own last paragraph: what Netai does, what the owner does', () => {
+    expect(FULL_RESEARCH_HEADER).toContain('End with THE NEXT STEP as its own last paragraph');
+    expect(FULL_RESEARCH_HEADER).toContain('what you will do yourself and what the');
+  });
+});
