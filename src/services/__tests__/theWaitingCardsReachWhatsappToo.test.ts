@@ -67,6 +67,8 @@ describe('a card from a run nobody typed in WhatsApp (Misho, 24 Nov: the app is 
       /if \(!addCardToOwedReply\(Number\(userId\), threadId, text\)\) \{\s*holdCardForNews\(Number\(userId\), threadId, text\);/su,
     );
     const src = readFileSync(join(__dirname, '..', 'whatsappReplies.service.ts'), 'utf8');
-    expect(src).toContain('withCards(reply.trim(), takeNewsCards(userId, threadId))');
+    expect(src).toContain(
+      'withCards(withNextStepBold(reply.trim()), takeNewsCards(userId, threadId))',
+    );
   });
 });
