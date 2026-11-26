@@ -1,4 +1,5 @@
 import { recordFixedUsage } from './costLedger.service';
+import { DEPTH_SIZES, DepthSize, ResearchDepth } from './researchDepth';
 import { withoutPublicContacts } from './publicContacts';
 import { FarDepth, farMembersHolding } from './farCircles.service';
 import { findWaysIn, firmInTheOtherScript, WayIn } from './openingSearch.service';
@@ -35,16 +36,8 @@ const MAX_WEB_QUERIES = 6;
 /** Each related trade, in its own words and one other script. */
 const MAX_RELATED_TRADES_SEARCHED = 4;
 const QUERIES_PER_RELATED_TRADE = 2;
-/** The companies named from the results, each looked for in the network. */
-const MAX_COMPANIES = 20;
 /** What each result says, enough to tell whether the firm does this. */
 const SNIPPET_CHARS = 220;
-/** The firms whose head is looked up, the ones the owner has nobody at first. */
-const MAX_HEAD_LOOKUPS = 12;
-/** The names read from a head search's titles. */
-const MAX_HEADS = 3;
-/** The firms whose own page is read. */
-const MAX_PAGES_READ = 12;
 /** What is quoted from a page around a word of the request. */
 const PAGE_EXCERPT_CHARS = 160;
 /** How many firms are worked on at once. */
@@ -67,6 +60,12 @@ export interface WebLevelRequest {
   readonly meanings: WordMeanings;
   /** The trades who could deliver this (relatedTrades), most likely first. */
   readonly related?: readonly string[];
+  /** Misho, 26 Nov (point 2): how many companies, people at each and pages; the deep size when not given. */
+  readonly size?: DepthSize;
+}
+
+function sizeOf(request: WebLevelRequest): DepthSize {
+  return request.size ?? DEPTH_SIZES[ResearchDepth.Deep];
 }
 
 interface WebHit {
@@ -236,7 +235,11 @@ async function headNamesOf(
   const aboutTheFirm = hits.filter((hit) => forms.some((form) => textOf(hit).includes(form)));
   if (aboutTheFirm.length === 0) return [];
   const origin = { userId: request.userId, threadId: request.threadId };
-  const names = await wayInNamesFrom({ results: aboutTheFirm }, MAX_HEADS, origin);
+  const names = await wayInNamesFrom(
+    { results: aboutTheFirm },
+    sizeOf(request).peoplePerCompany,
+    origin,
+  );
   return names.filter((name) => {
     const lower = name.toLocaleLowerCase();
     return !forms.some((form) => form.includes(lower) || lower.includes(form));
@@ -300,7 +303,7 @@ async function headsOfFirms(
   const nobodyFirst = [
     ...companies.filter((c) => own.get(c)?.kind !== 'first_circle'),
     ...companies.filter((c) => own.get(c)?.kind === 'first_circle'),
-  ].slice(0, MAX_HEAD_LOOKUPS);
+  ].slice(0, sizeOf(request).headLookups);
   const found = await inBatches(nobodyFirst, async (company) => {
     const site = siteNames.get(company) ?? [];
     const names = await headNamesOf(request, company, site).catch((): string[] => []);
@@ -361,7 +364,7 @@ async function pagesOfFirms(
   urls: ReadonlyMap<string, string>,
 ): Promise<Map<string, PageReading>> {
   const words = pageWords(request);
-  const firms = [...urls].slice(0, MAX_PAGES_READ);
+  const firms = [...urls].slice(0, sizeOf(request).pagesRead);
   const read = await inBatches(firms, async ([firm, url]) => {
     const page = await chargedPage(request, url).catch(() => '');
     return [firm, page === '' ? null : readingOf(url, page, words)] as const;
@@ -429,7 +432,7 @@ export function webCounts(result: object): string {
 export async function webLevel(request: WebLevelRequest): Promise<object> {
   const hits = await searchTheWeb(request, allWebQueries(request));
   const origin = { userId: request.userId, threadId: request.threadId };
-  const companies = await wayInNamesFromAll({ results: hits }, MAX_COMPANIES, origin);
+  const companies = await wayInNamesFromAll({ results: hits }, sizeOf(request).companies, origin);
   if (companies.length === 0) return { web_results: hits, companies: [] };
   const { urls, siteNames } = sitesOf(hits, companies);
   const own = await findWaysIn(request.userId, companies, { threadId: request.threadId });

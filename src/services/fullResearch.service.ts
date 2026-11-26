@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { DEPTH_SIZES, DepthSize, ResearchDepth } from './researchDepth';
 import { FarDepth, farMembersHolding } from './farCircles.service';
 import { phoneDigits } from './phone';
 import { goalReachesANamedPerson } from './openingSearch.service';
@@ -80,6 +81,7 @@ function webSearchFor(request: ResearchRequest, words: ResearchWords): () => Pro
           ownerLine: request.ownerLine,
           meanings: words.meanings,
           related: words.related,
+          size: sizeOf(request),
         });
 }
 
@@ -110,6 +112,12 @@ export interface ResearchRequest {
   readonly withheld: ReadonlySet<string>;
   /** When the owner asked: every answer given since then counts as a previous one. */
   readonly askedAt: Date;
+  /** Misho, 26 Nov (point 2): how deep the owner chose; the standard depth when not given. */
+  readonly depth?: ResearchDepth;
+}
+
+function sizeOf(request: ResearchRequest): DepthSize {
+  return DEPTH_SIZES[request.depth ?? ResearchDepth.Normal];
 }
 
 interface KeptResearch {
@@ -195,7 +203,7 @@ function levelSearches(request: ResearchRequest, words: ResearchWords): readonly
       FarDepth.Everything,
     ),
   });
-  return [
+  const levels: readonly LevelSearch[] = [
     { level: ResearchLevel.Own, search: (w) => searchByTag(userId, w, meanings), byWord: true },
     { level: ResearchLevel.OwnSaved, search: (w) => searchByInsight(userId, w), byWord: false },
     {
@@ -217,6 +225,8 @@ function levelSearches(request: ResearchRequest, words: ResearchWords): readonly
     },
     { level: ResearchLevel.Web, search: webSearchFor(request, words), byWord: false },
   ];
+  // Misho, 26 Nov (point 2): three to five handshakes away only when the owner chose the deep search.
+  return levels.filter((spec) => spec.level !== ResearchLevel.Further || sizeOf(request).farLevels);
 }
 
 /**

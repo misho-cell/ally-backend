@@ -28,6 +28,7 @@ jest.mock('../tools/findCompaniesForNeed', () => ({
 jest.mock('../tools/findPeopleInBase', () => ({ __esModule: true, findPeopleInBase: jest.fn() }));
 jest.mock('../tools/searchMeanings', () => ({ __esModule: true, searchMeanings: jest.fn() }));
 
+import { ResearchDepth } from '../researchDepth';
 import { query } from '../../db/postgres/client';
 import { farMembersHolding } from '../farCircles.service';
 import { forgetResearch, runFullResearch, takeResearch } from '../fullResearch.service';
@@ -83,6 +84,7 @@ const request = (ownerLine: string = LINE) => ({
   ownerLine,
   withheld: new Set<string>(),
   askedAt: new Date(0),
+  depth: ResearchDepth.Deep,
 });
 
 describe('the related trades of a request', () => {

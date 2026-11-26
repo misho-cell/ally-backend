@@ -1,7 +1,8 @@
 /**
- * Misho, 26 Nov (point 1): Netai asks before the task starts. The full research
- * does not start on a request Netai has just asked about; it starts with the
- * owner's answer.
+ * Misho, 26 Nov (points 1 and 2): Netai asks before the task starts, and the
+ * owner picks how deep the full research goes. The research is held until the
+ * pick; when Netai asked first, the depth is offered only once the owner has
+ * answered, and the answer travels with the research.
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -13,6 +14,7 @@ import {
   holdResearch,
   noteAskedBeforeSearching,
   ownerAnsweredTheQuestion,
+  takeHeldResearch,
   waitsOnTheOwnersAnswer,
 } from '../clarifyingQuestion';
 
@@ -38,33 +40,38 @@ describe('a question asked before searching', () => {
     expect(askedBeforeSearching('Shall I write to them?', ['find_people_in_base'])).toBe(false);
   });
 
-  it('holds the research until the owner answers, then gives it back once with the answer', () => {
+  it('holds the research; the owner’s answer joins it and the depth is offered then', () => {
+    holdResearch(THREAD, RESEARCH, NOW);
     noteAskedBeforeSearching(THREAD, NOW);
     expect(waitsOnTheOwnersAnswer(THREAD, NOW + 1_000)).toBe(true);
-    holdResearch(THREAD, RESEARCH, NOW);
-    const back = ownerAnsweredTheQuestion(THREAD, 'for my son, 10 years old', NOW + 60_000);
+    expect(ownerAnsweredTheQuestion(THREAD, 'for my son, 10 years old', NOW + 60_000)).toBe(true);
+    expect(waitsOnTheOwnersAnswer(THREAD, NOW + 60_000)).toBe(false);
+    const back = takeHeldResearch(THREAD, NOW + 120_000);
     expect(back?.ownerLine).toBe('find me a snowboard trainer\nfor my son, 10 years old');
     expect(back?.words).toBe('snowboard trainer');
-    expect(back?.taskId).toBe(9);
-    expect(waitsOnTheOwnersAnswer(THREAD, NOW + 60_000)).toBe(false);
-    expect(ownerAnsweredTheQuestion(THREAD, 'again', NOW + 61_000)).toBeNull();
+    expect(takeHeldResearch(THREAD, NOW + 121_000)).toBeNull();
+  });
+
+  it('offers nothing on a line that answers no question of Netai’s', () => {
+    holdResearch(THREAD, RESEARCH, NOW);
+    expect(ownerAnsweredTheQuestion(THREAD, 'thanks', NOW + 1_000)).toBe(false);
+    expect(takeHeldResearch(THREAD, NOW + 2_000)?.ownerLine).toBe(RESEARCH.ownerLine);
   });
 
   it('does not hold forever', () => {
     noteAskedBeforeSearching(THREAD, NOW);
     expect(waitsOnTheOwnersAnswer(THREAD, NOW + HELD_RESEARCH_MS)).toBe(false);
     holdResearch(THREAD, RESEARCH, NOW);
-    expect(ownerAnsweredTheQuestion(THREAD, 'late', NOW + HELD_RESEARCH_MS)).toBeNull();
+    expect(takeHeldResearch(THREAD, NOW + HELD_RESEARCH_MS)).toBeNull();
   });
 
-  it('is marked at the run’s end, checked before the research, released by the owner’s line', () => {
+  it('is wired: held when ready, the card dropped when Netai asked, offered on the answer', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('askedBeforeSearching(finalText, toolNamesUsed)');
-    expect(chat).toContain('if (waitsOnTheOwnersAnswer(threadId)) {');
-    expect(chat).toContain(
-      'holdResearch(threadId, { userId, taskId, words, ownerLine, askedAt });',
+    expect(chat).toContain('holdResearch(opening.threadId, research);');
+    expect(chat).toContain('notePendingItems(runId, [depthCardItem()]);');
+    expect(chat).toMatch(
+      /askedBeforeSearching\(finalText, toolNamesUsed\)\) \{\s*noteAskedBeforeSearching\(threadId\);\s*dropPendingItems\(runId, RESEARCH_DEPTH_KIND\);/u,
     );
-    expect(chat).toContain('const held = ownerAnsweredTheQuestion(threadId, userMessage);');
-    expect(chat).toMatch(/if \(!userMessage\.startsWith\(RUN_EVENT_PREFIX\)\) \{\s*const held/u);
+    expect(chat).toMatch(/ownerAnsweredTheQuestion\(threadId, userMessage\)/u);
   });
 });

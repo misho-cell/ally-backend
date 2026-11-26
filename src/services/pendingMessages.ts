@@ -5,6 +5,7 @@ import { GoalWaitReason } from './goalWaitReason';
 import { RunLanguage } from './runLanguage';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { OWN_CONTACTS_KIND, OwnTieKind } from './ownContactsInField';
+import { depthCard, RESEARCH_DEPTH_KIND } from './researchDepth';
 
 /**
  * Ticket 16 Task 98: one answer answers one question.
@@ -721,6 +722,8 @@ export function renderPendingMessage(
     }
     case OWN_CONTACTS_KIND:
       return ownContactsCard(p, t, item.kind);
+    case RESEARCH_DEPTH_KIND:
+      return { ...depthCard(language), ref: { kind: item.kind }, instruction: '' };
     case 'search_followup':
       return {
         text: t.searchFollowUp,

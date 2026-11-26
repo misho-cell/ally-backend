@@ -158,6 +158,6 @@ describe('a recall next to a reply that asks its own question', () => {
   it('is wired so the reply keeps its own question and buttons', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('recalled !== null && recallGoesApart(finalText, recalled)');
-    expect(chat).toContain('new Set([FACT_CONFIRM_KIND, NEED_RECALL_KIND])');
+    expect(chat).toMatch(/THIS_REPLYS_OWN[^;]*FACT_CONFIRM_KIND,\s*NEED_RECALL_KIND/su);
   });
 });
