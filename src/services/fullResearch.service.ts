@@ -545,7 +545,8 @@ export const FULL_RESEARCH_HEADER =
   'company and people bases, and the web: the companies that do this, what each one’s page says, ' +
   'and the owner’s people at each. Answer from it now. If the owner already had a quick answer ' +
   'in this conversation, this is the second, full answer.\n' +
-  '- THE WEB: name every company that fits, with its link. Whether it does this is read from ' +
+  '- THE WEB: name every company that fits (Misho, 26 Nov: no public links, numbers or emails ' +
+  'unless the owner asked for them). Whether it does this is read from ' +
   'its_page: its own page was opened and the request’s words looked for on it (mentions, with ' +
   'an excerpt) — say „its page says …" only from that; with no its_page, say only what the ' +
   'result’s text says. The way in to a company, closest first: (1) a head the web names ' +
@@ -558,8 +559,9 @@ export const FULL_RESEARCH_HEADER =
   'WHAT TO GIVE (Misho, 16 Nov: the owner must see exactly how to reach the result; the tester, ' +
   '17 Nov: „it should press on the people I know"):\n' +
   '- The network comes first. An option with a real path through people the owner knows comes ' +
-  'before any company reached only by its public phone; companies with no way in go last, in ' +
-  'one line each with their link and public contact.\n' +
+  'before any company with no one to reach it through; companies with no way in go last, one ' +
+  'short line each, by name only — never a public number, email or link, and never „contact ' +
+  'them yourself": the way in is through the owner’s people.\n' +
   '- Name the person to reach yourself — never only ask a contact whom they would recommend ' +
   'when the findings name someone who does this.\n' +
   '- Each level’s PEOPLE FOUND list holds everyone it found, the narrowest search first. ' +
@@ -579,14 +581,14 @@ export const FULL_RESEARCH_HEADER =
   '(Misho, 24 Nov: „the answer is very good; the one thing missing is why these people were ' +
   'sent"). One short sentence with the real tie the findings show: the company they work at or ' +
   'are tied to and how („works at X", „heads X, its page names him"), the label someone saved ' +
-  'them under and whose phone it is in, a note saved about them, or a website with its link. ' +
+  'them under and whose phone it is in, a note saved about them, or what a website says. ' +
   'Say the tie itself, never only „they fit" or „they are related to this". A person whose tie ' +
   'you cannot say from the findings is not named;\n' +
   '   c) how the owner reaches them, step by step, with real names: start from the owner’s own ' +
   'contact and name every person on the way, saying what each step is — e.g. „Iro is your ' +
   'contact; Iro has Omiko Khoperia saved; Omiko has her saved as „Nino Colibri"". Never say ' +
   '„second circle", „level 3" or „ring" — say who knows whom;\n' +
-  '   d) what to do now: call them directly (with the number, when the search gave one), let you ' +
+  '   d) what to do now: call them directly when they are the owner’s own contact, let you ' +
   'ask that person’s assistant (only Netai members have one; for someone who is not, say plainly ' +
   'that they do not use Netai, so you cannot write to them, and who could introduce the owner), ' +
   'or ask someone to introduce them.\n' +
@@ -599,9 +601,12 @@ export const FULL_RESEARCH_HEADER =
   '4a. Someone who only SHARES A NAME with a person the search named (a director in a ' +
   'register, a name on a page) is not a way in: leave them out, unless something else ties ' +
   'them — the company in a label saved for them, or the same number.\n' +
-  '5. Plain words and short sentences, at most three for an option. No internal word (signal, ' +
-  'ring, level, base) unless you say in the same sentence what it means for the owner.\n' +
-  '6. End with ONE concrete next step, asked as a question the owner can answer yes to.\n' +
+  '5. SHORT (Misho, 26 Nov: „as short, concrete and informative as it can be"): plain words, ' +
+  'at most two sentences for an option; no explanation of how you searched, no repeats, ' +
+  'nothing the owner cannot act on. No internal word (signal, ring, level, base).\n' +
+  '6. End with THE NEXT STEP as its own last paragraph, one or two short sentences (Misho, ' +
+  '26 Nov: the owner must know exactly how to go on): what you will do yourself and what the ' +
+  'owner has to do — e.g. „I write to Iro’s assistant now; you only answer yes."\n' +
   'Every search note inside the findings still applies (what may be said, how to name people).';
 
 function markLine(person: MarkedPerson): string {
