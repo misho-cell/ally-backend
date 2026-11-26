@@ -190,8 +190,6 @@ interface PendingTexts {
   /** Misho, 24 Nov: the owner's other contacts in the searched field. */
   ownContactsHead: string;
   ownTie: (kind: OwnTieKind, value: string) => string | null;
-  ownContactsMore: (count: number) => string;
-  ownContactsShowAll: string;
 }
 
 /**
@@ -315,8 +313,6 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
           return null;
       }
     },
-    ownContactsMore: (count) => `კიდევ ${count} არის, თუ გინდა, ყველას გაჩვენებ.`,
-    ownContactsShowAll: 'ყველა მაჩვენე',
   },
   en: {
     chorusAsk: (who: string) => `A question about inviting „${who}" is waiting, in its own thread.`,
@@ -412,8 +408,6 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
           return null;
       }
     },
-    ownContactsMore: (count) => `${count} more, and I can show you them all.`,
-    ownContactsShowAll: 'Show them all',
   },
 };
 
@@ -741,11 +735,6 @@ export function renderPendingMessage(
   }
 }
 
-/** The model-facing line behind „show them all": who is left, as the card would say them. */
-export const OWN_CONTACTS_REST_NOTE =
-  'The owner was shown some of their own contacts tied to what they searched for. If they ask ' +
-  'to see them all, list these too, one line each, as written:';
-
 function ownContactLine(contact: Record<string, unknown>, t: PendingTexts): string | null {
   const name = str(contact, 'name');
   if (name === null) return null;
@@ -754,9 +743,9 @@ function ownContactLine(contact: Record<string, unknown>, t: PendingTexts): stri
 }
 
 /**
- * Misho, 24 Nov: „show everyone in my contacts with a tie to this field". Ten
- * are on the card (his number, in the app and in WhatsApp); the rest are
- * counted, and handed to the next run in case the owner asks for them all.
+ * Misho, 24 Nov: „show everyone in my contacts with a tie to this field"; 26 Nov:
+ * „only the ones really in that field, at most the 10 best — fewer if there are
+ * fewer". The card holds those and nothing more: no count, no „show them all".
  */
 function ownContactsCard(
   p: Record<string, unknown>,
@@ -767,14 +756,10 @@ function ownContactsCard(
     .map((c) => ownContactLine(c, t))
     .filter((l): l is string => l !== null);
   if (lines.length === 0) return null;
-  const rest = (Array.isArray(p.rest) ? (p.rest as Record<string, unknown>[]) : [])
-    .map((c) => ownContactLine(c, t))
-    .filter((l): l is string => l !== null);
-  const more = rest.length === 0 ? '' : `\n${t.ownContactsMore(rest.length)}`;
   return {
-    text: `${t.ownContactsHead}\n${lines.join('\n')}${more}`,
-    choices: rest.length === 0 ? [] : [t.ownContactsShowAll],
+    text: `${t.ownContactsHead}\n${lines.join('\n')}`,
+    choices: [],
     ref: { kind },
-    instruction: rest.length === 0 ? '' : `${OWN_CONTACTS_REST_NOTE}\n${rest.join('\n')}`,
+    instruction: '',
   };
 }

@@ -144,6 +144,27 @@ function nameOf(row: Row): string | null {
   return text(row.name) ?? text(row.saved_as);
 }
 
+function carries(values: readonly string[], stems: readonly string[]): boolean {
+  return values.some((v) => stems.some((s) => v.toLocaleLowerCase().includes(s)));
+}
+
+/**
+ * Misho, 26 Nov: „only the ones really in that field". A contact is in it when
+ * something about their work says so: the owner's note, a tag or job that
+ * carries the request, other people's labels, or their own stated work. A
+ * request word found only in the saved name (a place, a nickname) while the
+ * owner's tags say something else is not a tie; nor is a row with nothing at all.
+ */
+export function isInField(row: Row, stems: readonly string[]): boolean {
+  if (row.found_by_their_own_work !== undefined || row.found_by_others_labels === true) return true;
+  if (texts(row.matched).length > 0) return true;
+  const tags = texts(row.tags);
+  const work = [text(row.jobPosition), text(row.employer)].filter((w): w is string => w !== null);
+  if (carries([...tags, ...work], stems)) return true;
+  if (carries([nameOf(row) ?? ''], stems)) return false;
+  return tags.length > 0 || work.length > 0;
+}
+
 /**
  * Every own contact the research's own-contact results name, once each, ranked
  * by how many searches found them and then by how much their reason says.
@@ -159,7 +180,7 @@ export function ownContactsInField(
   for (const row of results.flatMap(personRecordsIn)) {
     const phone = phoneOf(row);
     const name = nameOf(row);
-    if (phone === null || name === null || !isOwnContact(row)) continue;
+    if (phone === null || name === null || !isOwnContact(row) || !isInField(row, stems)) continue;
     const digits = phoneDigits(phone);
     const seen = byPhone.get(digits);
     const tie = tieOf(row, stems);
@@ -181,7 +202,7 @@ export function ownContactsInField(
 export const OWN_CONTACTS_KIND = 'own_contacts_in_field';
 /** Misho, 24 Nov: „10 is enough", in the app and in WhatsApp alike. */
 export const MAX_OWN_CONTACTS_SHOWN = 10;
-/** Who the „show them all" answer may still list. */
+/** Kept before the reply is known, so ten are still left once it has named some. */
 const MAX_OWN_CONTACTS_KEPT = 60;
 /** A name shorter than this is not looked for in the reply: it would match inside words. */
 const MIN_NAME_CHARS = 3;
@@ -211,8 +232,8 @@ export function ownContactsItem(contacts: readonly OwnContactInField[]): {
 }
 
 /**
- * The card once the reply is written: who it named comes off, ten are shown,
- * and the count of the rest rides with them. Null when nobody is left.
+ * The card once the reply is written: who it named comes off, and the best ten
+ * of the rest are shown — fewer when fewer are left. Null when nobody is left.
  */
 export function ownContactsAfterReply(
   payload: Record<string, unknown>,
@@ -226,8 +247,5 @@ export function ownContactsAfterReply(
     return name !== null && !replyNames(reply, name);
   });
   if (left.length === 0) return null;
-  return {
-    contacts: left.slice(0, MAX_OWN_CONTACTS_SHOWN),
-    rest: left.slice(MAX_OWN_CONTACTS_SHOWN),
-  };
+  return { contacts: left.slice(0, MAX_OWN_CONTACTS_SHOWN) };
 }
