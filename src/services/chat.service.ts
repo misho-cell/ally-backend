@@ -770,6 +770,12 @@ import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
+  namesFromNowhere,
+  nameSpans,
+  ownerNamesAmong,
+  withoutLinesNaming,
+} from './strayContactNames';
+import {
   labelsTheReplyLeftOut,
   NamelessLabel,
   namelessLabelLines,
@@ -9790,6 +9796,29 @@ function takeSearchedPhones(runId: string): string[] {
   return phones;
 }
 
+/** The reply without a line that names an own contact the run never read; on a failed read, as written. */
+async function withoutNamesFromNowhere(
+  runId: string,
+  ownerId: number,
+  reply: string,
+  readText: string,
+): Promise<string> {
+  try {
+    const saved = await ownerNamesAmong(ownerId, nameSpans(reply));
+    const stray = namesFromNowhere(saved, readText);
+    const kept = withoutLinesNaming(reply, stray);
+    if (kept !== reply) {
+      // eslint-disable-next-line no-console
+      console.warn(`[stray-name] run ${runId}: a line naming a contact no step read was taken out`);
+    }
+    return kept;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[stray-name] run ${runId}: check skipped:`, (err as Error).message);
+    return reply;
+  }
+}
+
 const runSavedNames = new Map<string, string[]>();
 
 function noteSavedNames(runId: string, names: readonly string[]): void {
@@ -17317,6 +17346,16 @@ async function runToolLoop(
       console.log(`[saved-names] run ${runId}: a name was put back as saved`);
       finalText = asSaved;
     }
+  }
+
+  // Misho, 26 Nov: an own contact the run never read is not named in the reply.
+  if (!ownerAbsent) {
+    finalText = await withoutNamesFromNowhere(
+      runId,
+      Number(userId),
+      finalText,
+      `${promptBeforeTheRun}\n${JSON.stringify(messages)}`,
+    );
   }
 
   // 3137: a symbol-only label the reply left out is said by the server, as saved.
