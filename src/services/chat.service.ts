@@ -774,7 +774,9 @@ import {
   holdResearch,
   noteAskedBeforeSearching,
   ownerAnsweredTheQuestion,
+  ownerWroteInstead,
   takeHeldResearch,
+  takeUnpickedResearch,
   type HeldResearch,
 } from './clarifyingQuestion';
 import {
@@ -15052,8 +15054,27 @@ function researchWhenReady(runId: string): void {
     return;
   }
   // Misho, 26 Nov (point 2): the owner picks the depth; the research waits for the pick.
-  holdResearch(opening.threadId, research);
+  holdForPick(opening.threadId, research);
   notePendingItems(runId, [depthCardItem()]);
+}
+
+/** How long the depth card waits for a pick before the research runs at the standard depth. */
+const PICK_WAIT_MS = 10 * 60_000;
+
+/**
+ * Lika, 26 Nov: a card nobody taps must not cost the full answer. The research
+ * is held for the pick; with no pick in time, it runs at the standard depth.
+ */
+function holdForPick(threadId: number, research: HeldResearch): void {
+  const mark = holdResearch(threadId, research);
+  const timer = setTimeout(() => {
+    const unpicked = takeUnpickedResearch(threadId, mark);
+    if (unpicked === null) return;
+    // eslint-disable-next-line no-console
+    console.log(`[full-research] thread ${threadId}: no depth picked in time; standard`);
+    startFullResearch(unpicked, threadId, ResearchDepth.Normal);
+  }, PICK_WAIT_MS);
+  timer.unref();
 }
 
 /** The opening search's words have landed (none when it searched nothing). */
@@ -16064,6 +16085,26 @@ async function answerMatchTap(
 }
 
 /** 1692 (A9): a tap on the thank-you card or on „would you ask them again?" is the server's. */
+/**
+ * The owner wrote in a conversation that holds a research. An answer to
+ * Netai's question brings the depth card now; any other line that is not a
+ * pick releases it at the standard depth with that line (Lika, 26 Nov).
+ */
+function offerOrReleaseResearch(threadId: number, line: string, runId: string): void {
+  if (ownerAnsweredTheQuestion(threadId, line)) {
+    const research = takeHeldResearch(threadId);
+    if (research !== null) holdForPick(threadId, research);
+    notePendingItems(runId, [depthCardItem()]);
+    return;
+  }
+  if (depthTapOf(line) !== null) return;
+  const released = ownerWroteInstead(threadId, line);
+  if (released === null) return;
+  // eslint-disable-next-line no-console
+  console.log(`[full-research] run ${runId}: the owner wrote on without a pick; standard`);
+  startFullResearch(released, threadId, ResearchDepth.Normal);
+}
+
 /** The owner's pick of the full research's depth: it starts, and the server says so. */
 async function answerDepthTap(
   userId: string,
@@ -18910,13 +18951,9 @@ export async function processChat(
   const steps = stepClock(startedAt);
   const thread = await getThread(threadId, userId);
   steps.mark('thread');
-  // Misho, 26 Nov (points 1, 2): the owner answered Netai's question — now the depth is offered.
-  if (
-    !userMessage.startsWith(RUN_EVENT_PREFIX) &&
-    ownerAnsweredTheQuestion(threadId, userMessage)
-  ) {
-    notePendingItems(runId, [depthCardItem()]);
-  }
+  // Misho, 26 Nov (points 1, 2) and Lika, 26 Nov: the held research is offered, or released.
+  if (!userMessage.startsWith(RUN_EVENT_PREFIX))
+    offerOrReleaseResearch(threadId, userMessage, runId);
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }

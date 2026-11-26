@@ -59,13 +59,14 @@ export function waitsOnTheOwnersAnswer(threadId: number, now: number = Date.now(
   return at !== undefined && now - at < HELD_RESEARCH_MS;
 }
 
-/** Keeps the research until the owner picks its depth. */
+/** Keeps the research until the owner picks its depth. Returns the hold's mark, for its timer. */
 export function holdResearch(
   threadId: number,
   research: HeldResearch,
   now: number = Date.now(),
-): void {
+): number {
   held.set(threadId, { ...research, heldAt: now });
+  return now;
 }
 
 function fresh(threadId: number, now: number): Held | null {
@@ -94,18 +95,52 @@ export function ownerAnsweredTheQuestion(
   return true;
 }
 
-/** The held research, once: the owner picked its depth. */
-export function takeHeldResearch(threadId: number, now: number = Date.now()): HeldResearch | null {
-  const research = fresh(threadId, now);
-  held.delete(threadId);
-  if (research === null) return null;
+function released(research: Held, line: string | null): HeldResearch {
   return {
     userId: research.userId,
     taskId: research.taskId,
     words: research.words,
-    ownerLine: research.ownerLine,
+    ownerLine: line === null ? research.ownerLine : `${research.ownerLine}\n${line}`,
     askedAt: research.askedAt,
   };
+}
+
+/**
+ * Lika, 26 Nov: the depth card sat among five cards, she answered the reply's
+ * own question instead, and the full answer never came. A line that is not a
+ * pick, while no question of Netai's is waiting, releases the held research
+ * with that line added: it then runs at the standard depth.
+ */
+export function ownerWroteInstead(
+  threadId: number,
+  line: string,
+  now: number = Date.now(),
+): HeldResearch | null {
+  if (waitsOnTheOwnersAnswer(threadId, now)) return null;
+  const research = fresh(threadId, now);
+  if (research === null) return null;
+  held.delete(threadId);
+  return released(research, line);
+}
+
+/** The research held at this mark, once, when nobody picked in time; null when it is gone or newer. */
+export function takeUnpickedResearch(
+  threadId: number,
+  mark: number,
+  now: number = Date.now(),
+): HeldResearch | null {
+  if (waitsOnTheOwnersAnswer(threadId, now)) return null;
+  const research = fresh(threadId, now);
+  if (research === null || research.heldAt !== mark) return null;
+  held.delete(threadId);
+  return released(research, null);
+}
+
+/** The held research, once: the owner picked its depth. */
+export function takeHeldResearch(threadId: number, now: number = Date.now()): HeldResearch | null {
+  const research = fresh(threadId, now);
+  held.delete(threadId);
+  return research === null ? null : released(research, null);
 }
 
 /** For tests: forget every conversation. */
