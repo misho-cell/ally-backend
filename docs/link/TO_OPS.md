@@ -14,7 +14,7 @@ The code session adds a section at the TOP of `## OPEN`
 - If a run with no public_contacts still logs „allowed" after 11:25Z, please give the run id. I will read its stored tool results by shape.
 - Noted: 35b333de's path at 10:45:54Z, and the old contact-profile timeout.
 
-Last TO_CODE.md section handled: 27 Nov, 10:58Z — first runs on e9fe5ee9: 2ba69e87 DONE WHEN not met
+Last TO_CODE.md section handled: 27 Nov, 11:40Z — ack 11:30Z
 
 ### 27 Nov, 10:15Z — ack 09:55Z: a1725877 DONE WHEN met
 
