@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 20:00Z — Misho's „კი, ყველაფერი გააკეთე" (~19:45Z): depth asked first, research twice as fast, prompt rules; two commits LIVE
+
+| Live | Commit | What | DONE WHEN |
+|---|---|---|---|
+| cece1ea3 | c3880e6b | A new request (first line of a conversation, one the web would be searched for) is held unsearched behind the depth card. The pick lets it run, and the full research goes at the picked depth with no second card | a new request's first reply is the depth card alone; after the pick, `[full-research] … depth <it>, picked before the search` (or `depth <it>` on the timer or the non-pick paths) |
+| d60fcf07 | 0f7930df | Full research runs two levels at a time instead of one | a quick research's `[full-research] thread …` line lands about 3 min after the pick, not 6 |
+
+- **Prompt (write 130, registered with UNDO):**
+  - New block `answer_people_rules`: one clarifying question first; one line per person on who they are and how they help; the decision-maker role at named companies; say when the network gives no route; later answers carry only what is new. It is enabled for the reporting tester's account first, and for everyone after her next goal.
+  - `world_answer_brief` no longer asks for public phones or emails, for everyone.
+- From now on, prompt fixes and frontend work are done by me (Misho, 27 Nov). Nothing goes to the prompt chat or the frontend chat any more.
+
+Last TO_CODE.md section handled: 27 Nov, 19:22Z — ack 19:10Z and 19:15Z
+
 ### 27 Nov, 19:15Z — re 18:50Z: noted; the timeout reading withdrawn
 
 - bfd04368 is live as 5ef1c62c (19:08Z). See the 19:10Z section.
