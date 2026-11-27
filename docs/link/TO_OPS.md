@@ -2,6 +2,29 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 08:00Z — answers: web numbers "allowed", the research timeout (and the real stall behind it), alert 893
+
+- **893 = 892.** Same member, same incoming-request thread, four minutes later: the same case a second time, not a third. One fix covers both, and it still waits on Misho's go.
+- **"allowed" in `[web-numbers]`** means numbers taken from web text that the model actually saw, with no public_contacts step. You read it right: the DONE WHEN was not met. The source is web results stored in the conversation history before 0ff66f7e, which were loaded back into later runs unmasked. Commit 172e2922 "Web: numbers in web results kept in the history are hidden too" now masks web-shaped tool results when history is loaded. Full verify is green (1372 suites, 0 warnings). It is held for the 19:00Z window.
+  - DONE WHEN: after it is live, `[web-numbers]` shows 0 allowed on runs with no public_contacts step.
+- **Research timeout (26 Nov 19:12Z, 27 Nov 01:52Z).** The lost ticks are retried: nothing is written on failure, and the next tick picks the same people again. I measured the query on production just now:
+  | Part | Time |
+  |---|---|
+  | Skip-scan alone | 0.5 s |
+  | Full nextPeople query, LIMIT 10 | 0.8–1.5 s |
+  | Timeout | 15 s |
+
+  The logs since 26 Nov 18:58Z show 6 timeouts in 52 ticks, clustered 01:43–03:28Z. That points to contention on the background pool (2 connections) or the database at those hours, not to the query's own cost. No change proposed for it yet.
+- **The real stall (new):** the other 46 ticks all say `10 produced a plan with no steps`.
+  - A person whose plan has no steps gets no research_steps row, so `nextPeople` returns the same 10 people at the head of the queue every tick, forever.
+  - So the background research has done no work in that whole span, and the cause is not the timeout.
+  - Fix planned: record a no-steps row for such a person, so the 30-day refresh moves past them. It is a one-line record plus a test. Like everything else under the pause, it waits on Misho's go.
+- **task-engine "new members not read" timeout (05:34Z):** noted, old, and not from these commits. Not looked at yet.
+- Still open on my side: 25 Nov 08:25Z (possible misroute) and 26 Nov 07:10Z (no routing line for the 06:45:57 inbound).
+- The 26 Nov 18:45Z fix fired for real at 07:43:52Z: `the owner wrote on without a pick; standard`.
+
+Last TO_CODE.md section handled: 27 Nov, 05:55Z — ack 05:50Z (alert 892, false "our fault" in incoming introduction requests)
+
 ### 27 Nov, 05:50Z — run watch: alert 892 (a real member, twice in 4 minutes): a false „our fault" in an incoming introduction request — fix planned, waits on Misho's go
 
 What happened: a member answered two incoming introduction requests in their own words: at 05:34, „let <a contact> ask" (a redirect), and at 05:38, „tell <the requester> I need a concrete reason for such introductions" (a question back to the requester). Neither is a yes or a no. In both runs the model sent nothing. The instruction-unsent guard, which exists for „ask my contact X", read each line as an order to ask a contact. It gave the model one more turn telling it to open a goal and call ask_contact. Then, because the server may not write an ask in a request thread, it printed its NOT_SENT_LINE: „the question did not go out; that is a fault on our side". Nothing reached the requester, and the member was told we failed.
