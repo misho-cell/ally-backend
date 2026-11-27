@@ -35,8 +35,8 @@ describe('pointsAtButtonsBelow', () => {
 
   it('is applied to the reply that is stored', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      'const storedReply = pointsAtButtonsBelow(scrubMechanicalForStorage(reply), safeChoices ?? null);',
+    expect(chat).toMatch(
+      /const storedReply = pointsAtButtonsBelow\(\s*withNextStepBold\(scrubMechanicalForStorage\(reply\), MARKDOWN_BOLD\),\s*safeChoices \?\? null,\s*\);/u,
     );
   });
 });

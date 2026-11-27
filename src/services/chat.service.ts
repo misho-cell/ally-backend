@@ -173,7 +173,13 @@ const OFFER_TOOLS_ON = true;
 import { readSearchIntent, SearchIntent } from './searchIntent.service';
 import { researchWaiting, runFullResearch, takeResearch } from './fullResearch.service';
 import { OWN_CONTACTS_KIND, ownContactsAfterReply, ownContactsItem } from './ownContactsInField';
-import { namesIn, namesInToolInput, noteBoldNames } from './whatsappBold';
+import {
+  MARKDOWN_BOLD,
+  namesIn,
+  namesInToolInput,
+  noteBoldNames,
+  withNextStepBold,
+} from './whatsappBold';
 import { searchNeeds } from './tools/searchNeeds';
 import { searchMeanings } from './tools/searchMeanings';
 import { FarHit, farMembersHolding, warmChainsHolding } from './farCircles.service';
@@ -20120,7 +20126,11 @@ export async function processChat(
   // before the reply is stored, in the text and in every button label; a
   // reply that offers alternatives in words with no buttons is counted.
   // The tester's 1087: buttons sit under the message, so the text points down.
-  const storedReply = pointsAtButtonsBelow(scrubMechanicalForStorage(reply), safeChoices ?? null);
+  // Misho, 26 Nov (point 7), in the app too (Lika, 27 Nov): the closing next step is bold.
+  const storedReply = pointsAtButtonsBelow(
+    withNextStepBold(scrubMechanicalForStorage(reply), MARKDOWN_BOLD),
+    safeChoices ?? null,
+  );
   /**
    * Ticket 20 row 106, second pass — a button label is text on the screen too.
    *
