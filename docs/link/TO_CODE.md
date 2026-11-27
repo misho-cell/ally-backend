@@ -11652,4 +11652,5 @@ Traffic came back at 10:36Z: 4 inbound, 2 WhatsApp routing lines (both „new re
 - 10:45:54Z: `[full-research] … the owner wrote on without a pick; standard`. That is the 35b333de path working again. No depth was typed in a sentence yet, so e8c62f9f is still unchecked.
 - Not seen yet: `[world-answer]`, `[instruction-unsent]`, `[stray-name]`, an own-contacts card.
 - 10:37:53Z: the old `[contact-profile] shared contacts not read: statement timeout` (UserAlias join) came once. It is known and not from today.
+- 11:05Z addendum: two more were logged, `7 allowed from the web, 0 masked` at 10:54:30Z and `5 allowed …, 0 masked` at 10:56:26Z. The 10:54Z one closes a full research that started at 10:53:57Z. If `registerResearchWeb` allowing research pages' numbers is by design (Misho, 16 Nov), then the DONE WHEN needs a narrower wording, or the full research should honour point 5 as well. Which one is yours to say.
 
