@@ -111,6 +111,20 @@ export function withBoldNames(text: string, names: readonly string[]): string {
     .join('\n');
 }
 
+/** WhatsApp's bold: one asterisk on each side. */
+export const WHATSAPP_BOLD = '*';
+/**
+ * Lika, 27 Nov: the next step was bold in WhatsApp only, and she reads the app,
+ * which shows Markdown: two asterisks on each side.
+ */
+export const MARKDOWN_BOLD = '**';
+const MARKDOWN_BOLD_RE = /\*\*([^*\n]+)\*\*/gu;
+
+/** Pure: Markdown bold written as WhatsApp's, so the app's stored text reads right there too. */
+export function markdownBoldToWhatsapp(text: string): string {
+  return text.replace(MARKDOWN_BOLD_RE, '*$1*');
+}
+
 /** A line already bold as a whole: a name inside it is not bolded again. */
 const BOLD_LINE_RE = /^\*[^*\s](?:.*[^*\s])?\*$/u;
 /** The next step is a sentence or two; a longer last paragraph is part of the answer. */
@@ -123,9 +137,10 @@ const LIST_LINE_RE = /^\s*(?:[•\-–*]|\d{1,2}[.)])\s/u;
  * step is — what Netai does itself and what the owner has to do — at the end,
  * in bold, so they know exactly how to go on." The reply's last paragraph is
  * that step: in the WhatsApp copy it is bold, line by line. A one-paragraph
- * reply, a long last paragraph or a list is left as it is.
+ * reply, a long last paragraph or a list is left as it is. The marker is
+ * WhatsApp's by default; the app's stored answer takes Markdown's.
  */
-export function withNextStepBold(text: string): string {
+export function withNextStepBold(text: string, marker: string = WHATSAPP_BOLD): string {
   const paragraphs = text.trim().split(/\n{2,}/u);
   const last = paragraphs[paragraphs.length - 1] ?? '';
   const lines = last.split('\n').filter((line) => line.trim() !== '');
@@ -137,7 +152,7 @@ export function withNextStepBold(text: string): string {
   ) {
     return text;
   }
-  const bold = lines.map((line) => `*${line.trim()}*`).join('\n');
+  const bold = lines.map((line) => `${marker}${line.trim()}${marker}`).join('\n');
   return [...paragraphs.slice(0, -1), bold].join('\n\n');
 }
 
