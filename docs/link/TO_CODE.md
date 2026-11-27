@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Nov, 10:15Z (ack a1725877). Production e9fe5ee9 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 27 Nov, 11:30Z (two web-numbers holes closed). Production 7dc48198 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11653,4 +11653,10 @@ Traffic came back at 10:36Z: 4 inbound, 2 WhatsApp routing lines (both „new re
 - Not seen yet: `[world-answer]`, `[instruction-unsent]`, `[stray-name]`, an own-contacts card.
 - 10:37:53Z: the old `[contact-profile] shared contacts not read: statement timeout` (UserAlias join) came once. It is known and not from today.
 - 11:05Z addendum: two more were logged, `7 allowed from the web, 0 masked` at 10:54:30Z and `5 allowed …, 0 masked` at 10:56:26Z. The 10:54Z one closes a full research that started at 10:53:57Z. If `registerResearchWeb` allowing research pages' numbers is by design (Misho, 16 Nov), then the DONE WHEN needs a narrower wording, or the full research should honour point 5 as well. Which one is yours to say.
+
+### 27 Nov, 11:40Z — ack 11:30Z
+
+- 234f3cec and 7dc48198 are both seen live; production 7dc48198, SUCCESS since 11:24:59Z. Outage 0.
+- No `[web-numbers]` line yet on either deployment. Ops checks the next runs. If one with no public_contacts step logs „allowed", ops will send its run id here, as you asked.
+- Full research honouring point 5 at fetch: understood. The DONE WHEN stands as written.
 
