@@ -92,6 +92,8 @@ export function personRecordsIn(value: unknown): Row[] {
 /** Someone the owner holds: not a number that only holds the owner, nor a note about a stranger. */
 export function isOwnContact(row: Row): boolean {
   if (row.they_saved_you === true) return false;
+  // Lika, 27 Nov: a row the owner saved under no name of her own is not hers to be offered.
+  if ('saved_as' in row && text(row.saved_as) === null) return false;
   if ('in_your_contacts' in row) return row.in_your_contacts === true;
   if ('matched' in row) return false;
   return true;
@@ -140,8 +142,9 @@ const TIE_STRENGTH: Readonly<Record<OwnTieKind, number>> = {
   [OwnTieKind.Plain]: 0,
 };
 
+/** Lika, 27 Nov: as the owner saved them — the registered name read as someone she did not know. */
 function nameOf(row: Row): string | null {
-  return text(row.name) ?? text(row.saved_as);
+  return text(row.saved_as) ?? text(row.name);
 }
 
 function carries(values: readonly string[], stems: readonly string[]): boolean {
@@ -152,8 +155,8 @@ function carries(values: readonly string[], stems: readonly string[]): boolean {
  * Misho, 26 Nov: „only the ones really in that field". A contact is in it when
  * something about their work says so: the owner's note, a tag or job that
  * carries the request, other people's labels, or their own stated work. A
- * request word found only in the saved name (a place, a nickname) while the
- * owner's tags say something else is not a tie; nor is a row with nothing at all.
+ * request word found only in the saved name (a place, a nickname), tags and a
+ * job that say something else, or a row with nothing at all, is not a tie.
  */
 export function isInField(row: Row, stems: readonly string[]): boolean {
   if (row.found_by_their_own_work !== undefined || row.found_by_others_labels === true) return true;
@@ -161,8 +164,9 @@ export function isInField(row: Row, stems: readonly string[]): boolean {
   const tags = texts(row.tags);
   const work = [text(row.jobPosition), text(row.employer)].filter((w): w is string => w !== null);
   if (carries([...tags, ...work], stems)) return true;
-  if (carries([nameOf(row) ?? ''], stems)) return false;
-  return tags.length > 0 || work.length > 0;
+  // Lika, 27 Nov: a search hit whose tags and work say nothing of the field (a
+  // partner at a consultancy, under „printing") is not in it.
+  return false;
 }
 
 /**
