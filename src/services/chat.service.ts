@@ -792,6 +792,7 @@ import {
   PUBLIC_CONTACTS_PARAM_DESCRIPTION,
   withoutLinks,
   withoutPublicContacts,
+  webResultTextWithoutContacts,
 } from './publicContacts';
 import {
   namesFromNowhere,
@@ -10309,6 +10310,23 @@ export function historyWebResults(history: readonly Anthropic.MessageParam[]): u
   return found;
 }
 
+/** Ops, 27 Nov: the web results a history holds are read with their contact details hidden. */
+export function historyWithoutPublicContacts(
+  history: Anthropic.MessageParam[],
+): Anthropic.MessageParam[] {
+  return history.map((message) => {
+    if (message.role !== 'user' || !Array.isArray(message.content)) return message;
+    return {
+      ...message,
+      content: message.content.map((block) =>
+        block.type === 'tool_result' && typeof block.content === 'string'
+          ? { ...block, content: webResultTextWithoutContacts(block.content) }
+          : block,
+      ),
+    };
+  });
+}
+
 /** One web result's pages and published numbers, allowed for the run. */
 function registerWebResult(runId: string | undefined, result: unknown): void {
   registerWebPages(runId, result);
@@ -19182,7 +19200,7 @@ export async function processChat(
       ),
     ),
     steps.timed('tools', buildToolsForThread(userId, thread.type, ownerAbsent)),
-    steps.timed('history', loadHistory(threadId)),
+    steps.timed('history', loadHistory(threadId).then(historyWithoutPublicContacts)),
   ]);
   // #502 (46334): a message that is only „remind me …" sets the reminder and starts nothing else.
   // 3400 / 3730 / #8087: the invite, link and web tools are no longer held back on the

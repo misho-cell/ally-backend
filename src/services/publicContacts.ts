@@ -101,3 +101,34 @@ export function withoutLinks(reply: string): string {
     .replace(/\n{3,}/gu, '\n\n')
     .trim();
 }
+
+function isWebShaped(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return false;
+  const v = value as { url?: unknown; content?: unknown; results?: unknown };
+  if (typeof v.url === 'string' && 'content' in v) return true;
+  return (
+    Array.isArray(v.results) &&
+    v.results.some(
+      (r: unknown) =>
+        r !== null && typeof r === 'object' && typeof (r as { url?: unknown }).url === 'string',
+    )
+  );
+}
+
+/**
+ * Ops, 27 Nov (0ff66f7e's DONE WHEN): runs that searched nothing still showed
+ * web numbers, read from web results an earlier run left in the conversation's
+ * history. A stored tool result shaped like a web search or a page read is
+ * hidden the same way before the model reads it again; any other result, and
+ * anything that is not JSON, is left as it was.
+ */
+export function webResultTextWithoutContacts(text: string): string {
+  if (!text.includes('http')) return text;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return text;
+  }
+  return isWebShaped(parsed) ? JSON.stringify(withoutPublicContacts(parsed)) : text;
+}
