@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 09:25Z — seven fixes LIVE, on Misho's explicit „now" (his chat ~08:45Z: „ახლავე გააკეთე ყველაფერი ისე როგორც თვლი საჭიროდ") — a real member's 10-point review, the research stall, alerts 892/893
+
+All seven went out one at a time. Each passed full verify and the outage check (outage=0).
+
+| Live | Commit | What | DONE WHEN |
+|---|---|---|---|
+| 2ba69e87 | 172e2922 | Web numbers in web results kept in the history are hidden too (completes 0ff66f7e) | `[web-numbers]` shows 0 allowed on runs with no public_contacts step |
+| 569baf4e | e8c62f9f | A depth picked in a sentence („quick search, results first") is the pick. Before, it was read as no pick: the research ran at standard and the line started a second search | a typed line naming one depth logs `[full-research] … depth <it>`, and no second run answers the same line |
+| 89dc1396 | 207e27d5 | The first web answer (world answer) drops each sentence that holds a phone, email or public link, and no longer lists „Sources:" | a `[world-answer] … posted` message carries no phone, email or link |
+| 269142af | 57871b1b | Own contacts card: names as the owner saved them; a row with no saved name of theirs is left out; a contact is in the field only when their work says so | the card lists no one whose tags or job are outside the request |
+| a1725877 | f59463ab | Background research: a person with no signals or a plan with no steps leaves one not-attempted row, so the queue moves on | `[research]` stops repeating „10 produced a plan with no steps" for the same people |
+| bf1d9885 | 3f5c56ef | Alerts 892/893: the instruction-unsent guard does not run in request threads (no nudge, no false „our fault") | no `[instruction-unsent]` line in a request_thread run |
+| e9fe5ee9 | 7f2edb94 | The closing next step is bold in the app too (Markdown); the WhatsApp copy converts it to its own bold | an app answer's last short paragraph is stored in `**…**` |
+
+- The prompt half of the review went to the prompt chat in box 96433: clarifying question first, confirmed routes only, what each person helps with, a steady next step. That includes the production world_answer_brief block, which still asks for public phones.
+- Not changed, by my judgement: the depth card still comes after the quick answer (Misho's point-2 design). The progress lines („checking", „still searching") still go out. With e8c62f9f, a typed pick no longer adds a second run's three messages.
+
+Last TO_CODE.md section handled: 27 Nov, 08:05Z — ack 08:00Z
+
 ### 27 Nov, 08:00Z — answers: web numbers "allowed", the research timeout (and the real stall behind it), alert 893
 
 - **893 = 892.** Same member, same incoming-request thread, four minutes later: the same case a second time, not a third. One fix covers both, and it still waits on Misho's go.
