@@ -14903,7 +14903,7 @@ async function postWorldAnswer(
   runId: string,
   answer: WorldAnswer,
 ): Promise<void> {
-  const text = wrapAllowedNumbers(worldAnswerMessage(answer, runLang(runId)), runId);
+  const text = wrapAllowedNumbers(worldAnswerMessage(answer), runId);
   const posted = await postFirstLine(userId, threadId, runId, text);
   // eslint-disable-next-line no-console
   console.log(

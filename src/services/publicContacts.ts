@@ -102,6 +102,36 @@ export function withoutLinks(reply: string): string {
     .trim();
 }
 
+/** A sentence's end inside a line: the next one starts after it. */
+const SENTENCE_END_RE = /(?<=[.!?…])\s+/u;
+
+function holdsAContactDetail(sentence: string): boolean {
+  const links = sentence.match(LINK_RE) ?? [];
+  return hiddenContactsIn(sentence) !== sentence || links.some((link) => !isOwnLink(link));
+}
+
+/**
+ * Lika, 27 Nov: the first answer from the web gave two print shops' phones,
+ * emails and a list of links she never asked for (Misho, 26 Nov, point 5: none
+ * unless the owner asks). Pure: the text without each sentence that holds a
+ * phone number, an email or a public link — a sentence, so no „its contact
+ * is ," is left behind; a line with nothing left goes too.
+ */
+export function withoutContactSentences(text: string): string {
+  const original = text.split('\n');
+  const lines = original.map((line) =>
+    line
+      .split(SENTENCE_END_RE)
+      .filter((sentence) => !holdsAContactDetail(sentence))
+      .join(' '),
+  );
+  const kept = lines.filter((line, i) => line === original[i] || line.trim() !== '');
+  return kept
+    .join('\n')
+    .replace(/\n{3,}/gu, '\n\n')
+    .trim();
+}
+
 function isWebShaped(value: unknown): boolean {
   if (value === null || typeof value !== 'object') return false;
   const v = value as { url?: unknown; content?: unknown; results?: unknown };

@@ -1,4 +1,5 @@
 import { answerText, GeminiHit, GeminiResponse, groundedHits } from './tools/geminiSearch';
+import { withoutContactSentences } from './publicContacts';
 import { RunLanguage } from './runLanguage';
 import { ServerTextBlock, serverText } from './serverTextBlocks';
 
@@ -18,7 +19,6 @@ const PEOPLE_NONE = 'none';
 const PERSON_SEPARATOR = ';';
 const FIELD_SEPARATOR = '|';
 export const MAX_PEOPLE = 5;
-export const MAX_SOURCES_SHOWN = 3;
 const ENGINE_WORDS_RE = /gemini|google|search engine|საძიებო|გუგლ|поисков|buscador/iu;
 /** „([page](url))" — a citation written into the text; the pages are listed under it anyway. */
 const CITATION_RE = /\s*\(\[[^\]]*\]\([^)]*\)\)/gu;
@@ -41,13 +41,6 @@ const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
   en: 'English',
   ru: 'Russian',
   es: 'Spanish',
-};
-
-const SOURCES_LABEL: Readonly<Record<RunLanguage, string>> = {
-  ka: 'წყაროები:',
-  en: 'Sources:',
-  ru: 'Источники:',
-  es: 'Fuentes:',
 };
 
 /**
@@ -77,7 +70,7 @@ export const WORLD_ANSWER_BRIEF =
   'the person who holds it now, not someone who held it before.\n' +
   `Answer in ${LANGUAGE_SLOT}, speaking to the member directly, in at most six ` +
   'short sentences: the facts asked for, with each person’s full name, role and ' +
-  'organisation, any public phone number or email an official page gives, and the date of ' +
+  'organisation, and the date of ' +
   'the source when it names who holds a post. Do not say how the answer was found, and ' +
   'never mention a search, a search engine, Google or Gemini.';
 
@@ -106,7 +99,7 @@ const NO_ASSUMED_PLACE =
  * holds whatever the brief says.
  */
 const INFORMATION_NOT_ORDERS =
-  'Give the facts and any public contacts as information only. Never tell the member to do ' +
+  'Give the facts as information only, with no phone number, email or link. Never tell the member to do ' +
   'something themselves (no „call", „write", „file a complaint", „go to"): their assistant ' +
   'acts for them. Where it helps, say who decides such a matter there.\n';
 
@@ -162,7 +155,7 @@ export function worldAnswerFromText(
   question: string,
 ): WorldAnswer | null {
   const { body: withLinks, people } = splitPeopleLine(raw);
-  const body = withoutInlineLinks(withLinks);
+  const body = withoutContactSentences(withoutInlineLinks(withLinks));
   if (body === '' || body.toUpperCase().startsWith(NO_WORLD_ANSWER)) return null;
   if (ENGINE_WORDS_RE.test(body) && !ENGINE_WORDS_RE.test(question)) return null;
   if (sources.length === 0) return null;
@@ -174,12 +167,13 @@ export function worldAnswerFrom(data: GeminiResponse, question: string): WorldAn
   return worldAnswerFromText(answerText(data), groundedHits(data), question);
 }
 
-/** The member's message: the answer, then the pages it comes from. */
-export function worldAnswerMessage(answer: WorldAnswer, language: RunLanguage): string {
-  const links = answer.sources
-    .slice(0, MAX_SOURCES_SHOWN)
-    .map((source) => (source.title === '' ? source.url : `${source.title}: ${source.url}`));
-  return `${answer.text}\n\n${SOURCES_LABEL[language]}\n${links.join('\n')}`;
+/**
+ * The member's message: the answer alone. Lika, 27 Nov: the pages it came
+ * from were listed under it as links she never asked for (Misho, 26 Nov,
+ * point 5); the run still has them (worldAnswerSection).
+ */
+export function worldAnswerMessage(answer: WorldAnswer): string {
+  return answer.text;
 }
 
 function personLine(person: WorldPerson): string {
