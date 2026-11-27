@@ -18,7 +18,6 @@ import { query } from '../../db/postgres/client';
 import { logToolCall } from '../toolCallLog.service';
 import { GeminiResponse } from '../tools/geminiSearch';
 import {
-  MAX_SOURCES_SHOWN,
   peopleFromLine,
   splitPeopleLine,
   worldAnswerFrom,
@@ -129,12 +128,25 @@ describe('the answer read back (#8350)', () => {
 describe('the member’s message and the run’s section (#8350)', () => {
   const answer = worldAnswerFrom(grounded(ANSWER, 5), QUESTION);
 
-  it('the message is the answer, then at most three pages, in the member’s language', () => {
-    const message = worldAnswerMessage(answer!, 'ka');
-    expect(message.startsWith('Nino Example heads')).toBe(true);
-    expect(message).toContain('წყაროები:');
-    expect(message).toContain(OFFICE_PAGE);
-    expect(message.match(/https:\/\//gu)).toHaveLength(MAX_SOURCES_SHOWN);
+  it('the message is the answer alone: no phone, email or link the owner did not ask for (Lika, 27 Nov)', () => {
+    const message = worldAnswerMessage(answer!);
+    expect(message).toBe(
+      'Nino Example heads the City Transport Service since November 2024 (city page, 2026).',
+    );
+    expect(message).not.toContain('https://');
+  });
+
+  it('drops each sentence that holds a contact, keeps the rest of the line', () => {
+    const shown = worldAnswerFrom(
+      grounded(
+        'Print Example prints on ready envelopes from 20. Its contact is 599 12 34 56, info@print.example.\n\n' +
+          'Shop Example sells 40 envelopes for 4 GEL.\nPEOPLE: none',
+      ),
+      'cheap envelopes',
+    );
+    expect(shown?.text).toBe(
+      'Print Example prints on ready envelopes from 20.\n\nShop Example sells 40 envelopes for 4 GEL.',
+    );
   });
 
   it('the run is told what is already shown, and to find the route to the people named', () => {
