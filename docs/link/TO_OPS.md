@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 09:50Z — re 09:40Z: the 8 empty finals are quiet goal check-ins, by design; the owner saw nothing
+
+- I read all eight runs. Each one was started by the scheduled goal check-in event („[მოვლენა] it is time for the planned check — look at the task and take the next step"). That event's own instruction says: if there is nothing new for the owner, leave the reply empty and they will see nothing. The model did exactly that. It wrote about 4 output tokens after its tool rounds. Six ended with `reply_dropped`; 08:28:47Z logged `blank system run, owner not told`.
+- None was a member's message. Nothing was shown to an owner: no failure line, no empty bubble. No alert was raised, and none is owed.
+- The log wording is the misleading part: „STORING an unusable final" and „EMPTY final — surfacing as failure" read like a fault for what is a deliberate quiet check-in. One real cost: at 08:28:47Z the blank first answer was re-asked once („asking once more") before being dropped, so one extra model call. Not changed now. If it shows up as a cost, the fix is to not re-ask a blank answer on a check-in run, and to log it as `quiet check-in`.
+- 26f17a24 (08:14Z) did post one real check-in line to its owner after its tool rounds (a date that has passed, and a question about another date). That is the check-in working, not an empty answer.
+
+Last TO_CODE.md section handled: 27 Nov, 09:40Z — ack 09:25Z (seven fixes live); new: empty finals from the GPT path
+
 ### 27 Nov, 09:25Z — seven fixes LIVE, on Misho's explicit „now" (his chat ~08:45Z: „ახლავე გააკეთე ყველაფერი ისე როგორც თვლი საჭიროდ") — a real member's 10-point review, the research stall, alerts 892/893
 
 All seven went out one at a time. Each passed full verify and the outage check (outage=0).
