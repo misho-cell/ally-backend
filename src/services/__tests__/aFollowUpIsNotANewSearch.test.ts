@@ -13,7 +13,7 @@ describe('a line in a conversation whose goal is open', () => {
     expect(chat).toContain(
       'const followUp = autoGoalId === null && (await isAFollowUpInAGoal(threadId));',
     );
-    expect(chat).toContain(": ownerAbsent || followUp || userMessage.trim() === ''");
+    expect(chat).toContain(": ownerAbsent || followUp || requestLine.trim() === ''");
     expect(chat).toContain('!ownerAbsent && !followUp && worldAnswerIsDue(');
   });
 

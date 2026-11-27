@@ -113,8 +113,11 @@ describe('a depth nobody picks never costs the full answer (Lika, 26 Nov)', () =
   it('is wired: a timer runs the standard depth, and a non-pick line releases it', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('const PICK_WAIT_MS = 10 * 60_000;');
-    expect(chat).toContain('startFullResearch(unpicked, threadId, ResearchDepth.Normal);');
-    expect(chat).toContain('startFullResearch(released, threadId, ResearchDepth.Normal);');
+    expect(chat).toContain('startFullResearch(unpicked, threadId, onTimeout);');
+    expect(chat).toContain('onTimeout: ResearchDepth = ResearchDepth.Normal,');
+    expect(chat).toContain(
+      'startFullResearch(released, threadId, picked ?? ResearchDepth.Normal);',
+    );
     expect(chat).toContain('if (depthPickOf(line) !== null) return;');
   });
 });
