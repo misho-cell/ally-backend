@@ -272,7 +272,7 @@ function withoutWithheld(found: LevelFindings, withheld: ReadonlySet<string>): L
   };
 }
 
-/** Every level, one after another; a level that fails is said to have failed, never dropped. */
+/** Every level, two at a time; a level that fails is said to have failed, never dropped. */
 export interface Research {
   readonly findings: readonly LevelFindings[];
   /** The trades who could deliver this, searched as fully as the request's own words. */
@@ -307,16 +307,41 @@ async function researchWordsFor(request: ResearchRequest): Promise<ResearchWords
   };
 }
 
+/**
+ * Lika, 27 Nov: a quick research took six minutes, because each level waited
+ * for the one before it. Two levels now run at a time: about half the wait,
+ * without every level's searches landing on the database at once.
+ */
+export const LEVELS_AT_ONCE = 2;
+
+/** Pure order, limited overlap: `work` over every item, at most `limit` at a time, results in item order. */
+export async function inTurnsOf<T, R>(
+  limit: number,
+  items: readonly T[],
+  work: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await work(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 export async function researchEveryLevel(
   request: ResearchRequest,
   now: number = Date.now(),
 ): Promise<Research> {
   const deadline = now + RESEARCH_BUDGET_MS;
   const words = await researchWordsFor(request);
-  const findings: LevelFindings[] = [];
-  for (const spec of levelSearches(request, words)) {
-    findings.push(await searchLevel(spec, request.words, words.singles, deadline));
-  }
+  const findings = await inTurnsOf(LEVELS_AT_ONCE, levelSearches(request, words), (spec) =>
+    searchLevel(spec, request.words, words.singles, deadline),
+  );
   return {
     findings: findings.map((found) => withoutWithheld(found, request.withheld)),
     related: words.related,
