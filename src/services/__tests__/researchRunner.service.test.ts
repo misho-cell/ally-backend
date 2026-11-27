@@ -340,6 +340,22 @@ describe('a pass that did nothing says why', () => {
     expect(result.verdict).toContain('1 had no labels read back');
   });
 
+  it('leaves a not-attempted row for someone with nothing to search, so the next pass moves on (ops, 27 Nov)', async () => {
+    readLabels.mockResolvedValue(new Map());
+    withDatabase();
+
+    const result = await runResearchOnce();
+
+    expect(result.searches).toBe(0);
+    expect(stepsWritten()).toEqual([
+      {
+        source: 'none',
+        status: 'not_attempted',
+        note: 'nothing to research: no signals about this person',
+      },
+    ]);
+  });
+
   it('names an unreadable name rather than reporting a quiet zero', async () => {
     readLabels.mockResolvedValue(new Map([[PHONE, { ...oneCompanyWord(), name_tokens: [] }]]));
     withDatabase();
