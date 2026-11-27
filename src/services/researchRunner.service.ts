@@ -95,10 +95,19 @@ function resultsOf(reply: object): { results: SearchResult[]; error: string | nu
   return { results: raw as SearchResult[], error: null };
 }
 
-function text(value: unknown, max: number): string | null {
+/**
+ * What Postgres jsonb refuses: a NUL, and half of a UTF-16 pair (an emoji cut
+ * in two). Ops, 27 Nov: one such snippet failed the whole findings insert.
+ */
+const LONE_SURROGATE_RE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/gu;
+const NUL = String.fromCharCode(0);
+
+/** Pure: the text cut to at most `max` characters, never inside one, with nothing jsonb refuses. */
+export function storableText(value: unknown, max: number): string | null {
   if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed.slice(0, max);
+  const trimmed = value.replace(LONE_SURROGATE_RE, '').split(NUL).join('').trim();
+  return trimmed === '' ? null : [...trimmed].slice(0, max).join('');
 }
 
 /** Paid searches already made today, read from the record rather than counted in memory. */
@@ -219,9 +228,9 @@ async function recordFindings(
 ): Promise<number> {
   const rows = results
     .map((r) => ({
-      url: text(r.url, 500),
-      title: text(r.title, 300),
-      snippet: text(r.snippet, MAX_SNIPPET_CHARS),
+      url: storableText(r.url, 500),
+      title: storableText(r.title, 300),
+      snippet: storableText(r.snippet, MAX_SNIPPET_CHARS),
     }))
     .filter((r): r is { url: string; title: string | null; snippet: string | null } => {
       return r.url !== null;
@@ -403,7 +412,7 @@ async function tick(idle: (verdict: string) => ResearchTickResult): Promise<Rese
       try {
         reply = await webSearch(queryFor(step));
       } catch (err) {
-        await recordStep(plan, step, 'error', text((err as Error).message, MAX_NOTE_CHARS));
+        await recordStep(plan, step, 'error', storableText((err as Error).message, MAX_NOTE_CHARS));
         continue;
       }
       const { results, error } = resultsOf(reply);
