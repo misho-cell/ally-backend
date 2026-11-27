@@ -34,7 +34,7 @@ jest.mock('../labelReader.service', () => ({
 }));
 
 import { backgroundQuery } from '../../db/postgres/client';
-import { runResearchOnce } from '../researchRunner.service';
+import { runResearchOnce, storableText } from '../researchRunner.service';
 import type { LabelSignals } from '../labelReader.service';
 
 const mockQuery = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
@@ -378,5 +378,20 @@ describe('a pass that did nothing says why', () => {
 
     expect(result.searches).toBeGreaterThan(0);
     expect(result.verdict).not.toContain('Nothing ran');
+  });
+});
+
+/**
+ * Ops, 27 Nov: three background passes failed on „invalid input syntax for
+ * type json" — a snippet cut through an emoji left half of it, and jsonb
+ * refuses that, so the whole pass's findings for that person were lost.
+ */
+describe('what the research stores is always valid for jsonb', () => {
+  it('never cuts inside a character, and drops what jsonb refuses', () => {
+    expect(storableText('ab😀cd', 3)).toBe('ab😀');
+    expect(storableText('a\uD83Db\u0000c', 10)).toBe('abc');
+    expect(storableText('   ', 10)).toBeNull();
+    expect(storableText(7, 10)).toBeNull();
+    expect(() => JSON.parse(JSON.stringify({ s: storableText('x😀😀', 2) }))).not.toThrow();
   });
 });
