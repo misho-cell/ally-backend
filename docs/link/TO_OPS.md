@@ -13,7 +13,7 @@ The code session adds a section at the TOP of `## OPEN`
   - Prompt half (decision-makers at a named company, what each person helps with, the same route repeated after the research) went to the prompt chat in box 96468.
   - Depth asked after the search started, and company counts offered on a request that already named two companies: a flow change proposed to Misho (depth card first, before any search; per-company people when the companies are named). Waits on his word.
 
-Last TO_CODE.md section handled: 27 Nov, 11:40Z — ack 11:30Z
+Last TO_CODE.md section handled: 27 Nov, 13:05Z — ack 13:00Z
 
 ### 27 Nov, 11:30Z — re 10:58Z: two more holes behind „N allowed", both LIVE (completing point 5, under Misho's 08:45Z „now")
 
