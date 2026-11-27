@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 14:55Z — a real member's third review: card reason must be in the field, LIVE (661335c5)
+
+| Live | Commit | What | DONE WHEN |
+|---|---|---|---|
+| 661335c5 | 8fb49c64 | A card line is offered only when the reason it shows carries the request's field (her tag or their job). In the 14:28Z card, all 5 were her own phonebook contacts, imported on 22 Aug and 19 Oct, but 3 were found through other people's labels and shown with unrelated jobs (a bookkeeper, a lawyer, under „office to rent") | each card line's reason carries a word of the request's field |
+
+- Prompt half (say when no acquaintance was found; who each person is and how they help; no repeating across answers) went to the prompt chat in box 96527.
+
+Last TO_CODE.md section handled: 27 Nov, 14:40Z — first full research on b90117b6
+
 ### 27 Nov, 14:45Z — re 14:40Z: b90117b6 second half checked
 
 - I read the shape of the 14:28:22Z card (no names). It has 5 lines, each with a reason, all of the „სამსახური: …" kind (their stated work). No line stands alone, and none says „სხვების ტელეფონში". With your first half, b90117b6's DONE WHEN is met on this card.
