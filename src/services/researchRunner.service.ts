@@ -189,6 +189,29 @@ async function recordStep(
   return result.rows[0].id;
 }
 
+/** The source and query of a row that says there was nothing to search. */
+const NOTHING_TO_SEARCH_SOURCE = 'none';
+/** The trigger of a person with no signals: no plan was made. */
+const NO_PLAN_TRIGGER = 'none';
+const NO_SIGNALS_NOTE = 'nothing to research: no signals about this person';
+const NO_STEPS_NOTE = 'nothing to research: the plan has no steps';
+const NOT_ATTEMPTED: StepStatus = 'not_attempted';
+
+/**
+ * Ops, 27 Nov: 46 ticks in a row said „10 produced a plan with no steps" —
+ * the same ten people every tick, because a person with nothing to search
+ * left no row, so nextPeople put them first again. Now they leave one, not
+ * counted as a search, and the refresh moves past them.
+ */
+async function recordNothingToSearch(phone: string, trigger: string, why: string): Promise<void> {
+  await backgroundQuery(
+    `INSERT INTO research_steps (phone, trigger, source, query, status, note)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [phone, trigger, NOTHING_TO_SEARCH_SOURCE, '', NOT_ATTEMPTED, why],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
 async function recordFindings(
   stepId: number,
   phone: string,
@@ -352,6 +375,7 @@ async function tick(idle: (verdict: string) => ResearchTickResult): Promise<Rese
     const forPhone = signals.get(phone);
     if (forPhone === undefined) {
       skipped.no_signals += 1;
+      await recordNothingToSearch(phone, NO_PLAN_TRIGGER, NO_SIGNALS_NOTE);
       continue;
     }
     // The NAME, not the label: the label carries the company word glued on, and
@@ -360,7 +384,10 @@ async function tick(idle: (verdict: string) => ResearchTickResult): Promise<Rese
     const name = forPhone.name_tokens.slice(0, 2).join(' ');
     if (name === '') skipped.no_name += 1;
     const plan = ledger.record(planResearch(phone, name, forPhone));
-    if (plan.steps.length === 0) skipped.no_steps += 1;
+    if (plan.steps.length === 0) {
+      skipped.no_steps += 1;
+      await recordNothingToSearch(phone, plan.trigger, NO_STEPS_NOTE);
+    }
 
     for (const step of plan.steps.slice(0, maxSteps)) {
       if (NOT_INTEGRATED.has(step.source)) {
