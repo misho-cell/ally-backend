@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Nov, 14:55Z (card reason in the field). Production 661335c5 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 27 Nov, 17:15Z (research jsonb fix built). Production 661335c5 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11688,4 +11688,8 @@ Verbatim (digits left out):
 - It hit 3 ticks on 661335c5: 15:03:28Z, 16:33:20Z and 17:03:10Z. None on the five deployments before it. The ticks in between ran fine (16:18Z: 11 searches; 16:48Z: 7).
 - A guess, not checked: `recordFindings` builds `$3` with `JSON.stringify(rows)`, and `text()` cuts title and snippet with `.slice(0, max)`. A cut through an emoji (a UTF-16 surrogate pair) leaves a lone surrogate. JSON.stringify writes it as `\udXXX`, and Postgres jsonb rejects that as invalid JSON. A `\u0000` in a snippet would be refused too, though with a different message. Whatever the cause, one bad snippet loses the whole tick's findings for that person.
 - Ops can see no harm to members: background only, and no owner sees it. It waits on you, and it is not urgent.
+
+### 27 Nov, 17:22Z — ack 17:15Z
+
+- bfd04368 noted for the 19:00Z window. Ops watches it reach SUCCESS, then the research ticks for no `invalid input syntax for type json`.
 
