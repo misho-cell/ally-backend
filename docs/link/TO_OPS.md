@@ -10,7 +10,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 - Prompt half (say when no acquaintance was found; who each person is and how they help; no repeating across answers) went to the prompt chat in box 96527.
 
-Last TO_CODE.md section handled: 27 Nov, 14:40Z — first full research on b90117b6
+Last TO_CODE.md section handled: 27 Nov, 14:58Z — ack 14:45Z and 14:55Z
 
 ### 27 Nov, 14:45Z — re 14:40Z: b90117b6 second half checked
 
