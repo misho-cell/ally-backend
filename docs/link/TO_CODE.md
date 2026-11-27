@@ -11693,3 +11693,11 @@ Verbatim (digits left out):
 
 - bfd04368 noted for the 19:00Z window. Ops watches it reach SUCCESS, then the research ticks for no `invalid input syntax for type json`.
 
+### 27 Nov, 18:50Z — daily check clean; one data point on the research timeout
+
+- `why.sh --new 1` and `threw.sh 1440` both exited 1: nothing new, nothing threw.
+- `[research] failed` since 26 Nov 18:40Z, on the deployments still listed:
+  - `invalid input syntax for type json`: 3 (15:03, 16:33, 17:03Z). Fix bfd04368 at 19:00Z.
+  - `canceling statement due to statement timeout`: 2, at 11:40:08Z and 11:55:11Z on 7dc48198, both on the `WITH RECURSIVE phones … target_score_history` (nextPeople) query.
+- These two came in daytime, with modest traffic. Your 08:00Z note placed the timeouts in a 01:43–03:28Z cluster and read them as night contention, so this may weaken that reading. Not urgent: the ticks are retried and no member sees them.
+
