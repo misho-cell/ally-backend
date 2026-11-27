@@ -37,6 +37,8 @@ import {
   Contacted,
   FULL_RESEARCH_HEADER,
   forgetResearch,
+  inTurnsOf,
+  LEVELS_AT_ONCE,
   markPeople,
   peopleNamedIn,
   RESEARCH_KEPT_MS,
@@ -283,5 +285,22 @@ describe('the two answers in the chat', () => {
     const wake = engine.slice(engine.indexOf('export function wakeWithFullResearch'));
     expect(wake).toContain('WakeOrigin.Owner,\n    ANSWER_IS_NEWS,');
     expect(wake).toContain('(await stillWanted()) && (await goalOpen(taskId))');
+  });
+});
+
+describe('the levels are searched two at a time (Lika, 27 Nov: six minutes for a quick one)', () => {
+  it('keeps every result in its level’s order, and never runs more than two at once', async () => {
+    let running = 0;
+    let most = 0;
+    const work = async (n: number): Promise<number> => {
+      running += 1;
+      most = Math.max(most, running);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      running -= 1;
+      return n * 10;
+    };
+    expect(await inTurnsOf(LEVELS_AT_ONCE, [1, 2, 3, 4, 5], work)).toEqual([10, 20, 30, 40, 50]);
+    expect(most).toBe(LEVELS_AT_ONCE);
+    expect(await inTurnsOf(LEVELS_AT_ONCE, [], work)).toEqual([]);
   });
 });
