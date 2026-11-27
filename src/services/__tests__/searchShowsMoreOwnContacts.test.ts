@@ -44,8 +44,20 @@ describe('who is listed', () => {
       'არქიტექტორი',
       () => true,
     );
-    expect(found.map((c) => c.name)).toEqual(['Levan Japaridze', 'Nino Beridze', 'Mariam Lomidze']);
+    expect(found.map((c) => c.name)).toEqual(['Levan Japaridze', 'Nino Beridze']);
     expect(found[0].hits).toBe(2);
+  });
+
+  it('offers only people whose work is in the field, as the owner saved them (Lika, 27 Nov)', () => {
+    const asSaved = { ...nino, name: 'Nino B. Registered', saved_as: 'Nino Beridze' };
+    const savedUnderNoName = { ...nino, phone: '+995 555 000 005', saved_as: null };
+    const otherTrade = { ...mariam, tags: ['Mariam'] };
+    const found = ownContactsInField(
+      [{ results: [asSaved, savedUnderNoName, otherTrade] }],
+      'არქიტექტორი',
+      () => true,
+    );
+    expect(found.map((c) => c.name)).toEqual(['Nino Beridze']);
   });
 
   it('leaves out a note about someone the owner does not hold', () => {
@@ -62,11 +74,11 @@ describe('who is listed', () => {
 
   it('leaves out who the caller says was already given or written to', () => {
     const found = ownContactsInField(
-      [{ results: [nino, mariam] }],
-      'x',
+      [{ results: [nino, levan] }],
+      'არქიტექტორი',
       (_p, n) => n !== 'Nino Beridze',
     );
-    expect(found.map((c) => c.name)).toEqual(['Mariam Lomidze']);
+    expect(found.map((c) => c.name)).toEqual(['Levan Japaridze']);
   });
 
   it('takes the research’s own levels only, without anyone answered or asked before', () => {
