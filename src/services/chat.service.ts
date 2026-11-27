@@ -787,6 +787,7 @@ import {
   type HeldResearch,
 } from './clarifyingQuestion';
 import {
+  depthCard,
   depthCardItem,
   depthStartedLine,
   depthNamedIn,
@@ -795,6 +796,12 @@ import {
   RESEARCH_DEPTH_KIND,
   ResearchDepth,
 } from './researchDepth';
+import {
+  holdRequestForDepth,
+  pickedDepthFor,
+  releaseHeldRequest,
+  spendPickedDepth,
+} from './depthFirst';
 import {
   askedForPublicContacts,
   PUBLIC_CONTACTS_PARAM,
@@ -15077,11 +15084,20 @@ function researchWhenReady(runId: string): void {
     ownerLine: opening.ownerLine,
     askedAt: opening.askedAt,
   };
+  const picked = pickedDepthFor(opening.threadId);
   if (opening.runEnded) {
-    // The run that could carry the depth card is over: the research goes at the standard depth.
+    // The run that could carry the depth card is over: the research goes at the
+    // depth picked before the search, else the standard one.
     // eslint-disable-next-line no-console
-    console.log(`[full-research] run ${runId}: no reply left to offer the depth; standard`);
-    startFullResearch(research, opening.threadId, ResearchDepth.Normal);
+    console.log(
+      `[full-research] run ${runId}: no reply left to offer the depth; ${picked ?? 'standard'}`,
+    );
+    startFullResearch(research, opening.threadId, picked ?? ResearchDepth.Normal);
+    return;
+  }
+  // Lika, 27 Nov: the depth was picked before the search; no second card.
+  if (picked !== null) {
+    holdForPick(opening.threadId, research, picked);
     return;
   }
   // Misho, 26 Nov (point 2): the owner picks the depth; the research waits for the pick.
@@ -15096,14 +15112,18 @@ const PICK_WAIT_MS = 10 * 60_000;
  * Lika, 26 Nov: a card nobody taps must not cost the full answer. The research
  * is held for the pick; with no pick in time, it runs at the standard depth.
  */
-function holdForPick(threadId: number, research: HeldResearch): void {
+function holdForPick(
+  threadId: number,
+  research: HeldResearch,
+  onTimeout: ResearchDepth = ResearchDepth.Normal,
+): void {
   const mark = holdResearch(threadId, research);
   const timer = setTimeout(() => {
     const unpicked = takeUnpickedResearch(threadId, mark);
     if (unpicked === null) return;
     // eslint-disable-next-line no-console
-    console.log(`[full-research] thread ${threadId}: no depth picked in time; standard`);
-    startFullResearch(unpicked, threadId, ResearchDepth.Normal);
+    console.log(`[full-research] thread ${threadId}: no depth picked in time; ${onTimeout}`);
+    startFullResearch(unpicked, threadId, onTimeout);
   }, PICK_WAIT_MS);
   timer.unref();
 }
@@ -15143,6 +15163,7 @@ function openingRunEnded(runId: string): void {
  * next run; when none comes, the goal is woken to give them as the second answer.
  */
 function startFullResearch(research: HeldResearch, threadId: number, depth: ResearchDepth): void {
+  spendPickedDepth(threadId);
   const { userId, taskId, words, ownerLine, askedAt } = research;
   void untilConversationQuiet(taskId, threadId)
     .then(() => withheldForLine(userId, ownerLine))
@@ -16122,8 +16143,12 @@ async function answerMatchTap(
  * pick releases it at the standard depth with that line (Lika, 26 Nov).
  */
 function offerOrReleaseResearch(threadId: number, line: string, runId: string): void {
+  const picked = pickedDepthFor(threadId);
   if (ownerAnsweredTheQuestion(threadId, line)) {
     const research = takeHeldResearch(threadId);
+    // Lika, 27 Nov: a depth picked before the search needs no second card.
+    if (research !== null && picked !== null) startFullResearch(research, threadId, picked);
+    if (picked !== null) return;
     if (research !== null) holdForPick(threadId, research);
     notePendingItems(runId, [depthCardItem()]);
     return;
@@ -16132,8 +16157,88 @@ function offerOrReleaseResearch(threadId: number, line: string, runId: string): 
   const released = ownerWroteInstead(threadId, line);
   if (released === null) return;
   // eslint-disable-next-line no-console
-  console.log(`[full-research] run ${runId}: the owner wrote on without a pick; standard`);
-  startFullResearch(released, threadId, ResearchDepth.Normal);
+  console.log(
+    `[full-research] run ${runId}: the owner wrote on without a pick; ${picked ?? 'standard'}`,
+  );
+  startFullResearch(released, threadId, picked ?? ResearchDepth.Normal);
+}
+
+/** The run is over and asked nothing: the research held for a depth picked before the search starts. */
+function startResearchAtPickedDepth(threadId: number, runId: string): void {
+  const picked = pickedDepthFor(threadId);
+  if (picked === null) return;
+  const research = takeHeldResearch(threadId);
+  if (research === null) return;
+  // eslint-disable-next-line no-console
+  console.log(`[full-research] run ${runId}: depth ${picked}, picked before the search`);
+  startFullResearch(research, threadId, picked);
+}
+
+const ANSWERED_READ_TIMEOUT_MS = 3_000;
+
+/** Whether this conversation has an answer of Netai's already: its first line is the request. */
+async function threadHasAnAnswer(threadId: number): Promise<boolean> {
+  const answered = await query<{ answered: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM conversations
+                     WHERE thread_id = $1 AND role = 'assistant'
+                       AND TRIM(COALESCE(content, '')) <> '') AS answered`,
+    [threadId],
+    ANSWERED_READ_TIMEOUT_MS,
+  );
+  return answered.rows[0]?.answered === true;
+}
+
+/** A new request that the web and the full research would answer: its depth is asked first. */
+async function isANewSearchRequest(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+): Promise<boolean> {
+  if (userMessage.trim() === '' || userMessage.startsWith(RUN_EVENT_PREFIX)) return false;
+  if (depthPickOf(userMessage) !== null) return false;
+  if (await threadHasAnAnswer(threadId)) return false;
+  return webIsWanted(userId, userMessage, runId, threadId);
+}
+
+/**
+ * Lika, 27 Nov (twice): „the search depth was asked after the search had
+ * started". A new request is held, unsearched, behind the depth card; the pick
+ * lets it run (depthFirst.ts). Null when this line is not such a request, or
+ * the card could not be given (the request then runs as before).
+ */
+async function askDepthBeforeSearching(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  try {
+    if (!(await isANewSearchRequest(userId, threadId, userMessage, runId))) return null;
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    const card = depthCard(language);
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    await saveThreadMessage(
+      threadId,
+      Number(userId),
+      'assistant',
+      card.text,
+      'message',
+      runId,
+      card.choices,
+    );
+    holdRequestForDepth(threadId, userMessage);
+    // eslint-disable-next-line no-console
+    console.log(`[full-research] run ${runId}: depth asked before the search`);
+    return { reply: card.text, language, requestCreated: false, choices: card.choices };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[full-research] depth not asked first:', (err as Error).message);
+    return null;
+  }
 }
 
 /** The owner's pick of the full research's depth: it starts, and the server says so. */
@@ -17527,6 +17632,8 @@ async function runToolLoop(
   if (!ownerAbsent && askedBeforeSearching(finalText, toolNamesUsed)) {
     noteAskedBeforeSearching(threadId);
     dropPendingItems(runId, RESEARCH_DEPTH_KIND);
+  } else if (!ownerAbsent) {
+    startResearchAtPickedDepth(threadId, runId);
   }
 
   // Misho, 26 Nov (point 5): no public link or email unless the owner asked for one.
@@ -19103,12 +19210,21 @@ export async function processChat(
     ? await answerThanksTap(userId, threadId, userMessage, runId, intent)
     : null;
   if (thanksSettled !== null) return thanksSettled;
+  // Lika, 27 Nov: a new request's depth is asked before anything is searched.
+  const askingFirst = !ownerAbsent && thread.type === 'regular';
+  const released = askingFirst ? releaseHeldRequest(threadId, userMessage) : null;
+  if (askingFirst && released === null) {
+    const asked = await askDepthBeforeSearching(userId, threadId, userMessage, runId, intent);
+    if (asked !== null) return asked;
+  }
+  // The request the searches answer: the held one, once its depth is picked.
+  const requestLine = released?.line ?? userMessage;
   steps.mark('checks');
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
     threadId,
-    userMessage,
+    requestLine,
     intent,
   );
   const autoGoalId = goalForRequest.opened;
@@ -19180,14 +19296,14 @@ export async function processChat(
   const followUp = autoGoalId === null && (await isAFollowUpInAGoal(threadId));
   const lateSearch =
     autoGoalId !== null
-      ? startOpeningSearches(userId, userMessage, runId, threadId, autoGoalId)
-      : ownerAbsent || followUp || userMessage.trim() === ''
+      ? startOpeningSearches(userId, requestLine, runId, threadId, autoGoalId)
+      : ownerAbsent || followUp || requestLine.trim() === ''
         ? null
-        : startOpeningSearches(userId, userMessage, runId, threadId);
+        : startOpeningSearches(userId, requestLine, runId, threadId);
   // #8350: the web's answer, started beside the opening searches; the first turn waits for it.
   const worldAnswerWork =
-    !ownerAbsent && !followUp && worldAnswerIsDue(autoGoalId !== null, userMessage)
-      ? worldAnswerFor(userId, threadId, runId, userMessage, language)
+    !ownerAbsent && !followUp && worldAnswerIsDue(autoGoalId !== null, requestLine)
+      ? worldAnswerFor(userId, threadId, runId, requestLine, language)
       : Promise.resolve(null);
   // #397: the opening searches are the run's first search; the line says so.
   if (autoGoalId !== null) {

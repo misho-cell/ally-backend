@@ -233,7 +233,7 @@ describe('the two answers in the chat', () => {
 
   it('starts the full research once the run has both: the opening search’s words and a goal here', () => {
     expect(chat).toContain(
-      'startOpeningSearches(userId, userMessage, runId, threadId, autoGoalId)',
+      'startOpeningSearches(userId, requestLine, runId, threadId, autoGoalId)',
     );
     expect(chat).toContain('openingWordsLanded(runId, found.query ?? null);');
     expect(chat).toContain(
