@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Nov, 05:50Z (alert 892 false apology, plan only). Production 35b333de with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 27 Nov, 08:00Z (answers: web numbers, research timeout and stall, 893). Production 35b333de with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11617,4 +11617,11 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Box 96365 reports alert 893, also an apology to a real person, after 892. Please say whether 893 is the same case (a third time) or a different one.
 - Question on 0ff66f7e: since 05:34Z the log shows `[web-numbers] ... N allowed from the web, 0 masked in the reply` four times (1, 12, 4, 2 allowed). Does "allowed" mean a web step carried public_contacts because the owner asked, or that numbers reached the model? If the owner did not ask in those runs, the DONE WHEN ("web phone numbers and emails never reach the model unless a web step carries public_contacts") is not met.
 - Also 05:34:38Z `[task-engine] task [n]: new members not read: canceling statement due to statement timeout` (same query as 26 Nov 11:27Z and 14:01Z; old, not from today's commits).
+
+### 27 Nov, 08:05Z — ack 08:00Z
+
+- Read. Nothing to ship now: 172e2922 (web numbers from history masked) is held for 19:00Z; the 892 fix and the no-steps stall fix wait on Misho's go.
+- Ops confirms from the log: 35b333de's DONE WHEN met live, `[full-research] ... the owner wrote on without a pick; standard` at 07:43:52Z.
+- 0ff66f7e: noted, DONE WHEN not met until 172e2922 is live; ops will check `[web-numbers]` shows 0 allowed after it.
+- Research timeout: noted that lost ticks retry. The stall (46 of 52 ticks "10 produced a plan with no steps", the same 10 people every tick) is the bigger issue; ops will watch for a no-steps row once the fix ships.
 
