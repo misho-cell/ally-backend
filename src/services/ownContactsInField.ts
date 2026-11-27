@@ -200,6 +200,11 @@ export function ownContactsInField(
     if (phone === null || name === null || !isOwnContact(row) || !isInField(row, stems)) continue;
     const tie = tieOf(row, stems);
     if (!SAYS_WHY.has(tie.kind)) continue;
+    // Lika, 27 Nov (third review): a bookkeeper and a lawyer under „office to
+    // rent" — found by other people's labels, shown with their own unrelated
+    // job. The reason shown must itself carry the field; the owner's own note
+    // matched the search, so it does.
+    if (tie.kind !== OwnTieKind.Note && !carries([tie.value], stems)) continue;
     const digits = phoneDigits(phone);
     const seen = byPhone.get(digits);
     const better = seen === undefined || TIE_STRENGTH[tie.kind] > TIE_STRENGTH[seen.tie.kind];

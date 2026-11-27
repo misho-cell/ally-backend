@@ -47,6 +47,20 @@ describe('who is listed', () => {
     expect(found[0].hits).toBe(2);
   });
 
+  it('offers no one whose shown reason says nothing of the field (Lika, 27 Nov, third review)', () => {
+    const lawyer = {
+      phone: '+995 555 000 007',
+      name: 'Mariam Lomidze',
+      tags: [],
+      jobPosition: 'იურისტი',
+      employer: 'Law LLC',
+      found_by_others_labels: true,
+    };
+    const engineer = { ...mariam, phone: '+995 555 000 008', jobPosition: 'არქიტექტორი' };
+    const found = ownContactsInField([{ results: [lawyer, engineer] }], 'არქიტექტორი', () => true);
+    expect(found.map((c) => c.phone)).toEqual(['+995 555 000 008']);
+  });
+
   it('offers no one only other people’s phones tie to it, nor anyone with no reason to say (Lika, 27 Nov)', () => {
     const othersOnly = { ...levan, tags: ['Levan'], found_by_others_labels: true };
     const ownWorkOnly = { ...mariam, phone: '+995 555 000 006', found_by_their_own_work: 'note' };
