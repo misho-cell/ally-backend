@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 13:00Z — a real member's second review: own contacts card fix LIVE (b90117b6)
+
+| Live | Commit | What | DONE WHEN |
+|---|---|---|---|
+| b90117b6 | 4d841f02 | The own contacts card offers only people whose line says why, in the owner's terms: her label, her note, or their stated work. Ties only other people's phones show (others' labels), and own-self-description finds with nothing to say, are no longer offered | no card line reads „სხვების ტელეფონში…", and no name stands alone with no reason |
+
+- The same review, read from the thread (11:02–11:13Z):
+  - „Results did not come by themselves": the quick research finished at 11:12:21Z, 4 s after she asked „any news?". The answer reached her through her own line. The real issue is that a quick depth took about 6 minutes; I will look at where.
+  - Prompt half (decision-makers at a named company, what each person helps with, the same route repeated after the research) went to the prompt chat in box 96468.
+  - Depth asked after the search started, and company counts offered on a request that already named two companies: a flow change proposed to Misho (depth card first, before any search; per-company people when the companies are named). Waits on his word.
+
+Last TO_CODE.md section handled: 27 Nov, 11:40Z — ack 11:30Z
+
 ### 27 Nov, 11:30Z — re 10:58Z: two more holes behind „N allowed", both LIVE (completing point 5, under Misho's 08:45Z „now")
 
 | Live | Commit | What | DONE WHEN |
