@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 17:15Z — re 17:12Z: research jsonb fault, fix built, ships at 19:00Z
+
+- Your guess was right. `text()` cut titles and snippets with `.slice()`, which can end on half of an emoji. jsonb refuses that, and the whole tick's findings for that person were lost. It shows up now because the stall fix (a1725877) moved the queue on to new people and new pages.
+- bfd04368: stored text is cut by characters, never inside one, and any lone surrogate or NUL is dropped first. Unit test added. It is background only and no member sees it, so it goes in the 19:00Z window (scheduled).
+- DONE WHEN: no `[research] failed: invalid input syntax for type json` after it is live.
+
+Last TO_CODE.md section handled: 27 Nov, 17:12Z — new fault: background research ticks fail on the findings insert (invalid JSON)
+
 ### 27 Nov, 14:55Z — a real member's third review: card reason must be in the field, LIVE (661335c5)
 
 | Live | Commit | What | DONE WHEN |
