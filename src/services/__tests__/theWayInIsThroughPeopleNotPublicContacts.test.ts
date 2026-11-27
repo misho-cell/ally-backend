@@ -8,6 +8,7 @@ import {
   askedForPublicContacts,
   CONTACT_HIDDEN,
   hiddenContactsIn,
+  isWebShaped,
   PUBLIC_CONTACTS_PARAM,
   webResultTextWithoutContacts,
   withoutLinks,
@@ -113,5 +114,20 @@ describe('web results kept in the history are hidden too (ops, 27 Nov)', () => {
   it('is applied to every history a run loads', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('loadHistory(threadId).then(historyWithoutPublicContacts)');
+  });
+
+  it('allows a stored result’s numbers only as hidden, and reads a page with a snippet as web', () => {
+    const snippetPage = JSON.stringify({
+      url: 'https://firm.example.ge',
+      snippet: 'tel 599 12 34 56',
+    });
+    expect(isWebShaped(JSON.parse(snippetPage))).toBe(true);
+    expect(webResultTextWithoutContacts(snippetPage)).not.toContain('599 12 34 56');
+    expect(isWebShaped({ phone: '+995555123456', name: 'Nino Beridze' })).toBe(false);
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      'for (const result of historyWebResults(history).filter(isWebShaped)) {',
+    );
+    expect(chat).toContain('registerWebResult(runId, withoutPublicContacts(result));');
   });
 });

@@ -800,6 +800,7 @@ import {
   PUBLIC_CONTACTS_PARAM,
   PUBLIC_CONTACTS_PARAM_DESCRIPTION,
   withoutLinks,
+  isWebShaped,
   withoutPublicContacts,
   webResultTextWithoutContacts,
 } from './publicContacts';
@@ -10359,7 +10360,10 @@ function registerHistoryWebResults(
   runId: string,
   history: readonly Anthropic.MessageParam[],
 ): void {
-  for (const result of historyWebResults(history)) registerWebResult(runId, result);
+  // Ops, 27 Nov: only what the history's hiding treats as web, and as hidden there.
+  for (const result of historyWebResults(history).filter(isWebShaped)) {
+    registerWebResult(runId, withoutPublicContacts(result));
+  }
 }
 
 function withRunPageLinks(text: string, runId: string): string {

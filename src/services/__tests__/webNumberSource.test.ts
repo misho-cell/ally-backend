@@ -360,9 +360,7 @@ describe('both forms are registered at both web doors', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat.match(/registerWebNumber\(runId, phone, source\);/g)).toHaveLength(1);
     expect(chat).toContain('registerWebResult(runId, raw);');
-    expect(chat).toContain(
-      'for (const result of historyWebResults(history)) registerWebResult(runId, result);',
-    );
+    expect(chat).toContain('registerWebResult(runId, withoutPublicContacts(result));');
     expect(chat).toContain(
       'if (found.webRaw !== undefined) registerWebResult(runId, found.webRaw);',
     );

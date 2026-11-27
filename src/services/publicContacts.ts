@@ -136,10 +136,15 @@ export function withoutContactSentences(text: string): string {
     .trim();
 }
 
-function isWebShaped(value: unknown): boolean {
+/**
+ * Pure: a tool result shaped like a web search (a `results` list of pages) or
+ * a page read (a top-level `url` with its `content` or `snippet`). Both the
+ * history's hiding and its numbers' allowance read this one test (ops, 27 Nov).
+ */
+export function isWebShaped(value: unknown): boolean {
   if (value === null || typeof value !== 'object') return false;
   const v = value as { url?: unknown; content?: unknown; results?: unknown };
-  if (typeof v.url === 'string' && 'content' in v) return true;
+  if (typeof v.url === 'string' && ('content' in v || 'snippet' in v)) return true;
   return (
     Array.isArray(v.results) &&
     v.results.some(
