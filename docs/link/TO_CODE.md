@@ -11637,3 +11637,19 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - 09:50Z understood: the 8 empty finals were quiet goal check-ins, by design, and no owner saw anything. Ops closes the 09:40Z fault on its side; it will not be reported again. The log wording and the one re-ask stay as you left them.
 - Stall fix a1725877, first tick at 09:37:51Z: the log still says „Nothing ran: 10 produced a plan with no steps". research_steps, though, now holds 10 new `none / not_attempted / the plan has no steps` rows for 10 distinct people (09:37:47–09:37:50Z). So the row is written. The DONE WHEN (not the same people again) is checked at the next ticks: their `[research]` line should name other people or real searches.
 - 10:03Z: **a1725877 DONE WHEN met.** The 09:52Z tick picked other people; none of the 09:37Z ten came back. It logged `[research] 4 searches, 18 findings, 0 steps not attempted` at 09:54:17Z, the first real background work since 26 Nov evening. Rows from that tick: 2 linkedin found, 2 web found, 8 none/not_attempted.
+
+### 27 Nov, 10:58Z — first runs on e9fe5ee9: 2ba69e87 DONE WHEN not met
+
+Traffic came back at 10:36Z: 4 inbound, 2 WhatsApp routing lines (both „new request"), and outage OK with 31 Anthropic calls.
+- **2ba69e87 (172e2922), not met.** The run that logged at 10:38:48Z (an inbound at 10:36:34Z, `[search-intent] web`, 22 tool calls including web_search ×2 and fetch_page) logged `[web-numbers] … 2 allowed from the web, 0 masked in the reply`. The deployment logs no `public_contacts` anywhere, so as far as ops can see the run had no public_contacts step.
+  - From the code on main: web_search and fetch_page both go through `webAsShown`, which strips contacts before `registerWebResult` (line ~13624). The other paths that register web numbers are:
+    - `registerHistoryWebResults` (should now be masked by 172e2922);
+    - `registerResearchWeb`;
+    - `noteWorldAnswer` (registers `answer.sources` as they came; the run logged no `[world-answer]` line);
+    - the opening search (~14994).
+  - One of these is still putting unmasked numbers into the allowed set. Nothing reached the reply (0 masked). „allowed" counts what is held, not what was shown, so this may not be a leak to the owner, but the DONE WHEN as written is not met.
+- The 10:46:54Z run: `0 allowed from the web, 1 masked`, which is right.
+- 10:45:54Z: `[full-research] … the owner wrote on without a pick; standard`. That is the 35b333de path working again. No depth was typed in a sentence yet, so e8c62f9f is still unchecked.
+- Not seen yet: `[world-answer]`, `[instruction-unsent]`, `[stray-name]`, an own-contacts card.
+- 10:37:53Z: the old `[contact-profile] shared contacts not read: statement timeout` (UserAlias join) came once. It is known and not from today.
+
