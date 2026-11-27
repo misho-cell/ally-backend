@@ -142,6 +142,19 @@ const TIE_STRENGTH: Readonly<Record<OwnTieKind, number>> = {
   [OwnTieKind.Plain]: 0,
 };
 
+/**
+ * Lika, 27 Nov (second review): „random acquaintances, and about some it says
+ * they are in someone else's phone". A card line must say, in the owner's own
+ * terms, why this person fits: her label, her note, or their work. A tie only
+ * other people's phones show, or one with nothing that may be said, is not
+ * offered.
+ */
+const SAYS_WHY: ReadonlySet<OwnTieKind> = new Set([
+  OwnTieKind.Label,
+  OwnTieKind.Note,
+  OwnTieKind.Work,
+]);
+
 /** Lika, 27 Nov: as the owner saved them — the registered name read as someone she did not know. */
 function nameOf(row: Row): string | null {
   return text(row.saved_as) ?? text(row.name);
@@ -185,9 +198,10 @@ export function ownContactsInField(
     const phone = phoneOf(row);
     const name = nameOf(row);
     if (phone === null || name === null || !isOwnContact(row) || !isInField(row, stems)) continue;
+    const tie = tieOf(row, stems);
+    if (!SAYS_WHY.has(tie.kind)) continue;
     const digits = phoneDigits(phone);
     const seen = byPhone.get(digits);
-    const tie = tieOf(row, stems);
     const better = seen === undefined || TIE_STRENGTH[tie.kind] > TIE_STRENGTH[seen.tie.kind];
     byPhone.set(digits, {
       phone: seen?.phone ?? phone,
