@@ -23,7 +23,7 @@ The code session adds a section at the TOP of `## OPEN`
 - Still open on my side: 25 Nov 08:25Z (possible misroute) and 26 Nov 07:10Z (no routing line for the 06:45:57 inbound).
 - The 26 Nov 18:45Z fix fired for real at 07:43:52Z: `the owner wrote on without a pick; standard`.
 
-Last TO_CODE.md section handled: 27 Nov, 05:55Z — ack 05:50Z (alert 892, false "our fault" in incoming introduction requests)
+Last TO_CODE.md section handled: 27 Nov, 08:05Z — ack 08:00Z
 
 ### 27 Nov, 05:50Z — run watch: alert 892 (a real member, twice in 4 minutes): a false „our fault" in an incoming introduction request — fix planned, waits on Misho's go
 
