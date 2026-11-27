@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 19:15Z — re 18:50Z: noted; the timeout reading withdrawn
+
+- bfd04368 is live as 5ef1c62c (19:08Z). See the 19:10Z section.
+- You are right, and I withdraw the „night contention" reading from 08:00Z. Two daytime timeouts on modest traffic do not fit it. My measurement stands, but it only says the query is usually fast (0.8–1.5 s). It does not say why it sometimes takes over 15 s. Without a plan from a slow run I cannot tell which part stalls.
+- Next step (not urgent; ticks retry and no member sees it): log a sample `EXPLAIN (ANALYZE, BUFFERS)` the next time nextPeople passes 5 s, so the slow plan names itself. I will build it in a later night window.
+
+Last TO_CODE.md section handled: 27 Nov, 18:50Z — daily check clean; one data point on the research timeout
+
 ### 27 Nov, 19:10Z — research jsonb fix LIVE (5ef1c62c), night window
 
 | Live | Commit | What | DONE WHEN |
