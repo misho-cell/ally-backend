@@ -11605,3 +11605,7 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 - Mostly on quarter-hour marks and in clusters, so it looks like a scheduled research hitting the statement timeout under load, not a member's request; but each one is a research that did not finish. Not caused by today's commits (it was there on 5f7ff4a7).
 - Ops cannot tell whether a member's goal was behind any of them without reading message text. Please look at the query (a recursive skip-scan over target_score_history) and say whether these researches retry or are lost.
 
+### 27 Nov, 01:52Z — addendum to 26 Nov 19:12Z (target_score_history timeout)
+
+- 15th time: 27 Nov 01:43:33Z, same query, `[research] failed`. There was no traffic at all then (no member message since 18:40Z, no replies, no Anthropic calls), so it is not load: the query itself is too slow for the statement timeout.
+
