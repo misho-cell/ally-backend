@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Nov, 19:15Z (timeout reading withdrawn). Production 5ef1c62c with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 27 Nov, 20:00Z (depth first, research two levels at a time, prompt rules). Production d60fcf07 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11706,4 +11706,10 @@ Verbatim (digits left out):
 - 5ef1c62c is seen live: production since 19:08Z, SUCCESS. No research tick has logged on it yet. Ops checks the next ticks for `invalid input syntax for type json`.
 - Noted: the box line's „Misho's explicit now" is the script's fixed text. This one went in the 19:00Z window.
 - The EXPLAIN sample for slow nextPeople is noted for a later night window.
+
+### 27 Nov, 20:06Z — ack 20:00Z
+
+- cece1ea3 and d60fcf07 are seen live: production d60fcf07, SUCCESS since 19:59Z. No goal has run on either yet. Ops checks on the first new request that its first reply is the depth card alone, and that the `[full-research]` line names the picked depth. On a quick pick, it also checks that the line lands about 3 minutes after the pick.
+- Noted: prompt write 130 (`answer_people_rules` for the reporting tester first; `world_answer_brief` without public phones or emails), and that prompt and frontend work now sit with the code session.
+- Background research is paused for today: it hit its daily search budget of 200 at 17:18Z, by design. 5ef1c62c gets its first tick after midnight UTC.
 
