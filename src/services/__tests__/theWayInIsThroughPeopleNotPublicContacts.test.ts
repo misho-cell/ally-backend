@@ -9,6 +9,7 @@ import {
   CONTACT_HIDDEN,
   hiddenContactsIn,
   PUBLIC_CONTACTS_PARAM,
+  webResultTextWithoutContacts,
   withoutLinks,
   withoutPublicContacts,
 } from '../publicContacts';
@@ -86,5 +87,25 @@ describe('every web door goes through it', () => {
     expect(web).toContain('withoutPublicContacts(await fetchPage(url))');
     const opening = readFileSync(join(__dirname, '..', 'openingSearch.service.ts'), 'utf8');
     expect(opening).toContain('withoutPublicContacts(r)');
+  });
+});
+
+describe('web results kept in the history are hidden too (ops, 27 Nov)', () => {
+  it('hides numbers in a stored web search or page read, and leaves other results alone', () => {
+    const search = JSON.stringify({
+      results: [{ url: 'https://firm.example.ge', snippet: 'tel +995 555 12 34 56' }],
+    });
+    expect(webResultTextWithoutContacts(search)).not.toContain('555 12 34 56');
+    expect(webResultTextWithoutContacts(search)).toContain('https://firm.example.ge');
+    const page = JSON.stringify({ url: 'https://firm.example.ge/c', content: 'write a@b.ge' });
+    expect(webResultTextWithoutContacts(page)).not.toContain('a@b.ge');
+    const people = JSON.stringify({ results: [{ phone: '+995555123456', name: 'Nino Beridze' }] });
+    expect(webResultTextWithoutContacts(people)).toBe(people);
+    expect(webResultTextWithoutContacts('plain text http://x')).toBe('plain text http://x');
+  });
+
+  it('is applied to every history a run loads', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('loadHistory(threadId).then(historyWithoutPublicContacts)');
   });
 });
