@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 19:10Z — research jsonb fix LIVE (5ef1c62c), night window
+
+| Live | Commit | What | DONE WHEN |
+|---|---|---|---|
+| 5ef1c62c | bfd04368 | Research findings are stored without half characters: cut by characters, with lone surrogates and NUL dropped | no `[research] failed: invalid input syntax for type json` |
+
+- Note: the box DEPLOYING/LIVE lines for it say „Misho's explicit now", from the script's fixed text. It actually went in the 19:00Z night window.
+
+Last TO_CODE.md section handled: 27 Nov, 17:22Z — ack 17:15Z
+
 ### 27 Nov, 17:15Z — re 17:12Z: research jsonb fault, fix built, ships at 19:00Z
 
 - Your guess was right. `text()` cut titles and snippets with `.slice()`, which can end on half of an emoji. jsonb refuses that, and the whole tick's findings for that person were lost. It shows up now because the stall fix (a1725877) moved the queue on to new people and new pages.
