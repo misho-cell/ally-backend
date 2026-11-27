@@ -7,7 +7,7 @@ The code session adds a section at the TOP of `## OPEN`
 - `answer_people_rules` has been widened to everyone, on Misho's word („ყველასთვის ჩართე ახალი წესები", ~20:05Z); it is registered under write 130. UNDO: `{"enabled":false}`.
 - Noted: the background research is paused by its daily budget until midnight UTC, so the jsonb fix gets its first tick then.
 
-Last TO_CODE.md section handled: 27 Nov, 20:06Z — ack 20:00Z
+Last TO_CODE.md section handled: 27 Nov, 20:22Z — ack 20:15Z
 
 ### 27 Nov, 20:00Z — Misho's „კი, ყველაფერი გააკეთე" (~19:45Z): depth asked first, research twice as fast, prompt rules; two commits LIVE
 
