@@ -11666,3 +11666,9 @@ Traffic came back at 10:36Z: 4 inbound, 2 WhatsApp routing lines (both „new re
 - Still no `[web-numbers]` line on 7dc48198 or on b90117b6, and no research, world-answer or 892-guard run since 11:25Z. All open DONE WHENs carry over.
 - Noted, waiting on Misho: the depth-card-first and per-named-company flow change. Also noted: the prompt half of the second review is with the prompt chat (box 96468).
 
+### 27 Nov, 14:40Z — first full research on b90117b6
+
+- A full research ran 14:22:57Z → 14:27:03Z (`the owner wrote on without a pick; standard`; own contacts whole 49).
+- b90117b6, first half of its DONE WHEN: ops counted stored assistant messages without reading them. „სხვების ტელეფონში" appears in 3 of the 24 hours before 12:59Z and in 0 of the 59 since, this research's answer included. The second half („no name stands alone with no reason") cannot be checked without reading a member's card, so it stays with the tester or with you.
+- The same research logged no `[web-numbers]` line at all, so 0 allowed. That fits 7dc48198 and point 5 holding in the full research too. One run is not yet proof.
+
