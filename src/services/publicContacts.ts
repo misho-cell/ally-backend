@@ -24,9 +24,13 @@ const ADDRESS_FIELDS: ReadonlySet<string> = new Set(['url', 'source', 'link']);
 const EMAIL_RE = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}/gu;
 /** A phone number: an optional +, then digits with spaces, dashes, dots or brackets. */
 const PHONE_RE = /\+?\(?\d[\d\s().-]{7,}\d/gu;
-/** A phone has at least this many digits, so prices and years stay. */
+/**
+ * A phone has at least this many digits, so prices and years stay. There is no
+ * upper bound: ops, 27 Nov — two numbers printed side by side („599 12 34 56
+ * 32 2 00 00 00") read as one run of 18 digits, stayed in the text, and were
+ * then allowed one by one.
+ */
 const MIN_PHONE_DIGITS = 9;
-const MAX_PHONE_DIGITS = 15;
 const LINK_RE = /\b(?:https?:\/\/|www\.)[^\s<>"'»”)\]]+/giu;
 /**
  * Netai's own pages and its payment pages: an invite, a top-up or a plan link
@@ -49,7 +53,7 @@ function digitCount(text: string): number {
 export function hiddenContactsIn(text: string): string {
   return text.replace(EMAIL_RE, CONTACT_HIDDEN).replace(PHONE_RE, (match) => {
     const digits = digitCount(match);
-    return digits >= MIN_PHONE_DIGITS && digits <= MAX_PHONE_DIGITS ? CONTACT_HIDDEN : match;
+    return digits >= MIN_PHONE_DIGITS ? CONTACT_HIDDEN : match;
   });
 }
 
