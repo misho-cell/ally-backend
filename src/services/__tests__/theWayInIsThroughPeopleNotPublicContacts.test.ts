@@ -28,6 +28,12 @@ describe('the web’s contact details are hidden from the model', () => {
     expect(hidden).toContain('250 staff');
   });
 
+  it('hides two numbers printed side by side, read as one long run (ops, 27 Nov)', () => {
+    const hidden = hiddenContactsIn('Office: 599 12 34 56 32 2 00 00 00 (weekdays). Since 2015.');
+    expect(hidden.replace(/\D/gu, '')).toBe('2015');
+    expect(hidden).toContain(CONTACT_HIDDEN);
+  });
+
   it('keeps a page’s own address so it can still be read', () => {
     const result = {
       results: [

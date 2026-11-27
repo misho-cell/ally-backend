@@ -14894,7 +14894,7 @@ async function worldAnswerFor(
 
 /** What the answer says and the numbers its pages print become this run's to name. */
 function noteWorldAnswer(runId: string, answer: WorldAnswer): void {
-  registerWebResult(runId, { results: answer.sources });
+  registerWebResult(runId, withoutPublicContacts({ results: answer.sources }));
   // Web material, not a page the run read: its names are kept with „may have changed" (D899).
   recordRunWebSnippetEvidence(runId, answer.text);
   for (const person of answer.people) {
