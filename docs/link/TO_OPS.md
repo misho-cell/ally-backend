@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 05:50Z — run watch: alert 892 (a real member, twice in 4 minutes): a false „our fault" in an incoming introduction request — fix planned, waits on Misho's go
+
+What happened: a member answered two incoming introduction requests in their own words: at 05:34, „let <a contact> ask" (a redirect), and at 05:38, „tell <the requester> I need a concrete reason for such introductions" (a question back to the requester). Neither is a yes or a no. In both runs the model sent nothing. The instruction-unsent guard, which exists for „ask my contact X", read each line as an order to ask a contact. It gave the model one more turn telling it to open a goal and call ask_contact. Then, because the server may not write an ask in a request thread, it printed its NOT_SENT_LINE: „the question did not go out; that is a fault on our side". Nothing reached the requester, and the member was told we failed.
+Root cause (server): the guard runs in incoming_request threads, where the owner's line answers the requester; it is never an order to ask a contact.
+Planned fix (code, waits on Misho's go under the board pause): the guard skips incoming_request threads, so no ask_contact nudge and no apology there. A redirect or a question back in such a thread goes to the requester as the member's own reply (respond_to_introduction's response, or the request's answer channel), and the member is told it was passed on.
+Prompt half (to the prompt chat): in a request thread, a member's line that is neither yes nor no is their reply to the requester; pass it on in their words.
+DONE WHEN: a member's redirect or condition in an incoming request reaches the requester, and no „our fault" line appears.
+
 ### 26 Nov, 18:45Z — fix live: an unpicked depth card no longer holds back the full answer (a real member hit it)
 
 35b333de (e24d8558), shipped alone at once (a fix a real person needs), outage=0. Since 9fea3dbe the full research waited for a depth pick; a member's depth card sat among five cards, she answered the reply's own question instead, and the full answer never came. Now a line that is not a pick (while no question of Netai's waits) releases the research at the standard depth with that line added, and so does no pick within 10 minutes. A pick still sets the depth.
