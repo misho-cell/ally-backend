@@ -25,8 +25,7 @@ const nino = { phone: '+995 555 000 001', name: 'Nino Beridze', tags: ['ძმ�
 const levan = {
   phone: '+995 555 000 002',
   name: 'Levan Japaridze',
-  tags: ['Levan'],
-  found_by_others_labels: true,
+  tags: ['Levan', 'არქიტექტორი'],
 };
 const mariam = {
   phone: '+995 555 000 003',
@@ -46,6 +45,17 @@ describe('who is listed', () => {
     );
     expect(found.map((c) => c.name)).toEqual(['Levan Japaridze', 'Nino Beridze']);
     expect(found[0].hits).toBe(2);
+  });
+
+  it('offers no one only other people’s phones tie to it, nor anyone with no reason to say (Lika, 27 Nov)', () => {
+    const othersOnly = { ...levan, tags: ['Levan'], found_by_others_labels: true };
+    const ownWorkOnly = { ...mariam, phone: '+995 555 000 006', found_by_their_own_work: 'note' };
+    const found = ownContactsInField(
+      [{ results: [othersOnly, ownWorkOnly, nino] }],
+      'არქიტექტორი',
+      () => true,
+    );
+    expect(found.map((c) => c.name)).toEqual(['Nino Beridze']);
   });
 
   it('offers only people whose work is in the field, as the owner saved them (Lika, 27 Nov)', () => {
@@ -141,7 +151,8 @@ describe('the reason shown', () => {
   });
 
   it('never quotes other people’s labels', () => {
-    expect(tieOf(levan, stems)).toEqual({ kind: OwnTieKind.OthersLabels, value: '' });
+    const othersOnly = { ...levan, tags: ['Levan'], found_by_others_labels: true };
+    expect(tieOf(othersOnly, stems)).toEqual({ kind: OwnTieKind.OthersLabels, value: '' });
   });
 
   it('names the work a profile states, and says nothing of a self-description', () => {
