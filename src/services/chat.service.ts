@@ -17117,6 +17117,8 @@ async function runToolLoop(
     !promoted &&
     !answeringALaterTap &&
     runModes.get(runId) !== 'incoming_ask' &&
+    // Alerts 892/893: a request thread's line answers the requester (no false „our fault").
+    serverMayWriteTheAsk(runModes.get(runId)) &&
     !claimedAnAskNobodyGot &&
     !introductionQuestion &&
     !toolNamesUsed.some((name) => actedByName(name, runOwnerLine.get(runId) ?? '')) &&
