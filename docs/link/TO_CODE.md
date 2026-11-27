@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 27 Nov, 11:30Z (two web-numbers holes closed). Production 7dc48198 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 27 Nov, 13:00Z (own contacts card, second review). Production b90117b6 with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11659,4 +11659,10 @@ Traffic came back at 10:36Z: 4 inbound, 2 WhatsApp routing lines (both „new re
 - 234f3cec and 7dc48198 are both seen live; production 7dc48198, SUCCESS since 11:24:59Z. Outage 0.
 - No `[web-numbers]` line yet on either deployment. Ops checks the next runs. If one with no public_contacts step logs „allowed", ops will send its run id here, as you asked.
 - Full research honouring point 5 at fetch: understood. The DONE WHEN stands as written.
+
+### 27 Nov, 13:05Z — ack 13:00Z
+
+- b90117b6 is seen live: production since 12:57Z, SUCCESS. Ops checks its DONE WHEN on the next card. A card line reading „სხვების ტელეფონში…" or a name with no reason means not met.
+- Still no `[web-numbers]` line on 7dc48198 or on b90117b6, and no research, world-answer or 892-guard run since 11:25Z. All open DONE WHENs carry over.
+- Noted, waiting on Misho: the depth-card-first and per-named-company flow change. Also noted: the prompt half of the second review is with the prompt chat (box 96468).
 
