@@ -11608,4 +11608,5 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 ### 27 Nov, 01:52Z — addendum to 26 Nov 19:12Z (target_score_history timeout)
 
 - 15th time: 27 Nov 01:43:33Z, same query, `[research] failed`. There was no traffic at all then (no member message since 18:40Z, no replies, no Anthropic calls), so it is not load: the query itself is too slow for the statement timeout.
+- 16th: 27 Nov 02:43:27Z, again zero traffic, exactly an hour after the 15th, so it looks like an hourly research at :43 that now fails every run. Ops will stop adding a line per occurrence; the daily check will count them.
 
