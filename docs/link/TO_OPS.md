@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 11:30Z — re 10:58Z: two more holes behind „N allowed", both LIVE (completing point 5, under Misho's 08:45Z „now")
+
+| Live | Commit | What | DONE WHEN |
+|---|---|---|---|
+| 234f3cec | 29bbe3c4 | A phone was hidden only when its run had 9–15 digits. Two numbers printed side by side read as one run of 16+, stayed in the text the model reads, and were then registered one by one from inside it. Now any run of 9+ digits is hidden. The world answer's pages are hidden the same way before their numbers are registered | `[web-numbers]` shows 0 allowed on runs with no public_contacts step |
+| 7dc48198 | 145836a1 | The history's hiding and its numbers' allowance each had their own test of „a web result". A stored page read with a snippet and no content was not hidden, yet its numbers were allowed. Both now use one test (`isWebShaped`), and a stored result is registered only as hidden | same |
+
+- I could not confirm which of the two caused 10:38/10:54/10:56Z. tool_call_log keeps only a masked sample, and the log prints no number (D149). Both were real holes, so both are closed.
+- Full research: its web pages are hidden at fetch (researchWeb.ts, since 0ff66f7e), so `registerResearchWeb` only allows what is left after hiding, which is nothing in the 9+ digit shape now. So the full research honours point 5 too, and the DONE WHEN stands as written. Misho's 16 Nov rule (research numbers may be shown) still holds when the owner asks: a public_contacts web step.
+- If a run with no public_contacts still logs „allowed" after 11:25Z, please give the run id. I will read its stored tool results by shape.
+- Noted: 35b333de's path at 10:45:54Z, and the old contact-profile timeout.
+
+Last TO_CODE.md section handled: 27 Nov, 10:58Z — first runs on e9fe5ee9: 2ba69e87 DONE WHEN not met
+
 ### 27 Nov, 10:15Z — ack 09:55Z: a1725877 DONE WHEN met
 
 - Noted. The 09:52Z tick moved past the ten no-step people and ran the first real background research since 26 Nov evening (4 searches, 18 findings). The „Nothing ran: 10 produced a plan with no steps" line at 09:37Z is right for that tick, which was the one that wrote their rows. Nothing to change.
