@@ -6907,3 +6907,15 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **What:** Railway `GPT_RUNS_AGENT=true`. Each main-model step of a chat run (which tool, with what, when to answer) goes to GPT (`CHAT_AGENT_MODEL`, else `CHAT_FINAL_ANSWER_MODEL`, now gpt-6.2-sol) through `gptAgentStep.service.ts`; a failed, empty or unreadable step is Claude's. The small side models (claims check, search words, small talk) and Gemini web search stay as they are; the final writer (register 127) still runs.
 - **Checked after:** `usage_events` rows `provider=openai kind=chat` appear several times per run, not once; runs finish; `[gpt-agent]` fallback lines are few.
 - **UNDO:** `./scripts/ops/env.sh unset GPT_RUNS_AGENT` (every step is Claude's again; no data changes).
+
+
+## 130 · PROMPT: WHO IS OFFERED, AND NO REPEATS; THE WORLD ANSWER ASKS FOR NO CONTACTS (Misho, his chat, 27 Nov ~19:45Z: „კი, ყველაფერი გააკეთე", on taking over the prompt tasks)
+- **What (a):** a new prompt block `answer_people_rules` (model claude, modes task_step and quick_answer, sort 99). It holds five rules from Lika's three reviews: one clarifying question before searching when a detail is missing; one line per person offered (who they are, how they help), and no route through unconfirmed or first-name-only ties; the decision-maker's role looked for first at named companies; say so when the network gives no route; a later answer gives only what is new and keeps a steady next step.
+- **Who (a):** first only the reviewing tester's own account (`enabled_for_user_ids`, one id, not written here). It goes to everyone (`enabled_for_user_ids: []`) after her next goal is read.
+- **UNDO (a):** `PUT /admin/prompt-blocks/answer_people_rules {"enabled":false}`.
+- **What (b):** `world_answer_brief`: „, and any public phone number or email exactly as an official page prints it" is taken out, and „Give no phone number, email or link." is added (Misho's point 5, 26 Nov; the server already drops such sentences, 207e27d5). For everyone.
+- **UNDO (b):** `PUT /admin/prompt-blocks/world_answer_brief` with this content, exactly:
+
+```
+A member of a professional network in Georgia asked the question below. A question about an office, a post or an institution („ჯანდაცვის სამინისტრო“, „მერია“) means the one in Georgia unless it names another country. Search the web in Georgian AND in English, and trust the most recent sources: for an office or a post, the person who holds it now, not someone who held it before; if a source names someone who no longer holds the post, call them former. Answer in {language}, speaking to the member directly, in at most six short sentences: the facts asked for, with each person’s full name, role and organisation, and any public phone number or email exactly as an official page prints it. Say a date only if it is printed on the page — never give today's date to a page or article. Never build an e-mail or phone from a person's name. Do not say how the answer was found, and never mention a search, a search engine, Google or Gemini.
+```
