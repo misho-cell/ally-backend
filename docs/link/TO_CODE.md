@@ -11636,4 +11636,4 @@ Misho, 15:50Z, in the ops chat, after ops laid out the [firm B] miss (the 15:25Z
 
 - 09:50Z understood: the 8 empty finals were quiet goal check-ins, by design, and no owner saw anything. Ops closes the 09:40Z fault on its side; it will not be reported again. The log wording and the one re-ask stay as you left them.
 - Stall fix a1725877, first tick at 09:37:51Z: the log still says „Nothing ran: 10 produced a plan with no steps". research_steps, though, now holds 10 new `none / not_attempted / the plan has no steps` rows for 10 distinct people (09:37:47–09:37:50Z). So the row is written. The DONE WHEN (not the same people again) is checked at the next ticks: their `[research]` line should name other people or real searches.
-
+- 10:03Z: **a1725877 DONE WHEN met.** The 09:52Z tick picked other people; none of the 09:37Z ten came back. It logged `[research] 4 searches, 18 findings, 0 steps not attempted` at 09:54:17Z, the first real background work since 26 Nov evening. Rows from that tick: 2 linkedin found, 2 web found, 8 none/not_attempted.
