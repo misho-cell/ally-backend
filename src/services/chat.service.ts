@@ -775,6 +775,7 @@ import {
   noteAskedBeforeSearching,
   ownerAnsweredTheQuestion,
   ownerWroteInstead,
+  takeHeldResearchWith,
   takeHeldResearch,
   takeUnpickedResearch,
   type HeldResearch,
@@ -782,6 +783,8 @@ import {
 import {
   depthCardItem,
   depthStartedLine,
+  depthNamedIn,
+  depthPickOf,
   depthTapOf,
   RESEARCH_DEPTH_KIND,
   ResearchDepth,
@@ -16115,7 +16118,7 @@ function offerOrReleaseResearch(threadId: number, line: string, runId: string): 
     notePendingItems(runId, [depthCardItem()]);
     return;
   }
-  if (depthTapOf(line) !== null) return;
+  if (depthPickOf(line) !== null) return;
   const released = ownerWroteInstead(threadId, line);
   if (released === null) return;
   // eslint-disable-next-line no-console
@@ -16131,9 +16134,12 @@ async function answerDepthTap(
   runId: string,
   intent: RunIntent | undefined,
 ): Promise<ChatResult | null> {
-  const depth = depthTapOf(userMessage);
+  const tapped = depthTapOf(userMessage);
+  const depth = tapped ?? depthNamedIn(userMessage);
   if (depth === null) return null;
-  const research = takeHeldResearch(threadId);
+  // A pick in words travels with the research: „…give me the results first".
+  const research =
+    tapped !== null ? takeHeldResearch(threadId) : takeHeldResearchWith(threadId, userMessage);
   if (research === null) return null;
   try {
     startFullResearch(research, threadId, depth);

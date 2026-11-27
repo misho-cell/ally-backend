@@ -143,6 +143,17 @@ export function takeHeldResearch(threadId: number, now: number = Date.now()): He
   return research === null ? null : released(research, null);
 }
 
+/** The held research, once, with the owner's line that picked its depth in words. */
+export function takeHeldResearchWith(
+  threadId: number,
+  line: string,
+  now: number = Date.now(),
+): HeldResearch | null {
+  const research = fresh(threadId, now);
+  held.delete(threadId);
+  return research === null ? null : released(research, line);
+}
+
 /** For tests: forget every conversation. */
 export function forgetClarifyingQuestions(): void {
   askedAt.clear();

@@ -16,6 +16,7 @@ import {
   ownerAnsweredTheQuestion,
   ownerWroteInstead,
   takeHeldResearch,
+  takeHeldResearchWith,
   takeUnpickedResearch,
   waitsOnTheOwnersAnswer,
 } from '../clarifyingQuestion';
@@ -94,6 +95,13 @@ describe('a depth nobody picks never costs the full answer (Lika, 26 Nov)', () =
     expect(ownerWroteInstead(THREAD, 'in Tbilisi', NOW + 1_000)).toBeNull();
   });
 
+  it('a pick in words takes the research once, with that line', () => {
+    holdResearch(THREAD, RESEARCH, NOW);
+    const back = takeHeldResearchWith(THREAD, 'quick, results first', NOW + 1_000);
+    expect(back?.ownerLine).toBe('find me a snowboard trainer\nquick, results first');
+    expect(takeHeldResearch(THREAD, NOW + 2_000)).toBeNull();
+  });
+
   it('with no pick in time, the hold it was set for runs; a newer hold is left alone', () => {
     const mark = holdResearch(THREAD, RESEARCH, NOW);
     expect(takeUnpickedResearch(THREAD, mark, NOW + 600_000)?.words).toBe('snowboard trainer');
@@ -107,6 +115,6 @@ describe('a depth nobody picks never costs the full answer (Lika, 26 Nov)', () =
     expect(chat).toContain('const PICK_WAIT_MS = 10 * 60_000;');
     expect(chat).toContain('startFullResearch(unpicked, threadId, ResearchDepth.Normal);');
     expect(chat).toContain('startFullResearch(released, threadId, ResearchDepth.Normal);');
-    expect(chat).toContain('if (depthTapOf(line) !== null) return;');
+    expect(chat).toContain('if (depthPickOf(line) !== null) return;');
   });
 });
