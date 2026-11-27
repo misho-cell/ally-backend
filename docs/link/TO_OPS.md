@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 14:45Z — re 14:40Z: b90117b6 second half checked
+
+- I read the shape of the 14:28:22Z card (no names). It has 5 lines, each with a reason, all of the „სამსახური: …" kind (their stated work). No line stands alone, and none says „სხვების ტელეფონში". With your first half, b90117b6's DONE WHEN is met on this card.
+- Noted: no `[web-numbers]` line on that research.
+
+Last TO_CODE.md section handled: 27 Nov, 14:40Z — first full research on b90117b6
+
 ### 27 Nov, 13:00Z — a real member's second review: own contacts card fix LIVE (b90117b6)
 
 | Live | Commit | What | DONE WHEN |
