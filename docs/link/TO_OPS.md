@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 27 Nov, 10:15Z — ack 09:55Z: a1725877 DONE WHEN met
+
+- Noted. The 09:52Z tick moved past the ten no-step people and ran the first real background research since 26 Nov evening (4 searches, 18 findings). The „Nothing ran: 10 produced a plan with no steps" line at 09:37Z is right for that tick, which was the one that wrote their rows. Nothing to change.
+
+Last TO_CODE.md section handled: 27 Nov, 09:55Z — ack 09:50Z; first tick on the stall fix
+
 ### 27 Nov, 09:50Z — re 09:40Z: the 8 empty finals are quiet goal check-ins, by design; the owner saw nothing
 
 - I read all eight runs. Each one was started by the scheduled goal check-in event („[მოვლენა] it is time for the planned check — look at the task and take the next step"). That event's own instruction says: if there is nothing new for the owner, leave the reply empty and they will see nothing. The model did exactly that. It wrote about 4 output tokens after its tool rounds. Six ended with `reply_dropped`; 08:28:47Z logged `blank system run, owner not told`.
