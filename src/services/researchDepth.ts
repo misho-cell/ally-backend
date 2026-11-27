@@ -152,6 +152,40 @@ export function depthTapOf(message: string): ResearchDepth | null {
   return null;
 }
 
+/** A label's last vowel, which another form of the word changes („სწრაფი" → „სწრაფად"). */
+const LAST_VOWEL_RE = /[აეიოუaeiouáéíóúаеиоуыэюя]$/u;
+const WORD_RE = /\p{L}+/gu;
+/** A label this short is its own stem: „ღრმა" → „ღრმად" still starts with it. */
+const MAX_LABEL_STEM_KEEP = 4;
+
+function stemOf(label: string): string {
+  const lower = label.toLocaleLowerCase();
+  return [...lower].length > MAX_LABEL_STEM_KEEP ? lower.replace(LAST_VOWEL_RE, '') : lower;
+}
+
+/**
+ * Lika, 27 Nov: she typed „სწრაფი ძიებით მომეცი ჯერ შედეგები" under the depth
+ * card; it was not a tap, so the research ran at the standard depth and her
+ * line started a second search. Pure: the one depth a longer line names, in
+ * any language and any form of the word; null when it names none or several.
+ */
+export function depthNamedIn(message: string): ResearchDepth | null {
+  const words = message.toLocaleLowerCase().match(WORD_RE) ?? [];
+  const named = new Set<ResearchDepth>();
+  for (const t of Object.values(TEXTS)) {
+    for (const depth of ORDER) {
+      const stem = stemOf(t.label[depth]);
+      if (words.some((word) => word.startsWith(stem))) named.add(depth);
+    }
+  }
+  return named.size === 1 ? [...named][0] : null;
+}
+
+/** Pure: the owner's pick — a tap, or a line that names one depth. */
+export function depthPickOf(message: string): ResearchDepth | null {
+  return depthTapOf(message) ?? depthNamedIn(message);
+}
+
 /** The server's line once the owner has picked. */
 export function depthStartedLine(language: RunLanguage, depth: ResearchDepth): string {
   const t = TEXTS[language];

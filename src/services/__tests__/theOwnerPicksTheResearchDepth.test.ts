@@ -10,6 +10,8 @@ import {
   depthCard,
   depthCardItem,
   depthStartedLine,
+  depthNamedIn,
+  depthPickOf,
   depthTapOf,
   RESEARCH_DEPTH_KIND,
   ResearchDepth,
@@ -63,6 +65,17 @@ describe('the three depths', () => {
     expect(depthTapOf('ღრმად მოძებნე ფოტოგრაფი')).toBeNull();
   });
 
+  it('reads a pick written in a sentence, in any form of the word (Lika, 27 Nov)', () => {
+    expect(depthPickOf('სწრაფი ძიებით მომეცი ჯერ შედეგები')).toBe(ResearchDepth.Quick);
+    expect(depthPickOf('სწრაფად მოძებნე')).toBe(ResearchDepth.Quick);
+    expect(depthPickOf('ღრმად მოძებნე, ყველა დონეზე')).toBe(ResearchDepth.Deep);
+    expect(depthPickOf('ჩვეულებრივით გააგრძელე')).toBe(ResearchDepth.Normal);
+    expect(depthPickOf('a quick one, please')).toBe(ResearchDepth.Quick);
+    expect(depthPickOf('давай быстрый поиск')).toBe(ResearchDepth.Quick);
+    expect(depthNamedIn('სწრაფი თუ ღრმა, არ ვიცი')).toBeNull();
+    expect(depthNamedIn('ქალაქი თბილისი')).toBeNull();
+  });
+
   it('says it started, by the depth picked', () => {
     expect(depthStartedLine('ka', ResearchDepth.Deep)).toBe(
       'კარგი, ვიწყებ: ღრმა. როცა დასრულდება, აქვე მოგწერ.',
@@ -90,8 +103,10 @@ describe('the research runs at the picked size', () => {
   });
 
   it('starts only on the owner’s pick, which the server answers', () => {
-    expect(chat).toContain('const depth = depthTapOf(userMessage);');
-    expect(chat).toContain('const research = takeHeldResearch(threadId);');
+    expect(chat).toContain('const depth = tapped ?? depthNamedIn(userMessage);');
+    expect(chat).toContain(
+      'tapped !== null ? takeHeldResearch(threadId) : takeHeldResearchWith(threadId, userMessage);',
+    );
     expect(chat).toContain('startFullResearch(research, threadId, depth);');
     expect(chat).toContain(
       'runFullResearch({ userId, threadId, taskId, words, ownerLine, withheld, askedAt, depth })',
