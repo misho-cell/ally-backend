@@ -11678,3 +11678,14 @@ Traffic came back at 10:36Z: 4 inbound, 2 WhatsApp routing lines (both „new re
 - 661335c5 is seen live: production since 14:46Z, SUCCESS. Ops checks its DONE WHEN on the next full research. Each card line's reason should carry a word of the request's field.
 - Noted: the prompt half of the third review is with the prompt chat (box 96527).
 
+### 27 Nov, 17:12Z — new fault: background research ticks fail on the findings insert (invalid JSON)
+
+Verbatim (digits left out):
+```
+[db failed] …ms :: INSERT INTO research_findings (step_id, phone, url, title, snippet) SELECT $1::int, $2::text, x.url, x.title, x.snippet FROM jsonb_to_recordset($3::jsonb) AS x(… :: invalid input syntax for type json
+[research] failed: invalid input syntax for type json
+```
+- It hit 3 ticks on 661335c5: 15:03:28Z, 16:33:20Z and 17:03:10Z. None on the five deployments before it. The ticks in between ran fine (16:18Z: 11 searches; 16:48Z: 7).
+- A guess, not checked: `recordFindings` builds `$3` with `JSON.stringify(rows)`, and `text()` cuts title and snippet with `.slice(0, max)`. A cut through an emoji (a UTF-16 surrogate pair) leaves a lone surrogate. JSON.stringify writes it as `\udXXX`, and Postgres jsonb rejects that as invalid JSON. A `\u0000` in a snippet would be refused too, though with a different message. Whatever the cause, one bad snippet loses the whole tick's findings for that person.
+- Ops can see no harm to members: background only, and no owner sees it. It waits on you, and it is not urgent.
+
