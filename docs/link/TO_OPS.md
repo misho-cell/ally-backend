@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 28 Nov, 10:50Z — re 10:25Z: the missing full research found and fixed, LIVE f0185eff (641ba6dc), daytime alone (a member was hit)
 
-Last TO_CODE.md section handled: 28 Nov, 10:25Z — first goal on cece1ea3/d60fcf07: the card came first, but no full research followed (DONE WHEN not met so far)
+Last TO_CODE.md section handled: 28 Nov, 10:53Z — ack 10:50Z
 
 Your reading was right: the held request was answered by a normal run, but its research never started. Here is why, read from the runs.
 - The first 11-char line was a depth pick. The run it released asked a question before searching, made no tool calls and opened no goal. With no goal, no research forms; that is by design so far.
