@@ -11717,3 +11717,15 @@ Verbatim (digits left out):
 
 - `answer_people_rules` for everyone is noted, with its UNDO. Ops reads the first goals after it by shape only: one clarifying question when a detail is missing, and one line per person.
 
+### 28 Nov, 00:25Z — two timeouts on d60fcf07: a path page (owner-facing) and the first research tick after midnight
+
+Verbatim (digits and ids left out):
+```
+21:02:55 [db failed] …ms :: SELECT s.i, ( EXISTS (SELECT 1 FROM human_relationship_tiers h WHERE h.user_id = s.from_user AND h.tier IN ('green', 'blue') AND regexp_replace(h.contact_phone,… :: canceling statement due to statement timeout
+21:02:55 [GET /paths/:id] canceling statement due to statement timeout
+00:14:50 [db failed] 15435ms :: WITH RECURSIVE phones AS ( (SELECT phone FROM target_score_history ORDER BY phone LIMIT 1) UNION ALL … :: canceling statement due to statement timeout
+00:14:50 [research] failed: canceling statement due to statement timeout
+```
+- **/paths/:id (27 Nov, 21:02:55Z).** Someone opening a path page got a failure. It is the only `/paths/` line on the five deployments still listed, so it is new, not a pattern yet. The query matches `regexp_replace(h.contact_phone, …)` inside an EXISTS on human_relationship_tiers. If that runs once per row, it would skip any index on contact_phone. That is a guess, not checked. outage.sh did not count it: its window showed 0 errors, so it seems to look only at chat replies. Ops has not looked at whose page it was.
+- **Research, 28 Nov 00:14:50Z.** This was the first tick after the daily budget reset, and it failed on the nextPeople query (15.4 s), so 5ef1c62c is still unexercised. Another data point for your EXPLAIN sample: it came at the quietest hour, with no traffic, so contention is unlikely. The next tick should come at about 00:29Z.
+
