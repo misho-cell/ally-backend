@@ -25,7 +25,7 @@ jest.mock('../tools/membership', () => ({
 
 import { query } from '../../db/postgres/client';
 import { memberMiddles } from '../memberPaths.service';
-import { chainMapsFor } from '../chainMap.service';
+import { chainMapsFor, distinctSteps } from '../chainMap.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
@@ -59,5 +59,22 @@ describe('the maps to a named person', () => {
     await expect(chainMapsFor(171, 'c_other')).resolves.toBeNull();
     graph([]);
     await expect(chainMapsFor(171, 'c_t')).resolves.toEqual([]);
+  });
+});
+
+/**
+ * Ops, 27–28 Nov: a path page timed out twice. Up to a hundred paths were
+ * checked in one query, the same step many times; each step is now checked once.
+ */
+describe('a step that recurs in many paths is checked once', () => {
+  it('keeps the first of each step, in order', () => {
+    const steps = [
+      { fromUser: 1, toPhone: '+995555000001' },
+      { fromUser: 2, toPhone: '+995555000002' },
+      { fromUser: 1, toPhone: '+995555000001' },
+      { fromUser: 1, toPhone: '+995555000002' },
+    ];
+    expect(distinctSteps(steps)).toEqual([steps[0], steps[1], steps[3]]);
+    expect(distinctSteps([])).toEqual([]);
   });
 });

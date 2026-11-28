@@ -16,7 +16,13 @@ import { labelAtChainEnd } from './chainLabels';
 import { namesFor } from './tools/findWarmPath';
 import { AccountDetails, accountDetailsFor, fetchAccountStates } from './tools/membership';
 
-const STEP_QUERY_TIMEOUT_MS = 5_000;
+/**
+ * Ops, 27–28 Nov: a path page timed out twice at quiet hours. Up to a hundred
+ * paths of up to four steps were checked in one query against a 5 s limit; the
+ * same step recurs in many paths. Each distinct step is now checked once, with
+ * the 8 s the path queries themselves are given.
+ */
+const STEP_QUERY_TIMEOUT_MS = 8_000;
 
 interface StepVerdict {
   readonly warm: boolean;
@@ -29,6 +35,32 @@ interface StepVerdict {
  * along the whole chain).
  */
 async function stepVerdicts(
+  steps: readonly { readonly fromUser: number; readonly toPhone: string }[],
+): Promise<StepVerdict[]> {
+  const unique = distinctSteps(steps);
+  const verdicts = await uniqueStepVerdicts(unique);
+  const byKey = new Map(unique.map((step, index) => [stepKey(step), verdicts[index]]));
+  return steps.map((step) => byKey.get(stepKey(step)) ?? { warm: false, blocked: false });
+}
+
+function stepKey(step: { readonly fromUser: number; readonly toPhone: string }): string {
+  return `${step.fromUser}|${step.toPhone}`;
+}
+
+/** Pure: each step once, in first-seen order. */
+export function distinctSteps<T extends { readonly fromUser: number; readonly toPhone: string }>(
+  steps: readonly T[],
+): T[] {
+  const seen = new Set<string>();
+  return steps.filter((step) => {
+    const key = stepKey(step);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function uniqueStepVerdicts(
   steps: readonly { readonly fromUser: number; readonly toPhone: string }[],
 ): Promise<StepVerdict[]> {
   if (steps.length === 0) return [];
