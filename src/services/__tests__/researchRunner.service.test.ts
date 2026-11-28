@@ -34,7 +34,7 @@ jest.mock('../labelReader.service', () => ({
 }));
 
 import { backgroundQuery } from '../../db/postgres/client';
-import { runResearchOnce, storableText } from '../researchRunner.service';
+import { planSummary, runResearchOnce, storableText } from '../researchRunner.service';
 import type { LabelSignals } from '../labelReader.service';
 
 const mockQuery = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
@@ -393,5 +393,48 @@ describe('what the research stores is always valid for jsonb', () => {
     expect(storableText('   ', 10)).toBeNull();
     expect(storableText(7, 10)).toBeNull();
     expect(() => JSON.parse(JSON.stringify({ s: storableText('x😀😀', 2) }))).not.toThrow();
+  });
+});
+
+/**
+ * Ops, 27–28 Nov: the people query timed out five times in a day and a half,
+ * once at the quietest hour, yet ran in about a second when measured. A
+ * timeout now logs the plan Postgres chose (EXPLAIN without ANALYZE: no load).
+ */
+describe('a timed-out people query logs its plan', () => {
+  it('summarises a plan as its steps, outermost first', () => {
+    const plan = [
+      {
+        Plan: {
+          'Node Type': 'Limit',
+          'Plan Rows': 10,
+          Plans: [{ 'Node Type': 'Seq Scan', 'Relation Name': 'research_steps', 'Plan Rows': 500 }],
+        },
+      },
+    ];
+    expect(planSummary(plan)).toBe('Limit~10 >Seq Scan(research_steps)~500');
+    expect(planSummary(null)).toBe('');
+  });
+
+  it('reads the plan once on a timeout, and the pass still fails as before', async () => {
+    withDatabase();
+    const plain = mockQuery.getMockImplementation();
+    mockQuery.mockImplementation((sql: string, ...rest: unknown[]) => {
+      if (sql.startsWith('EXPLAIN')) {
+        return Promise.resolve({
+          rows: [{ 'QUERY PLAN': [{ Plan: { 'Node Type': 'Limit' } }] }],
+        }) as never;
+      }
+      if (sql.includes('FROM target_score_history')) {
+        return Promise.reject(new Error('canceling statement due to statement timeout')) as never;
+      }
+      return (plain as (s: string, ...r: unknown[]) => never)(sql, ...rest);
+    });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await expect(runResearchOnce()).rejects.toThrow('statement timeout');
+
+    expect(warn).toHaveBeenCalledWith('[research] slow plan: Limit~undefined');
+    warn.mockRestore();
   });
 });

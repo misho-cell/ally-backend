@@ -14,7 +14,7 @@ import { join } from 'path';
  * researched once, never again every 30 days.
  */
 const source = readFileSync(join(__dirname, '..', 'researchRunner.service.ts'), 'utf8');
-const next = source.slice(source.indexOf('async function nextPeople'));
+const next = source.slice(source.indexOf('const NEXT_PEOPLE_SQL'));
 
 describe('who the research runner picks', () => {
   it('never picks a number somebody marked family or close', () => {
