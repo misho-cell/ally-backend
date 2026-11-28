@@ -159,9 +159,7 @@ const LATEST_LISTING_SQL = `phones AS (
        ) last
      )`;
 
-async function nextPeople(limit: number, refreshDays: number): Promise<{ phone: string }[]> {
-  const result = await backgroundQuery<{ phone: string }>(
-    `WITH RECURSIVE ${LATEST_LISTING_SQL}
+const NEXT_PEOPLE_SQL = `WITH RECURSIVE ${LATEST_LISTING_SQL}
      SELECT l.phone
      FROM listed l
      LEFT JOIN (
@@ -176,11 +174,72 @@ async function nextPeople(limit: number, refreshDays: number): Promise<{ phone: 
          SELECT 1 FROM contact_relationship_scores cr
           WHERE cr.contact_phone = l.phone AND cr.relationship_type = ANY($3::text[]))
      ORDER BY r.last_run ASC NULLS FIRST, l.rank ASC
-     LIMIT $1::int`,
-    [limit, refreshDays, PRIVATE_RELATIONSHIPS],
-    QUERY_TIMEOUT_MS,
-  );
-  return result.rows;
+     LIMIT $1::int`;
+
+async function nextPeople(limit: number, refreshDays: number): Promise<{ phone: string }[]> {
+  const params = [limit, refreshDays, PRIVATE_RELATIONSHIPS];
+  try {
+    const result = await backgroundQuery<{ phone: string }>(
+      NEXT_PEOPLE_SQL,
+      params,
+      QUERY_TIMEOUT_MS,
+    );
+    return result.rows;
+  } catch (err) {
+    if (TIMEOUT_RE.test((err as Error).message)) await logPlanOf(NEXT_PEOPLE_SQL, params);
+    throw err;
+  }
+}
+
+/** Postgres's message when a statement ran past its timeout. */
+const TIMEOUT_RE = /statement timeout/u;
+/** A plan read back is cut to this many steps: it is a log line. */
+const MAX_PLAN_STEPS = 30;
+
+interface PlanNode {
+  readonly 'Node Type'?: unknown;
+  readonly 'Relation Name'?: unknown;
+  readonly 'Index Name'?: unknown;
+  readonly 'Plan Rows'?: unknown;
+  readonly Plans?: unknown;
+}
+
+/** Pure: a plan as one line of its steps (kind, table or index, rows the planner expected), outermost first. */
+export function planSummary(plan: unknown): string {
+  const steps: string[] = [];
+  const visit = (node: unknown, depth: number): void => {
+    if (node === null || typeof node !== 'object' || steps.length >= MAX_PLAN_STEPS) return;
+    const n = node as PlanNode;
+    const on = [n['Relation Name'], n['Index Name']].filter((v) => typeof v === 'string').join('/');
+    steps.push(
+      `${'>'.repeat(depth)}${String(n['Node Type'])}${on === '' ? '' : `(${on})`}~${String(n['Plan Rows'])}`,
+    );
+    if (Array.isArray(n.Plans)) n.Plans.forEach((child) => visit(child, depth + 1));
+  };
+  const top = Array.isArray(plan) ? (plan[0] as { Plan?: unknown } | undefined)?.Plan : undefined;
+  visit(top, 0);
+  return steps.join(' ');
+}
+
+/**
+ * Ops, 27–28 Nov: the query ran in about a second when measured, yet timed
+ * out five times in a day and a half, once at the quietest hour. When it
+ * times out, the plan Postgres chose is logged, so the slow plan names
+ * itself. A plain EXPLAIN does not run the query, so this adds no load.
+ */
+async function logPlanOf(sql: string, params: readonly unknown[]): Promise<void> {
+  try {
+    const explained = await backgroundQuery<{ 'QUERY PLAN': unknown }>(
+      `EXPLAIN (FORMAT JSON) ${sql}`,
+      [...params],
+      QUERY_TIMEOUT_MS,
+    );
+    // eslint-disable-next-line no-console
+    console.warn(`[research] slow plan: ${planSummary(explained.rows[0]?.['QUERY PLAN'])}`);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[research] slow plan not read:', (err as Error).message);
+  }
 }
 
 async function recordStep(

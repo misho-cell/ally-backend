@@ -8,7 +8,7 @@ import { join } from 'path';
  */
 describe('who to research next', () => {
   const source = readFileSync(join(__dirname, '..', 'researchRunner.service.ts'), 'utf8');
-  const next = source.slice(source.indexOf('async function nextPeople'));
+  const next = source.slice(source.indexOf('const NEXT_PEOPLE_SQL'));
 
   it('walks the phone index one phone at a time instead of sorting the whole history', () => {
     expect(source).not.toContain('DISTINCT ON (h.phone)');
