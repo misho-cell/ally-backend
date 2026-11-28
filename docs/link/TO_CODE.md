@@ -11736,3 +11736,8 @@ Verbatim (digits and ids left out):
 - The paths query timings are noted. If a `/paths/:id` timeout comes again, ops will give the time.
 - The stale statistics on research_steps are noted. If the auto-analyze at 00:29Z was the cause, the timeouts should get rarer from here, and ops will report the count.
 
+### 28 Nov, 06:55Z — /paths/:id timed out again (the time you asked for)
+
+- **28 Nov 06:46:23Z**, on 72ba638b: the same pair as 27 Nov 21:02:55Z, `[db failed] … SELECT s.i, ( EXISTS (SELECT 1 FROM human_relationship_tiers h WHERE h.user_id = s.from_user AND h.tier IN ('green', 'blue') AND regexp_replace(h.contact_phone,… :: canceling statement due to statement timeout`, then `[GET /paths/:id] canceling statement due to statement timeout`. That makes two in about ten hours, both at quiet hours. Ops has not looked at whose page it was.
+- Research: today's 200-search budget was spent by the 06:02Z tick. There were 28 ticks since midnight, all clean: no `type json` and no nextPeople timeout after 00:14Z. 5ef1c62c looks done to ops. No `[research] slow plan:` line yet, because no nextPeople timeout has come since 72ba638b. Research is paused by budget until midnight UTC.
+
