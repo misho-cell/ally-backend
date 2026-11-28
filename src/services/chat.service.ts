@@ -784,6 +784,7 @@ import {
   takeHeldResearchWith,
   takeHeldResearch,
   takeUnpickedResearch,
+  waitsOnTheOwnersAnswer,
   type HeldResearch,
 } from './clarifyingQuestion';
 import {
@@ -800,6 +801,7 @@ import {
   holdRequestForDepth,
   pickedDepthFor,
   releaseHeldRequest,
+  requestWithAnswer,
   spendPickedDepth,
 } from './depthFirst';
 import {
@@ -19094,6 +19096,8 @@ export async function processChat(
   const steps = stepClock(startedAt);
   const thread = await getThread(threadId, userId);
   steps.mark('thread');
+  // Read before the line below forgets it: is this line the answer to Netai's question?
+  const answersTheQuestion = waitsOnTheOwnersAnswer(threadId);
   // Misho, 26 Nov (points 1, 2) and Lika, 26 Nov: the held research is offered, or released.
   if (!userMessage.startsWith(RUN_EVENT_PREFIX))
     offerOrReleaseResearch(threadId, userMessage, runId);
@@ -19217,8 +19221,12 @@ export async function processChat(
     const asked = await askDepthBeforeSearching(userId, threadId, userMessage, runId, intent);
     if (asked !== null) return asked;
   }
-  // The request the searches answer: the held one, once its depth is picked.
-  const requestLine = released?.line ?? userMessage;
+  // The request the searches answer: the held one, once its depth is picked, and
+  // with the owner's answer when Netai asked before searching (28 Nov).
+  const requestLine =
+    released?.line ??
+    (askingFirst && answersTheQuestion ? requestWithAnswer(threadId, userMessage) : null) ??
+    userMessage;
   steps.mark('checks');
   const goalForRequest = await ensureGoalForRequest(
     userId,

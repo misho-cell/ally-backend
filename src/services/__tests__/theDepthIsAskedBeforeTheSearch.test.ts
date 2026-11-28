@@ -11,6 +11,7 @@ import {
   holdRequestForDepth,
   pickedDepthFor,
   releaseHeldRequest,
+  requestWithAnswer,
   spendPickedDepth,
 } from '../depthFirst';
 import { ResearchDepth } from '../researchDepth';
@@ -56,6 +57,24 @@ describe('a request held behind the depth card', () => {
     holdRequestForDepth(THREAD, REQUEST, NOW);
     expect(releaseHeldRequest(THREAD, 'Quick', NOW + DEPTH_FIRST_HOLD_MS)).toBeNull();
   });
+
+  it('an answer to a question asked before searching is searched with its request', () => {
+    holdRequestForDepth(THREAD, REQUEST, NOW);
+    releaseHeldRequest(THREAD, 'Deep', NOW + 1_000);
+    expect(requestWithAnswer(THREAD, 'in Vake', NOW + 2_000)).toBe(`${REQUEST}\nin Vake`);
+    expect(requestWithAnswer(THREAD, 'near the metro', NOW + 3_000)).toBe(
+      `${REQUEST}\nin Vake\nnear the metro`,
+    );
+    expect(pickedDepthFor(THREAD, NOW + 4_000)).toBe(ResearchDepth.Deep);
+  });
+
+  it('with no pick waiting, or once its research started, the answer stands alone', () => {
+    expect(requestWithAnswer(THREAD, 'in Vake', NOW)).toBeNull();
+    holdRequestForDepth(THREAD, REQUEST, NOW);
+    releaseHeldRequest(THREAD, 'Quick', NOW + 1_000);
+    spendPickedDepth(THREAD);
+    expect(requestWithAnswer(THREAD, 'in Vake', NOW + 2_000)).toBeNull();
+  });
 });
 
 describe('it is wired into the run', () => {
@@ -69,6 +88,17 @@ describe('it is wired into the run', () => {
       'startOpeningSearches(userId, requestLine, runId, threadId, autoGoalId)',
     );
     expect(chat).toContain('worldAnswerFor(userId, threadId, runId, requestLine, language)');
+  });
+
+  it('reads whether the line answers Netai before the held research forgets it', () => {
+    const read = chat.indexOf('const answersTheQuestion = waitsOnTheOwnersAnswer(threadId);');
+    expect(read).toBeGreaterThan(-1);
+    expect(read).toBeLessThan(
+      chat.indexOf('offerOrReleaseResearch(threadId, userMessage, runId);'),
+    );
+    expect(chat).toContain(
+      '(askingFirst && answersTheQuestion ? requestWithAnswer(threadId, userMessage) : null)',
+    );
   });
 
   it('runs the research at the picked depth, with no second card', () => {
