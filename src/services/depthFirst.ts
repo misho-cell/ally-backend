@@ -15,8 +15,14 @@ interface Held<T> {
   readonly at: number;
 }
 
+interface Pick {
+  readonly depth: ResearchDepth;
+  /** The request the depth was picked for, with the owner's answers to Netai's questions. */
+  readonly request: string;
+}
+
 const heldRequests = new Map<number, Held<string>>();
-const pickedDepths = new Map<number, Held<ResearchDepth>>();
+const pickedDepths = new Map<number, Held<Pick>>();
 
 function fresh<T>(store: Map<number, Held<T>>, threadId: number, now: number): T | null {
   const held = store.get(threadId);
@@ -55,13 +61,31 @@ export function releaseHeldRequest(
   heldRequests.delete(threadId);
   const depth = depthPickOf(line);
   if (depth === null) return { line: `${held}\n${line}`, depth: null };
-  pickedDepths.set(threadId, { value: depth, at: now });
+  pickedDepths.set(threadId, { value: { depth, request: held }, at: now });
   return { line: held, depth };
 }
 
 /** The depth the owner picked before the search began, if any. */
 export function pickedDepthFor(threadId: number, now: number = Date.now()): ResearchDepth | null {
-  return fresh(pickedDepths, threadId, now);
+  return fresh(pickedDepths, threadId, now)?.depth ?? null;
+}
+
+/**
+ * The first real request, 28 Nov: the depth was picked, Netai asked a question
+ * before searching, and the owner's answer was searched alone, so the research
+ * never formed. While the pick is unspent, the answer joins the request it was
+ * picked for, and that is what is searched. Null when no pick waits here.
+ */
+export function requestWithAnswer(
+  threadId: number,
+  answer: string,
+  now: number = Date.now(),
+): string | null {
+  const pick = fresh(pickedDepths, threadId, now);
+  if (pick === null) return null;
+  const request = `${pick.request}\n${answer}`;
+  pickedDepths.set(threadId, { value: { depth: pick.depth, request }, at: now });
+  return request;
 }
 
 /** The research this depth was picked for has started: the pick is spent. */
