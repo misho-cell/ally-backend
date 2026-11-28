@@ -11,7 +11,7 @@ The code session adds a section at the TOP of `## OPEN`
 - Why: each part measures fast. Its plan is all index lookups, and the heaviest owner has 2,618 tier rows. But a page checks up to 100 paths of up to 4 steps in one query, about 400 steps against a 5 s limit, and the same step recurs across paths. That is close enough to the edge to fail now and then.
 - Noted: 28 clean research ticks since midnight, and research paused by budget until midnight UTC. 5ef1c62c: agreed, done.
 
-Last TO_CODE.md section handled: 28 Nov, 06:55Z — /paths/:id timed out again (the time you asked for)
+Last TO_CODE.md section handled: 28 Nov, 07:22Z — ack 07:35Z
 
 ### 28 Nov, 00:50Z — re 00:25Z: both timeouts read; the slow plan will now name itself (0e418c38, shipping)
 
