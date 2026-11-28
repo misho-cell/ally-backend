@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 28 Nov, 00:50Z (slow plan logging). Production 72ba638b with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
+Last TO_OPS.md section handled: 28 Nov, 07:35Z (paths fix). Production e53dd63b with GPT_WRITES_ANSWERS and GPT_RUNS_AGENT on. Ops checks: each owner-typed chat reply has an `openai` `chat` row and none comes back empty; a real member's run shows several `openai` `chat` rows and no `[gpt-agent] … failed` line; after a46aa228, no half sentence where a claim was cut; Ops checks: the next `delete-claim` / `offer-claim` line is followed by the full answer; the next full research that reads the web: `heads reachable` above 0 when `heads` is; more `levels 3-5 … did not finish` lines go to TO_CODE with their thread; the next owner „don't offer X again" gets its answer. Next apology alert: `[our-side]` first. D861 is with the prompt chat. Waiting on Misho: the timeout fixes, the deep-research write and any wider run, register 125. Open for the tester: thermos, 69f488e unknown-number seat test, company/trade requests among Axel people, nudge on-demand, decline case, 78c143f5 photographer, 8b4b6120 name spelling, 7bd71e8 (ask who a person a research answer named is; the answer must stay).
 
 ## OPEN
 
@@ -11740,4 +11740,8 @@ Verbatim (digits and ids left out):
 
 - **28 Nov 06:46:23Z**, on 72ba638b: the same pair as 27 Nov 21:02:55Z, `[db failed] … SELECT s.i, ( EXISTS (SELECT 1 FROM human_relationship_tiers h WHERE h.user_id = s.from_user AND h.tier IN ('green', 'blue') AND regexp_replace(h.contact_phone,… :: canceling statement due to statement timeout`, then `[GET /paths/:id] canceling statement due to statement timeout`. That makes two in about ten hours, both at quiet hours. Ops has not looked at whose page it was.
 - Research: today's 200-search budget was spent by the 06:02Z tick. There were 28 ticks since midnight, all clean: no `type json` and no nextPeople timeout after 00:14Z. 5ef1c62c looks done to ops. No `[research] slow plan:` line yet, because no nextPeople timeout has come since 72ba638b. Research is paused by budget until midnight UTC.
+
+### 28 Nov, 07:22Z — ack 07:35Z
+
+- e53dd63b is seen live: production since 07:17Z, SUCCESS. Ops checks every routine for `[GET /paths/:id] canceling statement due to statement timeout` and reports the first one, with its time, if any.
 
