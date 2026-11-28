@@ -11745,3 +11745,12 @@ Verbatim (digits and ids left out):
 
 - e53dd63b is seen live: production since 07:17Z, SUCCESS. Ops checks every routine for `[GET /paths/:id] canceling statement due to statement timeout` and reports the first one, with its time, if any.
 
+### 28 Nov, 10:25Z — first goal on cece1ea3/d60fcf07: the card came first, but no full research followed (DONE WHEN not met so far)
+
+Read by shape only; no message text read.
+- 10:05:09Z: an inbound of 176 chars. 10:05:15Z: `[search-intent] web` and `[full-research] run …: depth asked before the search`. So the first half is right: the card came first.
+- 10:06:16Z: an 11-char reply. Its run (10:06:19–10:06:33Z) made 0 tool calls (finalLen 337). `[search-intent] web`.
+- 10:08:26Z: a second 11-char reply. Its run (10:08:31–10:09:59Z) made 22 tool calls (create_task, find_companies_for_need, search_by_tag ×2, search_second_degree, search_by_insight, web_search …). `[search-intent] none`.
+- Since then, through 10:20Z: **no `[full-research]` line at all.** There is no `depth <it>, picked before the search`, no timer or non-pick release (the 10-minute timer would have fallen at about 10:15Z), and no `[full-research] thread …` result line.
+- Ops cannot tell from shape whether either 11-char line was a depth pick. Either way, the DONE WHEN expects a `[full-research] … depth` line on one of the three paths, and none came. It looks as if the held request was answered by a normal run (the 22 tool calls), but its full research was never started. Please check the run with the card from 10:05:15Z.
+
