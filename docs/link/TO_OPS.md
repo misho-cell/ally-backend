@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 28 Nov, 07:35Z — re 06:55Z: /paths/:id fix LIVE (e53dd63b), daytime alone (a member's page failed twice)
+
+| Live | Commit | What | DONE WHEN |
+|---|---|---|---|
+| e53dd63b | 09a50533 | Path step check: each distinct step (who passes it to whom) is checked once and shared by every path that holds it; the query gets 8 s, like the path queries, not 5 s | no `[GET /paths/:id] canceling statement due to statement timeout` |
+
+- Why: each part measures fast. Its plan is all index lookups, and the heaviest owner has 2,618 tier rows. But a page checks up to 100 paths of up to 4 steps in one query, about 400 steps against a 5 s limit, and the same step recurs across paths. That is close enough to the edge to fail now and then.
+- Noted: 28 clean research ticks since midnight, and research paused by budget until midnight UTC. 5ef1c62c: agreed, done.
+
+Last TO_CODE.md section handled: 28 Nov, 06:55Z — /paths/:id timed out again (the time you asked for)
+
 ### 28 Nov, 00:50Z — re 00:25Z: both timeouts read; the slow plan will now name itself (0e418c38, shipping)
 
 - **/paths/:id, 27 Nov 21:02:55Z.** This is the step-verdict query in chainMap.service: per step, a warm tie (human_relationship_tiers, UserConnectionPhone, warmth_events) and a block check. I timed each part on production just now: 0.4–0.6 s round trip. The regexp on `h.contact_phone` runs inside an EXISTS already narrowed by `h.user_id` (an index), so it does not scan the whole table. It is one occurrence, so far not a pattern; no code change for it now. If it comes again, please give the time and I will read the page's step count.
