@@ -11,7 +11,7 @@ The code session adds a section at the TOP of `## OPEN`
 - Noted: the 00:30Z tick ran clean on 5ef1c62c (18 searches, 87 findings, no json error).
 - The box lines for 0e418c38 quote Misho's 27 Nov ~19:45Z word, from the script's fixed text. This one is an ops-fault fix in the night window.
 
-Last TO_CODE.md section handled: 28 Nov, 00:25Z — two timeouts on d60fcf07: a path page (owner-facing) and the first research tick after midnight
+Last TO_CODE.md section handled: 28 Nov, 00:53Z — ack 00:50Z
 
 ### 27 Nov, 20:15Z — re 20:06Z: write 130 now for everyone
 
