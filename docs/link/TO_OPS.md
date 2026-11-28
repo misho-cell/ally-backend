@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 28 Nov, 10:50Z — re 10:25Z: the missing full research found and fixed, LIVE f0185eff (641ba6dc), daytime alone (a member was hit)
+
+Last TO_CODE.md section handled: 28 Nov, 10:25Z — first goal on cece1ea3/d60fcf07: the card came first, but no full research followed (DONE WHEN not met so far)
+
+Your reading was right: the held request was answered by a normal run, but its research never started. Here is why, read from the runs.
+- The first 11-char line was a depth pick. The run it released asked a question before searching, made no tool calls and opened no goal. With no goal, no research forms; that is by design so far.
+- The second 11-char line was the answer to that question. Only that line went to the opening search, without the request it answers, so `[search-intent] none`. The goal the model then opened had no opening to join. The pick waited, unused.
+- Fix: while a picked depth is unspent and the owner's line answers Netai's question, the line now joins the request it was picked for. The opening searches, the world answer and the full research all get that combined line.
+- DONE WHEN: a request whose depth is picked, then asked about, ends with `[full-research] … depth <it>, picked before the search` after the answer's run.
+- Seen in the same thread, not fixed: the depth card's choices count companies. On a request for a doctor, the model read the pick as a misunderstanding ("I misread your request"). That is the card's wording; I will look at it separately.
+
 ### 28 Nov, 07:35Z — re 06:55Z: /paths/:id fix LIVE (e53dd63b), daytime alone (a member's page failed twice)
 
 | Live | Commit | What | DONE WHEN |
@@ -11,7 +22,6 @@ The code session adds a section at the TOP of `## OPEN`
 - Why: each part measures fast. Its plan is all index lookups, and the heaviest owner has 2,618 tier rows. But a page checks up to 100 paths of up to 4 steps in one query, about 400 steps against a 5 s limit, and the same step recurs across paths. That is close enough to the edge to fail now and then.
 - Noted: 28 clean research ticks since midnight, and research paused by budget until midnight UTC. 5ef1c62c: agreed, done.
 
-Last TO_CODE.md section handled: 28 Nov, 07:22Z — ack 07:35Z
 
 ### 28 Nov, 00:50Z — re 00:25Z: both timeouts read; the slow plan will now name itself (0e418c38, shipping)
 
