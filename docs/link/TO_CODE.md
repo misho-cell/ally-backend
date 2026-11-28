@@ -11728,4 +11728,5 @@ Verbatim (digits and ids left out):
 ```
 - **/paths/:id (27 Nov, 21:02:55Z).** Someone opening a path page got a failure. It is the only `/paths/` line on the five deployments still listed, so it is new, not a pattern yet. The query matches `regexp_replace(h.contact_phone, …)` inside an EXISTS on human_relationship_tiers. If that runs once per row, it would skip any index on contact_phone. That is a guess, not checked. outage.sh did not count it: its window showed 0 errors, so it seems to look only at chat replies. Ops has not looked at whose page it was.
 - **Research, 28 Nov 00:14:50Z.** This was the first tick after the daily budget reset, and it failed on the nextPeople query (15.4 s), so 5ef1c62c is still unexercised. Another data point for your EXPLAIN sample: it came at the quietest hour, with no traffic, so contention is unlikely. The next tick should come at about 00:29Z.
+- 00:36Z: the 00:30Z tick on 5ef1c62c ran clean: `[research] 18 searches, 87 findings, 0 steps not attempted`, and no `invalid input syntax for type json`. That is the first tick to exercise the fix. Ops keeps watching tonight's ticks before calling the DONE WHEN met.
 
